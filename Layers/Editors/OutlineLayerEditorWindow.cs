@@ -25,8 +25,15 @@ public class OutlineLayerEditorWindow : EditorWindow
             UpdatePreview();
     }
 
+    private bool _isInit = false;
+
     private void OnGUI()
     {
+        if (_isInit == false)
+        {
+            UpdatePreview();
+            _isInit = true;
+        }
         if (layer == null || compositor == null)
         {
             Close();
@@ -99,18 +106,18 @@ public class OutlineLayerEditorWindow : EditorWindow
         {
             DestroyImmediate(previewTexture);
         }
-        // // Генерируем превью, используя метод GetRenderTexture с временными параметрами
-        // RenderTexture rt = layer.GetRenderTexture(compositor, compositor.layers.IndexOf(layer), previewSize, previewSize);
-        // if (rt != null)
-        // {
-        //     previewTexture = new Texture2D(previewSize, previewSize, TextureFormat.RGBA32, false);
-        //     RenderTexture.active = rt;
-        //     previewTexture.ReadPixels(new Rect(0, 0, previewSize, previewSize), 0, 0);
-        //     previewTexture.Apply();
-        //     RenderTexture.active = null;
-        //     RenderTexture.ReleaseTemporary(rt);
-        // }
-        // Repaint();
+        // Генерируем превью, используя метод GetRenderTexture с временными параметрами
+        RenderTexture rt = layer.GetRenderTexture(compositor, compositor.layers.IndexOf(layer), previewSize, previewSize);
+        if (rt != null)
+        {
+            previewTexture = new Texture2D(previewSize, previewSize, TextureFormat.RGBA32, false);
+            RenderTexture.active = rt;
+            previewTexture.ReadPixels(new Rect(0, 0, previewSize, previewSize), 0, 0);
+            previewTexture.Apply();
+            RenderTexture.active = null;
+            RenderTexture.ReleaseTemporary(rt);
+        }
+        Repaint();
     }
 
     private void OnDestroy()

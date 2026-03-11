@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
 
 [System.Serializable]
@@ -24,41 +27,68 @@ public class SDFLayer : Layer
         else
         {
             Layer targetLayer = compositor.layers[targetIdx];
-            if (targetLayer != null && targetLayer.enabled)
+            if (targetLayer != null)
             {
                 inputRT = targetLayer.GetRenderTexture(compositor, targetIdx, width, height);
             }
         }
+        if (inputRT == null) return null;
 
-        if (inputRT == null)
-            return null;
-
-        Texture2D inputTex = ConvertRenderTextureToTexture2D(inputRT);
+        Texture2D inputTex = ConvertToTexture2D(inputRT);
         RenderTexture.ReleaseTemporary(inputRT);
 
-        Texture2D sdfTex = GenerateSDF(inputTex, width, height);
+        NativeArray<Color32> inputPixels = new NativeArray<Color32>(inputTex.GetPixels32(), Allocator.TempJob);
+        int pixelCount = inputPixels.Length;
+        NativeArray<float> signedDistances = new NativeArray<float>(pixelCount, Allocator.TempJob);
 
-        RenderTexture result = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(sdfTex, result);
+        var sdfJob = new ComputeSDFJob
+        {
+            input = inputPixels,
+            distances = signedDistances,
+            width = width,
+            height = height,
+            threshold = 128
+        };
+        sdfJob.Run();
 
+        // Для SDF слоя мы выводим нормализованное расстояние в красном канале
+        float maxDist = Mathf.Sqrt(width * width + height * height);
+        NativeArray<Color32> outputPixels = new NativeArray<Color32>(pixelCount, Allocator.TempJob);
+        for (int i = 0; i < pixelCount; i++)
+        {
+            float normDist = math.clamp((signedDistances[i] + maxDist) / (2 * maxDist), 0, 1); // отображаем в 0..1
+            byte val = (byte)(normDist * 255);
+            outputPixels[i] = new Color32(val, val, val, 255);
+        }
+
+        Texture2D resultTex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        resultTex.SetPixels32(outputPixels.ToArray());
+        resultTex.Apply();
+
+        inputPixels.Dispose();
+        signedDistances.Dispose();
+        outputPixels.Dispose();
+
+        RenderTexture resultRT = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+        Graphics.Blit(resultTex, resultRT);
         Object.DestroyImmediate(inputTex);
-        Object.DestroyImmediate(sdfTex);
+        Object.DestroyImmediate(resultTex);
 
         foreach (var modifier in modifiers)
         {
             if (modifier != null)
             {
-                RenderTexture temp = RenderTexture.GetTemporary(result.width, result.height, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(result, temp, modifier);
-                RenderTexture.ReleaseTemporary(result);
-                result = temp;
+                RenderTexture temp = RenderTexture.GetTemporary(resultRT.width, resultRT.height, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(resultRT, temp, modifier);
+                RenderTexture.ReleaseTemporary(resultRT);
+                resultRT = temp;
             }
         }
 
-        return result;
+        return resultRT;
     }
 
-    private Texture2D ConvertRenderTextureToTexture2D(RenderTexture rt)
+    private Texture2D ConvertToTexture2D(RenderTexture rt)
     {
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
         RenderTexture.active = rt;
@@ -66,59 +96,6 @@ public class SDFLayer : Layer
         tex.Apply();
         RenderTexture.active = null;
         return tex;
-    }
-
-    private Texture2D GenerateSDF(Texture2D input, int width, int height)
-    {
-        Texture2D sdf = new Texture2D(width, height, TextureFormat.RFloat, false);
-        Color[] inputPixels = input.GetPixels();
-        float[] distances = new float[width * height];
-        float maxDist = Mathf.Sqrt(width * width + height * height);
-
-        List<Vector2Int> opaquePixels = new List<Vector2Int>();
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if (inputPixels[y * width + x].a > 0.5f)
-                    opaquePixels.Add(new Vector2Int(x, y));
-            }
-        }
-
-        if (opaquePixels.Count == 0)
-        {
-            for (int i = 0; i < distances.Length; i++)
-                distances[i] = maxDist;
-        }
-        else
-        {
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    float minDistSq = float.MaxValue;
-                    foreach (var op in opaquePixels)
-                    {
-                        int dx = x - op.x;
-                        int dy = y - op.y;
-                        float distSq = dx * dx + dy * dy;
-                        if (distSq < minDistSq)
-                            minDistSq = distSq;
-                    }
-                    distances[y * width + x] = Mathf.Sqrt(minDistSq);
-                }
-            }
-        }
-
-        Color[] sdfPixels = new Color[width * height];
-        for (int i = 0; i < distances.Length; i++)
-        {
-            float normDist = distances[i] / maxDist;
-            sdfPixels[i] = new Color(normDist, normDist, normDist, 1);
-        }
-        sdf.SetPixels(sdfPixels);
-        sdf.Apply();
-        return sdf;
     }
 
     public override string ToString()

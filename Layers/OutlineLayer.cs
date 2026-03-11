@@ -1,30 +1,28 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Burst;
+using Unity.Mathematics;
 
 [System.Serializable]
 public class OutlineLayer : Layer
 {
-    public int targetLayerIndex = -1; // -1 означает "предыдущий слой"
+    public int targetLayerIndex = -1;
     public bool useAccumulation = false;
     public Color outlineColor = Color.white;
-    public float outlineWidth = 10f;
-    public float outlineSoftness = 0.5f;
-    public enum OutlinePosition { Inside, Outside, Center }
+    public float outlineWidth = 0.05f;
+    public float outlineSoftness = 0.01f;
+    public enum OutlinePosition { Outside, Inside, Center }
     public OutlinePosition outlinePosition = OutlinePosition.Outside;
-
-    private Texture2D cachedSDF;
-    private Texture2D lastInputTexture;
-    private int lastInputWidth, lastInputHeight;
 
     public override RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height)
     {
-        // Определяем индекс целевого слоя
+        // Определяем целевой слой
         int targetIdx = targetLayerIndex;
         if (targetIdx < 0 || targetIdx >= compositor.layers.Count)
         {
-            // Если индекс некорректен, используем предыдущий слой (если есть)
             if (layerIndex > 0) targetIdx = layerIndex - 1;
-            else return null; // Нет слоя для обработки
+            else return null;
         }
 
         // Получаем входную текстуру
@@ -36,50 +34,85 @@ public class OutlineLayer : Layer
         else
         {
             Layer targetLayer = compositor.layers[targetIdx];
-            if (targetLayer != null && targetLayer.enabled)
+            if (targetLayer != null)
             {
                 inputRT = targetLayer.GetRenderTexture(compositor, targetIdx, width, height);
             }
         }
+        if (inputRT == null) return null;
 
-        if (inputRT == null)
-            return null;
-
-        // Конвертируем входную RenderTexture в Texture2D для CPU-обработки
-        Texture2D inputTex = ConvertRenderTextureToTexture2D(inputRT);
+        // Конвертируем в Texture2D для доступа к пикселям
+        Texture2D inputTex = ConvertToTexture2D(inputRT);
         RenderTexture.ReleaseTemporary(inputRT);
 
-        // Генерируем SDF, если необходимо
-        Texture2D sdfTex = GenerateSDF(inputTex, width, height);
+        // Получаем пиксели как NativeArray<Color32>
+        NativeArray<Color32> inputPixels = new NativeArray<Color32>(inputTex.GetPixels32(), Allocator.TempJob);
+        int pixelCount = inputPixels.Length;
 
-        // Генерируем обводку на основе SDF
-        Texture2D outlineTex = GenerateOutlineFromSDF(sdfTex, width, height);
+        // Массив для знаковых расстояний (float)
+        NativeArray<float> signedDistances = new NativeArray<float>(pixelCount, Allocator.TempJob);
 
-        // Создаём RenderTexture и копируем результат
-        RenderTexture result = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(outlineTex, result);
+        // Запускаем SDF job
+        var sdfJob = new ComputeSDFJob
+        {
+            input = inputPixels,
+            distances = signedDistances,
+            width = width,
+            height = height,
+            threshold = 128 // альфа > 0.5
+        };
+        sdfJob.Run(); // выполняется синхронно (можно Schedule, но для простоты Run)
 
-        // Очистка
+        // Массив для выходных пикселей
+        NativeArray<Color32> outputPixels = new NativeArray<Color32>(pixelCount, Allocator.TempJob);
+
+        // Запускаем Outline job параллельно
+        var outlineJob = new OutlineJob
+        {
+            signedDistances = signedDistances,
+            output = outputPixels,
+            width = width,
+            height = height,
+            outlineWidth = outlineWidth * Mathf.Sqrt(width * width + height * height), // переводим в пиксели
+            outlineSoftness = outlineSoftness * Mathf.Sqrt(width * width + height * height),
+            outlineColor = (Color32)outlineColor,
+            outlinePosition = (int)outlinePosition
+        };
+        JobHandle handle = outlineJob.Schedule(pixelCount, 64); // батч 64
+        handle.Complete();
+
+        // Создаём Texture2D из результата
+        Texture2D resultTex = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        resultTex.SetPixels32(outputPixels.ToArray());
+        resultTex.Apply();
+
+        // Освобождаем NativeArray
+        inputPixels.Dispose();
+        signedDistances.Dispose();
+        outputPixels.Dispose();
+
+        // Копируем в RenderTexture
+        RenderTexture resultRT = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+        Graphics.Blit(resultTex, resultRT);
         Object.DestroyImmediate(inputTex);
-        Object.DestroyImmediate(sdfTex);
-        Object.DestroyImmediate(outlineTex);
+        Object.DestroyImmediate(resultTex);
 
         // Применяем модификаторы
         foreach (var modifier in modifiers)
         {
             if (modifier != null)
             {
-                RenderTexture temp = RenderTexture.GetTemporary(result.width, result.height, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(result, temp, modifier);
-                RenderTexture.ReleaseTemporary(result);
-                result = temp;
+                RenderTexture temp = RenderTexture.GetTemporary(resultRT.width, resultRT.height, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(resultRT, temp, modifier);
+                RenderTexture.ReleaseTemporary(resultRT);
+                resultRT = temp;
             }
         }
 
-        return result;
+        return resultRT;
     }
 
-    private Texture2D ConvertRenderTextureToTexture2D(RenderTexture rt)
+    private Texture2D ConvertToTexture2D(RenderTexture rt)
     {
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
         RenderTexture.active = rt;
@@ -89,149 +122,151 @@ public class OutlineLayer : Layer
         return tex;
     }
 
-    private Texture2D GenerateSDF(Texture2D input, int width, int height)
-    {
-        Texture2D sdf = new Texture2D(width, height, TextureFormat.RFloat, false);
-        Color[] inputPixels = input.GetPixels();
-        float maxDist = Mathf.Sqrt(width * width + height * height);
-
-        List<Vector2Int> objectPixels = new List<Vector2Int>();
-        List<Vector2Int> backgroundPixels = new List<Vector2Int>();
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if (inputPixels[y * width + x].a > 0.5f)
-                    objectPixels.Add(new Vector2Int(x, y));
-                else
-                    backgroundPixels.Add(new Vector2Int(x, y));
-            }
-        }
-
-        float[] signedDistances = new float[width * height];
-
-        if (objectPixels.Count == 0)
-        {
-            for (int i = 0; i < signedDistances.Length; i++)
-                signedDistances[i] = maxDist;
-        }
-        else if (backgroundPixels.Count == 0)
-        {
-            for (int i = 0; i < signedDistances.Length; i++)
-                signedDistances[i] = -maxDist;
-        }
-        else
-        {
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = y * width + x;
-                    bool isInside = inputPixels[idx].a > 0.5f;
-
-                    float minDistToObject = float.MaxValue;
-                    float minDistToBackground = float.MaxValue;
-
-                    if (isInside)
-                    {
-                        foreach (var bg in backgroundPixels)
-                        {
-                            int dx = x - bg.x;
-                            int dy = y - bg.y;
-                            float distSq = dx * dx + dy * dy;
-                            if (distSq < minDistToBackground)
-                                minDistToBackground = distSq;
-                        }
-                        signedDistances[idx] = -Mathf.Sqrt(minDistToBackground);
-                    }
-                    else
-                    {
-                        foreach (var obj in objectPixels)
-                        {
-                            int dx = x - obj.x;
-                            int dy = y - obj.y;
-                            float distSq = dx * dx + dy * dy;
-                            if (distSq < minDistToObject)
-                                minDistToObject = distSq;
-                        }
-                        signedDistances[idx] = Mathf.Sqrt(minDistToObject);
-                    }
-                }
-            }
-        }
-
-        Color[] sdfPixels = new Color[width * height];
-        for (int i = 0; i < signedDistances.Length; i++)
-        {
-            float normDist = signedDistances[i] / maxDist; // [-1, 1]
-            sdfPixels[i] = new Color(normDist, 0, 0, 1);
-        }
-        sdf.SetPixels(sdfPixels);
-        sdf.Apply();
-        return sdf;
-    }
-
-    private Texture2D GenerateOutlineFromSDF(Texture2D sdf, int width, int height)
-    {
-        Texture2D outline = new Texture2D(width, height, TextureFormat.ARGB32, false);
-        Color[] sdfPixels = sdf.GetPixels();
-        Color[] outlinePixels = new Color[width * height];
-
-        float maxDist = Mathf.Sqrt(width * width + height * height);
-        float halfWidth = outlineWidth * 0.5f;
-
-        for (int i = 0; i < sdfPixels.Length; i++)
-        {
-            float signedNorm = sdfPixels[i].r; // [-1, 1]
-            float signedDist = signedNorm * maxDist;
-            float absDist = Mathf.Abs(signedDist);
-            float alpha = 0;
-
-            switch (outlinePosition)
-            {
-                case OutlinePosition.Outside:
-                    if (signedDist > 0 && signedDist < outlineWidth)
-                    {
-                        if (outlineSoftness <= 0 || signedDist <= outlineWidth - outlineSoftness)
-                            alpha = 1;
-                        else
-                            alpha = 1 - (signedDist - (outlineWidth - outlineSoftness)) / outlineSoftness;
-                    }
-                    break;
-
-                case OutlinePosition.Inside:
-                    if (signedDist < 0 && -signedDist < outlineWidth)
-                    {
-                        float distInside = -signedDist;
-                        if (outlineSoftness <= 0 || distInside <= outlineWidth - outlineSoftness)
-                            alpha = 1;
-                        else
-                            alpha = 1 - (distInside - (outlineWidth - outlineSoftness)) / outlineSoftness;
-                    }
-                    break;
-
-                case OutlinePosition.Center:
-                    if (absDist < halfWidth)
-                    {
-                        if (outlineSoftness <= 0 || absDist <= halfWidth - outlineSoftness)
-                            alpha = 1;
-                        else
-                            alpha = 1 - (absDist - (halfWidth - outlineSoftness)) / outlineSoftness;
-                    }
-                    break;
-            }
-
-            outlinePixels[i] = new Color(outlineColor.r, outlineColor.g, outlineColor.b, alpha * outlineColor.a);
-        }
-        outline.SetPixels(outlinePixels);
-        outline.Apply();
-        return outline;
-    }
-
-
 
     public override string ToString()
     {
-        return outlineWidth.ToString("0.00");
+        return $"Outline: {outlineWidth}";
+    }
+}
+
+[BurstCompile]
+public struct ComputeSDFJob : IJob
+{
+    [ReadOnly] public NativeArray<Color32> input;
+    public NativeArray<float> distances; // выходные знаковые расстояния в пикселях
+    public int width;
+    public int height;
+    public byte threshold;
+
+    public void Execute()
+    {
+        int total = width * height;
+        float inf = 1e10f;
+
+        // Массивы для расстояний до объекта и до фона
+        NativeArray<float> distObj = new NativeArray<float>(total, Allocator.Temp);
+        NativeArray<float> distBg = new NativeArray<float>(total, Allocator.Temp);
+
+        // Инициализация
+        for (int i = 0; i < total; i++)
+        {
+            bool isObj = input[i].a > threshold;
+            distObj[i] = isObj ? 0 : inf;
+            distBg[i] = isObj ? inf : 0;
+        }
+
+        // 8SSEDT для объекта
+        Compute8SSEDT(distObj, width, height);
+        // 8SSEDT для фона
+        Compute8SSEDT(distBg, width, height);
+
+        // Комбинируем в знаковое расстояние
+        for (int i = 0; i < total; i++)
+        {
+            bool isObj = input[i].a > threshold;
+            distances[i] = isObj ? -distBg[i] : distObj[i];
+        }
+
+        distObj.Dispose();
+        distBg.Dispose();
+    }
+
+    private void Compute8SSEDT(NativeArray<float> d, int w, int h)
+    {
+        float sqrt2 = math.sqrt(2f);
+        // Прямой проход
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                int idx = y * w + x;
+                float best = d[idx];
+                if (x > 0) best = math.min(best, d[idx - 1] + 1);
+                if (y > 0)
+                {
+                    best = math.min(best, d[idx - w] + 1);
+                    if (x > 0) best = math.min(best, d[idx - w - 1] + sqrt2);
+                    if (x < w - 1) best = math.min(best, d[idx - w + 1] + sqrt2);
+                }
+                d[idx] = best;
+            }
+        }
+        // Обратный проход
+        for (int y = h - 1; y >= 0; y--)
+        {
+            for (int x = w - 1; x >= 0; x--)
+            {
+                int idx = y * w + x;
+                float best = d[idx];
+                if (x < w - 1) best = math.min(best, d[idx + 1] + 1);
+                if (y < h - 1)
+                {
+                    best = math.min(best, d[idx + w] + 1);
+                    if (x > 0) best = math.min(best, d[idx + w - 1] + sqrt2);
+                    if (x < w - 1) best = math.min(best, d[idx + w + 1] + sqrt2);
+                }
+                d[idx] = best;
+            }
+        }
+    }
+}
+
+[BurstCompile]
+public struct OutlineJob : IJobParallelFor
+{
+    [ReadOnly] public NativeArray<float> signedDistances;
+    public NativeArray<Color32> output;
+    public int width;
+    public int height;
+    public float outlineWidth; // в пикселях
+    public float outlineSoftness; // в пикселях
+    public Color32 outlineColor;
+    public int outlinePosition; // 0=outside,1=inside,2=center
+
+    public void Execute(int index)
+    {
+        float d = signedDistances[index];
+        float absD = math.abs(d);
+        float alpha = 0;
+
+        if (outlinePosition == 0) // outside
+        {
+            if (d > 0 && d < outlineWidth)
+            {
+                if (outlineSoftness <= 0 || d <= outlineWidth - outlineSoftness)
+                    alpha = 1;
+                else
+                    alpha = 1 - (d - (outlineWidth - outlineSoftness)) / outlineSoftness;
+            }
+        }
+        else if (outlinePosition == 1) // inside
+        {
+            if (d < 0 && -d < outlineWidth)
+            {
+                float insideDist = -d;
+                if (outlineSoftness <= 0 || insideDist <= outlineWidth - outlineSoftness)
+                    alpha = 1;
+                else
+                    alpha = 1 - (insideDist - (outlineWidth - outlineSoftness)) / outlineSoftness;
+            }
+        }
+        else // center
+        {
+            float half = outlineWidth * 0.5f;
+            if (absD < half)
+            {
+                if (outlineSoftness <= 0 || absD <= half - outlineSoftness)
+                    alpha = 1;
+                else
+                    alpha = 1 - (absD - (half - outlineSoftness)) / outlineSoftness;
+            }
+        }
+
+        output[index] = new Color32(
+            (byte)(outlineColor.r * alpha),
+            (byte)(outlineColor.g * alpha),
+            (byte)(outlineColor.b * alpha),
+            (byte)(outlineColor.a * alpha)
+        );
     }
 }
