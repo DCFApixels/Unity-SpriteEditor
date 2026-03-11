@@ -26,7 +26,6 @@ public class OutlineLayerEditorWindow : EditorWindow
     }
 
     private bool _isInit = false;
-
     private void OnGUI()
     {
         if (_isInit == false)

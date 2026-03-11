@@ -1,8 +1,8 @@
-﻿using UnityEngine;
+﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
-using Unity.Burst;
 using Unity.Mathematics;
+using UnityEngine;
 
 
 
@@ -107,24 +107,10 @@ public class SDFLayer : Layer
             sdfJob.Run();
         }
 
-
-
         // Нормализация для вывода (как раньше, но теперь с учётом метрики? Нормируем на максимальное возможное расстояние в этой метрике)
         // Для простоты нормируем на диагональ (maxDist), что даст диапазон [0,1] для всех метрик, но для L1 и L∞ реальное максимальное расстояние может быть другим.
         // Можно вычислить максимальное расстояние в данной метрике: для L1 это width+height, для L∞ это max(width,height). 
         // Но для визуализации лучше нормировать на диагональ, чтобы сохранить пропорции. Оставим как есть.
-        //float maxDist = maxDistanceNormalization > 0 ? maxDistanceNormalization : Mathf.Sqrt(width * width + height * height);
-        //// При создании выходных пикселей:
-        //NativeArray<Color32> outputPixels = new NativeArray<Color32>(pixelCount, Allocator.TempJob);
-        //for (int i = 0; i < pixelCount; i++)
-        //{
-        //    // Нормализуем в 0..1: (d + maxDist) / (2*maxDist)
-        //    float norm = (signedDistances[i] + maxDist) / (2 * maxDist);
-        //    norm = math.clamp(norm, 0, 1);
-        //    byte val = (byte)(norm * 255);
-        //    outputPixels[i] = new Color32(val, val, val, 255);
-        //}
-
         NativeArray<float> displayDistances = new NativeArray<float>(pixelCount, Allocator.Temp);
         for (int i = 0; i < pixelCount; i++)
         {
