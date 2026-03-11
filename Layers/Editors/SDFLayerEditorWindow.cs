@@ -15,7 +15,6 @@ public class SDFLayerEditorWindow : EditorWindow
         var window = GetWindow<SDFLayerEditorWindow>(true, "SDF Settings");
         window.layer = layer;
         window.compositor = compositor;
-        // Инициализируем выбранный индекс в соответствии с текущим targetLayerIndex
         window.selectedTargetIndex = GetPopupIndexFromLayerIndex(compositor, layer, layer.targetLayerIndex);
         window.Show();
     }
@@ -41,7 +40,7 @@ public class SDFLayerEditorWindow : EditorWindow
         int currentLayerIndex = compositor.layers.IndexOf(layer);
         for (int i = 0; i < compositor.layers.Count; i++)
         {
-            if (i == currentLayerIndex) continue; // нельзя выбрать себя
+            if (i == currentLayerIndex) continue;
             layerNames.Add($"{i}: {compositor.layers[i].layerName}");
         }
 
@@ -55,7 +54,6 @@ public class SDFLayerEditorWindow : EditorWindow
             if (selected != selectedTargetIndex)
             {
                 selectedTargetIndex = selected;
-                // Преобразуем индекс в списке (без учёта себя) в реальный индекс слоя
                 int realIndex = 0;
                 int skipCount = 0;
                 for (int i = 0; i < compositor.layers.Count; i++)
@@ -73,6 +71,16 @@ public class SDFLayerEditorWindow : EditorWindow
         }
 
         layer.useAccumulation = EditorGUILayout.Toggle("Use Accumulation", layer.useAccumulation);
+        layer.metric = (SDFLayer.DistanceMetric)EditorGUILayout.EnumPopup("Distance Metric", layer.metric);
+        layer.sourceChannel = (SDFLayer.SourceChannel)EditorGUILayout.EnumPopup("Source Channel", layer.sourceChannel);
+        layer.threshold = (byte)EditorGUILayout.IntSlider("Threshold", layer.threshold, 0, 255);
+
+        // Добавлено поле в OnGUI:
+        layer.maxDistanceNormalization = EditorGUILayout.FloatField("Max Distance (0 = auto)", layer.maxDistanceNormalization);
+        if (layer.maxDistanceNormalization < 0) layer.maxDistanceNormalization = 0;
+
+        layer.distancePosition = (SDFLayer.DistancePosition)EditorGUILayout.EnumPopup("Position", layer.distancePosition);
+        layer.inverted = EditorGUILayout.Toggle("Inverted", layer.inverted);
 
         if (EditorGUI.EndChangeCheck())
         {
@@ -80,7 +88,7 @@ public class SDFLayerEditorWindow : EditorWindow
         }
 
         EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Preview (SDF - Red channel)", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Preview (SDF)", EditorStyles.boldLabel);
         if (previewTexture != null)
         {
             Rect previewRect = EditorGUILayout.GetControlRect(false, previewSize);
@@ -100,7 +108,6 @@ public class SDFLayerEditorWindow : EditorWindow
             DestroyImmediate(previewTexture);
         }
 
-        // Получаем RenderTexture от слоя
         int layerIndex = compositor.layers.IndexOf(layer);
         RenderTexture rt = layer.GetRenderTexture(compositor, layerIndex, previewSize, previewSize);
         if (rt != null)
@@ -121,7 +128,6 @@ public class SDFLayerEditorWindow : EditorWindow
             DestroyImmediate(previewTexture);
     }
 
-    // Вспомогательный метод для инициализации selectedTargetIndex по реальному индексу слоя
     private static int GetPopupIndexFromLayerIndex(TextureCompositor compositor, Layer currentLayer, int targetIndex)
     {
         if (targetIndex < 0 || targetIndex >= compositor.layers.Count)
@@ -135,6 +141,6 @@ public class SDFLayerEditorWindow : EditorWindow
             if (i == targetIndex) return popupIndex;
             popupIndex++;
         }
-        return 0; // fallback
+        return 0;
     }
 }
