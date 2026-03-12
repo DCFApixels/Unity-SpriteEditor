@@ -31,8 +31,14 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
+        private bool _isInit = false;
         private void OnGUI()
         {
+            if (_isInit == false)
+            {
+                UpdatePreview();
+                _isInit = true;
+            }
             if (layer == null)
             {
                 EditorGUILayout.LabelField("Layer is null");
@@ -77,7 +83,10 @@ namespace DCFApixels.SpriteEditor
         {
             if (previewTexture != null)
             {
-                DestroyImmediate(previewTexture);
+                if (previewTexture != layer.sourceTexture)
+                {
+                    DestroyImmediate(previewTexture);
+                }
                 previewTexture = null;
             }
 

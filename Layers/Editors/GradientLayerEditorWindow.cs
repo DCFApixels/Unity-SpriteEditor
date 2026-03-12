@@ -94,8 +94,14 @@ namespace DCFApixels.SpriteEditor
             return tex;
         }
 
+        private bool _isInit = false;
         private void OnGUI()
         {
+            if (_isInit == false)
+            {
+                UpdatePreview();
+                _isInit = true;
+            }
             if (layer == null)
             {
                 EditorGUILayout.LabelField("Layer is null");
