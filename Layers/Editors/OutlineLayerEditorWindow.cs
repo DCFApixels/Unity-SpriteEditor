@@ -112,7 +112,10 @@ namespace DCFApixels.SpriteEditor
             // Генерируем превью, используя метод GetRenderTexture с временными параметрами
             float scale = 1f;
             if (compositor != null && previewSize > 0)
+            {
                 scale = (float)compositor.width / (float)previewSize;
+            }
+
             RenderTexture rt = layer.GetRenderTexture(compositor, compositor.layers.IndexOf(layer), previewSize, previewSize, scale);
             if (rt != null)
             {

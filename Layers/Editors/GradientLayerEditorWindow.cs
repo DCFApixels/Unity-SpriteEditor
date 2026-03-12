@@ -12,11 +12,9 @@ namespace DCFApixels.SpriteEditor
         private Vector2 lastCenter;
         private float lastRadius;
         private bool needUpdatePreview = true;
+        private const int previewSize = 256;
 
-        private const int PREVIEW_SIZE = 128;
-
-
-        public static void Open(GradientLayer layer)
+        public static void Open(GradientLayer layer, TextureCompositor compositor)
         {
             var window = GetWindow<GradientLayerEditorWindow>(true, "Gradient Settings");
             window.layer = layer;
@@ -65,7 +63,7 @@ namespace DCFApixels.SpriteEditor
             if (layer == null) return;
 
             // Создаём временную текстуру градиента
-            Texture2D newTex = GeneratePreviewTexture(PREVIEW_SIZE, PREVIEW_SIZE);
+            Texture2D newTex = GeneratePreviewTexture(previewSize, previewSize);
 
             if (previewTexture != null)
                 DestroyImmediate(previewTexture);
@@ -138,7 +136,7 @@ namespace DCFApixels.SpriteEditor
 
             // Preview
             EditorGUILayout.LabelField("Preview", EditorStyles.boldLabel);
-            Rect previewRect = EditorGUILayout.GetControlRect(false, PREVIEW_SIZE);
+            Rect previewRect = EditorGUILayout.GetControlRect(false, previewSize);
             if (previewTexture != null)
             {
                 EditorGUI.DrawPreviewTexture(previewRect, previewTexture, null, ScaleMode.ScaleToFit);

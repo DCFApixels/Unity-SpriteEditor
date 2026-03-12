@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using UnityEditor.Graphs;
 using UnityEngine;
 using static UnityEditor.Experimental.GraphView.GraphView;
 
@@ -80,18 +81,42 @@ namespace DCFApixels.SpriteEditor
     {
         public static void DrawTextureTransform(ref TextureTransform transform)
         {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Transform", EditorStyles.boldLabel);
-            EditorGUI.indentLevel++;
-            transform.pivot = EditorGUILayout.Vector2Field("Pivot", transform.pivot);
-            transform.position = EditorGUILayout.Vector2Field("Position", transform.position);
-            transform.scale = EditorGUILayout.Vector2Field("Scale", transform.scale);
-            transform.rotation = EditorGUILayout.FloatField("Rotation", transform.rotation);
-            if (GUILayout.Button("Reset Transform"))
+            if (GUILayout.Button("Reset"))
             {
                 transform.Reset();
                 GUI.changed = true;
             }
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUI.indentLevel++;
+
+            float dw = EditorGUIUtility.labelWidth;
+            EditorGUIUtility.labelWidth = 80f;
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Pivot", GUILayout.Width(EditorGUIUtility.labelWidth));
+            transform.pivot = EditorGUILayout.Vector2Field("", transform.pivot);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Position", GUILayout.Width(EditorGUIUtility.labelWidth));
+            transform.position = EditorGUILayout.Vector2Field("", transform.position);
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField("Scale", GUILayout.Width(EditorGUIUtility.labelWidth));
+            transform.scale = EditorGUILayout.Vector2Field("", transform.scale);
+            EditorGUILayout.EndHorizontal();
+
+            transform.rotation = EditorGUILayout.FloatField("Rotation", transform.rotation);
+
+            EditorGUIUtility.labelWidth = dw;
             EditorGUI.indentLevel--;
+            EditorGUILayout.EndVertical();
         }
     }
 }

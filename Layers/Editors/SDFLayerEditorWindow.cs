@@ -141,13 +141,17 @@ namespace DCFApixels.SpriteEditor
         private void OnDestroy()
         {
             if (previewTexture != null)
+            {
                 DestroyImmediate(previewTexture);
+            }
         }
 
         private static int GetPopupIndexFromLayerIndex(TextureCompositor compositor, Layer currentLayer, int targetIndex)
         {
             if (targetIndex < 0 || targetIndex >= compositor.layers.Count)
+            {
                 return 0;
+            }
 
             int currentIdx = compositor.layers.IndexOf(currentLayer);
             int popupIndex = 0;

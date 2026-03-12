@@ -3,29 +3,13 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using static DCFApixels.SpriteEditor.GradientLayer;
 
 namespace DCFApixels.SpriteEditor
 {
     [System.Serializable]
     public class SDFLayer : Layer
     {
-        public enum DistanceMetric
-        {
-            Euclidean,
-            Manhattan,
-            Chebyshev
-        }
-
-        public enum SourceChannel
-        {
-            Alpha,
-            Red,
-            Green,
-            Blue,
-            Luminance
-        }
-        public enum DistancePosition { Outside, Inside, Center, Signed }
-
         public int targetLayerIndex = -1;
         public bool useAccumulation = false;
         public DistanceMetric metric = DistanceMetric.Euclidean;
@@ -215,13 +199,59 @@ namespace DCFApixels.SpriteEditor
             RenderTexture.active = null;
             return tex;
         }
+
+
+        public override string ToString()
+        {
+            return "SDF";
+        }
+
+        public enum DistanceMetric
+        {
+            Euclidean,
+            Manhattan,
+            Chebyshev
+        }
+
+        public enum SourceChannel
+        {
+            Alpha,
+            Red,
+            Green,
+            Blue,
+            Luminance
+        }
+        public enum DistancePosition
+        {
+            Outside,
+            Inside,
+            Center,
+            Signed
+        }
     }
 
-    // Базовый интерфейс для всех SDF job-ов
-    public interface ISDFJob
-    {
-        void Execute();
-    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     [BurstCompile]
     public struct ComputeSDFEuclideanJob : IJob

@@ -5,21 +5,6 @@ namespace DCFApixels.SpriteEditor
     [System.Serializable]
     public class GradientLayer : Layer
     {
-        public enum GradientType
-        {
-            Vertical,
-            Horizontal,
-            Radial,
-            Circular,
-            Diamond,
-            Square
-        }
-        public enum WrapMode
-        {
-            Repeat,
-            PingPong
-        }
-
         public GradientType gradientType = GradientType.Vertical;
         public Gradient gradient = GradientUtility.Clone(GradientUtility.WhiteToBlack);
         public Vector2 center = new Vector2(0.5f, 0.5f);
@@ -178,6 +163,22 @@ namespace DCFApixels.SpriteEditor
         public override string ToString()
         {
             return gradientType.ToString();
+        }
+
+
+        public enum GradientType
+        {
+            Vertical,
+            Horizontal,
+            Radial,
+            Circular,
+            Diamond,
+            Square
+        }
+        public enum WrapMode
+        {
+            Repeat,
+            PingPong
         }
     }
 }

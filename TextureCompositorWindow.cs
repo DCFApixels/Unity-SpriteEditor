@@ -79,7 +79,7 @@ namespace DCFApixels.SpriteEditor
 
                 if (GUI.Button(new Rect(rect.x + 345, rect.y, 50, lineHeight), "Edit"))
                 {
-                    FileLayerEditorWindow.Open(fileLayer);
+                    FileLayerEditorWindow.Open(fileLayer, compositor);
                 }
             }
             else if (layer is GradientLayer gradientLayer)
@@ -89,7 +89,7 @@ namespace DCFApixels.SpriteEditor
 
                 if (GUI.Button(new Rect(rect.x + 345, rect.y, 50, lineHeight), "Edit"))
                 {
-                    GradientLayerEditorWindow.Open(gradientLayer);
+                    GradientLayerEditorWindow.Open(gradientLayer, compositor);
                 }
             }
             else if (layer is OutlineLayer outlineLayer)
@@ -184,7 +184,6 @@ namespace DCFApixels.SpriteEditor
             {
                 Rect previewRect = EditorGUILayout.GetControlRect(false, 256);
                 EditorGUI.DrawPreviewTexture(previewRect, previewTexture, null, ScaleMode.ScaleToFit);
-                //GUI.Label(previewRect, previewTexture, EditorStyles.centeredGreyMiniLabel);
             }
 
             // Экспорт
