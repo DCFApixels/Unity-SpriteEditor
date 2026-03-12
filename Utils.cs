@@ -18,43 +18,88 @@ public abstract class Layer
     public BlendMode blendMode = BlendMode.Overwrite;
     public List<Material> modifiers = new List<Material>();
 
+
+
+    // Параметры трансформации
+    public Vector2 pivot = new Vector2(0.5f, 0.5f);
+    public Vector2 position = Vector2.zero;
+    public Vector2 scale = Vector2.one;
+    public float rotation = 0f; // в градусах
+
+    private Material transformMaterial;
+    protected Material GetTransformMaterial()
+    {
+        if (transformMaterial == null)
+        {
+            Shader shader = Shader.Find("Hidden/TextureCompositor/Transform");
+            if (shader != null)
+                transformMaterial = new Material(shader);
+            else
+                Debug.LogError("Transform shader not found!");
+        }
+        return transformMaterial;
+    }
+    protected Matrix4x4 GetTransformMatrix()
+    {
+        // Строим матрицу преобразования UV:
+        // 1. Сдвиг к центру (pivot)
+        // 2. Масштабирование
+        // 3. Поворот
+        // 4. Сдвиг обратно + позиция
+        // UV -> новые UV
+        Vector2 p = pivot;
+        float cos = Mathf.Cos(rotation * Mathf.Deg2Rad);
+        float sin = Mathf.Sin(rotation * Mathf.Deg2Rad);
+
+        Matrix4x4 mat = Matrix4x4.identity;
+        // Сдвиг к центру
+        mat.m00 = 1; mat.m03 = -p.x;
+        mat.m11 = 1; mat.m13 = -p.y;
+        // Масштаб
+        Matrix4x4 scaleMat = Matrix4x4.Scale(new Vector3(scale.x, scale.y, 1));
+        mat = scaleMat * mat;
+        // Поворот
+        Matrix4x4 rotMat = Matrix4x4.Rotate(Quaternion.Euler(0, 0, rotation));
+        mat = rotMat * mat;
+        // Сдвиг обратно + позиция
+        mat.m03 += p.x + position.x;
+        mat.m13 += p.y + position.y;
+
+        return mat;
+    }
+    protected bool IsTransformIdentity()
+    {
+        return position == Vector2.zero && scale == Vector2.one && rotation == 0f;
+    }
+    protected RenderTexture ApplyTransform(Texture source, int width, int height)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+        if (IsTransformIdentity())
+        {
+            Graphics.Blit(source, rt);
+        }
+        else
+        {
+            Material mat = GetTransformMaterial();
+            if (mat != null)
+            {
+                mat.SetMatrix("_Transform", GetTransformMatrix());
+                Graphics.Blit(source, rt, mat);
+            }
+            else
+            {
+                Graphics.Blit(source, rt); // fallback
+            }
+        }
+        return rt;
+    }
+
+
+
     public abstract RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height);
     public virtual Texture2D GetPreviewTexture(int size)
     {
         return null;
-    }
-}
-
-[System.Serializable]
-public class FileLayer : Layer
-{
-    public Texture2D sourceTexture;
-    public override Texture2D GetPreviewTexture(int size)
-    {
-        return sourceTexture; 
-    }
-    public override RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height)
-    {
-        if (sourceTexture == null)
-            return null;
-
-        // Создаём RenderTexture нужного размера и копируем исходную текстуру с масштабированием
-        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(sourceTexture, rt);
-
-        // Применяем модификаторы последовательно
-        foreach (var modifier in modifiers)
-        {
-            if (modifier != null)
-            {
-                RenderTexture temp = RenderTexture.GetTemporary(rt.width, rt.height, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(rt, temp, modifier);
-                RenderTexture.ReleaseTemporary(rt);
-                rt = temp;
-            }
-        }
-
-        return rt;
     }
 }
 

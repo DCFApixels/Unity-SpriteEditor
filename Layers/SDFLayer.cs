@@ -54,7 +54,7 @@ public class SDFLayer : Layer
         else
         {
             Layer targetLayer = compositor.layers[targetIdx];
-            if (targetLayer != null && targetLayer.enabled)
+            if (targetLayer != null)
                 inputRT = targetLayer.GetRenderTexture(compositor, targetIdx, width, height);
         }
         if (inputRT == null) return null;
@@ -174,8 +174,12 @@ public class SDFLayer : Layer
         signedDistances.Dispose();
         outputPixels.Dispose();
 
-        RenderTexture resultRT = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(resultTex, resultRT);
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+
+        RenderTexture transformed = ApplyTransform(resultTex, width, height);
+
+        Graphics.Blit(transformed, rt);
+
         Object.DestroyImmediate(inputTex);
         Object.DestroyImmediate(resultTex);
 
@@ -183,14 +187,19 @@ public class SDFLayer : Layer
         {
             if (modifier != null)
             {
-                RenderTexture temp = RenderTexture.GetTemporary(resultRT.width, resultRT.height, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(resultRT, temp, modifier);
-                RenderTexture.ReleaseTemporary(resultRT);
-                resultRT = temp;
+                RenderTexture temp = RenderTexture.GetTemporary(rt.width, rt.height, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(rt, temp, modifier);
+                RenderTexture.ReleaseTemporary(rt);
+                rt = temp;
             }
         }
 
-        return resultRT;
+        if (rt != transformed)
+        {
+            RenderTexture.ReleaseTemporary(transformed);
+        }
+
+        return rt;
     }
 
     private Texture2D ConvertToTexture2D(RenderTexture rt)

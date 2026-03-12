@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 [CreateAssetMenu(fileName = "TextureCompositor", menuName = "Texture Compositor/Compositor")]
 public class TextureCompositor : ScriptableObject

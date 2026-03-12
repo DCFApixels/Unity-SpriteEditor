@@ -104,6 +104,24 @@ public class GradientLayerEditorWindow : EditorWindow
 
         EditorGUI.BeginChangeCheck();
 
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Transform", EditorStyles.boldLabel);
+        EditorGUI.indentLevel++;
+        layer.pivot = EditorGUILayout.Vector2Field("Pivot", layer.pivot);
+        layer.position = EditorGUILayout.Vector2Field("Position", layer.position);
+        layer.scale = EditorGUILayout.Vector2Field("Scale", layer.scale);
+        layer.rotation = EditorGUILayout.FloatField("Rotation", layer.rotation);
+        if (GUILayout.Button("Reset Transform"))
+        {
+            layer.pivot = new Vector2(0.5f, 0.5f);
+            layer.position = Vector2.zero;
+            layer.scale = Vector2.one;
+            layer.rotation = 0f;
+            GUI.changed = true;
+        }
+        EditorGUI.indentLevel--;
+
+
         layer.gradientType = (GradientLayer.GradientType)EditorGUILayout.EnumPopup("Gradient Type", layer.gradientType);
         layer.gradient = EditorGUILayout.GradientField("Gradient", layer.gradient);
 

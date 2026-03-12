@@ -68,8 +68,11 @@ public class GradientLayer : GeneratedLayer
     public override RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height)
     {
         Texture2D tex = GenerateGradientTexture(width, height);
+
+        RenderTexture transformed = ApplyTransform(tex, width, height);
+
         RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(tex, rt);
+        Graphics.Blit(transformed, rt);
         Object.DestroyImmediate(tex);
 
         foreach (var modifier in modifiers)
@@ -83,6 +86,10 @@ public class GradientLayer : GeneratedLayer
             }
         }
 
+        if (rt != transformed)
+        {
+            RenderTexture.ReleaseTemporary(transformed);
+        }
         return rt;
     }
 
