@@ -1,133 +1,97 @@
-﻿using System.Collections.Generic;
+﻿using UnityEditor;
 using UnityEngine;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
-
-public enum BlendMode
+namespace DCFApixels.SpriteEditor
 {
-    Overwrite,
-    Multiply
-    // Добавьте другие режимы по необходимости
-}
-
-[System.Serializable]
-public abstract class Layer
-{
-    public string layerName = "New Layer";
-    public bool enabled = true;
-    public float opacity = 1;
-    public BlendMode blendMode = BlendMode.Overwrite;
-    public List<Material> modifiers = new List<Material>();
-
-
-
-    // Параметры трансформации
-    public Vector2 pivot = new Vector2(0.5f, 0.5f);
-    public Vector2 position = Vector2.zero;
-    public Vector2 scale = Vector2.one;
-    public float rotation = 0f; // в градусах
-
-    private Material transformMaterial;
-    protected Material GetTransformMaterial()
+    public enum BlendMode
     {
-        if (transformMaterial == null)
+        Overwrite,
+        Multiply
+        // Добавьте другие режимы по необходимости
+    }
+
+    [System.Serializable]
+    public struct TextureTransform
+    {
+        public static readonly TextureTransform Default = new TextureTransform { pivot = new Vector2(0.5f, 0.5f), position = Vector2.zero, scale = Vector2.one, rotation = 0f };
+        public Vector2 pivot;
+        public Vector2 position;
+        public Vector2 scale;
+        public float rotation; // degrees
+
+        public Matrix4x4 ToMatrix()
         {
-            Shader shader = Shader.Find("Hidden/TextureCompositor/Transform");
-            if (shader != null)
-                transformMaterial = new Material(shader);
-            else
-                Debug.LogError("Transform shader not found!");
+            Vector2 p = pivot;
+            Matrix4x4 mat = Matrix4x4.identity;
+            // Shift to pivot
+            mat.m00 = 1; mat.m03 = -p.x;
+            mat.m11 = 1; mat.m13 = -p.y;
+            // Scale
+            Matrix4x4 scaleMat = Matrix4x4.Scale(new Vector3(scale.x, scale.y, 1));
+            mat = scaleMat * mat;
+            // Rotate
+            Matrix4x4 rotMat = Matrix4x4.Rotate(Quaternion.Euler(0, 0, rotation));
+            mat = rotMat * mat;
+            // Shift back + position
+            mat.m03 += p.x + position.x;
+            mat.m13 += p.y + position.y;
+            return mat;
         }
-        return transformMaterial;
-    }
-    protected Matrix4x4 GetTransformMatrix()
-    {
-        // Строим матрицу преобразования UV:
-        // 1. Сдвиг к центру (pivot)
-        // 2. Масштабирование
-        // 3. Поворот
-        // 4. Сдвиг обратно + позиция
-        // UV -> новые UV
-        Vector2 p = pivot;
-        float cos = Mathf.Cos(rotation * Mathf.Deg2Rad);
-        float sin = Mathf.Sin(rotation * Mathf.Deg2Rad);
 
-        Matrix4x4 mat = Matrix4x4.identity;
-        // Сдвиг к центру
-        mat.m00 = 1; mat.m03 = -p.x;
-        mat.m11 = 1; mat.m13 = -p.y;
-        // Масштаб
-        Matrix4x4 scaleMat = Matrix4x4.Scale(new Vector3(scale.x, scale.y, 1));
-        mat = scaleMat * mat;
-        // Поворот
-        Matrix4x4 rotMat = Matrix4x4.Rotate(Quaternion.Euler(0, 0, rotation));
-        mat = rotMat * mat;
-        // Сдвиг обратно + позиция
-        mat.m03 += p.x + position.x;
-        mat.m13 += p.y + position.y;
-
-        return mat;
-    }
-    protected bool IsTransformIdentity()
-    {
-        return position == Vector2.zero && scale == Vector2.one && rotation == 0f;
-    }
-    protected RenderTexture ApplyTransform(Texture source, int width, int height)
-    {
-        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
-        if (IsTransformIdentity())
+        public bool IsIdentity()
         {
-            Graphics.Blit(source, rt);
+            return position == Vector2.zero && scale == Vector2.one && rotation == 0f;
         }
-        else
+
+        public void Reset()
         {
-            Material mat = GetTransformMaterial();
-            if (mat != null)
+            pivot = new Vector2(0.5f, 0.5f);
+            position = Vector2.zero;
+            scale = Vector2.one;
+            rotation = 0f;
+        }
+    }
+
+    public static class GradientUtility
+    {
+        private static readonly GradientAlphaKey[] _alpha = new GradientAlphaKey[] { new(1, 0), new(1, 1) };
+        public static readonly Gradient WhiteToBlack = Create(new GradientColorKey[] { new(Color.white, 0f), new(Color.black, 1f) });
+        public static Gradient Clone(Gradient gradient)
+        {
+            var result = new Gradient();
+            result.SetKeys(gradient.colorKeys, gradient.alphaKeys);
+            return result;
+        }
+        public static Gradient Create(GradientColorKey[] colorKeys)
+        {
+            return Create(colorKeys, _alpha);
+        }
+        public static Gradient Create(GradientColorKey[] colorKeys, GradientAlphaKey[] alphaKeys)
+        {
+            var result = new Gradient();
+            result.SetKeys(colorKeys, alphaKeys);
+            return result;
+        }
+    }
+
+
+    public static class SEGUI
+    {
+        public static void DrawTextureTransform(ref TextureTransform transform)
+        {
+            EditorGUILayout.LabelField("Transform", EditorStyles.boldLabel);
+            EditorGUI.indentLevel++;
+            transform.pivot = EditorGUILayout.Vector2Field("Pivot", transform.pivot);
+            transform.position = EditorGUILayout.Vector2Field("Position", transform.position);
+            transform.scale = EditorGUILayout.Vector2Field("Scale", transform.scale);
+            transform.rotation = EditorGUILayout.FloatField("Rotation", transform.rotation);
+            if (GUILayout.Button("Reset Transform"))
             {
-                mat.SetMatrix("_Transform", GetTransformMatrix());
-                Graphics.Blit(source, rt, mat);
+                transform.Reset();
+                GUI.changed = true;
             }
-            else
-            {
-                Graphics.Blit(source, rt); // fallback
-            }
+            EditorGUI.indentLevel--;
         }
-        return rt;
-    }
-
-
-
-    public abstract RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height);
-    public virtual Texture2D GetPreviewTexture(int size)
-    {
-        return null;
-    }
-}
-
-
-[System.Serializable]
-public abstract class GeneratedLayer : Layer
-{
-
-}
-
-public static class GradientUtility
-{
-    private static readonly GradientAlphaKey[] _alpha = new GradientAlphaKey[] { new(1, 0), new(1, 1) };
-    public static readonly Gradient WhiteToBlack = Create(new GradientColorKey[] { new(Color.white, 0f), new(Color.black, 1f) });
-    public static Gradient Clone(Gradient gradient)
-    {
-        var result = new Gradient();
-        result.SetKeys(gradient.colorKeys, gradient.alphaKeys);
-        return result; 
-    }
-    public static Gradient Create(GradientColorKey[] colorKeys)
-    {
-        return Create(colorKeys, _alpha);
-    }
-    public static Gradient Create(GradientColorKey[] colorKeys, GradientAlphaKey[] alphaKeys)
-    {
-        var result = new Gradient();
-        result.SetKeys(colorKeys, alphaKeys);
-        return result;
     }
 }

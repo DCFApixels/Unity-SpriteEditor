@@ -2,46 +2,49 @@
 using UnityEditorInternal;
 using UnityEngine;
 
-public class ModifierEditorWindow : EditorWindow
+namespace DCFApixels.SpriteEditor
 {
-    private Layer layer;
-    private ReorderableList modifiersList;
-
-    public static void Open(Layer layer)
+    public class ModifierEditorWindow : EditorWindow
     {
-        var window = GetWindow<ModifierEditorWindow>(true, "Modifiers");
-        window.layer = layer;
-        window.SetupList();
-        window.Show();
-    }
+        private Layer layer;
+        private ReorderableList modifiersList;
 
-    private void SetupList()
-    {
-        modifiersList = new ReorderableList(layer.modifiers, typeof(Material), true, true, true, true);
-        modifiersList.drawHeaderCallback = (Rect rect) => EditorGUI.LabelField(rect, "Modifiers (Materials)");
-        modifiersList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
+        public static void Open(Layer layer)
         {
-            // Поле для выбора материала
-            layer.modifiers[index] = (Material)EditorGUI.ObjectField(
-                new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
-                layer.modifiers[index], typeof(Material), false);
-        };
-        // При добавлении нового элемента просто добавляем null
-        modifiersList.onAddCallback = (ReorderableList list) =>
-        {
-            layer.modifiers.Add(null);
-        };
-        // Можно также добавить обработчик удаления, но по умолчанию он работает
-    }
-
-    private void OnGUI()
-    {
-        if (layer == null)
-        {
-            Close();
-            return;
+            var window = GetWindow<ModifierEditorWindow>(true, "Modifiers");
+            window.layer = layer;
+            window.SetupList();
+            window.Show();
         }
 
-        modifiersList.DoLayoutList();
+        private void SetupList()
+        {
+            modifiersList = new ReorderableList(layer.modifiers, typeof(Material), true, true, true, true);
+            modifiersList.drawHeaderCallback = (Rect rect) => EditorGUI.LabelField(rect, "Modifiers (Materials)");
+            modifiersList.drawElementCallback = (Rect rect, int index, bool isActive, bool isFocused) =>
+            {
+                // Поле для выбора материала
+                layer.modifiers[index] = (Material)EditorGUI.ObjectField(
+                    new Rect(rect.x, rect.y, rect.width, EditorGUIUtility.singleLineHeight),
+                    layer.modifiers[index], typeof(Material), false);
+            };
+            // При добавлении нового элемента просто добавляем null
+            modifiersList.onAddCallback = (ReorderableList list) =>
+            {
+                layer.modifiers.Add(null);
+            };
+            // Можно также добавить обработчик удаления, но по умолчанию он работает
+        }
+
+        private void OnGUI()
+        {
+            if (layer == null)
+            {
+                Close();
+                return;
+            }
+
+            modifiersList.DoLayoutList();
+        }
     }
 }
