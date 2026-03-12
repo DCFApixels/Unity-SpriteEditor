@@ -1,7 +1,5 @@
 ﻿using UnityEditor;
-using UnityEditor.Graphs;
 using UnityEngine;
-using static UnityEditor.Experimental.GraphView.GraphView;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -58,7 +56,7 @@ namespace DCFApixels.SpriteEditor
     {
         private static readonly GradientAlphaKey[] _alpha = new GradientAlphaKey[] { new(1, 0), new(1, 1) };
         public static readonly Gradient WhiteToBlack = Create(new GradientColorKey[] { new(Color.white, 0f), new(Color.black, 1f) });
-        public static Gradient Clone(Gradient gradient)
+        public static Gradient Create(Gradient gradient)
         {
             var result = new Gradient();
             result.SetKeys(gradient.colorKeys, gradient.alphaKeys);
@@ -73,6 +71,51 @@ namespace DCFApixels.SpriteEditor
             var result = new Gradient();
             result.SetKeys(colorKeys, alphaKeys);
             return result;
+        }
+
+        public static bool IsTwoColorGradient(Gradient gradient, out Color l, out Color r)
+        {
+            var colors = gradient.colorKeys;
+            var alphas = gradient.alphaKeys;
+            l = default; r = default;
+            if (colors.Length <= 0 || alphas.Length <= 0 || 
+                colors.Length > 2 || alphas.Length > 2) { return false; }
+
+            if (colors.Length == 1)
+            {
+                l = r = colors[0].color;
+            }
+            else
+            {
+                if (colors[0].time == 0f && colors[1].time == 1f)
+                {
+                    l = colors[0].color;
+                    r = colors[1].color;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            if (alphas.Length == 1)
+            {
+                l.a = r.a = alphas[0].alpha;
+            }
+            else
+            {
+                if (alphas[0].time == 0f && alphas[1].time == 1f)
+                {
+                    l.a = alphas[0].alpha;
+                    r.a = alphas[1].alpha;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 

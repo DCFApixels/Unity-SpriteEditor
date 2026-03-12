@@ -19,9 +19,11 @@ namespace DCFApixels.SpriteEditor
         public DistancePosition distancePosition = DistancePosition.Signed;
         public bool inverted = false;
         public float maxDistanceNormalization = 0f; // 0 = auto (диагональ)
+        public Gradient gradient = GradientUtility.Create(GradientUtility.WhiteToBlack);
 
         public override RenderTexture GetRenderTexture(TextureCompositor compositor, int layerIndex, int width, int height, float scaleMultiplier = 1f)
         {
+            bool isTwoColors = GradientUtility.IsTwoColorGradient(gradient, out var lColor, out var rColor);
             // Определение целевого слоя (как раньше)
             int targetIdx = targetLayerIndex;
             if (targetIdx < 0 || targetIdx >= compositor.layers.Count)
@@ -149,8 +151,18 @@ namespace DCFApixels.SpriteEditor
                 }
                 norm = math.clamp(norm, 0, 1);
                 if (inverted) norm = 1 - norm;
-                byte val = (byte)(norm * 255);
-                outputPixels[i] = new Color32(val, val, val, 255);
+
+                if (isTwoColors)
+                {
+                    outputPixels[i] = Color.Lerp(lColor, rColor, norm);
+                }
+                else
+                {
+                    outputPixels[i] = gradient.Evaluate(norm);
+                }
+
+                //byte val = (byte)(norm * 255);
+                //outputPixels[i] = new Color32(val, val, val, 255);
             }
             displayDistances.Dispose();
 

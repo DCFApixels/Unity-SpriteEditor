@@ -92,6 +92,9 @@ namespace DCFApixels.SpriteEditor
             layer.distancePosition = (SDFLayer.DistancePosition)EditorGUILayout.EnumPopup("Position", layer.distancePosition);
             layer.inverted = EditorGUILayout.Toggle("Inverted", layer.inverted);
 
+            layer.gradient = EditorGUILayout.GradientField("Gradient", layer.gradient);
+
+
             if (EditorGUI.EndChangeCheck())
             {
                 UpdatePreview();

@@ -6,7 +6,7 @@ namespace DCFApixels.SpriteEditor
     public class GradientLayer : Layer
     {
         public GradientType gradientType = GradientType.Vertical;
-        public Gradient gradient = GradientUtility.Clone(GradientUtility.WhiteToBlack);
+        public Gradient gradient = GradientUtility.Create(GradientUtility.WhiteToBlack);
         public Vector2 center = new Vector2(0.5f, 0.5f);
         public float radius = 0.5f;
         public float circularRepetitions = 1;
