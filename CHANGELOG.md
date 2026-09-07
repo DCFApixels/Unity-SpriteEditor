@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.7] - 2026-09-07
+
+### Fixed
+
+- Painting inside an alternately mirrored repeat cell or radial sector now keeps the active brush
+  copy under the cursor instead of reflecting the input a second time.
+
 ## [0.2.6] - 2026-09-07
 
 ### Fixed

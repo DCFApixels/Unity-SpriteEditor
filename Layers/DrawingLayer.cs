@@ -400,7 +400,9 @@ namespace DCFApixels.SpriteEditor
             {
                 case PaintRepeatMode.Horizontal:
                 {
-                    float localX = Mathf.Repeat(point.x * primaryCount, 1f);
+                    GetRepeatedAxisCoordinate(point.x, primaryCount, out int sourceX, out float localX);
+                    if (alternate && (sourceX & 1) != 0)
+                        localX = 1f - localX;
                     for (int x = 0; x < primaryCount; x++)
                     {
                         float repeatedX = (x + (alternate && (x & 1) != 0 ? 1f - localX : localX)) /
@@ -417,7 +419,9 @@ namespace DCFApixels.SpriteEditor
 
                 case PaintRepeatMode.Vertical:
                 {
-                    float localY = Mathf.Repeat(point.y * primaryCount, 1f);
+                    GetRepeatedAxisCoordinate(point.y, primaryCount, out int sourceY, out float localY);
+                    if (alternate && (sourceY & 1) != 0)
+                        localY = 1f - localY;
                     for (int y = 0; y < primaryCount; y++)
                     {
                         float repeatedY = (y + (alternate && (y & 1) != 0 ? 1f - localY : localY)) /
@@ -434,8 +438,10 @@ namespace DCFApixels.SpriteEditor
 
                 case PaintRepeatMode.Grid:
                 {
-                    float localX = Mathf.Repeat(point.x * primaryCount, 1f);
-                    float localY = Mathf.Repeat(point.y * secondaryCount, 1f);
+                    GetRepeatedAxisCoordinate(point.x, primaryCount, out int sourceX, out float localX);
+                    GetRepeatedAxisCoordinate(point.y, secondaryCount, out int sourceY, out float localY);
+                    if (alternate && ((sourceX + sourceY) & 1) != 0)
+                        localX = 1f - localX;
                     for (int y = 0; y < secondaryCount; y++)
                     {
                         for (int x = 0; x < primaryCount; x++)
@@ -462,7 +468,13 @@ namespace DCFApixels.SpriteEditor
                     float angle = Mathf.Atan2(deltaPixels.y, deltaPixels.x);
                     float sectorWidth = Mathf.PI * 2f / primaryCount;
                     const float startAngle = -Mathf.PI;
+                    float sourceSectorPosition = (angle - startAngle) / sectorWidth;
+                    int sourceSector = PositiveModulo(
+                        Mathf.FloorToInt(sourceSectorPosition),
+                        primaryCount);
                     float localAngle = Mathf.Repeat(angle - startAngle, sectorWidth);
+                    if (alternate && (sourceSector & 1) != 0)
+                        localAngle = sectorWidth - localAngle;
                     for (int sector = 0; sector < primaryCount; sector++)
                     {
                         bool mirrored = alternate && (sector & 1) != 0;
@@ -489,6 +501,24 @@ namespace DCFApixels.SpriteEditor
                     AddStamp(point, 0, new Vector4(0f, 0f, 1f, 1f), 0f, 0f);
                     break;
             }
+        }
+
+        private static void GetRepeatedAxisCoordinate(
+            float coordinate,
+            int count,
+            out int cell,
+            out float local)
+        {
+            float repeatedCoordinate = coordinate * count;
+            int unwrappedCell = Mathf.FloorToInt(repeatedCoordinate);
+            cell = PositiveModulo(unwrappedCell, count);
+            local = Mathf.Repeat(repeatedCoordinate, 1f);
+        }
+
+        private static int PositiveModulo(int value, int modulus)
+        {
+            int result = value % modulus;
+            return result < 0 ? result + modulus : result;
         }
 
         private void AddStamp(

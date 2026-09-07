@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.6`.
+To track a specific release, append its tag to the URL, for example `#v0.2.7`.
 
 ## Layer stack
 
@@ -80,7 +80,8 @@ the horizontal axis. Both can be enabled together.
 Live repetition modes include Horizontal, Vertical, Grid, and Radial. The copy count is adjustable,
 including independent X/Y counts for Grid. `Copy` repeats the stroke directly, while
 `Alternate Mirror` reflects every second cell or sector. `Continue` allows brush dabs to cross a
-cell/sector boundary; `Clip` confines every repeated copy to its own cell or radial sector.
+cell/sector boundary; `Clip` confines every repeated copy to its own cell or radial sector. Drawing
+from any repeated or alternately mirrored cell/sector keeps the active copy directly under the cursor.
 
 Saved Drawing layers keep their pixel texture as a sub-asset of the `TextureCompositor`, so a
 composition remains self-contained.
