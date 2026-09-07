@@ -389,14 +389,14 @@ namespace DCFApixels.SpriteEditor
             for (int q = 1; q < length; q++)
             {
                 float intersection;
-                do
+                while (true)
                 {
                     int p = vertices[envelopeSize];
                     intersection = ((lineInput[q] + q * q) - (lineInput[p] + p * p)) / (2f * (q - p));
-                    if (intersection <= boundaries[envelopeSize])
-                        envelopeSize--;
+                    if (intersection > boundaries[envelopeSize])
+                        break;
+                    envelopeSize--;
                 }
-                while (intersection <= boundaries[envelopeSize]);
 
                 envelopeSize++;
                 vertices[envelopeSize] = q;

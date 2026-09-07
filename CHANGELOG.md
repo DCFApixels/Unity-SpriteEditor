@@ -2,6 +2,23 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.0] - 2026-09-07
+
+### Added
+
+- GPU-backed Drawing layers painted directly on the composite Preview.
+- Brush color, size, hardness, eraser, and `[` / `]` size shortcuts.
+- Live reflection across configurable horizontal and vertical axes.
+- Horizontal, vertical, grid, and radial repetition up to 64 copies.
+- Regular and alternating-mirror repeat modes.
+- Continue and per-cell/per-sector Clip boundary modes.
+- Drawing textures stored as sub-assets of saved `TextureCompositor` assets.
+
+### Fixed
+
+- Exact Euclidean EDT now keeps the correct parabola envelope on both sides of a shape, fixing
+  missing Outline/SDF pixels next to Drawing layers and other inputs.
+
 ## [0.1.0] - 2026-09-07
 
 ### Added

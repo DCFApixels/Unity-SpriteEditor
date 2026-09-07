@@ -24,7 +24,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.1.0`.
+To track a specific release, append its tag to the URL, for example `#v0.2.0`.
 
 ## Layer stack
 
@@ -32,6 +32,7 @@ The list is displayed from top to bottom, like Photoshop. Rendering walks the li
 bottom layer to the top layer. Supported layers:
 
 - File
+- Drawing
 - Color Fill
 - Gradient
 - Outline
@@ -50,6 +51,24 @@ highlighted center of a group moves the layer inside it.
 
 New layers and groups receive document-local sequential names (`Layer 1`, `Layer 2`, and so on).
 The counter is serialized with the compositor and does not reuse numbers after deletion.
+
+## Drawing on the Preview
+
+Select a Drawing layer and paint directly on the left Preview. The brush writes only to the
+selected layer while the displayed result still respects the complete layer order, groups,
+opacity, blend modes, modifiers, and effects. Use `[` and `]` to decrease or increase brush size.
+
+The Preview header exposes brush color, size, hardness, Brush/Eraser mode, and a normalized pattern
+center. `Mirror X` reflects across the vertical axis through that center; `Mirror Y` reflects across
+the horizontal axis. Both can be enabled together.
+
+Live repetition modes include Horizontal, Vertical, Grid, and Radial. The copy count is adjustable,
+including independent X/Y counts for Grid. `Copy` repeats the stroke directly, while
+`Alternate Mirror` reflects every second cell or sector. `Continue` allows brush dabs to cross a
+cell/sector boundary; `Clip` confines every repeated copy to its own cell or radial sector.
+
+Saved Drawing layers keep their pixel texture as a sub-asset of the `TextureCompositor`, so a
+composition remains self-contained.
 
 ## Outline and SDF
 

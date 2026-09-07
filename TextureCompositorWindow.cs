@@ -15,10 +15,13 @@ namespace DCFApixels.SpriteEditor
         private const float SplitterWidth = 6f;
         private const float PanePadding = 8f;
         private const float GroupDropCenterFraction = 0.5f;
+        private const float StandardPreviewHeaderHeight = 28f;
+        private const float PaintingPreviewHeaderHeight = 110f;
         private const string DraggedLayerIdKey = "DCFApixels.SpriteEditor.DraggedLayerId";
         private const string DraggedCompositorIdKey = "DCFApixels.SpriteEditor.DraggedCompositorId";
         private static readonly int SplitterControlHash = "DCFApixels.SpriteEditor.Splitter".GetHashCode();
         private static readonly int LayerDragHandleHash = "DCFApixels.SpriteEditor.LayerDragHandle".GetHashCode();
+        private static readonly int PaintCanvasControlHash = "DCFApixels.SpriteEditor.PaintCanvas".GetHashCode();
         private static readonly GUIContent LayerDragHandleContent = new GUIContent(
             "≡",
             "Drag to reorder this layer or move it into a group.");
@@ -27,6 +30,15 @@ namespace DCFApixels.SpriteEditor
             "Drag a row by its handle. Drop on a line to reorder, or on a highlighted group to move inside.");
         private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
         private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
+        private static readonly GUIContent MirrorVerticalContent = new GUIContent(
+            "Mirror X",
+            "Reflect each brush stroke across the vertical axis through Center.");
+        private static readonly GUIContent MirrorHorizontalContent = new GUIContent(
+            "Mirror Y",
+            "Reflect each brush stroke across the horizontal axis through Center.");
+        private static readonly GUIContent RepeatBoundaryContent = new GUIContent(
+            "Edges",
+            "Continue lets the brush cross each repeated shape boundary. Clip cuts every copy to its own cell or sector.");
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
@@ -40,6 +52,9 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private string previewError;
         [NonSerialized] private Dictionary<string, bool> groupExpansion;
         [NonSerialized] private string dragCandidateLayerId;
+        [NonSerialized] private DrawingLayer paintingLayer;
+        [NonSerialized] private Vector2 lastPaintingUv;
+        [NonSerialized] private bool hasLastPaintingUv;
 
         [MenuItem("Window/Sprite Editor")]
         public static void ShowWindow()
@@ -64,6 +79,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            FinishPaintingStroke();
             TextureCompositor.Changed -= OnCompositorChanged;
             Undo.undoRedoPerformed -= OnUndoRedo;
             ClearLayerDragData();
@@ -88,6 +104,8 @@ namespace DCFApixels.SpriteEditor
                 ClearLayerDragData();
                 Repaint();
             }
+
+            HandleBrushSizeHotkeys();
 
             Rect contentRect = new Rect(0f, 0f, position.width, position.height);
             float maxPreviewWidth = Mathf.Max(
@@ -278,8 +296,19 @@ namespace DCFApixels.SpriteEditor
                     GUILayout.Label(new GUIContent("!", tooltip), GUILayout.Width(10f));
                 }
 
-                if (GUILayout.Button("Edit", EditorStyles.miniButton, GUILayout.Width(38f)))
-                    OpenLayerEditor(layer);
+                string editLabel = layer is DrawingLayer ? "Paint" : "Edit";
+                if (GUILayout.Button(editLabel, EditorStyles.miniButton, GUILayout.Width(38f)))
+                {
+                    if (layer is DrawingLayer)
+                    {
+                        selectedLayerId = layer.Id;
+                        Repaint();
+                    }
+                    else
+                    {
+                        OpenLayerEditor(layer);
+                    }
+                }
                 if (GUILayout.Button("FX", EditorStyles.miniButton, GUILayout.Width(28f)))
                     ModifierEditorWindow.Open(layer, compositor);
                 if (GUILayout.Button("...", EditorStyles.miniButton, GUILayout.Width(30f)))
@@ -588,6 +617,7 @@ namespace DCFApixels.SpriteEditor
 
         private void DrawPreviewPane(Rect rect)
         {
+            DrawingLayer drawingLayer = GetSelectedLayer() as DrawingLayer;
             Color background = EditorGUIUtility.isProSkin
                 ? new Color(0.105f, 0.105f, 0.105f, 1f)
                 : new Color(0.65f, 0.65f, 0.65f, 1f);
@@ -596,29 +626,31 @@ namespace DCFApixels.SpriteEditor
                 : new Color(0.78f, 0.78f, 0.78f, 1f);
             EditorGUI.DrawRect(rect, background);
 
-            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 28f);
+            float headerHeight = drawingLayer != null
+                ? PaintingPreviewHeaderHeight
+                : StandardPreviewHeaderHeight;
+            Rect headerRect = new Rect(rect.x, rect.y, rect.width, headerHeight);
             EditorGUI.DrawRect(headerRect, headerBackground);
-            GUI.Label(
-                new Rect(headerRect.x + 10f, headerRect.y + 4f, 80f, 20f),
-                "Preview",
-                EditorStyles.boldLabel);
-
-            Rect refreshRect = new Rect(headerRect.xMax - 72f, headerRect.y + 4f, 64f, 20f);
-            if (GUI.Button(refreshRect, "Refresh", EditorStyles.miniButton))
-                RequestPreview(true);
-
-            string dimensions = $"{Mathf.Max(1, compositor.width)} × {Mathf.Max(1, compositor.height)}";
-            Rect dimensionsRect = new Rect(
-                headerRect.x + 92f,
-                headerRect.y + 4f,
-                Mathf.Max(0f, refreshRect.x - headerRect.x - 100f),
-                20f);
-            GUI.Label(dimensionsRect, dimensions, EditorStyles.centeredGreyMiniLabel);
+            if (drawingLayer != null)
+                DrawPaintingPreviewHeader(headerRect, drawingLayer);
+            else
+                DrawStandardPreviewHeader(headerRect);
 
             Rect footerRect = new Rect(rect.x, rect.yMax - 22f, rect.width, 22f);
+            string footerText;
+            if (drawingLayer != null)
+            {
+                footerText = previewTexture != null
+                    ? $"Paint on canvas • [ / ] brush size • {drawingLayer.brushSize:0.#} px"
+                    : "Rendering painting preview…";
+            }
+            else
+            {
+                footerText = previewTexture != null ? "Transparent canvas • auto refresh" : "Rendering preview…";
+            }
             GUI.Label(
                 footerRect,
-                previewTexture != null ? "Transparent canvas • auto refresh" : "Rendering preview…",
+                footerText,
                 EditorStyles.centeredGreyMiniLabel);
 
             Rect canvasRect = new Rect(
@@ -659,6 +691,405 @@ namespace DCFApixels.SpriteEditor
             DrawBorder(imageRect, EditorGUIUtility.isProSkin
                 ? new Color(0.32f, 0.32f, 0.32f, 1f)
                 : new Color(0.38f, 0.38f, 0.38f, 1f));
+
+            if (drawingLayer != null)
+                HandlePreviewPainting(imageRect, drawingLayer);
+        }
+
+        private void DrawStandardPreviewHeader(Rect headerRect)
+        {
+            GUI.Label(
+                new Rect(headerRect.x + 10f, headerRect.y + 4f, 80f, 20f),
+                "Preview",
+                EditorStyles.boldLabel);
+
+            Rect refreshRect = new Rect(headerRect.xMax - 72f, headerRect.y + 4f, 64f, 20f);
+            if (GUI.Button(refreshRect, "Refresh", EditorStyles.miniButton))
+                RequestPreview(true);
+
+            string dimensions = $"{Mathf.Max(1, compositor.width)} × {Mathf.Max(1, compositor.height)}";
+            Rect dimensionsRect = new Rect(
+                headerRect.x + 92f,
+                headerRect.y + 4f,
+                Mathf.Max(0f, refreshRect.x - headerRect.x - 100f),
+                20f);
+            GUI.Label(dimensionsRect, dimensions, EditorStyles.centeredGreyMiniLabel);
+        }
+
+        private void DrawPaintingPreviewHeader(Rect headerRect, DrawingLayer layer)
+        {
+            PaintToolMode nextTool = layer.tool;
+            Color nextColor = layer.brushColor;
+            float nextSize = layer.brushSize;
+            float nextHardness = layer.brushHardness;
+            bool nextMirrorVertical = layer.mirrorAcrossVerticalAxis;
+            bool nextMirrorHorizontal = layer.mirrorAcrossHorizontalAxis;
+            Vector2 nextCenter = layer.patternCenter;
+            PaintRepeatMode nextRepeat = layer.repeatMode;
+            PaintRepeatElementMode nextElementMode = layer.repeatElementMode;
+            PaintRepeatBoundaryMode nextBoundary = layer.repeatBoundaryMode;
+            int nextCount = layer.repeatCount;
+            int nextSecondaryCount = layer.repeatSecondaryCount;
+            bool clearRequested = false;
+
+            GUILayout.BeginArea(headerRect);
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                GUILayout.Label("Preview • Drawing", EditorStyles.boldLabel);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Clear", EditorStyles.toolbarButton, GUILayout.Width(42f)))
+                    clearRequested = true;
+                if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(56f)))
+                    RequestPreview(true);
+            }
+
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                nextTool = (PaintToolMode)EditorGUILayout.EnumPopup(nextTool, GUILayout.Width(62f));
+                using (new EditorGUI.DisabledScope(nextTool == PaintToolMode.Eraser))
+                {
+                    nextColor = EditorGUILayout.ColorField(
+                        GUIContent.none,
+                        nextColor,
+                        true,
+                        true,
+                        true,
+                        GUILayout.Width(42f));
+                }
+                GUILayout.Label("Size", GUILayout.Width(27f));
+                nextSize = EditorGUILayout.FloatField(nextSize, GUILayout.Width(42f));
+                GUILayout.Label("Hard", GUILayout.Width(30f));
+                nextHardness = GUILayout.HorizontalSlider(nextHardness, 0f, 1f, GUILayout.MinWidth(40f));
+                GUILayout.Label($"{nextHardness * 100f:0}%", EditorStyles.miniLabel, GUILayout.Width(34f));
+            }
+
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                nextMirrorVertical = GUILayout.Toggle(
+                    nextMirrorVertical,
+                    MirrorVerticalContent,
+                    EditorStyles.toolbarButton,
+                    GUILayout.Width(68f));
+                nextMirrorHorizontal = GUILayout.Toggle(
+                    nextMirrorHorizontal,
+                    MirrorHorizontalContent,
+                    EditorStyles.toolbarButton,
+                    GUILayout.Width(68f));
+                GUILayout.Label("Center", GUILayout.Width(38f));
+                nextCenter = EditorGUILayout.Vector2Field(GUIContent.none, nextCenter, GUILayout.MinWidth(78f));
+            }
+
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                GUILayout.Label("Repeat", GUILayout.Width(42f));
+                nextRepeat = (PaintRepeatMode)EditorGUILayout.EnumPopup(nextRepeat, GUILayout.Width(78f));
+                if (nextRepeat == PaintRepeatMode.Grid)
+                {
+                    GUILayout.Label("X", GUILayout.Width(12f));
+                    nextCount = EditorGUILayout.IntField(nextCount, GUILayout.Width(30f));
+                    GUILayout.Label("Y", GUILayout.Width(12f));
+                    nextSecondaryCount = EditorGUILayout.IntField(nextSecondaryCount, GUILayout.Width(30f));
+                }
+                else if (nextRepeat != PaintRepeatMode.None)
+                {
+                    GUILayout.Label("Count", GUILayout.Width(36f));
+                    nextCount = EditorGUILayout.IntField(nextCount, GUILayout.Width(34f));
+                }
+                GUILayout.FlexibleSpace();
+                using (new EditorGUI.DisabledScope(nextRepeat == PaintRepeatMode.None))
+                {
+                    nextElementMode = (PaintRepeatElementMode)EditorGUILayout.EnumPopup(
+                        nextElementMode,
+                        GUILayout.Width(108f));
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                GUILayout.Label(RepeatBoundaryContent, GUILayout.Width(36f));
+                using (new EditorGUI.DisabledScope(nextRepeat == PaintRepeatMode.None))
+                {
+                    nextBoundary = (PaintRepeatBoundaryMode)EditorGUILayout.EnumPopup(
+                        nextBoundary,
+                        GUILayout.Width(76f));
+                }
+                GUILayout.FlexibleSpace();
+                GUILayout.Label("[ / ] changes brush size", EditorStyles.centeredGreyMiniLabel);
+                GUILayout.FlexibleSpace();
+            }
+            bool changed = EditorGUI.EndChangeCheck();
+            GUILayout.EndArea();
+
+            if (changed)
+            {
+                ExecuteModelChange("Change Drawing Tool", () =>
+                {
+                    layer.tool = nextTool;
+                    layer.brushColor = nextColor;
+                    layer.brushSize = Mathf.Max(1f, nextSize);
+                    layer.brushHardness = Mathf.Clamp01(nextHardness);
+                    layer.mirrorAcrossVerticalAxis = nextMirrorVertical;
+                    layer.mirrorAcrossHorizontalAxis = nextMirrorHorizontal;
+                    layer.patternCenter = new Vector2(
+                        Mathf.Clamp01(nextCenter.x),
+                        Mathf.Clamp01(nextCenter.y));
+                    layer.repeatMode = nextRepeat;
+                    layer.repeatElementMode = nextElementMode;
+                    layer.repeatBoundaryMode = nextBoundary;
+                    layer.repeatCount = Mathf.Clamp(nextCount, 2, 64);
+                    layer.repeatSecondaryCount = Mathf.Clamp(nextSecondaryCount, 2, 64);
+                });
+            }
+
+            if (clearRequested)
+                ClearDrawingLayer(layer);
+        }
+
+        private void HandlePreviewPainting(Rect imageRect, DrawingLayer layer)
+        {
+            Event current = Event.current;
+            int controlId = GUIUtility.GetControlID(PaintCanvasControlHash, FocusType.Passive, imageRect);
+            bool pointerInside = imageRect.Contains(current.mousePosition);
+
+            if (current.type == EventType.Repaint)
+            {
+                DrawPaintingGuides(imageRect, layer);
+                if (pointerInside && !current.alt)
+                    DrawBrushCursor(imageRect, layer, current.mousePosition);
+            }
+
+            switch (current.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (current.button != 0 || current.alt || !pointerInside)
+                        break;
+                    if (!TryMapPreviewToLayerUv(current.mousePosition, imageRect, layer, out Vector2 startUv))
+                        break;
+
+                    Focus();
+                    GUI.FocusControl(null);
+                    GUIUtility.hotControl = controlId;
+                    paintingLayer = layer;
+                    lastPaintingUv = startUv;
+                    hasLastPaintingUv = true;
+                    Undo.RecordObject(compositor, "Paint Stroke");
+                    layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
+                    layer.PaintPoint(startUv, compositor.width, compositor.height);
+                    RefreshPreviewDuringPainting();
+                    current.Use();
+                    break;
+
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl != controlId || paintingLayer == null)
+                        break;
+                    if (TryMapPreviewToLayerUv(current.mousePosition, imageRect, paintingLayer, out Vector2 dragUv))
+                    {
+                        if (hasLastPaintingUv)
+                        {
+                            paintingLayer.PaintSegment(
+                                lastPaintingUv,
+                                dragUv,
+                                compositor.width,
+                                compositor.height,
+                                false);
+                        }
+                        else
+                        {
+                            paintingLayer.PaintPoint(dragUv, compositor.width, compositor.height);
+                        }
+                        lastPaintingUv = dragUv;
+                        hasLastPaintingUv = true;
+                        RefreshPreviewDuringPainting();
+                    }
+                    else
+                    {
+                        hasLastPaintingUv = false;
+                    }
+                    current.Use();
+                    break;
+
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl != controlId || current.button != 0)
+                        break;
+                    GUIUtility.hotControl = 0;
+                    FinishPaintingStroke();
+                    current.Use();
+                    break;
+
+                case EventType.MouseMove:
+                    if (pointerInside)
+                        Repaint();
+                    break;
+            }
+        }
+
+        private void ClearDrawingLayer(DrawingLayer layer)
+        {
+            if (layer == null)
+                return;
+            Undo.RecordObject(compositor, "Clear Drawing Layer");
+            layer.PrepareStroke(compositor.width, compositor.height, "Clear Drawing Layer");
+            layer.ClearSurface(compositor.width, compositor.height);
+            temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+            compositor.MarkChanged();
+            RequestPreview(true);
+        }
+
+        private void RefreshPreviewDuringPainting()
+        {
+            previewRequested = false;
+            UpdatePreview();
+        }
+
+        private void FinishPaintingStroke()
+        {
+            if (paintingLayer == null)
+                return;
+
+            paintingLayer.SyncSurfaceToTexture();
+            paintingLayer = null;
+            hasLastPaintingUv = false;
+            temporaryDocumentDirty |= compositor != null && !AssetDatabase.Contains(compositor);
+            if (compositor != null)
+                compositor.MarkChanged();
+            Undo.FlushUndoRecordObjects();
+            RequestPreview(true);
+        }
+
+        private void HandleBrushSizeHotkeys()
+        {
+            Event current = Event.current;
+            if (current.type != EventType.KeyDown || EditorGUIUtility.editingTextField)
+                return;
+
+            bool decrease = current.keyCode == KeyCode.LeftBracket || current.character == '[';
+            bool increase = current.keyCode == KeyCode.RightBracket || current.character == ']';
+            if (!decrease && !increase)
+                return;
+            if (!(GetSelectedLayer() is DrawingLayer layer))
+                return;
+
+            float nextSize = decrease
+                ? Mathf.Max(1f, Mathf.Round(layer.brushSize / 1.2f))
+                : Mathf.Max(1f, Mathf.Round(layer.brushSize * 1.2f));
+            if (Mathf.Approximately(nextSize, layer.brushSize))
+                nextSize = Mathf.Max(1f, layer.brushSize + (increase ? 1f : -1f));
+
+            ExecuteModelChange("Change Brush Size", () => layer.brushSize = nextSize);
+            current.Use();
+        }
+
+        private bool TryMapPreviewToLayerUv(
+            Vector2 mousePosition,
+            Rect imageRect,
+            DrawingLayer layer,
+            out Vector2 sourceUv)
+        {
+            sourceUv = default;
+            if (imageRect.width <= 0f || imageRect.height <= 0f || layer == null)
+                return false;
+
+            Vector2 documentUv = new Vector2(
+                (mousePosition.x - imageRect.x) / imageRect.width,
+                1f - (mousePosition.y - imageRect.y) / imageRect.height);
+            Vector2 outputSize = new Vector2(Mathf.Max(1, compositor.width), Mathf.Max(1, compositor.height));
+            Vector2 pivotPixels = Vector2.Scale(layer.transform.pivot, outputSize);
+            Vector2 local = Vector2.Scale(documentUv, outputSize) - pivotPixels - layer.transform.position;
+            float radians = -layer.transform.rotation * Mathf.Deg2Rad;
+            float sine = Mathf.Sin(radians);
+            float cosine = Mathf.Cos(radians);
+            local = new Vector2(
+                cosine * local.x - sine * local.y,
+                sine * local.x + cosine * local.y);
+            float scaleX = Mathf.Abs(layer.transform.scale.x) < 0.00001f
+                ? (layer.transform.scale.x < 0f ? -0.00001f : 0.00001f)
+                : layer.transform.scale.x;
+            float scaleY = Mathf.Abs(layer.transform.scale.y) < 0.00001f
+                ? (layer.transform.scale.y < 0f ? -0.00001f : 0.00001f)
+                : layer.transform.scale.y;
+            Vector2 sourcePixels = pivotPixels + new Vector2(local.x / scaleX, local.y / scaleY);
+            sourceUv = new Vector2(sourcePixels.x / outputSize.x, sourcePixels.y / outputSize.y);
+            return sourceUv.x >= 0f && sourceUv.x <= 1f && sourceUv.y >= 0f && sourceUv.y <= 1f;
+        }
+
+        private void DrawBrushCursor(Rect imageRect, DrawingLayer layer, Vector2 mousePosition)
+        {
+            float pixelScale = imageRect.width / Mathf.Max(1f, compositor.width);
+            float transformScale = (Mathf.Abs(layer.transform.scale.x) + Mathf.Abs(layer.transform.scale.y)) * 0.5f;
+            float radius = Mathf.Max(2f, layer.brushSize * pixelScale * Mathf.Max(0.0001f, transformScale) * 0.5f);
+            Handles.BeginGUI();
+            Color previous = Handles.color;
+            Handles.color = new Color(0f, 0f, 0f, 0.9f);
+            Handles.DrawWireDisc(mousePosition, Vector3.forward, radius + 1f);
+            Handles.color = layer.tool == PaintToolMode.Eraser
+                ? new Color(1f, 0.35f, 0.25f, 1f)
+                : new Color(1f, 1f, 1f, 0.95f);
+            Handles.DrawWireDisc(mousePosition, Vector3.forward, radius);
+            Handles.color = previous;
+            Handles.EndGUI();
+        }
+
+        private void DrawPaintingGuides(Rect imageRect, DrawingLayer layer)
+        {
+            if (!layer.mirrorAcrossVerticalAxis &&
+                !layer.mirrorAcrossHorizontalAxis &&
+                layer.repeatMode == PaintRepeatMode.None)
+            {
+                return;
+            }
+
+            Handles.BeginGUI();
+            Color previous = Handles.color;
+            Handles.color = new Color(0.20f, 0.70f, 1f, 0.45f);
+            if (layer.mirrorAcrossVerticalAxis)
+            {
+                float x = imageRect.x + imageRect.width * layer.patternCenter.x;
+                Handles.DrawLine(new Vector3(x, imageRect.y), new Vector3(x, imageRect.yMax));
+            }
+            if (layer.mirrorAcrossHorizontalAxis)
+            {
+                float y = imageRect.y + imageRect.height * (1f - layer.patternCenter.y);
+                Handles.DrawLine(new Vector3(imageRect.x, y), new Vector3(imageRect.xMax, y));
+            }
+
+            int count = Mathf.Clamp(layer.repeatCount, 2, 64);
+            if (layer.repeatMode == PaintRepeatMode.Horizontal || layer.repeatMode == PaintRepeatMode.Grid)
+            {
+                for (int xIndex = 1; xIndex < count; xIndex++)
+                {
+                    float x = Mathf.Lerp(imageRect.x, imageRect.xMax, (float)xIndex / count);
+                    Handles.DrawLine(new Vector3(x, imageRect.y), new Vector3(x, imageRect.yMax));
+                }
+            }
+            if (layer.repeatMode == PaintRepeatMode.Vertical || layer.repeatMode == PaintRepeatMode.Grid)
+            {
+                int verticalCount = layer.repeatMode == PaintRepeatMode.Grid
+                    ? Mathf.Clamp(layer.repeatSecondaryCount, 2, 64)
+                    : count;
+                for (int yIndex = 1; yIndex < verticalCount; yIndex++)
+                {
+                    float y = Mathf.Lerp(imageRect.y, imageRect.yMax, (float)yIndex / verticalCount);
+                    Handles.DrawLine(new Vector3(imageRect.x, y), new Vector3(imageRect.xMax, y));
+                }
+            }
+            if (layer.repeatMode == PaintRepeatMode.Radial)
+            {
+                Vector2 center = new Vector2(
+                    imageRect.x + imageRect.width * layer.patternCenter.x,
+                    imageRect.y + imageRect.height * (1f - layer.patternCenter.y));
+                float length = Mathf.Sqrt(imageRect.width * imageRect.width + imageRect.height * imageRect.height);
+                for (int sector = 0; sector < count; sector++)
+                {
+                    float angle = -Mathf.PI + sector * Mathf.PI * 2f / count;
+                    Vector2 direction = new Vector2(
+                        Mathf.Cos(angle) * imageRect.width,
+                        -Mathf.Sin(angle) * imageRect.height).normalized;
+                    Handles.DrawLine(center, center + direction * length);
+                }
+            }
+            Handles.color = previous;
+            Handles.EndGUI();
         }
 
         private void DrawSplitter(Rect splitterRect, Rect contentRect)
@@ -784,6 +1215,7 @@ namespace DCFApixels.SpriteEditor
         private void ShowAddMenu(List<Layer> container, int insertionIndex)
         {
             GenericMenu menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Drawing Layer"), false, () => AddLayer(container, insertionIndex, new DrawingLayer()));
             menu.AddItem(new GUIContent("File Layer"), false, () => AddLayer(container, insertionIndex, new FileLayer()));
             menu.AddItem(new GUIContent("Color Fill Layer"), false, () => AddLayer(container, insertionIndex, new ColorFillLayer()));
             menu.AddItem(new GUIContent("Gradient Layer"), false, () => AddLayer(container, insertionIndex, new GradientLayer()));
@@ -801,6 +1233,8 @@ namespace DCFApixels.SpriteEditor
             ExecuteModelChange("Add Sprite Layer", () =>
             {
                 layer.layerName = automaticName;
+                if (layer is DrawingLayer drawing)
+                    drawing.InitializeCanvas(compositor.width, compositor.height);
                 insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
                 container.Insert(insertionIndex, layer);
                 compositor.NormalizeModel();
@@ -867,6 +1301,7 @@ namespace DCFApixels.SpriteEditor
             if (layer is GroupLayer group)
             {
                 menu.AddSeparator(string.Empty);
+                menu.AddItem(new GUIContent("Add Inside/Drawing Layer"), false, () => AddLayer(group.layers, 0, new DrawingLayer()));
                 menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddLayer(group.layers, 0, new FileLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddLayer(group.layers, 0, new ColorFillLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddLayer(group.layers, 0, new GradientLayer()));
@@ -928,6 +1363,7 @@ namespace DCFApixels.SpriteEditor
         {
             ExecuteModelChange("Delete Sprite Layer", () =>
             {
+                compositor.DestroyLayerAssets(layer);
                 container.Remove(layer);
                 layer.ReleaseTransientResources();
                 if (selectedLayerId == layer.Id)
@@ -1037,6 +1473,7 @@ namespace DCFApixels.SpriteEditor
             if (next == null || next == compositor)
                 return;
 
+            FinishPaintingStroke();
             ClearLayerDragData();
             TextureCompositor previous = compositor;
             compositor = next;
@@ -1079,11 +1516,14 @@ namespace DCFApixels.SpriteEditor
             if (string.IsNullOrEmpty(path))
                 return false;
 
+            compositor.SyncDrawingLayerTextures();
             TextureCompositor copy = Instantiate(compositor);
+            copy.CloneDrawingLayerTextures();
             copy.name = Path.GetFileNameWithoutExtension(path);
             copy.hideFlags = HideFlags.None;
             path = AssetDatabase.GenerateUniqueAssetPath(path);
             AssetDatabase.CreateAsset(copy, path);
+            copy.PersistDrawingLayerTextures();
             AssetDatabase.SaveAssets();
             SetCompositor(copy);
             Selection.activeObject = copy;
@@ -1153,7 +1593,11 @@ namespace DCFApixels.SpriteEditor
         {
             if (compositor == null)
                 return;
+            paintingLayer = null;
+            hasLastPaintingUv = false;
+            GUIUtility.hotControl = 0;
             compositor.NormalizeModel();
+            compositor.InvalidateDrawingLayerSurfaces();
             selectedLayerId = compositor.FindLayer(selectedLayerId)?.Id;
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
             RequestPreview(true);

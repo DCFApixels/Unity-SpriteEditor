@@ -26,6 +26,33 @@ namespace DCFApixels.SpriteEditor
         Specific = 1
     }
 
+    public enum PaintToolMode
+    {
+        Brush = 0,
+        Eraser = 1
+    }
+
+    public enum PaintRepeatMode
+    {
+        None = 0,
+        Horizontal = 1,
+        Vertical = 2,
+        Grid = 3,
+        Radial = 4
+    }
+
+    public enum PaintRepeatElementMode
+    {
+        Copy = 0,
+        AlternateMirror = 1
+    }
+
+    public enum PaintRepeatBoundaryMode
+    {
+        Continue = 0,
+        Clip = 1
+    }
+
     [Serializable]
     public struct TextureTransform
     {
@@ -205,6 +232,8 @@ namespace DCFApixels.SpriteEditor
     {
         private static Material blendMaterial;
         private static Material transformMaterial;
+        private static Material paintBrushMaterial;
+        private static Material alphaConversionMaterial;
 
         static SpriteEditorMaterials()
         {
@@ -214,6 +243,10 @@ namespace DCFApixels.SpriteEditor
 
         public static Material Blend => GetOrCreate(ref blendMaterial, "Hidden/TextureCompositor/Blend");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
+        public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
+        public static Material AlphaConversion => GetOrCreate(
+            ref alphaConversionMaterial,
+            "Hidden/TextureCompositor/AlphaConversion");
 
         private static Material GetOrCreate(ref Material material, string shaderName)
         {
@@ -240,8 +273,14 @@ namespace DCFApixels.SpriteEditor
                 UnityEngine.Object.DestroyImmediate(blendMaterial);
             if (transformMaterial != null)
                 UnityEngine.Object.DestroyImmediate(transformMaterial);
+            if (paintBrushMaterial != null)
+                UnityEngine.Object.DestroyImmediate(paintBrushMaterial);
+            if (alphaConversionMaterial != null)
+                UnityEngine.Object.DestroyImmediate(alphaConversionMaterial);
             blendMaterial = null;
             transformMaterial = null;
+            paintBrushMaterial = null;
+            alphaConversionMaterial = null;
         }
     }
 

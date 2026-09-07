@@ -137,8 +137,51 @@ namespace DCFApixels.SpriteEditor
         {
             NormalizeModel();
             if (AssetDatabase.Contains(this))
+            {
+                PersistDrawingLayerTextures();
                 EditorUtility.SetDirty(this);
+            }
             Changed?.Invoke(this);
+        }
+
+        internal void SyncDrawingLayerTextures()
+        {
+            VisitDrawingLayers(layers, drawing => drawing.SyncSurfaceToTexture());
+        }
+
+        internal void CloneDrawingLayerTextures()
+        {
+            VisitDrawingLayers(layers, drawing => drawing.CloneStoredTexture());
+        }
+
+        internal void PersistDrawingLayerTextures()
+        {
+            if (!AssetDatabase.Contains(this))
+                return;
+
+            bool addedTexture = false;
+            VisitDrawingLayers(layers, drawing => addedTexture |= drawing.MakeTexturePersistent(this));
+            if (!addedTexture)
+                return;
+
+            string assetPath = AssetDatabase.GetAssetPath(this);
+            if (!string.IsNullOrEmpty(assetPath))
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+        }
+
+        internal void InvalidateDrawingLayerSurfaces()
+        {
+            VisitDrawingLayers(layers, drawing => drawing.InvalidatePaintSurface());
+        }
+
+        internal void DestroyLayerAssets(Layer layer)
+        {
+            if (layer is DrawingLayer drawing)
+                drawing.DestroyStoredTextureWithUndo();
+            if (!(layer is GroupLayer group) || group.layers == null)
+                return;
+            for (int i = 0; i < group.layers.Count; i++)
+                DestroyLayerAssets(group.layers[i]);
         }
 
         internal static Texture2D CopyToTexture2D(RenderTexture source)
@@ -597,6 +640,8 @@ namespace DCFApixels.SpriteEditor
 
                 layer.EnsureId(usedIds);
                 layer.opacity = Mathf.Clamp01(layer.opacity);
+                if (layer is DrawingLayer drawing)
+                    drawing.NormalizeSettings();
                 if (layer is GroupLayer group)
                 {
                     group.layers ??= new List<Layer>();
@@ -735,6 +780,20 @@ namespace DCFApixels.SpriteEditor
                 layer.ReleaseTransientResources();
                 if (layer is GroupLayer group)
                     ReleaseLayerResources(group.layers);
+            }
+        }
+
+        private static void VisitDrawingLayers(List<Layer> sourceLayers, Action<DrawingLayer> visitor)
+        {
+            if (sourceLayers == null || visitor == null)
+                return;
+            for (int i = 0; i < sourceLayers.Count; i++)
+            {
+                Layer layer = sourceLayers[i];
+                if (layer is DrawingLayer drawing)
+                    visitor(drawing);
+                if (layer is GroupLayer group)
+                    VisitDrawingLayers(group.layers, visitor);
             }
         }
     }
