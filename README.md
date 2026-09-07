@@ -15,13 +15,13 @@ In Unity, open **Window > Package Management > Package Manager**, choose
 **Install package from git URL**, and enter:
 
 ```text
-https://github.com/DCFApixels/SpriteEditor.git
+https://github.com/DCFApixels/Unity-SpriteEditor.git
 ```
 
 Alternatively, add the package directly to `Packages/manifest.json`:
 
 ```json
-"com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/SpriteEditor.git"
+"com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
 To track a specific release, append its tag to the URL, for example `#v0.1.0`.
