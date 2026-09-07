@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.9`.
+To track a specific release, append its tag to the URL, for example `#v0.3.0`.
 
 ## Layer stack
 
@@ -102,9 +102,21 @@ rotation is expressed in degrees.
 
 ## Blend modes
 
-- Normal: standard source-over alpha composition.
-- Multiply: standard separable multiply with alpha composition.
+- Photoshop-style modes use source-over alpha composition. The blend function affects RGB only
+  where source and backdrop alpha overlap; non-overlapping pixels preserve the color and alpha of
+  the layer that is present.
+- Supported modes: Normal, Add, Subtract, Multiply, Divide, Screen, Overlay, Darken, Lighten,
+  Color Dodge, Color Burn, Linear Dodge (Add), Linear Burn, Linear Light, Linear Light Add/Sub,
+  Vivid Light, Pin Light, Hard Mix, Hard Light, Soft Light, Difference, Exclusion, and Negation.
+- None leaves the existing composite unchanged.
 - Overwrite: replaces the complete RGBA pixel; layer opacity interpolates between the backdrop
   and replacement pixel.
+
+For direct Photoshop comparisons, use an sRGB document with **Blend RGB Colors Using Gamma**
+disabled. Other Photoshop document profiles or gamma-blending settings intentionally produce
+different RGB values, although alpha composition remains the same.
+
+Normal, Multiply, and Overwrite retain their existing serialized values, so compositions created
+with earlier package versions keep the same modes after upgrading.
 
 Layer modifiers are materials applied in list order after that layer's transform.

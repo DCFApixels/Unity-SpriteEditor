@@ -10,7 +10,7 @@ namespace DCFApixels.SpriteEditor
     {
         private const int MinimumOutputSize = 1;
         private const int MaximumOutputSize = 16384;
-        private const int AlphaUnionMode = 3;
+        private const int AlphaUnionMode = 100;
 
         public int width = 512;
         public int height = 512;

@@ -437,7 +437,7 @@ namespace DCFApixels.SpriteEditor
                 DrawLayerThumbnail(layer);
                 layer.layerName = EditorGUILayout.TextField(layer.layerName, GUILayout.MinWidth(90f));
                 layer.opacity = Mathf.Clamp01(EditorGUILayout.FloatField(layer.opacity, GUILayout.Width(38f)));
-                layer.blendMode = (BlendMode)EditorGUILayout.EnumPopup(layer.blendMode, GUILayout.Width(82f));
+                layer.blendMode = (BlendMode)EditorGUILayout.EnumPopup(layer.blendMode, GUILayout.Width(118f));
 
                 if (layer is TargetedLayerEffect effect &&
                     !compositor.HasUsableEffectInput(effect, container, index))

@@ -9,7 +9,29 @@ namespace DCFApixels.SpriteEditor
     {
         Normal = 0,
         Multiply = 1,
-        Overwrite = 2
+        Overwrite = 2,
+        None = 3,
+        Add = 4,
+        Subtract = 5,
+        Divide = 6,
+        Screen = 7,
+        Overlay = 8,
+        Darken = 9,
+        Lighten = 10,
+        [InspectorName("Color Dodge")] Dodge = 11,
+        [InspectorName("Color Burn")] Burn = 12,
+        [InspectorName("Linear Dodge (Add)")] LinearDodge = 13,
+        [InspectorName("Linear Burn")] LinearBurn = 14,
+        [InspectorName("Linear Light")] LinearLight = 15,
+        [InspectorName("Linear Light Add/Sub")] LinearLightAddSub = 16,
+        [InspectorName("Vivid Light")] VividLight = 17,
+        [InspectorName("Pin Light")] PinLight = 18,
+        [InspectorName("Hard Mix")] HardMix = 19,
+        [InspectorName("Hard Light")] HardLight = 20,
+        [InspectorName("Soft Light")] SoftLight = 21,
+        Difference = 22,
+        Exclusion = 23,
+        Negation = 24
     }
 
     public enum DistanceMetric

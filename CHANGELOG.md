@@ -2,6 +2,23 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.3.0] - 2026-09-07
+
+### Added
+
+- Added every blend mode exposed by DataMath `DMBlend`: None, Add, Subtract, Multiply, Divide,
+  Screen, Overlay, Darken, Lighten, Dodge, Burn, Linear Dodge, Linear Burn, Linear Light,
+  Linear Light Add/Sub, Vivid Light, Pin Light, Hard Mix, Hard Light, Soft Light, Difference,
+  Exclusion, Negation, and Overwrite.
+
+### Changed
+
+- Standard blend modes now use Photoshop/PDF-style source-over alpha composition, so their blend
+  function affects only overlapping coverage and non-overlapping pixels remain visible.
+- RGB blend functions run in an sRGB Photoshop-style blend space even when the Unity project uses
+  Linear color space.
+- Existing serialized Normal, Multiply, and Overwrite mode values remain compatible.
+
 ## [0.2.9] - 2026-09-07
 
 ### Fixed
