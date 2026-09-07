@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.6] - 2026-09-07
+
+### Fixed
+
+- Drawing hotkeys no longer remain disabled after Unity leaves its global text-editing flag set
+  while no IMGUI text field actually owns keyboard focus.
+
 ## [0.2.5] - 2026-09-07
 
 ### Fixed

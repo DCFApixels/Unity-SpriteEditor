@@ -1185,7 +1185,9 @@ namespace DCFApixels.SpriteEditor
         private void HandleDrawingHotkeys()
         {
             Event current = Event.current;
-            if (current.type != EventType.KeyDown || EditorGUIUtility.editingTextField)
+            if (current.type != EventType.KeyDown)
+                return;
+            if (EditorGUIUtility.editingTextField && GUIUtility.keyboardControl != 0)
                 return;
             if (!(GetSelectedLayer() is DrawingLayer layer))
                 return;
