@@ -2,6 +2,14 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.3.2] - 2026-09-07
+
+### Changed
+
+- Replaced the layer-selection radio button with a color-highlighted selected row.
+- A layer or group can now be selected by clicking its free row area without interfering with
+  visibility toggles, drag handles, or other row controls.
+
 ## [0.3.1] - 2026-09-07
 
 ### Changed

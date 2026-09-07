@@ -35,6 +35,8 @@ namespace DCFApixels.SpriteEditor
             "Drag a row by its handle. Drop on a line to reorder, or on a highlighted group to move inside.");
         private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
         private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
+        private static readonly Color SelectedLayerRowDarkTint = new Color(0.48f, 0.72f, 1f, 1f);
+        private static readonly Color SelectedLayerRowLightTint = new Color(0.62f, 0.80f, 1f, 1f);
         private static readonly GUIContent MirrorVerticalContent = new GUIContent(
             "Mirror X",
             "Reflect each brush stroke across the vertical axis through Center.");
@@ -398,11 +400,10 @@ namespace DCFApixels.SpriteEditor
         {
             bool expanded = GetGroupExpanded(group);
             bool nextExpanded = expanded;
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            using (new LayerRowScope(group.Id == selectedLayerId))
             {
                 GUILayout.Space(depth * 14f);
                 DrawLayerDragHandle(group);
-                DrawSelectionToggle(group);
                 group.enabled = EditorGUILayout.Toggle(group.enabled, GUILayout.Width(18f));
                 Rect foldoutRect = GUILayoutUtility.GetRect(
                     14f,
@@ -420,6 +421,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             Rect rowRect = GUILayoutUtility.GetLastRect();
+            HandleLayerRowSelection(rowRect, group);
             HandleLayerRowDrop(rowRect, group, container, index, depth);
 
             if (nextExpanded)
@@ -428,11 +430,10 @@ namespace DCFApixels.SpriteEditor
 
         private void DrawLeafRow(Layer layer, List<Layer> container, int index, int depth)
         {
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            using (new LayerRowScope(layer.Id == selectedLayerId))
             {
                 GUILayout.Space(depth * 14f);
                 DrawLayerDragHandle(layer);
-                DrawSelectionToggle(layer);
                 layer.enabled = EditorGUILayout.Toggle(layer.enabled, GUILayout.Width(18f));
                 DrawLayerThumbnail(layer);
                 layer.layerName = EditorGUILayout.TextField(layer.layerName, GUILayout.MinWidth(90f));
@@ -467,18 +468,23 @@ namespace DCFApixels.SpriteEditor
                     ShowLayerContextMenu(layer, container, index);
             }
             Rect rowRect = GUILayoutUtility.GetLastRect();
+            HandleLayerRowSelection(rowRect, layer);
             HandleLayerRowDrop(rowRect, layer, container, index, depth);
         }
 
-        private void DrawSelectionToggle(Layer layer)
+        private void HandleLayerRowSelection(Rect rowRect, Layer layer)
         {
-            bool selected = layer.Id == selectedLayerId;
-            bool next = GUILayout.Toggle(selected, GUIContent.none, EditorStyles.radioButton, GUILayout.Width(14f));
-            if (next && !selected)
+            Event current = Event.current;
+            if (current.type != EventType.MouseDown ||
+                current.button != 0 ||
+                !rowRect.Contains(current.mousePosition))
             {
-                selectedLayerId = layer.Id;
-                Repaint();
+                return;
             }
+
+            selectedLayerId = layer.Id;
+            Repaint();
+            current.Use();
         }
 
         private void DrawLayerDragHandle(Layer layer)
@@ -1915,6 +1921,32 @@ namespace DCFApixels.SpriteEditor
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
             RequestPreview(true);
             Repaint();
+        }
+
+        private sealed class LayerRowScope : IDisposable
+        {
+            private readonly EditorGUILayout.HorizontalScope horizontalScope;
+            private readonly Color previousBackgroundColor;
+
+            public LayerRowScope(bool selected)
+            {
+                previousBackgroundColor = GUI.backgroundColor;
+                if (selected)
+                {
+                    GUI.backgroundColor = EditorGUIUtility.isProSkin
+                        ? SelectedLayerRowDarkTint
+                        : SelectedLayerRowLightTint;
+                }
+
+                horizontalScope = new EditorGUILayout.HorizontalScope(EditorStyles.helpBox);
+                GUI.backgroundColor = previousBackgroundColor;
+            }
+
+            public void Dispose()
+            {
+                GUI.backgroundColor = previousBackgroundColor;
+                horizontalScope.Dispose();
+            }
         }
     }
 }

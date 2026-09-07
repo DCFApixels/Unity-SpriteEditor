@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.3.1`.
+To track a specific release, append its tag to the URL, for example `#v0.3.2`.
 
 ## Layer stack
 
