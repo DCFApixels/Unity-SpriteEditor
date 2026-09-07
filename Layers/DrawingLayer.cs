@@ -38,6 +38,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private List<PaintStamp> patternStamps;
         [NonSerialized] private HashSet<PaintStamp> patternStampSet;
         [NonSerialized] private List<PaintStamp> segmentStamps;
+        [NonSerialized] private bool clipStrokeToInitialShape;
+        [NonSerialized] private Vector2 strokeRepeatShapeAnchor;
 
         internal Texture2D StoredTexture => pixels;
 
@@ -110,6 +112,83 @@ namespace DCFApixels.SpriteEditor
                 SyncSurfaceToTexture();
             if (pixels != null)
                 Undo.RegisterCompleteObjectUndo(pixels, undoName);
+        }
+
+        internal void BeginStroke(Vector2 sourceUv)
+        {
+            strokeRepeatShapeAnchor = sourceUv;
+            clipStrokeToInitialShape =
+                repeatBoundaryMode == PaintRepeatBoundaryMode.Clip &&
+                repeatMode != PaintRepeatMode.None;
+        }
+
+        internal void EndStroke()
+        {
+            clipStrokeToInitialShape = false;
+        }
+
+        internal bool IsStrokePointInsideRepeatShape(
+            Vector2 sourceUv,
+            int outputWidth,
+            int outputHeight)
+        {
+            return !clipStrokeToInitialShape ||
+                   IsInSameRepeatShape(
+                       strokeRepeatShapeAnchor,
+                       sourceUv,
+                       outputWidth,
+                       outputHeight);
+        }
+
+        internal bool TryClipStrokeSegmentToRepeatShape(
+            Vector2 fromSourceUv,
+            Vector2 toSourceUv,
+            int outputWidth,
+            int outputHeight,
+            out Vector2 clippedSourceUv)
+        {
+            clippedSourceUv = toSourceUv;
+            if (!clipStrokeToInitialShape ||
+                !IsInSameRepeatShape(
+                    strokeRepeatShapeAnchor,
+                    fromSourceUv,
+                    outputWidth,
+                    outputHeight))
+            {
+                return false;
+            }
+
+            if (IsInSameRepeatShape(
+                    strokeRepeatShapeAnchor,
+                    toSourceUv,
+                    outputWidth,
+                    outputHeight))
+            {
+                return true;
+            }
+
+            float inside = 0f;
+            float outside = 1f;
+            for (int iteration = 0; iteration < 16; iteration++)
+            {
+                float midpoint = (inside + outside) * 0.5f;
+                Vector2 candidate = Vector2.Lerp(fromSourceUv, toSourceUv, midpoint);
+                if (IsInSameRepeatShape(
+                        strokeRepeatShapeAnchor,
+                        candidate,
+                        outputWidth,
+                        outputHeight))
+                {
+                    inside = midpoint;
+                }
+                else
+                {
+                    outside = midpoint;
+                }
+            }
+
+            clippedSourceUv = Vector2.Lerp(fromSourceUv, toSourceUv, inside);
+            return true;
         }
 
         internal void SwapBrushColors()
@@ -513,6 +592,60 @@ namespace DCFApixels.SpriteEditor
             int unwrappedCell = Mathf.FloorToInt(repeatedCoordinate);
             cell = PositiveModulo(unwrappedCell, count);
             local = Mathf.Repeat(repeatedCoordinate, 1f);
+        }
+
+        private bool IsInSameRepeatShape(
+            Vector2 anchorUv,
+            Vector2 pointUv,
+            int outputWidth,
+            int outputHeight)
+        {
+            int primaryCount = Mathf.Clamp(repeatCount, MinimumRepeatCount, MaximumRepeatCount);
+            int secondaryCount = Mathf.Clamp(repeatSecondaryCount, MinimumRepeatCount, MaximumRepeatCount);
+
+            switch (repeatMode)
+            {
+                case PaintRepeatMode.Horizontal:
+                    return GetCanvasRepeatCell(anchorUv.x, primaryCount) ==
+                           GetCanvasRepeatCell(pointUv.x, primaryCount);
+
+                case PaintRepeatMode.Vertical:
+                    return GetCanvasRepeatCell(anchorUv.y, primaryCount) ==
+                           GetCanvasRepeatCell(pointUv.y, primaryCount);
+
+                case PaintRepeatMode.Grid:
+                    return GetCanvasRepeatCell(anchorUv.x, primaryCount) ==
+                           GetCanvasRepeatCell(pointUv.x, primaryCount) &&
+                           GetCanvasRepeatCell(anchorUv.y, secondaryCount) ==
+                           GetCanvasRepeatCell(pointUv.y, secondaryCount);
+
+                case PaintRepeatMode.Radial:
+                    return GetRadialRepeatSector(anchorUv, primaryCount, outputWidth, outputHeight) ==
+                           GetRadialRepeatSector(pointUv, primaryCount, outputWidth, outputHeight);
+
+                default:
+                    return true;
+            }
+        }
+
+        private static int GetCanvasRepeatCell(float coordinate, int count)
+        {
+            float clamped = Mathf.Clamp(coordinate, 0f, 1f - Mathf.Epsilon);
+            return Mathf.Clamp(Mathf.FloorToInt(clamped * count), 0, count - 1);
+        }
+
+        private int GetRadialRepeatSector(
+            Vector2 pointUv,
+            int count,
+            int outputWidth,
+            int outputHeight)
+        {
+            Vector2 canvasSize = new Vector2(Mathf.Max(1, outputWidth), Mathf.Max(1, outputHeight));
+            Vector2 deltaPixels = Vector2.Scale(pointUv - patternCenter, canvasSize);
+            float angle = Mathf.Atan2(deltaPixels.y, deltaPixels.x);
+            float sectorWidth = Mathf.PI * 2f / count;
+            const float startAngle = -Mathf.PI;
+            return PositiveModulo(Mathf.FloorToInt((angle - startAngle) / sectorWidth), count);
         }
 
         private static int PositiveModulo(int value, int modulus)

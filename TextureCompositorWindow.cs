@@ -43,7 +43,7 @@ namespace DCFApixels.SpriteEditor
             "Reflect each brush stroke across the horizontal axis through Center.");
         private static readonly GUIContent RepeatBoundaryContent = new GUIContent(
             "Edges",
-            "Continue lets the brush cross each repeated shape boundary. Clip cuts every copy to its own cell or sector.");
+            "Continue lets a stroke cross repeated shape boundaries. Clip keeps the whole stroke inside the cell or sector where it started.");
         private static readonly GUIContent BrushSpacingContent = new GUIContent(
             "Step",
             "Distance between brush stamps as a percentage of brush size. Larger values are faster and produce a dotted stroke.");
@@ -1077,6 +1077,7 @@ namespace DCFApixels.SpriteEditor
                     hasLastPaintingUv = true;
                     Undo.RecordObject(compositor, "Paint Stroke");
                     layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
+                    layer.BeginStroke(startUv);
                     layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase);
                     RefreshPreviewDuringPainting();
                     current.Use();
@@ -1087,7 +1088,32 @@ namespace DCFApixels.SpriteEditor
                         break;
                     if (TryMapPreviewToLayerUv(current.mousePosition, imageRect, paintingLayer, out Vector2 dragUv))
                     {
-                        if (hasLastPaintingUv)
+                        bool insideRepeatShape = paintingLayer.IsStrokePointInsideRepeatShape(
+                            dragUv,
+                            compositor.width,
+                            compositor.height);
+                        if (!insideRepeatShape)
+                        {
+                            if (hasLastPaintingUv &&
+                                paintingLayer.TryClipStrokeSegmentToRepeatShape(
+                                    lastPaintingUv,
+                                    dragUv,
+                                    compositor.width,
+                                    compositor.height,
+                                    out Vector2 clippedUv))
+                            {
+                                paintingLayer.PaintSegment(
+                                    lastPaintingUv,
+                                    clippedUv,
+                                    compositor.width,
+                                    compositor.height,
+                                    false,
+                                    paintingErase);
+                                RefreshPreviewDuringPainting();
+                            }
+                            hasLastPaintingUv = false;
+                        }
+                        else if (hasLastPaintingUv)
                         {
                             paintingLayer.PaintSegment(
                                 lastPaintingUv,
@@ -1096,6 +1122,8 @@ namespace DCFApixels.SpriteEditor
                                 compositor.height,
                                 false,
                                 paintingErase);
+                            lastPaintingUv = dragUv;
+                            RefreshPreviewDuringPainting();
                         }
                         else
                         {
@@ -1104,10 +1132,10 @@ namespace DCFApixels.SpriteEditor
                                 compositor.width,
                                 compositor.height,
                                 paintingErase);
+                            lastPaintingUv = dragUv;
+                            hasLastPaintingUv = true;
+                            RefreshPreviewDuringPainting();
                         }
-                        lastPaintingUv = dragUv;
-                        hasLastPaintingUv = true;
-                        RefreshPreviewDuringPainting();
                     }
                     else
                     {
@@ -1173,6 +1201,7 @@ namespace DCFApixels.SpriteEditor
             if (finishedLayer == null)
                 return;
 
+            finishedLayer.EndStroke();
             finishedLayer.SyncSurfaceToTexture();
             nextPaintingPreviewAt = 0d;
             temporaryDocumentDirty |= compositor != null && !AssetDatabase.Contains(compositor);
@@ -1876,6 +1905,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (compositor == null)
                 return;
+            paintingLayer?.EndStroke();
             paintingLayer = null;
             hasLastPaintingUv = false;
             GUIUtility.hotControl = 0;

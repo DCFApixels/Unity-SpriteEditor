@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.9] - 2026-09-07
+
+### Fixed
+
+- Clip repetition mode now confines an entire continuous stroke to the cell or radial sector where
+  it started instead of continuing after the cursor crosses into another repeated shape.
+
 ## [0.2.8] - 2026-09-07
 
 ### Fixed
