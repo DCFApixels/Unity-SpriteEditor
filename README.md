@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.4`.
+To track a specific release, append its tag to the URL, for example `#v0.2.5`.
 
 ## Layer stack
 
@@ -64,6 +64,10 @@ erases without changing that selection. The foreground and background color swat
 edited, and `X` swaps them. Use `[` and `]` to decrease or increase brush size.
 `Step` controls the distance between consecutive brush stamps as a percentage of brush diameter:
 lower values produce a smoother stroke, while higher values are faster and can produce dotted lines.
+
+While the Sprite Editor window has focus, Unity's global and contextual Shortcut Manager commands
+are suspended so they cannot consume drawing hotkeys. Text and numeric fields continue to receive
+normal keyboard input. Unity shortcuts are restored as soon as the window loses focus or closes.
 
 `Live Quality` controls the temporary Preview resolution used while a stroke is active, from 12.5%
 to 100%. The default is 37.5%; selecting 100% disables downscaling. This is an editor preference and

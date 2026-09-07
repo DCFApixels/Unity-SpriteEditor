@@ -56,6 +56,17 @@ namespace DCFApixels.SpriteEditor
         private static readonly GUIContent SecondaryBrushColorContent = new GUIContent(
             string.Empty,
             "Background brush color. Press X to swap it with the foreground color.");
+        private static readonly System.Reflection.PropertyInfo UnityShortcutsEnabledProperty =
+            typeof(EditorWindow).Assembly
+                .GetType("UnityEditor.ShortcutManagement.ShortcutIntegration")
+                ?.GetProperty(
+                    "enabled",
+                    System.Reflection.BindingFlags.Static |
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.NonPublic);
+        private static int unityShortcutSuppressionOwners;
+        private static bool restoreUnityShortcutsEnabled;
+        private static bool shortcutSuppressionWarningLogged;
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
@@ -76,6 +87,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private int paintingMouseButton = -1;
         [NonSerialized] private double nextPaintingPreviewAt;
         [NonSerialized] private float paintingPreviewScale;
+        [NonSerialized] private bool ownsUnityShortcutSuppression;
 
         [MenuItem("Window/Sprite Editor")]
         public static void ShowWindow()
@@ -120,15 +132,107 @@ namespace DCFApixels.SpriteEditor
             else
                 compositor.NormalizeModel();
             RequestPreview(true);
+
+            if (focusedWindow == this)
+                SuppressUnityShortcuts();
         }
 
         private void OnDisable()
         {
+            RestoreUnityShortcuts();
             FinishPaintingStroke();
             TextureCompositor.Changed -= OnCompositorChanged;
             Undo.undoRedoPerformed -= OnUndoRedo;
             ClearLayerDragData();
             ReleasePreview();
+        }
+
+        private void OnFocus()
+        {
+            SuppressUnityShortcuts();
+        }
+
+        private void OnLostFocus()
+        {
+            RestoreUnityShortcuts();
+        }
+
+        private void SuppressUnityShortcuts()
+        {
+            if (ownsUnityShortcutSuppression)
+                return;
+
+            ownsUnityShortcutSuppression = AcquireUnityShortcutSuppression();
+        }
+
+        private void RestoreUnityShortcuts()
+        {
+            if (!ownsUnityShortcutSuppression)
+                return;
+
+            ownsUnityShortcutSuppression = false;
+            ReleaseUnityShortcutSuppression();
+        }
+
+        private static bool AcquireUnityShortcutSuppression()
+        {
+            if (UnityShortcutsEnabledProperty == null)
+            {
+                LogShortcutSuppressionWarning("Unity shortcut integration API is unavailable.");
+                return false;
+            }
+
+            try
+            {
+                if (unityShortcutSuppressionOwners == 0)
+                {
+                    restoreUnityShortcutsEnabled =
+                        (bool)UnityShortcutsEnabledProperty.GetValue(null);
+                    if (restoreUnityShortcutsEnabled)
+                        UnityShortcutsEnabledProperty.SetValue(null, false);
+                }
+
+                unityShortcutSuppressionOwners++;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                LogShortcutSuppressionWarning(exception.Message);
+                return false;
+            }
+        }
+
+        private static void ReleaseUnityShortcutSuppression()
+        {
+            if (unityShortcutSuppressionOwners <= 0)
+                return;
+
+            unityShortcutSuppressionOwners--;
+            if (unityShortcutSuppressionOwners > 0)
+                return;
+
+            try
+            {
+                if (restoreUnityShortcutsEnabled && UnityShortcutsEnabledProperty != null)
+                    UnityShortcutsEnabledProperty.SetValue(null, true);
+            }
+            catch (Exception exception)
+            {
+                LogShortcutSuppressionWarning(exception.Message);
+            }
+            finally
+            {
+                restoreUnityShortcutsEnabled = false;
+            }
+        }
+
+        private static void LogShortcutSuppressionWarning(string details)
+        {
+            if (shortcutSuppressionWarningLogged)
+                return;
+
+            shortcutSuppressionWarningLogged = true;
+            Debug.LogWarning($"Sprite Editor could not isolate Unity shortcuts: {details}");
         }
 
         private void Update()

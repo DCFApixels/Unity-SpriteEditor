@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.5] - 2026-09-07
+
+### Fixed
+
+- Unity global and contextual shortcuts are suspended while the Sprite Editor window has focus,
+  preventing Unity commands such as Local/Global toggle from consuming Drawing hotkeys.
+
 ## [0.2.4] - 2026-09-07
 
 ### Added
