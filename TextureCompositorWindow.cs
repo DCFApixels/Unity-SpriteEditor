@@ -1189,6 +1189,8 @@ namespace DCFApixels.SpriteEditor
                 return;
             if (EditorGUIUtility.editingTextField && GUIUtility.keyboardControl != 0)
                 return;
+            if (HandleUndoRedoHotkey(current))
+                return;
             if (!(GetSelectedLayer() is DrawingLayer layer))
                 return;
 
@@ -1218,6 +1220,27 @@ namespace DCFApixels.SpriteEditor
 
             ExecuteModelChange("Change Brush Size", () => layer.brushSize = nextSize);
             current.Use();
+        }
+
+        private bool HandleUndoRedoHotkey(Event current)
+        {
+            bool actionModifier = current.control || current.command;
+            if (!actionModifier || current.alt)
+                return false;
+
+            bool undo = current.keyCode == KeyCode.Z && !current.shift;
+            bool redo = (current.keyCode == KeyCode.Z && current.shift) ||
+                        (current.keyCode == KeyCode.Y && !current.shift);
+            if (!undo && !redo)
+                return false;
+
+            FinishPaintingStroke();
+            if (undo)
+                Undo.PerformUndo();
+            else
+                Undo.PerformRedo();
+            current.Use();
+            return true;
         }
 
         private bool TryMapPreviewToLayerUv(

@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.7`.
+To track a specific release, append its tag to the URL, for example `#v0.2.8`.
 
 ## Layer stack
 
@@ -67,7 +67,8 @@ lower values produce a smoother stroke, while higher values are faster and can p
 
 While the Sprite Editor window has focus, Unity's global and contextual Shortcut Manager commands
 are suspended so they cannot consume drawing hotkeys. Text and numeric fields continue to receive
-normal keyboard input. Unity shortcuts are restored as soon as the window loses focus or closes.
+normal keyboard input. `Ctrl/Cmd+Z` remains available for Undo; use `Ctrl+Y` or
+`Ctrl/Cmd+Shift+Z` for Redo. Unity shortcuts are restored as soon as the window loses focus or closes.
 
 `Live Quality` controls the temporary Preview resolution used while a stroke is active, from 12.5%
 to 100%. The default is 37.5%; selecting 100% disables downscaling. This is an editor preference and

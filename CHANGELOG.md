@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.8] - 2026-09-07
+
+### Fixed
+
+- Undo and Redo keyboard shortcuts remain available while Sprite Editor suppresses other Unity
+  shortcuts.
+
 ## [0.2.7] - 2026-09-07
 
 ### Fixed
