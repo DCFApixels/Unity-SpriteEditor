@@ -2,6 +2,18 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.3.1] - 2026-09-07
+
+### Changed
+
+- Parallelized exact Euclidean distance-transform rows and columns with Burst jobs.
+- Run the two approximate distance fields concurrently and parallelized their initialization and
+  signed-output passes.
+- SDF two-color gradients and Outline output now write directly into the destination Texture2D
+  native buffer, removing intermediate pixel arrays and redundant `SetPixelData` copies.
+- Reuse the signed-distance output buffer as the distance-to-object workspace and skip clearing
+  temporary arrays that are fully overwritten.
+
 ## [0.3.0] - 2026-09-07
 
 ### Added

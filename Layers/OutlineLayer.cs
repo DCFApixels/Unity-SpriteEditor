@@ -23,12 +23,14 @@ namespace DCFApixels.SpriteEditor
 
             Texture2D inputTexture = TextureCompositor.CopyToTexture2D(context.input);
             NativeArray<float> signedDistances = default;
-            NativeArray<Color32> outputPixels = default;
             Texture2D resultTexture = null;
             try
             {
                 NativeArray<Color32> inputPixels = inputTexture.GetRawTextureData<Color32>();
-                signedDistances = new NativeArray<float>(inputPixels.Length, Allocator.TempJob);
+                signedDistances = new NativeArray<float>(
+                    inputPixels.Length,
+                    Allocator.TempJob,
+                    NativeArrayOptions.UninitializedMemory);
                 DistanceFieldUtility.ComputeSignedDistance(
                     inputPixels,
                     signedDistances,
@@ -38,7 +40,13 @@ namespace DCFApixels.SpriteEditor
                     (int)SDFLayer.SourceChannel.Alpha,
                     metric);
 
-                outputPixels = new NativeArray<Color32>(inputPixels.Length, Allocator.TempJob);
+                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBA32, false)
+                {
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+                NativeArray<Color32> outputPixels = resultTexture.GetRawTextureData<Color32>();
                 OutlineJob job = new OutlineJob
                 {
                     signedDistances = signedDistances,
@@ -48,15 +56,8 @@ namespace DCFApixels.SpriteEditor
                     outlineColor = (Color32)outlineColor,
                     outlinePosition = (int)outlinePosition
                 };
-                job.Schedule(outputPixels.Length, 64).Complete();
+                job.Schedule(outputPixels.Length, 128).Complete();
 
-                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBA32, false)
-                {
-                    hideFlags = HideFlags.HideAndDontSave,
-                    filterMode = FilterMode.Bilinear,
-                    wrapMode = TextureWrapMode.Clamp
-                };
-                resultTexture.SetPixelData(outputPixels, 0);
                 resultTexture.Apply(false, false);
                 return ApplyTransformAndModifiers(resultTexture, context);
             }
@@ -64,8 +65,6 @@ namespace DCFApixels.SpriteEditor
             {
                 if (signedDistances.IsCreated)
                     signedDistances.Dispose();
-                if (outputPixels.IsCreated)
-                    outputPixels.Dispose();
                 if (inputTexture != null)
                     UnityEngine.Object.DestroyImmediate(inputTexture);
                 if (resultTexture != null)

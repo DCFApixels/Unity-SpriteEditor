@@ -1,7 +1,9 @@
 using System;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -25,12 +27,14 @@ namespace DCFApixels.SpriteEditor
 
             Texture2D inputTexture = TextureCompositor.CopyToTexture2D(context.input);
             NativeArray<float> signedDistances = default;
-            NativeArray<Color32> outputPixels = default;
             Texture2D resultTexture = null;
             try
             {
                 NativeArray<Color32> inputPixels = inputTexture.GetRawTextureData<Color32>();
-                signedDistances = new NativeArray<float>(inputPixels.Length, Allocator.TempJob);
+                signedDistances = new NativeArray<float>(
+                    inputPixels.Length,
+                    Allocator.TempJob,
+                    NativeArrayOptions.UninitializedMemory);
                 DistanceFieldUtility.ComputeSignedDistance(
                     inputPixels,
                     signedDistances,
@@ -40,33 +44,47 @@ namespace DCFApixels.SpriteEditor
                     (int)sourceChannel,
                     metric);
 
-                outputPixels = new NativeArray<Color32>(inputPixels.Length, Allocator.TempJob);
-                float maxDistance = GetNormalizationDistance(context);
-                bool isTwoColorGradient = GradientUtility.IsTwoColorGradient(gradient, out Color left, out Color right);
-                Gradient evaluatedGradient = gradient ?? GradientUtility.WhiteToBlack;
-
-                for (int i = 0; i < signedDistances.Length; i++)
-                {
-                    float distance = ConvertDistance(signedDistances[i]);
-                    float normalized = distancePosition == DistancePosition.Signed
-                        ? (distance + maxDistance) / (2f * maxDistance)
-                        : distance / maxDistance;
-                    normalized = math.clamp(normalized, 0f, 1f);
-                    if (inverted)
-                        normalized = 1f - normalized;
-
-                    outputPixels[i] = isTwoColorGradient
-                        ? (Color32)Color.Lerp(left, right, normalized)
-                        : (Color32)evaluatedGradient.Evaluate(normalized);
-                }
-
                 resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBA32, false)
                 {
                     hideFlags = HideFlags.HideAndDontSave,
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp
                 };
-                resultTexture.SetPixelData(outputPixels, 0);
+                NativeArray<Color32> outputPixels = resultTexture.GetRawTextureData<Color32>();
+                float maxDistance = GetNormalizationDistance(context);
+                bool isTwoColorGradient = GradientUtility.IsTwoColorGradient(gradient, out Color left, out Color right);
+                Gradient evaluatedGradient = gradient ?? GradientUtility.WhiteToBlack;
+
+                if (isTwoColorGradient)
+                {
+                    SdfTwoColorOutputJob job = new SdfTwoColorOutputJob
+                    {
+                        signedDistances = signedDistances,
+                        output = outputPixels,
+                        left = new float4(left.r, left.g, left.b, left.a),
+                        right = new float4(right.r, right.g, right.b, right.a),
+                        maxDistance = maxDistance,
+                        distancePosition = (int)distancePosition,
+                        inverted = inverted
+                    };
+                    job.Schedule(outputPixels.Length, 128).Complete();
+                }
+                else
+                {
+                    for (int i = 0; i < signedDistances.Length; i++)
+                    {
+                        float distance = ConvertDistance(signedDistances[i]);
+                        float normalized = distancePosition == DistancePosition.Signed
+                            ? (distance + maxDistance) / (2f * maxDistance)
+                            : distance / maxDistance;
+                        normalized = math.clamp(normalized, 0f, 1f);
+                        if (inverted)
+                            normalized = 1f - normalized;
+
+                        outputPixels[i] = (Color32)evaluatedGradient.Evaluate(normalized);
+                    }
+                }
+
                 resultTexture.Apply(false, false);
                 return ApplyTransformAndModifiers(resultTexture, context);
             }
@@ -74,8 +92,6 @@ namespace DCFApixels.SpriteEditor
             {
                 if (signedDistances.IsCreated)
                     signedDistances.Dispose();
-                if (outputPixels.IsCreated)
-                    outputPixels.Dispose();
                 if (inputTexture != null)
                     UnityEngine.Object.DestroyImmediate(inputTexture);
                 if (resultTexture != null)
@@ -137,6 +153,54 @@ namespace DCFApixels.SpriteEditor
         }
     }
 
+    [BurstCompile]
+    internal struct SdfTwoColorOutputJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<float> signedDistances;
+        [WriteOnly] public NativeArray<Color32> output;
+        public float4 left;
+        public float4 right;
+        public float maxDistance;
+        public int distancePosition;
+        public bool inverted;
+
+        public void Execute(int index)
+        {
+            float distance = signedDistances[index];
+            switch (distancePosition)
+            {
+                case (int)SDFLayer.DistancePosition.Outside:
+                    distance = math.max(distance, 0f);
+                    break;
+                case (int)SDFLayer.DistancePosition.Inside:
+                    distance = math.max(-distance, 0f);
+                    break;
+                case (int)SDFLayer.DistancePosition.Center:
+                    distance = math.abs(distance);
+                    break;
+            }
+
+            float normalized = distancePosition == (int)SDFLayer.DistancePosition.Signed
+                ? (distance + maxDistance) / (2f * maxDistance)
+                : distance / maxDistance;
+            normalized = math.saturate(normalized);
+            if (inverted)
+                normalized = 1f - normalized;
+
+            float4 color = math.saturate(math.lerp(left, right, normalized));
+            output[index] = new Color32(
+                ToByte(color.x),
+                ToByte(color.y),
+                ToByte(color.z),
+                ToByte(color.w));
+        }
+
+        private static byte ToByte(float value)
+        {
+            return (byte)math.round(value * 255f);
+        }
+    }
+
     internal static class DistanceFieldUtility
     {
         public static void ComputeSignedDistance(
@@ -148,46 +212,26 @@ namespace DCFApixels.SpriteEditor
             int sourceChannel,
             DistanceMetric metric)
         {
-            NativeArray<float> distanceToObject = new NativeArray<float>(input.Length, Allocator.TempJob);
-            NativeArray<float> distanceToBackground = new NativeArray<float>(input.Length, Allocator.TempJob);
+            // The caller's output buffer doubles as the distance-to-object field and is
+            // converted to signed distances in place after both transforms complete.
+            NativeArray<float> distanceToObject = output;
+            NativeArray<float> distanceToBackground = new NativeArray<float>(
+                input.Length,
+                Allocator.TempJob,
+                NativeArrayOptions.UninitializedMemory);
             try
             {
                 if (metric == DistanceMetric.EuclideanExact)
                 {
-                    int maximumLineLength = math.max(width, height);
-                    NativeArray<float> temporary = new NativeArray<float>(input.Length, Allocator.TempJob);
-                    NativeArray<float> lineInput = new NativeArray<float>(maximumLineLength, Allocator.TempJob);
-                    NativeArray<float> lineOutput = new NativeArray<float>(maximumLineLength, Allocator.TempJob);
-                    NativeArray<int> vertices = new NativeArray<int>(maximumLineLength, Allocator.TempJob);
-                    NativeArray<float> boundaries = new NativeArray<float>(maximumLineLength + 1, Allocator.TempJob);
-                    try
-                    {
-                        ExactSignedDistanceJob job = new ExactSignedDistanceJob
-                        {
-                            input = input,
-                            output = output,
-                            distanceToObject = distanceToObject,
-                            distanceToBackground = distanceToBackground,
-                            temporary = temporary,
-                            lineInput = lineInput,
-                            lineOutput = lineOutput,
-                            vertices = vertices,
-                            boundaries = boundaries,
-                            width = width,
-                            height = height,
-                            threshold = threshold,
-                            sourceChannel = sourceChannel
-                        };
-                        job.Run();
-                    }
-                    finally
-                    {
-                        temporary.Dispose();
-                        lineInput.Dispose();
-                        lineOutput.Dispose();
-                        vertices.Dispose();
-                        boundaries.Dispose();
-                    }
+                    ComputeExactSignedDistance(
+                        input,
+                        output,
+                        distanceToObject,
+                        distanceToBackground,
+                        width,
+                        height,
+                        threshold,
+                        sourceChannel);
                 }
                 else
                 {
@@ -205,62 +249,220 @@ namespace DCFApixels.SpriteEditor
                             break;
                     }
 
-                    ApproximateSignedDistanceJob job = new ApproximateSignedDistanceJob
+                    InitializeApproximateDistancesJob initializeJob = new InitializeApproximateDistancesJob
+                    {
+                        input = input,
+                        distanceToObject = distanceToObject,
+                        distanceToBackground = distanceToBackground,
+                        threshold = threshold,
+                        sourceChannel = sourceChannel
+                    };
+                    JobHandle initialize = initializeJob.Schedule(input.Length, 128);
+
+                    // Object and background fields are independent and can occupy two workers.
+                    ApproximateDistanceTransformJob objectJob = new ApproximateDistanceTransformJob
+                    {
+                        distances = distanceToObject,
+                        width = width,
+                        height = height,
+                        diagonalCost = diagonalCost
+                    };
+                    ApproximateDistanceTransformJob backgroundJob = new ApproximateDistanceTransformJob
+                    {
+                        distances = distanceToBackground,
+                        width = width,
+                        height = height,
+                        diagonalCost = diagonalCost
+                    };
+                    JobHandle objectTransform = objectJob.Schedule(initialize);
+                    JobHandle backgroundTransform = backgroundJob.Schedule(initialize);
+                    JobHandle transforms = JobHandle.CombineDependencies(objectTransform, backgroundTransform);
+
+                    FinalizeApproximateSignedDistanceJob finalizeJob = new FinalizeApproximateSignedDistanceJob
                     {
                         input = input,
                         output = output,
-                        distanceToObject = distanceToObject,
                         distanceToBackground = distanceToBackground,
-                        width = width,
-                        height = height,
                         threshold = threshold,
-                        sourceChannel = sourceChannel,
-                        diagonalCost = diagonalCost
+                        sourceChannel = sourceChannel
                     };
-                    job.Run();
+                    finalizeJob.Schedule(output.Length, 128, transforms).Complete();
                 }
             }
             finally
             {
-                distanceToObject.Dispose();
                 distanceToBackground.Dispose();
             }
+        }
+
+        private static void ComputeExactSignedDistance(
+            NativeArray<Color32> input,
+            NativeArray<float> output,
+            NativeArray<float> distanceToObject,
+            NativeArray<float> distanceToBackground,
+            int width,
+            int height,
+            byte threshold,
+            int sourceChannel)
+        {
+            int threadCount = JobsUtility.ThreadIndexCount;
+            int maximumLineLength = math.max(width, height);
+            NativeArray<float> temporary = new NativeArray<float>(
+                input.Length,
+                Allocator.TempJob,
+                NativeArrayOptions.UninitializedMemory);
+            NativeArray<int> vertices = new NativeArray<int>(
+                maximumLineLength * threadCount,
+                Allocator.TempJob,
+                NativeArrayOptions.UninitializedMemory);
+            NativeArray<float> boundaries = new NativeArray<float>(
+                (maximumLineLength + 1) * threadCount,
+                Allocator.TempJob,
+                NativeArrayOptions.UninitializedMemory);
+            NativeArray<byte> coverageFlags = new NativeArray<byte>(
+                threadCount * 2,
+                Allocator.TempJob,
+                NativeArrayOptions.ClearMemory);
+
+            try
+            {
+                float maximumSquaredDistance = (float)width * width + (float)height * height;
+                InitializeExactDistancesJob initializeJob = new InitializeExactDistancesJob
+                {
+                    input = input,
+                    distanceToObject = distanceToObject,
+                    distanceToBackground = distanceToBackground,
+                    coverageFlags = coverageFlags,
+                    largeValue = maximumSquaredDistance * 4f + 1f,
+                    threshold = threshold,
+                    sourceChannel = sourceChannel
+                };
+                initializeJob.Schedule(input.Length, 128).Complete();
+
+                bool hasObject = false;
+                bool hasBackground = false;
+                for (int i = 0; i < threadCount; i++)
+                {
+                    hasObject |= coverageFlags[i * 2] != 0;
+                    hasBackground |= coverageFlags[i * 2 + 1] != 0;
+                }
+
+                if (!hasObject || !hasBackground)
+                {
+                    FillDistanceJob fillJob = new FillDistanceJob
+                    {
+                        output = output,
+                        value = hasObject ? -math.sqrt(maximumSquaredDistance) : math.sqrt(maximumSquaredDistance)
+                    };
+                    fillJob.Schedule(output.Length, 128).Complete();
+                    return;
+                }
+
+                // The exact 2D EDT is separable. Lines within each vertical or horizontal pass
+                // are independent; each worker receives its own small envelope scratch slice.
+                JobHandle objectTransform = ScheduleExactTransform(
+                    distanceToObject,
+                    temporary,
+                    vertices,
+                    boundaries,
+                    width,
+                    height,
+                    maximumLineLength,
+                    default);
+                JobHandle backgroundTransform = ScheduleExactTransform(
+                    distanceToBackground,
+                    temporary,
+                    vertices,
+                    boundaries,
+                    width,
+                    height,
+                    maximumLineLength,
+                    objectTransform);
+
+                FinalizeExactSignedDistanceJob finalizeJob = new FinalizeExactSignedDistanceJob
+                {
+                    input = input,
+                    output = output,
+                    distanceToBackground = distanceToBackground,
+                    threshold = threshold,
+                    sourceChannel = sourceChannel
+                };
+                finalizeJob.Schedule(output.Length, 128, backgroundTransform).Complete();
+            }
+            finally
+            {
+                temporary.Dispose();
+                vertices.Dispose();
+                boundaries.Dispose();
+                coverageFlags.Dispose();
+            }
+        }
+
+        private static JobHandle ScheduleExactTransform(
+            NativeArray<float> distances,
+            NativeArray<float> temporary,
+            NativeArray<int> vertices,
+            NativeArray<float> boundaries,
+            int width,
+            int height,
+            int scratchLineLength,
+            JobHandle dependency)
+        {
+            ExactDistanceTransformPassJob verticalJob = new ExactDistanceTransformPassJob
+            {
+                input = distances,
+                output = temporary,
+                vertices = vertices,
+                boundaries = boundaries,
+                lineLength = height,
+                lineStride = width,
+                lineStartStride = 1,
+                scratchLineLength = scratchLineLength
+            };
+            JobHandle vertical = verticalJob.Schedule(width, 1, dependency);
+
+            ExactDistanceTransformPassJob horizontalJob = new ExactDistanceTransformPassJob
+            {
+                input = temporary,
+                output = distances,
+                vertices = vertices,
+                boundaries = boundaries,
+                lineLength = width,
+                lineStride = 1,
+                lineStartStride = width,
+                scratchLineLength = scratchLineLength
+            };
+            return horizontalJob.Schedule(height, 1, vertical);
         }
     }
 
     [BurstCompile]
-    internal struct ApproximateSignedDistanceJob : IJob
+    internal struct InitializeApproximateDistancesJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<Color32> input;
-        public NativeArray<float> output;
-        public NativeArray<float> distanceToObject;
-        public NativeArray<float> distanceToBackground;
-        public int width;
-        public int height;
+        [WriteOnly] public NativeArray<float> distanceToObject;
+        [WriteOnly] public NativeArray<float> distanceToBackground;
         public byte threshold;
         public int sourceChannel;
+
+        public void Execute(int index)
+        {
+            const float infinity = 1e10f;
+            bool isObject = DistanceFieldSource.IsObject(input[index], sourceChannel, threshold);
+            distanceToObject[index] = isObject ? 0f : infinity;
+            distanceToBackground[index] = isObject ? infinity : 0f;
+        }
+    }
+
+    [BurstCompile]
+    internal struct ApproximateDistanceTransformJob : IJob
+    {
+        public NativeArray<float> distances;
+        public int width;
+        public int height;
         public float diagonalCost;
 
         public void Execute()
-        {
-            const float infinity = 1e10f;
-            for (int i = 0; i < input.Length; i++)
-            {
-                bool isObject = DistanceFieldSource.IsObject(input[i], sourceChannel, threshold);
-                distanceToObject[i] = isObject ? 0f : infinity;
-                distanceToBackground[i] = isObject ? infinity : 0f;
-            }
-
-            Transform(distanceToObject);
-            Transform(distanceToBackground);
-            for (int i = 0; i < input.Length; i++)
-            {
-                bool isObject = DistanceFieldSource.IsObject(input[i], sourceChannel, threshold);
-                output[i] = isObject ? -distanceToBackground[i] : distanceToObject[i];
-            }
-        }
-
-        private void Transform(NativeArray<float> distances)
         {
             for (int y = 0; y < height; y++)
             {
@@ -305,114 +507,126 @@ namespace DCFApixels.SpriteEditor
     }
 
     [BurstCompile]
-    internal struct ExactSignedDistanceJob : IJob
+    internal struct FinalizeApproximateSignedDistanceJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<Color32> input;
+        [ReadOnly] public NativeArray<float> distanceToBackground;
         public NativeArray<float> output;
-        public NativeArray<float> distanceToObject;
-        public NativeArray<float> distanceToBackground;
-        public NativeArray<float> temporary;
-        public NativeArray<float> lineInput;
-        public NativeArray<float> lineOutput;
-        public NativeArray<int> vertices;
-        public NativeArray<float> boundaries;
-        public int width;
-        public int height;
         public byte threshold;
         public int sourceChannel;
 
-        public void Execute()
+        public void Execute(int index)
         {
-            bool hasObject = false;
-            bool hasBackground = false;
-            float maximumSquaredDistance = (float)width * width + (float)height * height;
-            float largeValue = maximumSquaredDistance * 4f + 1f;
-
-            for (int i = 0; i < input.Length; i++)
-            {
-                bool isObject = DistanceFieldSource.IsObject(input[i], sourceChannel, threshold);
-                hasObject |= isObject;
-                hasBackground |= !isObject;
-                distanceToObject[i] = isObject ? 0f : largeValue;
-                distanceToBackground[i] = isObject ? largeValue : 0f;
-            }
-
-            float maximumDistance = math.sqrt(maximumSquaredDistance);
-            if (!hasObject || !hasBackground)
-            {
-                float value = hasObject ? -maximumDistance : maximumDistance;
-                for (int i = 0; i < output.Length; i++)
-                    output[i] = value;
-                return;
-            }
-
-            Transform2D(distanceToObject);
-            Transform2D(distanceToBackground);
-            for (int i = 0; i < input.Length; i++)
-            {
-                bool isObject = DistanceFieldSource.IsObject(input[i], sourceChannel, threshold);
-                output[i] = isObject
-                    ? -math.sqrt(distanceToBackground[i])
-                    : math.sqrt(distanceToObject[i]);
-            }
+            bool isObject = DistanceFieldSource.IsObject(input[index], sourceChannel, threshold);
+            if (isObject)
+                output[index] = -distanceToBackground[index];
         }
+    }
 
-        private void Transform2D(NativeArray<float> distances)
+    [BurstCompile]
+    internal struct InitializeExactDistancesJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Color32> input;
+        [WriteOnly] public NativeArray<float> distanceToObject;
+        [WriteOnly] public NativeArray<float> distanceToBackground;
+        [NativeDisableParallelForRestriction] public NativeArray<byte> coverageFlags;
+        public float largeValue;
+        public byte threshold;
+        public int sourceChannel;
+        [NativeSetThreadIndex] private int threadIndex;
+
+        public void Execute(int index)
         {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                    lineInput[y] = distances[y * width + x];
-                Transform1D(height);
-                for (int y = 0; y < height; y++)
-                    temporary[y * width + x] = lineOutput[y];
-            }
-
-            for (int y = 0; y < height; y++)
-            {
-                int row = y * width;
-                for (int x = 0; x < width; x++)
-                    lineInput[x] = temporary[row + x];
-                Transform1D(width);
-                for (int x = 0; x < width; x++)
-                    distances[row + x] = lineOutput[x];
-            }
+            bool isObject = DistanceFieldSource.IsObject(input[index], sourceChannel, threshold);
+            distanceToObject[index] = isObject ? 0f : largeValue;
+            distanceToBackground[index] = isObject ? largeValue : 0f;
+            coverageFlags[threadIndex * 2 + (isObject ? 0 : 1)] = 1;
         }
+    }
 
-        private void Transform1D(int length)
+    [BurstCompile]
+    internal struct FillDistanceJob : IJobParallelFor
+    {
+        [WriteOnly] public NativeArray<float> output;
+        public float value;
+
+        public void Execute(int index)
         {
+            output[index] = value;
+        }
+    }
+
+    [BurstCompile]
+    internal struct ExactDistanceTransformPassJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<float> input;
+        [NativeDisableParallelForRestriction] public NativeArray<float> output;
+        [NativeDisableParallelForRestriction] public NativeArray<int> vertices;
+        [NativeDisableParallelForRestriction] public NativeArray<float> boundaries;
+        public int lineLength;
+        public int lineStride;
+        public int lineStartStride;
+        public int scratchLineLength;
+        [NativeSetThreadIndex] private int threadIndex;
+
+        public void Execute(int lineIndex)
+        {
+            int lineStart = lineIndex * lineStartStride;
+            int vertexStart = threadIndex * scratchLineLength;
+            int boundaryStart = threadIndex * (scratchLineLength + 1);
             int envelopeSize = 0;
-            vertices[0] = 0;
-            boundaries[0] = -1e20f;
-            boundaries[1] = 1e20f;
+            vertices[vertexStart] = 0;
+            boundaries[boundaryStart] = -1e20f;
+            boundaries[boundaryStart + 1] = 1e20f;
 
-            for (int q = 1; q < length; q++)
+            for (int q = 1; q < lineLength; q++)
             {
                 float intersection;
                 while (true)
                 {
-                    int p = vertices[envelopeSize];
-                    intersection = ((lineInput[q] + q * q) - (lineInput[p] + p * p)) / (2f * (q - p));
-                    if (intersection > boundaries[envelopeSize])
+                    int p = vertices[vertexStart + envelopeSize];
+                    float qValue = input[lineStart + q * lineStride];
+                    float pValue = input[lineStart + p * lineStride];
+                    intersection = ((qValue + q * q) - (pValue + p * p)) / (2f * (q - p));
+                    if (intersection > boundaries[boundaryStart + envelopeSize])
                         break;
                     envelopeSize--;
                 }
 
                 envelopeSize++;
-                vertices[envelopeSize] = q;
-                boundaries[envelopeSize] = intersection;
-                boundaries[envelopeSize + 1] = 1e20f;
+                vertices[vertexStart + envelopeSize] = q;
+                boundaries[boundaryStart + envelopeSize] = intersection;
+                boundaries[boundaryStart + envelopeSize + 1] = 1e20f;
             }
 
             envelopeSize = 0;
-            for (int q = 0; q < length; q++)
+            for (int q = 0; q < lineLength; q++)
             {
-                while (boundaries[envelopeSize + 1] < q)
+                while (boundaries[boundaryStart + envelopeSize + 1] < q)
                     envelopeSize++;
-                int p = vertices[envelopeSize];
+                int p = vertices[vertexStart + envelopeSize];
                 float delta = q - p;
-                lineOutput[q] = delta * delta + lineInput[p];
+                output[lineStart + q * lineStride] =
+                    delta * delta + input[lineStart + p * lineStride];
             }
+        }
+    }
+
+    [BurstCompile]
+    internal struct FinalizeExactSignedDistanceJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Color32> input;
+        [ReadOnly] public NativeArray<float> distanceToBackground;
+        public NativeArray<float> output;
+        public byte threshold;
+        public int sourceChannel;
+
+        public void Execute(int index)
+        {
+            bool isObject = DistanceFieldSource.IsObject(input[index], sourceChannel, threshold);
+            output[index] = isObject
+                ? -math.sqrt(distanceToBackground[index])
+                : math.sqrt(output[index]);
         }
     }
 

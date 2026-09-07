@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.3.0`.
+To track a specific release, append its tag to the URL, for example `#v0.3.1`.
 
 ## Layer stack
 
@@ -99,6 +99,10 @@ Distance algorithms include exact Euclidean EDT, approximate Euclidean (8-neighb
 Manhattan, and Chebyshev. Outline width, outline softness, SDF maximum distance, and transform
 position are expressed in output pixels. Pivot is normalized, scale is a multiplier, and
 rotation is expressed in degrees.
+
+Distance transforms use Burst and Native Collections. Exact Euclidean rows and columns run in
+parallel, while SDF and Outline output is written directly into the destination texture buffer to
+avoid managed pixel arrays and redundant copies.
 
 ## Blend modes
 
