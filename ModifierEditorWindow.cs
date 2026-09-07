@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
-using UnityEditorInternal;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -9,8 +13,9 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string layerId;
 
-        private Layer layer;
-        private ReorderableList modifiersList;
+        [NonSerialized] private Layer layer;
+        [NonSerialized] private ListView modifiersList;
+        [NonSerialized] private bool applyingChange;
 
         public static void Open(Layer layer, TextureCompositor compositor)
         {
@@ -18,7 +23,8 @@ namespace DCFApixels.SpriteEditor
             window.compositor = compositor;
             window.layer = layer;
             window.layerId = layer?.Id;
-            window.SetupList();
+            window.minSize = new Vector2(320f, 260f);
+            window.RebuildInterface();
             window.Show();
         }
 
@@ -32,27 +38,154 @@ namespace DCFApixels.SpriteEditor
             TextureCompositor.Changed -= OnCompositorChanged;
         }
 
-        private void OnGUI()
+        public void CreateGUI()
         {
+            RebuildInterface();
+        }
+
+        private void RebuildInterface()
+        {
+            VisualElement root = rootVisualElement;
+            root.Clear();
+            root.style.paddingLeft = 8f;
+            root.style.paddingRight = 8f;
+            root.style.paddingTop = 8f;
+            root.style.paddingBottom = 8f;
+
             if (!ResolveLayer())
             {
-                EditorGUILayout.HelpBox("The edited layer no longer exists in this compositor.", MessageType.Info);
-                if (GUILayout.Button("Close"))
-                    Close();
+                SpriteEditorUI.AddHelpBox(
+                    root,
+                    "The edited layer no longer exists in this compositor.",
+                    HelpBoxMessageType.Info);
+                root.Add(SpriteEditorUI.CreateButton("Close", Close));
                 return;
             }
 
-            if (modifiersList == null || !ReferenceEquals(modifiersList.list, layer.modifiers))
-                SetupList();
-
-            EditorGUILayout.HelpBox(
+            SpriteEditorUI.AddHelpBox(
+                root,
                 "Materials are applied in list order after the layer transform.",
-                MessageType.Info);
-            Undo.RecordObject(compositor, "Edit Layer Modifiers");
-            EditorGUI.BeginChangeCheck();
-            modifiersList.DoLayoutList();
-            if (EditorGUI.EndChangeCheck())
+                HelpBoxMessageType.Info);
+
+            layer.modifiers ??= new List<Material>();
+            modifiersList = new ListView(layer.modifiers, 22f, MakeModifierField, BindModifierField)
+            {
+                selectionType = SelectionType.Single,
+                reorderable = true,
+                reorderMode = ListViewReorderMode.Animated,
+                showBorder = true,
+                showAlternatingRowBackgrounds = AlternatingRowBackground.ContentOnly
+            };
+            modifiersList.style.flexGrow = 1f;
+            modifiersList.style.minHeight = 120f;
+            modifiersList.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                if (evt.button == 0 && compositor != null)
+                    Undo.RecordObject(compositor, "Reorder Layer Modifiers");
+            }, TrickleDown.TrickleDown);
+            modifiersList.itemIndexChanged += (_, _) =>
+            {
+                if (compositor == null)
+                    return;
+                applyingChange = true;
+                try
+                {
+                    compositor.MarkChanged();
+                }
+                finally
+                {
+                    applyingChange = false;
+                }
+            };
+            root.Add(modifiersList);
+
+            VisualElement buttons = SpriteEditorUI.CreateRow();
+            buttons.style.justifyContent = Justify.FlexEnd;
+            buttons.style.marginTop = 6f;
+            buttons.Add(SpriteEditorUI.CreateButton("Add", AddModifier, 64f));
+            buttons.Add(SpriteEditorUI.CreateButton("Remove", RemoveSelectedModifier, 72f));
+            buttons.Add(SpriteEditorUI.CreateButton("Close", Close, 64f));
+            root.Add(buttons);
+        }
+
+        private VisualElement MakeModifierField()
+        {
+            ObjectField field = new ObjectField
+            {
+                objectType = typeof(Material),
+                allowSceneObjects = false
+            };
+            field.style.flexGrow = 1f;
+            field.RegisterValueChangedCallback(evt =>
+            {
+                if (!(field.userData is int index) ||
+                    layer == null ||
+                    index < 0 ||
+                    index >= layer.modifiers.Count)
+                {
+                    return;
+                }
+
+                ApplyChange("Edit Layer Modifier", () => layer.modifiers[index] = evt.newValue as Material);
+            });
+            return field;
+        }
+
+        private void BindModifierField(VisualElement element, int index)
+        {
+            ObjectField field = (ObjectField)element;
+            field.userData = index;
+            field.SetValueWithoutNotify(index >= 0 && index < layer.modifiers.Count
+                ? layer.modifiers[index]
+                : null);
+        }
+
+        private void AddModifier()
+        {
+            if (!ResolveLayer())
+                return;
+            ApplyChange("Add Layer Modifier", () => layer.modifiers.Add(null));
+            modifiersList?.RefreshItems();
+            modifiersList?.SetSelection(layer.modifiers.Count - 1);
+        }
+
+        private void RemoveSelectedModifier()
+        {
+            if (!ResolveLayer() || modifiersList == null)
+                return;
+
+            int[] selected = modifiersList.selectedIndices.OrderByDescending(index => index).ToArray();
+            if (selected.Length == 0)
+                return;
+
+            ApplyChange("Remove Layer Modifier", () =>
+            {
+                for (int i = 0; i < selected.Length; i++)
+                {
+                    int index = selected[i];
+                    if (index >= 0 && index < layer.modifiers.Count)
+                        layer.modifiers.RemoveAt(index);
+                }
+            });
+            modifiersList.RefreshItems();
+        }
+
+        private void ApplyChange(string undoName, Action change)
+        {
+            if (compositor == null || change == null)
+                return;
+
+            Undo.RecordObject(compositor, undoName);
+            applyingChange = true;
+            try
+            {
+                change();
                 compositor.MarkChanged();
+            }
+            finally
+            {
+                applyingChange = false;
+            }
         }
 
         private bool ResolveLayer()
@@ -63,67 +196,16 @@ namespace DCFApixels.SpriteEditor
             Layer resolved = compositor.FindLayer(layerId);
             if (resolved == null)
                 return false;
-            if (!ReferenceEquals(resolved, layer))
-            {
-                layer = resolved;
-                SetupList();
-            }
+            layer = resolved;
+            layer.modifiers ??= new List<Material>();
             return true;
-        }
-
-        private void SetupList()
-        {
-            if (layer == null)
-            {
-                modifiersList = null;
-                return;
-            }
-
-            layer.modifiers ??= new System.Collections.Generic.List<Material>();
-            modifiersList = new ReorderableList(layer.modifiers, typeof(Material), true, true, true, true)
-            {
-                drawHeaderCallback = rect => EditorGUI.LabelField(rect, "Modifiers (Materials)"),
-                drawElementCallback = DrawModifier,
-                onAddCallback = AddModifier,
-                onRemoveCallback = RemoveModifier,
-                onReorderCallback = _ => compositor.MarkChanged()
-            };
-        }
-
-        private void DrawModifier(Rect rect, int index, bool isActive, bool isFocused)
-        {
-            if (index < 0 || index >= layer.modifiers.Count)
-                return;
-            rect.height = EditorGUIUtility.singleLineHeight;
-            layer.modifiers[index] = (Material)EditorGUI.ObjectField(
-                rect,
-                layer.modifiers[index],
-                typeof(Material),
-                false);
-        }
-
-        private void AddModifier(ReorderableList list)
-        {
-            Undo.RecordObject(compositor, "Add Layer Modifier");
-            layer.modifiers.Add(null);
-            list.index = layer.modifiers.Count - 1;
-            compositor.MarkChanged();
-        }
-
-        private void RemoveModifier(ReorderableList list)
-        {
-            if (list.index < 0 || list.index >= layer.modifiers.Count)
-                return;
-            Undo.RecordObject(compositor, "Remove Layer Modifier");
-            layer.modifiers.RemoveAt(list.index);
-            list.index = Mathf.Min(list.index, layer.modifiers.Count - 1);
-            compositor.MarkChanged();
         }
 
         private void OnCompositorChanged(TextureCompositor changedCompositor)
         {
-            if (changedCompositor == compositor)
-                Repaint();
+            if (changedCompositor != compositor || applyingChange)
+                return;
+            RebuildInterface();
         }
     }
 }

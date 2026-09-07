@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -208,47 +210,6 @@ namespace DCFApixels.SpriteEditor
         }
     }
 
-    public static class SEGUI
-    {
-        private static readonly GUIContent PivotLabel = new GUIContent("Pivot", "Normalized pivot inside the output canvas.");
-        private static readonly GUIContent PositionLabel = new GUIContent("Position (px)", "Offset in output pixels. Positive X moves right; positive Y moves up.");
-        private static readonly GUIContent ScaleLabel = new GUIContent("Scale", "Visual scale. One means 100 percent; negative values flip the image.");
-        private static readonly GUIContent RotationLabel = new GUIContent("Rotation", "Clockwise visual rotation in degrees.");
-
-        public static void DrawTextureTransform(ref TextureTransform transform)
-        {
-            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    EditorGUILayout.LabelField("Transform", EditorStyles.boldLabel);
-                    if (GUILayout.Button("Reset", GUILayout.Width(54f)))
-                    {
-                        transform.Reset();
-                        GUI.changed = true;
-                    }
-                }
-
-                int previousIndent = EditorGUI.indentLevel;
-                float previousLabelWidth = EditorGUIUtility.labelWidth;
-                try
-                {
-                    EditorGUI.indentLevel++;
-                    EditorGUIUtility.labelWidth = 92f;
-                    transform.pivot = EditorGUILayout.Vector2Field(PivotLabel, transform.pivot);
-                    transform.position = EditorGUILayout.Vector2Field(PositionLabel, transform.position);
-                    transform.scale = EditorGUILayout.Vector2Field(ScaleLabel, transform.scale);
-                    transform.rotation = EditorGUILayout.FloatField(RotationLabel, transform.rotation);
-                }
-                finally
-                {
-                    EditorGUI.indentLevel = previousIndent;
-                    EditorGUIUtility.labelWidth = previousLabelWidth;
-                }
-            }
-        }
-    }
-
     [InitializeOnLoad]
     internal static class SpriteEditorMaterials
     {
@@ -322,6 +283,9 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private string[] effectTargetLabels;
         [NonSerialized] private string effectTargetOptionsForLayerId;
         [NonSerialized] private string effectTargetOptionsForTargetId;
+        [NonSerialized] private Image previewImage;
+        [NonSerialized] private Label previewPlaceholder;
+        [NonSerialized] private bool applyingChange;
 
         protected Layer CurrentLayer => currentLayer;
         protected TextureCompositor Compositor => compositor;
@@ -335,6 +299,8 @@ namespace DCFApixels.SpriteEditor
             layerId = layer?.Id;
             minSize = new Vector2(320f, 430f);
             InvalidateEffectTargetOptions();
+            if (rootVisualElement != null && rootVisualElement.panel != null)
+                RebuildInterface();
             RequestPreview(true);
         }
 
@@ -359,75 +325,88 @@ namespace DCFApixels.SpriteEditor
             UpdatePreview();
         }
 
-        protected virtual void OnGUI()
+        public void CreateGUI()
         {
-            if (!ResolveLayer())
-            {
-                EditorGUILayout.HelpBox("The edited layer no longer exists in this compositor.", MessageType.Info);
-                if (GUILayout.Button("Close"))
-                    Close();
-                return;
-            }
-
-            Undo.RecordObject(compositor, "Edit Sprite Layer");
-            EditorGUI.BeginChangeCheck();
-            DrawSettings(currentLayer);
-            if (EditorGUI.EndChangeCheck())
-            {
-                compositor.MarkChanged();
-                RequestPreview();
-            }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField(PreviewTitle, EditorStyles.boldLabel);
-            DrawPreview();
-
-            if (GUILayout.Button("Close"))
-                Close();
+            RebuildInterface();
         }
 
-        protected abstract void DrawSettings(Layer layer);
+        protected abstract void BuildSettings(VisualElement root, Layer layer);
 
-        protected void DrawEffectTarget(TargetedLayerEffect effect)
+        protected void ApplyLayerChange(string undoName, Action change)
         {
-            effect.inputMode = (EffectInputMode)EditorGUILayout.EnumPopup("Input", effect.inputMode);
+            if (compositor == null || change == null)
+                return;
+
+            Undo.RecordObject(compositor, undoName);
+            applyingChange = true;
+            try
+            {
+                change();
+                compositor.NormalizeModel();
+                compositor.MarkChanged();
+            }
+            finally
+            {
+                applyingChange = false;
+            }
+            RequestPreview();
+        }
+
+        protected void AddEffectTarget(VisualElement root, TargetedLayerEffect effect)
+        {
+            EnumField input = SpriteEditorUI.ConfigureField(new EnumField("Input", effect.inputMode));
+            input.RegisterValueChangedCallback(evt =>
+            {
+                ApplyLayerChange("Change Effect Input", () => effect.inputMode = (EffectInputMode)evt.newValue);
+                InvalidateEffectTargetOptions();
+                RebuildInterface();
+            });
+            root.Add(input);
+
             if (effect.inputMode == EffectInputMode.Previous)
             {
-                EditorGUILayout.HelpBox(
+                SpriteEditorUI.AddHelpBox(
+                    root,
                     "Uses the item directly below this effect. A group is read as the combined alpha of all visible descendants.",
-                    MessageType.Info);
+                    HelpBoxMessageType.Info);
                 return;
             }
 
             EnsureEffectTargetOptions(effect);
             int selectedIndex = FindEffectTargetIndex(effect.TargetLayerId);
-            int nextIndex = EditorGUILayout.Popup("Target", selectedIndex, effectTargetLabels);
-            if (nextIndex != selectedIndex)
+            PopupField<string> target = SpriteEditorUI.ConfigureField(
+                new PopupField<string>("Target", new List<string>(effectTargetLabels), selectedIndex));
+            target.RegisterValueChangedCallback(evt =>
             {
-                effect.TargetLayerId = effectTargetIds[nextIndex];
+                int nextIndex = Array.IndexOf(effectTargetLabels, evt.newValue);
+                if (nextIndex < 0 || nextIndex >= effectTargetIds.Length)
+                    return;
+                ApplyLayerChange("Change Effect Target", () => effect.TargetLayerId = effectTargetIds[nextIndex]);
                 InvalidateEffectTargetOptions();
-                GUI.changed = true;
-            }
+                RebuildInterface();
+            });
+            root.Add(target);
 
             if (string.IsNullOrEmpty(effect.TargetLayerId))
             {
-                EditorGUILayout.HelpBox("Select a source layer or group for this effect.", MessageType.Warning);
-                return;
+                SpriteEditorUI.AddHelpBox(
+                    root,
+                    "Select a source layer or group for this effect.",
+                    HelpBoxMessageType.Warning);
             }
-
-            if (!compositor.IsUsableEffectTarget(effect, effect.TargetLayerId))
+            else if (!compositor.IsUsableEffectTarget(effect, effect.TargetLayerId))
             {
-                EditorGUILayout.HelpBox(
+                SpriteEditorUI.AddHelpBox(
+                    root,
                     "The selected target is missing or would create a cyclic effect dependency.",
-                    MessageType.Error);
-                return;
+                    HelpBoxMessageType.Error);
             }
-
-            if (compositor.FindLayer(effect.TargetLayerId) is GroupLayer)
+            else if (compositor.FindLayer(effect.TargetLayerId) is GroupLayer)
             {
-                EditorGUILayout.HelpBox(
+                SpriteEditorUI.AddHelpBox(
+                    root,
                     "The selected group is read as the combined alpha of all visible descendant layers.",
-                    MessageType.Info);
+                    HelpBoxMessageType.Info);
             }
         }
 
@@ -435,7 +414,73 @@ namespace DCFApixels.SpriteEditor
         {
             previewRequested = true;
             previewAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
-            Repaint();
+        }
+
+        protected void RebuildInterface()
+        {
+            VisualElement root = rootVisualElement;
+            root.Clear();
+            root.style.paddingLeft = 8f;
+            root.style.paddingRight = 8f;
+            root.style.paddingTop = 8f;
+            root.style.paddingBottom = 8f;
+
+            if (!ResolveLayer())
+            {
+                SpriteEditorUI.AddHelpBox(
+                    root,
+                    "The edited layer no longer exists in this compositor.",
+                    HelpBoxMessageType.Info);
+                root.Add(SpriteEditorUI.CreateButton("Close", Close));
+                return;
+            }
+
+            ScrollView scroll = new ScrollView(ScrollViewMode.Vertical);
+            scroll.style.flexGrow = 1f;
+            BuildSettings(scroll, currentLayer);
+            scroll.Add(SpriteEditorUI.CreateHeading(PreviewTitle));
+
+            VisualElement preview = new VisualElement();
+            preview.style.height = PreviewMaxSize;
+            preview.style.minHeight = 96f;
+            preview.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f, 1f);
+            preview.style.borderTopWidth = 1f;
+            preview.style.borderRightWidth = 1f;
+            preview.style.borderBottomWidth = 1f;
+            preview.style.borderLeftWidth = 1f;
+            preview.style.borderTopColor = new Color(0f, 0f, 0f, 0.4f);
+            preview.style.borderRightColor = new Color(0f, 0f, 0f, 0.4f);
+            preview.style.borderBottomColor = new Color(0f, 0f, 0f, 0.4f);
+            preview.style.borderLeftColor = new Color(0f, 0f, 0f, 0.4f);
+
+            previewImage = new Image
+            {
+                image = previewTexture,
+                scaleMode = ScaleMode.ScaleToFit,
+                pickingMode = PickingMode.Ignore
+            };
+            previewImage.style.position = Position.Absolute;
+            previewImage.style.left = 0f;
+            previewImage.style.right = 0f;
+            previewImage.style.top = 0f;
+            previewImage.style.bottom = 0f;
+            preview.Add(previewImage);
+
+            previewPlaceholder = new Label(previewTexture == null ? "Rendering preview…" : string.Empty);
+            previewPlaceholder.style.unityTextAlign = TextAnchor.MiddleCenter;
+            previewPlaceholder.style.position = Position.Absolute;
+            previewPlaceholder.style.left = 0f;
+            previewPlaceholder.style.right = 0f;
+            previewPlaceholder.style.top = 0f;
+            previewPlaceholder.style.bottom = 0f;
+            previewPlaceholder.pickingMode = PickingMode.Ignore;
+            preview.Add(previewPlaceholder);
+            scroll.Add(preview);
+
+            Button close = SpriteEditorUI.CreateButton("Close", Close);
+            close.style.marginTop = 8f;
+            scroll.Add(close);
+            root.Add(scroll);
         }
 
         private bool ResolveLayer()
@@ -517,10 +562,11 @@ namespace DCFApixels.SpriteEditor
 
         private void OnCompositorChanged(TextureCompositor changedCompositor)
         {
-            if (changedCompositor != compositor)
+            if (changedCompositor != compositor || applyingChange)
                 return;
             currentLayer = null;
             InvalidateEffectTargetOptions();
+            RebuildInterface();
             RequestPreview();
         }
 
@@ -531,41 +577,29 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             RenderTexture rendered = compositor.RenderLayerPreview(currentLayer, PreviewMaxSize);
-            if (rendered == null)
+            if (rendered != null)
             {
-                Repaint();
-                return;
+                try
+                {
+                    previewTexture = TextureCompositor.CopyToTexture2D(rendered);
+                    previewTexture.hideFlags = HideFlags.HideAndDontSave;
+                }
+                finally
+                {
+                    RenderTexture.ReleaseTemporary(rendered);
+                }
             }
 
-            try
-            {
-                previewTexture = TextureCompositor.CopyToTexture2D(rendered);
-                previewTexture.hideFlags = HideFlags.HideAndDontSave;
-            }
-            finally
-            {
-                RenderTexture.ReleaseTemporary(rendered);
-            }
-            Repaint();
-        }
-
-        private void DrawPreview()
-        {
-            float aspect = previewTexture != null && previewTexture.height > 0
-                ? (float)previewTexture.width / previewTexture.height
-                : 1f;
-            float availableWidth = Mathf.Max(64f, EditorGUIUtility.currentViewWidth - 36f);
-            float drawWidth = Mathf.Min(PreviewMaxSize, availableWidth);
-            float drawHeight = Mathf.Clamp(drawWidth / Mathf.Max(0.01f, aspect), 64f, PreviewMaxSize);
-            Rect rect = EditorGUILayout.GetControlRect(false, drawHeight);
-            if (previewTexture != null)
-                EditorGUI.DrawPreviewTexture(rect, previewTexture, null, ScaleMode.ScaleToFit);
-            else
-                EditorGUI.DrawRect(rect, new Color(0.25f, 0.25f, 0.25f, 1f));
+            if (previewImage != null)
+                previewImage.image = previewTexture;
+            if (previewPlaceholder != null)
+                previewPlaceholder.text = previewTexture == null ? "Preview unavailable" : string.Empty;
         }
 
         private void ReleasePreview()
         {
+            if (previewImage != null)
+                previewImage.image = null;
             if (previewTexture == null)
                 return;
             DestroyImmediate(previewTexture);

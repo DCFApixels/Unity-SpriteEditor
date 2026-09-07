@@ -1,6 +1,8 @@
 using System;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -15,18 +17,47 @@ namespace DCFApixels.SpriteEditor
             window.Show();
         }
 
-        protected override void DrawSettings(Layer source)
+        protected override void BuildSettings(VisualElement root, Layer source)
         {
             OutlineLayer layer = (OutlineLayer)source;
-            DrawEffectTarget(layer);
-            SEGUI.DrawTextureTransform(ref layer.transform);
-            layer.metric = (DistanceMetric)EditorGUILayout.EnumPopup("Distance Algorithm", layer.metric);
-            layer.outlineColor = EditorGUILayout.ColorField("Color", layer.outlineColor);
-            layer.outlineWidth = Mathf.Max(0f, EditorGUILayout.FloatField("Width (px)", layer.outlineWidth));
-            layer.outlineSoftness = Mathf.Max(0f, EditorGUILayout.FloatField("Softness (px)", layer.outlineSoftness));
-            layer.outlinePosition = (OutlineLayer.OutlinePosition)EditorGUILayout.EnumPopup(
-                "Position",
-                layer.outlinePosition);
+            AddEffectTarget(root, layer);
+            SpriteEditorUI.AddTextureTransform(
+                root,
+                () => layer.transform,
+                value => layer.transform = value,
+                ApplyLayerChange);
+
+            EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
+            metric.RegisterValueChangedCallback(evt => ApplyLayerChange(
+                "Change Outline Algorithm",
+                () => layer.metric = (DistanceMetric)evt.newValue));
+            root.Add(metric);
+
+            ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
+            color.SetValueWithoutNotify(layer.outlineColor);
+            color.RegisterValueChangedCallback(evt =>
+                ApplyLayerChange("Change Outline Color", () => layer.outlineColor = evt.newValue));
+            root.Add(color);
+
+            FloatField width = SpriteEditorUI.ConfigureField(new FloatField("Width (px)"));
+            width.SetValueWithoutNotify(layer.outlineWidth);
+            width.RegisterValueChangedCallback(evt => ApplyLayerChange(
+                "Change Outline Width",
+                () => layer.outlineWidth = Mathf.Max(0f, evt.newValue)));
+            root.Add(width);
+
+            FloatField softness = SpriteEditorUI.ConfigureField(new FloatField("Softness (px)"));
+            softness.SetValueWithoutNotify(layer.outlineSoftness);
+            softness.RegisterValueChangedCallback(evt => ApplyLayerChange(
+                "Change Outline Softness",
+                () => layer.outlineSoftness = Mathf.Max(0f, evt.newValue)));
+            root.Add(softness);
+
+            EnumField position = SpriteEditorUI.ConfigureField(new EnumField("Position", layer.outlinePosition));
+            position.RegisterValueChangedCallback(evt => ApplyLayerChange(
+                "Change Outline Position",
+                () => layer.outlinePosition = (OutlineLayer.OutlinePosition)evt.newValue));
+            root.Add(position);
         }
     }
 }

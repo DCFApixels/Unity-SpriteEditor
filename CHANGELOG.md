@@ -2,6 +2,21 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.4.0] - 2026-09-08
+
+### Changed
+
+- Rebuilt every Sprite Editor window and its `TextureCompositor` custom inspector with UI Toolkit.
+- Replaced the main window with a resizable two-pane layout, retained-mode preview, recursive layer
+  tree, drawing toolbar, and UI Toolkit drag-and-drop while preserving the existing editing workflow.
+- Preserved direct Preview painting, brush and eraser hotkeys, groups, effect targets, modifiers,
+  layer selection, Undo/Redo, and saved-compositor reopening across the migration.
+
+### Performance
+
+- Settings panels and layer rows now rebuild only when editor state changes instead of every GUI
+  event, and the Preview caches its image layout so the checkerboard is not repainted unnecessarily.
+
 ## [0.3.2] - 2026-09-07
 
 ### Changed

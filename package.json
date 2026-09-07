@@ -1,6 +1,6 @@
 {
     "name": "com.dcfa_pixels.sprite-editor",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "displayName": "Sprite Editor",
     "description": "An editor-only layered texture compositor and painting tool for Unity with Photoshop-style groups, blend modes, symmetry, pattern repetition, outlines, and signed distance fields.",
     "unity": "6000.0",

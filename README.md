@@ -1,6 +1,7 @@
 # Unity Sprite Editor
 
-Editor-only layered texture compositor for Unity.
+Editor-only layered texture compositor for Unity. The editor interface is built with UI Toolkit,
+including its resizable Preview, recursive layer tree, inspectors, and auxiliary editor windows.
 
 Open it from **Window > Sprite Editor**. A composition can stay temporary, be saved as a
 `TextureCompositor` asset, previewed in the editor, and exported to PNG. PNG files exported
@@ -27,7 +28,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.3.2`.
+To track a specific published release, append its tag to the URL, for example `#v0.3.2`.
 
 ## Layer stack
 
