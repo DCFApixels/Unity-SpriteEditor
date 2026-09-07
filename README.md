@@ -6,6 +6,9 @@ Open it from **Window > Sprite Editor**. A composition can stay temporary, be sa
 `TextureCompositor` asset, previewed in the editor, and exported to PNG. PNG files exported
 inside `Assets` are imported as single Sprite assets automatically.
 
+Saved compositions can be reopened by double-clicking their `TextureCompositor` asset in the
+Project window, or by selecting the asset and pressing **Open in Sprite Editor** in the Inspector.
+
 ## Installation
 
 Requires Unity 6 (`6000.0`) or newer. Burst and Collections are declared as package
@@ -24,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.0`.
+To track a specific release, append its tag to the URL, for example `#v0.2.1`.
 
 ## Layer stack
 

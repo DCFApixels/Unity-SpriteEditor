@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.1] - 2026-09-07
+
+### Added
+
+- Saved `TextureCompositor` assets can now be opened by double-clicking them in the Project window.
+- The `TextureCompositor` Inspector now includes an **Open in Sprite Editor** button.
+
 ## [0.2.0] - 2026-09-07
 
 ### Added

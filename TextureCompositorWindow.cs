@@ -62,6 +62,28 @@ namespace DCFApixels.SpriteEditor
             GetWindow<TextureCompositorWindow>("Sprite Editor");
         }
 
+        public static void Open(TextureCompositor target)
+        {
+            if (target == null)
+                return;
+
+            TextureCompositorWindow window = GetWindow<TextureCompositorWindow>("Sprite Editor");
+            if (window.compositor != target)
+            {
+                if (!window.ResolveUnsavedTemporaryDocument())
+                    return;
+                window.SetCompositor(target);
+            }
+            else
+            {
+                target.NormalizeModel();
+                window.RequestPreview(true);
+            }
+
+            window.Show();
+            window.Focus();
+        }
+
         private void OnEnable()
         {
             minSize = new Vector2(640f, 420f);
