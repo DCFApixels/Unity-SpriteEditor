@@ -50,6 +50,12 @@ namespace DCFApixels.SpriteEditor
         private static readonly GUIContent LivePreviewQualityContent = new GUIContent(
             "Live Quality",
             "Resolution used while painting. 100% disables downscaling; lower values make effect-heavy previews faster.");
+        private static readonly GUIContent PrimaryBrushColorContent = new GUIContent(
+            string.Empty,
+            "Foreground brush color. Press X to swap it with the background color.");
+        private static readonly GUIContent SecondaryBrushColorContent = new GUIContent(
+            string.Empty,
+            "Background brush color. Press X to swap it with the foreground color.");
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
@@ -66,6 +72,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private DrawingLayer paintingLayer;
         [NonSerialized] private Vector2 lastPaintingUv;
         [NonSerialized] private bool hasLastPaintingUv;
+        [NonSerialized] private bool paintingErase;
+        [NonSerialized] private int paintingMouseButton = -1;
         [NonSerialized] private double nextPaintingPreviewAt;
         [NonSerialized] private float paintingPreviewScale;
 
@@ -145,7 +153,7 @@ namespace DCFApixels.SpriteEditor
                 Repaint();
             }
 
-            HandleBrushSizeHotkeys();
+            HandleDrawingHotkeys();
 
             Rect contentRect = new Rect(0f, 0f, position.width, position.height);
             float maxPreviewWidth = Mathf.Max(
@@ -681,7 +689,7 @@ namespace DCFApixels.SpriteEditor
             if (drawingLayer != null)
             {
                 footerText = previewTexture != null
-                    ? $"Paint on canvas • [ / ] brush size • {drawingLayer.brushSize:0.#} px"
+                    ? $"LMB paint • RMB erase • X colors • [ ] size • {drawingLayer.brushSize:0.#} px"
                     : "Rendering painting preview…";
             }
             else
@@ -759,7 +767,8 @@ namespace DCFApixels.SpriteEditor
         private void DrawPaintingPreviewHeader(Rect headerRect, DrawingLayer layer)
         {
             PaintToolMode nextTool = layer.tool;
-            Color nextColor = layer.brushColor;
+            Color nextPrimaryColor = layer.brushColor;
+            Color nextSecondaryColor = layer.secondaryBrushColor;
             float nextSize = layer.brushSize;
             float nextHardness = layer.brushHardness;
             float nextSpacingPercent = layer.brushSpacing * 100f;
@@ -789,16 +798,7 @@ namespace DCFApixels.SpriteEditor
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
             {
                 nextTool = (PaintToolMode)EditorGUILayout.EnumPopup(nextTool, GUILayout.Width(62f));
-                using (new EditorGUI.DisabledScope(nextTool == PaintToolMode.Eraser))
-                {
-                    nextColor = EditorGUILayout.ColorField(
-                        GUIContent.none,
-                        nextColor,
-                        true,
-                        true,
-                        true,
-                        GUILayout.Width(42f));
-                }
+                DrawBrushColorSwatches(ref nextPrimaryColor, ref nextSecondaryColor);
                 GUILayout.Label("Size", GUILayout.Width(27f));
                 nextSize = EditorGUILayout.FloatField(nextSize, GUILayout.Width(42f));
                 GUILayout.Label("Hard", GUILayout.Width(30f));
@@ -885,7 +885,8 @@ namespace DCFApixels.SpriteEditor
                 ExecuteModelChange("Change Drawing Tool", () =>
                 {
                     layer.tool = nextTool;
-                    layer.brushColor = nextColor;
+                    layer.brushColor = nextPrimaryColor;
+                    layer.secondaryBrushColor = nextSecondaryColor;
                     layer.brushSize = Mathf.Max(1f, nextSize);
                     layer.brushHardness = Mathf.Clamp01(nextHardness);
                     layer.brushSpacing = Mathf.Clamp(
@@ -915,6 +916,28 @@ namespace DCFApixels.SpriteEditor
                 ClearDrawingLayer(layer);
         }
 
+        private static void DrawBrushColorSwatches(ref Color primary, ref Color secondary)
+        {
+            Rect area = GUILayoutUtility.GetRect(48f, 20f, GUILayout.Width(48f));
+            Rect secondaryRect = new Rect(area.x + 18f, area.y + 5f, 27f, 14f);
+            Rect primaryRect = new Rect(area.x + 3f, area.y + 1f, 27f, 14f);
+
+            secondary = EditorGUI.ColorField(
+                secondaryRect,
+                SecondaryBrushColorContent,
+                secondary,
+                false,
+                true,
+                true);
+            primary = EditorGUI.ColorField(
+                primaryRect,
+                PrimaryBrushColorContent,
+                primary,
+                false,
+                true,
+                true);
+        }
+
         private void HandlePreviewPainting(Rect imageRect, DrawingLayer layer)
         {
             Event current = Event.current;
@@ -925,13 +948,17 @@ namespace DCFApixels.SpriteEditor
             {
                 DrawPaintingGuides(imageRect, layer);
                 if (pointerInside && !current.alt)
-                    DrawBrushCursor(imageRect, layer, current.mousePosition);
+                    DrawBrushCursor(
+                        imageRect,
+                        layer,
+                        current.mousePosition,
+                        paintingLayer == layer ? paintingErase : layer.tool == PaintToolMode.Eraser);
             }
 
             switch (current.GetTypeForControl(controlId))
             {
                 case EventType.MouseDown:
-                    if (current.button != 0 || current.alt || !pointerInside)
+                    if ((current.button != 0 && current.button != 1) || current.alt || !pointerInside)
                         break;
                     if (!TryMapPreviewToLayerUv(current.mousePosition, imageRect, layer, out Vector2 startUv))
                         break;
@@ -940,11 +967,13 @@ namespace DCFApixels.SpriteEditor
                     GUI.FocusControl(null);
                     GUIUtility.hotControl = controlId;
                     paintingLayer = layer;
+                    paintingMouseButton = current.button;
+                    paintingErase = current.button == 1 || layer.tool == PaintToolMode.Eraser;
                     lastPaintingUv = startUv;
                     hasLastPaintingUv = true;
                     Undo.RecordObject(compositor, "Paint Stroke");
                     layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
-                    layer.PaintPoint(startUv, compositor.width, compositor.height);
+                    layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase);
                     RefreshPreviewDuringPainting();
                     current.Use();
                     break;
@@ -961,11 +990,16 @@ namespace DCFApixels.SpriteEditor
                                 dragUv,
                                 compositor.width,
                                 compositor.height,
-                                false);
+                                false,
+                                paintingErase);
                         }
                         else
                         {
-                            paintingLayer.PaintPoint(dragUv, compositor.width, compositor.height);
+                            paintingLayer.PaintPoint(
+                                dragUv,
+                                compositor.width,
+                                compositor.height,
+                                paintingErase);
                         }
                         lastPaintingUv = dragUv;
                         hasLastPaintingUv = true;
@@ -979,11 +1013,20 @@ namespace DCFApixels.SpriteEditor
                     break;
 
                 case EventType.MouseUp:
-                    if (GUIUtility.hotControl != controlId || current.button != 0)
+                    if (GUIUtility.hotControl != controlId || current.button != paintingMouseButton)
                         break;
                     GUIUtility.hotControl = 0;
                     FinishPaintingStroke();
                     current.Use();
+                    break;
+
+                case EventType.ContextClick:
+                    if (GUIUtility.hotControl == controlId && paintingMouseButton == 1)
+                    {
+                        GUIUtility.hotControl = 0;
+                        FinishPaintingStroke();
+                        current.Use();
+                    }
                     break;
 
                 case EventType.MouseMove:
@@ -1017,12 +1060,16 @@ namespace DCFApixels.SpriteEditor
 
         private void FinishPaintingStroke()
         {
-            if (paintingLayer == null)
+            DrawingLayer finishedLayer = paintingLayer;
+            paintingLayer = null;
+            paintingErase = false;
+            paintingMouseButton = -1;
+            hasLastPaintingUv = false;
+
+            if (finishedLayer == null)
                 return;
 
-            paintingLayer.SyncSurfaceToTexture();
-            paintingLayer = null;
-            hasLastPaintingUv = false;
+            finishedLayer.SyncSurfaceToTexture();
             nextPaintingPreviewAt = 0d;
             temporaryDocumentDirty |= compositor != null && !AssetDatabase.Contains(compositor);
             if (compositor != null)
@@ -1031,17 +1078,30 @@ namespace DCFApixels.SpriteEditor
             RequestPreview(true);
         }
 
-        private void HandleBrushSizeHotkeys()
+        private void HandleDrawingHotkeys()
         {
             Event current = Event.current;
             if (current.type != EventType.KeyDown || EditorGUIUtility.editingTextField)
                 return;
+            if (!(GetSelectedLayer() is DrawingLayer layer))
+                return;
+
+            bool swapColors = !current.control &&
+                              !current.command &&
+                              !current.alt &&
+                              (current.keyCode == KeyCode.X ||
+                               current.character == 'x' ||
+                               current.character == 'X');
+            if (swapColors)
+            {
+                ExecuteModelChange("Swap Brush Colors", layer.SwapBrushColors);
+                current.Use();
+                return;
+            }
 
             bool decrease = current.keyCode == KeyCode.LeftBracket || current.character == '[';
             bool increase = current.keyCode == KeyCode.RightBracket || current.character == ']';
             if (!decrease && !increase)
-                return;
-            if (!(GetSelectedLayer() is DrawingLayer layer))
                 return;
 
             float nextSize = decrease
@@ -1087,7 +1147,11 @@ namespace DCFApixels.SpriteEditor
             return sourceUv.x >= 0f && sourceUv.x <= 1f && sourceUv.y >= 0f && sourceUv.y <= 1f;
         }
 
-        private void DrawBrushCursor(Rect imageRect, DrawingLayer layer, Vector2 mousePosition)
+        private void DrawBrushCursor(
+            Rect imageRect,
+            DrawingLayer layer,
+            Vector2 mousePosition,
+            bool erase)
         {
             float pixelScale = imageRect.width / Mathf.Max(1f, compositor.width);
             float transformScale = (Mathf.Abs(layer.transform.scale.x) + Mathf.Abs(layer.transform.scale.y)) * 0.5f;
@@ -1096,7 +1160,7 @@ namespace DCFApixels.SpriteEditor
             Color previous = Handles.color;
             Handles.color = new Color(0f, 0f, 0f, 0.9f);
             Handles.DrawWireDisc(mousePosition, Vector3.forward, radius + 1f);
-            Handles.color = layer.tool == PaintToolMode.Eraser
+            Handles.color = erase
                 ? new Color(1f, 0.35f, 0.25f, 1f)
                 : new Color(1f, 1f, 1f, 0.95f);
             Handles.DrawWireDisc(mousePosition, Vector3.forward, radius);

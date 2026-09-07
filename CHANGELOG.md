@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.4] - 2026-09-07
+
+### Added
+
+- RMB temporarily erases a Drawing layer without changing the selected Brush/Eraser tool.
+- Photoshop-style foreground/background brush colors with an `X` swap shortcut.
+
 ## [0.2.3] - 2026-09-07
 
 ### Added

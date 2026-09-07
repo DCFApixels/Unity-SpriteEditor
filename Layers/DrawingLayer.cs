@@ -18,6 +18,7 @@ namespace DCFApixels.SpriteEditor
 
         public PaintToolMode tool = PaintToolMode.Brush;
         public Color brushColor = Color.white;
+        public Color secondaryBrushColor = Color.black;
         public float brushSize = 32f;
         [Range(0f, 1f)] public float brushHardness = 0.8f;
         [Range(MinimumBrushSpacing, MaximumBrushSpacing)] public float brushSpacing = DefaultBrushSpacing;
@@ -111,9 +112,16 @@ namespace DCFApixels.SpriteEditor
                 Undo.RegisterCompleteObjectUndo(pixels, undoName);
         }
 
-        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight)
+        internal void SwapBrushColors()
         {
-            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true);
+            Color previousPrimary = brushColor;
+            brushColor = secondaryBrushColor;
+            secondaryBrushColor = previousPrimary;
+        }
+
+        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase)
+        {
+            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase);
         }
 
         internal void PaintSegment(
@@ -121,7 +129,8 @@ namespace DCFApixels.SpriteEditor
             Vector2 toSourceUv,
             int outputWidth,
             int outputHeight,
-            bool includeStart)
+            bool includeStart,
+            bool erase)
         {
             RenderTexture surface = EnsurePaintSurface(outputWidth, outputHeight);
             if (surface == null)
@@ -154,7 +163,7 @@ namespace DCFApixels.SpriteEditor
                 brushSize,
                 brushHardness,
                 brushColor,
-                tool == PaintToolMode.Eraser,
+                erase,
                 outputWidth,
                 outputHeight,
                 patternCenter);

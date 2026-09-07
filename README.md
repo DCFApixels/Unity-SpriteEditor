@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.3`.
+To track a specific release, append its tag to the URL, for example `#v0.2.4`.
 
 ## Layer stack
 
@@ -59,7 +59,9 @@ The counter is serialized with the compositor and does not reuse numbers after d
 
 Select a Drawing layer and paint directly on the left Preview. The brush writes only to the
 selected layer while the displayed result still respects the complete layer order, groups,
-opacity, blend modes, modifiers, and effects. Use `[` and `]` to decrease or increase brush size.
+opacity, blend modes, modifiers, and effects. LMB uses the selected Brush/Eraser tool; RMB temporarily
+erases without changing that selection. The foreground and background color swatches can both be
+edited, and `X` swaps them. Use `[` and `]` to decrease or increase brush size.
 `Step` controls the distance between consecutive brush stamps as a percentage of brush diameter:
 lower values produce a smoother stroke, while higher values are faster and can produce dotted lines.
 
