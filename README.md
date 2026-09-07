@@ -27,7 +27,7 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific release, append its tag to the URL, for example `#v0.2.2`.
+To track a specific release, append its tag to the URL, for example `#v0.2.3`.
 
 ## Layer stack
 
@@ -62,6 +62,10 @@ selected layer while the displayed result still respects the complete layer orde
 opacity, blend modes, modifiers, and effects. Use `[` and `]` to decrease or increase brush size.
 `Step` controls the distance between consecutive brush stamps as a percentage of brush diameter:
 lower values produce a smoother stroke, while higher values are faster and can produce dotted lines.
+
+`Live Quality` controls the temporary Preview resolution used while a stroke is active, from 12.5%
+to 100%. The default is 37.5%; selecting 100% disables downscaling. This is an editor preference and
+does not alter the saved composition or exported texture.
 
 The Preview header exposes brush color, size, hardness, Brush/Eraser mode, and a normalized pattern
 center. `Mirror X` reflects across the vertical axis through that center; `Mirror Y` reflects across

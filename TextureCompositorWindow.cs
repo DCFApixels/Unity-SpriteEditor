@@ -9,18 +9,21 @@ namespace DCFApixels.SpriteEditor
     public sealed class TextureCompositorWindow : EditorWindow
     {
         private const int PreviewMaxSize = 512;
-        private const int PaintingPreviewMaxSize = 192;
         private const double PreviewDelay = 0.12d;
         private const double PaintingPreviewInterval = 1d / 30d;
+        private const float DefaultPaintingPreviewScale = 0.375f;
+        private const float MinimumPaintingPreviewScale = 0.125f;
+        private const float MaximumPaintingPreviewScale = 1f;
         private const float PreviewPaneMinWidth = 200f;
         private const float SettingsPaneMinWidth = 320f;
         private const float SplitterWidth = 6f;
         private const float PanePadding = 8f;
         private const float GroupDropCenterFraction = 0.5f;
         private const float StandardPreviewHeaderHeight = 28f;
-        private const float PaintingPreviewHeaderHeight = 110f;
+        private const float PaintingPreviewHeaderHeight = 132f;
         private const string DraggedLayerIdKey = "DCFApixels.SpriteEditor.DraggedLayerId";
         private const string DraggedCompositorIdKey = "DCFApixels.SpriteEditor.DraggedCompositorId";
+        private const string PaintingPreviewScalePrefKey = "DCFApixels.SpriteEditor.PaintingPreviewScale";
         private static readonly int SplitterControlHash = "DCFApixels.SpriteEditor.Splitter".GetHashCode();
         private static readonly int LayerDragHandleHash = "DCFApixels.SpriteEditor.LayerDragHandle".GetHashCode();
         private static readonly int PaintCanvasControlHash = "DCFApixels.SpriteEditor.PaintCanvas".GetHashCode();
@@ -44,6 +47,9 @@ namespace DCFApixels.SpriteEditor
         private static readonly GUIContent BrushSpacingContent = new GUIContent(
             "Step",
             "Distance between brush stamps as a percentage of brush size. Larger values are faster and produce a dotted stroke.");
+        private static readonly GUIContent LivePreviewQualityContent = new GUIContent(
+            "Live Quality",
+            "Resolution used while painting. 100% disables downscaling; lower values make effect-heavy previews faster.");
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
@@ -61,6 +67,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Vector2 lastPaintingUv;
         [NonSerialized] private bool hasLastPaintingUv;
         [NonSerialized] private double nextPaintingPreviewAt;
+        [NonSerialized] private float paintingPreviewScale;
 
         [MenuItem("Window/Sprite Editor")]
         public static void ShowWindow()
@@ -95,6 +102,8 @@ namespace DCFApixels.SpriteEditor
             minSize = new Vector2(640f, 420f);
             wantsMouseMove = true;
             groupExpansion = new Dictionary<string, bool>();
+            paintingPreviewScale = ClampPaintingPreviewScale(
+                EditorPrefs.GetFloat(PaintingPreviewScalePrefKey, DefaultPaintingPreviewScale));
             TextureCompositor.Changed += OnCompositorChanged;
             Undo.undoRedoPerformed += OnUndoRedo;
 
@@ -762,6 +771,7 @@ namespace DCFApixels.SpriteEditor
             PaintRepeatBoundaryMode nextBoundary = layer.repeatBoundaryMode;
             int nextCount = layer.repeatCount;
             int nextSecondaryCount = layer.repeatSecondaryCount;
+            float nextPreviewScalePercent = paintingPreviewScale * 100f;
             bool clearRequested = false;
 
             GUILayout.BeginArea(headerRect);
@@ -852,6 +862,22 @@ namespace DCFApixels.SpriteEditor
                 GUILayout.Label("%", EditorStyles.miniLabel, GUILayout.Width(12f));
             }
             bool changed = EditorGUI.EndChangeCheck();
+
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.Height(22f)))
+            {
+                GUILayout.Label(LivePreviewQualityContent, GUILayout.Width(72f));
+                nextPreviewScalePercent = GUILayout.HorizontalSlider(
+                    nextPreviewScalePercent,
+                    MinimumPaintingPreviewScale * 100f,
+                    MaximumPaintingPreviewScale * 100f,
+                    GUILayout.MinWidth(48f));
+                GUILayout.Label(
+                    $"{nextPreviewScalePercent:0.#}%",
+                    EditorStyles.miniLabel,
+                    GUILayout.Width(42f));
+            }
+            bool previewScaleChanged = EditorGUI.EndChangeCheck();
             GUILayout.EndArea();
 
             if (changed)
@@ -877,6 +903,12 @@ namespace DCFApixels.SpriteEditor
                     layer.repeatCount = Mathf.Clamp(nextCount, 2, 64);
                     layer.repeatSecondaryCount = Mathf.Clamp(nextSecondaryCount, 2, 64);
                 });
+            }
+
+            if (previewScaleChanged)
+            {
+                paintingPreviewScale = ClampPaintingPreviewScale(nextPreviewScalePercent * 0.01f);
+                EditorPrefs.SetFloat(PaintingPreviewScalePrefKey, paintingPreviewScale);
             }
 
             if (clearRequested)
@@ -1482,7 +1514,7 @@ namespace DCFApixels.SpriteEditor
 
             try
             {
-                int maxSize = paintingLayer != null ? PaintingPreviewMaxSize : PreviewMaxSize;
+                int maxSize = paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
                 previewTexture = compositor.ComposePreview(maxSize);
             }
             catch (Exception exception)
@@ -1491,6 +1523,21 @@ namespace DCFApixels.SpriteEditor
                 Debug.LogException(exception);
             }
             Repaint();
+        }
+
+        private int GetPaintingPreviewMaxSize()
+        {
+            return Mathf.Clamp(
+                Mathf.RoundToInt(PreviewMaxSize * paintingPreviewScale),
+                Mathf.RoundToInt(PreviewMaxSize * MinimumPaintingPreviewScale),
+                PreviewMaxSize);
+        }
+
+        private static float ClampPaintingPreviewScale(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value))
+                return DefaultPaintingPreviewScale;
+            return Mathf.Clamp(value, MinimumPaintingPreviewScale, MaximumPaintingPreviewScale);
         }
 
         private void ReleasePreview()

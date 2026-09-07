@@ -2,6 +2,13 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.3] - 2026-09-07
+
+### Added
+
+- A persistent **Live Quality** slider controls painting-preview resolution from 12.5% to 100%.
+- Setting Live Quality to 100% disables painting-preview downscaling.
+
 ## [0.2.2] - 2026-09-07
 
 ### Added
