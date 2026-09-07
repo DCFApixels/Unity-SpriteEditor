@@ -1,0 +1,27 @@
+{
+    "name": "com.dcfa_pixels.sprite-editor",
+    "version": "0.1.0",
+    "displayName": "Sprite Editor",
+    "description": "An editor-only layered texture compositor for Unity with Photoshop-style groups, blend modes, modifiers, outlines, and signed distance fields.",
+    "unity": "6000.0",
+    "author": {
+        "name": "DCFApixels",
+        "url": "https://github.com/DCFApixels"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DCFApixels/SpriteEditor.git"
+    },
+    "dependencies": {
+        "com.unity.burst": "1.8.25",
+        "com.unity.collections": "2.5.1"
+    },
+    "keywords": [
+        "editor",
+        "sprite",
+        "texture",
+        "compositor",
+        "sdf",
+        "outline"
+    ]
+}

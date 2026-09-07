@@ -1,0 +1,1163 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+namespace DCFApixels.SpriteEditor
+{
+    public sealed class TextureCompositorWindow : EditorWindow
+    {
+        private const int PreviewMaxSize = 512;
+        private const double PreviewDelay = 0.12d;
+        private const float PreviewPaneMinWidth = 200f;
+        private const float SettingsPaneMinWidth = 320f;
+        private const float SplitterWidth = 6f;
+        private const float PanePadding = 8f;
+        private const float GroupDropCenterFraction = 0.5f;
+        private const string DraggedLayerIdKey = "DCFApixels.SpriteEditor.DraggedLayerId";
+        private const string DraggedCompositorIdKey = "DCFApixels.SpriteEditor.DraggedCompositorId";
+        private static readonly int SplitterControlHash = "DCFApixels.SpriteEditor.Splitter".GetHashCode();
+        private static readonly int LayerDragHandleHash = "DCFApixels.SpriteEditor.LayerDragHandle".GetHashCode();
+        private static readonly GUIContent LayerDragHandleContent = new GUIContent(
+            "≡",
+            "Drag to reorder this layer or move it into a group.");
+        private static readonly GUIContent LayerDragHintContent = new GUIContent(
+            "≡ drag",
+            "Drag a row by its handle. Drop on a line to reorder, or on a highlighted group to move inside.");
+        private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
+        private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
+
+        [SerializeField] private TextureCompositor compositor;
+        [SerializeField] private string selectedLayerId;
+        [SerializeField] private Vector2 scrollPosition;
+        [SerializeField] private float previewPaneWidth = 340f;
+
+        [NonSerialized] private Texture2D previewTexture;
+        [NonSerialized] private bool previewRequested;
+        [NonSerialized] private double previewAt;
+        [NonSerialized] private bool temporaryDocumentDirty;
+        [NonSerialized] private string previewError;
+        [NonSerialized] private Dictionary<string, bool> groupExpansion;
+        [NonSerialized] private string dragCandidateLayerId;
+
+        [MenuItem("Window/Sprite Editor")]
+        public static void ShowWindow()
+        {
+            GetWindow<TextureCompositorWindow>("Sprite Editor");
+        }
+
+        private void OnEnable()
+        {
+            minSize = new Vector2(640f, 420f);
+            wantsMouseMove = true;
+            groupExpansion = new Dictionary<string, bool>();
+            TextureCompositor.Changed += OnCompositorChanged;
+            Undo.undoRedoPerformed += OnUndoRedo;
+
+            if (compositor == null)
+                SetCompositor(CreateTemporaryCompositor());
+            else
+                compositor.NormalizeModel();
+            RequestPreview(true);
+        }
+
+        private void OnDisable()
+        {
+            TextureCompositor.Changed -= OnCompositorChanged;
+            Undo.undoRedoPerformed -= OnUndoRedo;
+            ClearLayerDragData();
+            ReleasePreview();
+        }
+
+        private void Update()
+        {
+            if (!previewRequested || EditorApplication.timeSinceStartup < previewAt)
+                return;
+            previewRequested = false;
+            UpdatePreview();
+        }
+
+        private void OnGUI()
+        {
+            if (compositor == null)
+                SetCompositor(CreateTemporaryCompositor());
+
+            if (Event.current.type == EventType.DragExited)
+            {
+                ClearLayerDragData();
+                Repaint();
+            }
+
+            Rect contentRect = new Rect(0f, 0f, position.width, position.height);
+            float maxPreviewWidth = Mathf.Max(
+                PreviewPaneMinWidth,
+                contentRect.width - SettingsPaneMinWidth - SplitterWidth);
+            previewPaneWidth = Mathf.Clamp(previewPaneWidth, PreviewPaneMinWidth, maxPreviewWidth);
+
+            Rect previewRect = new Rect(contentRect.x, contentRect.y, previewPaneWidth, contentRect.height);
+            Rect splitterRect = new Rect(previewRect.xMax, contentRect.y, SplitterWidth, contentRect.height);
+            Rect settingsRect = new Rect(
+                splitterRect.xMax,
+                contentRect.y,
+                Mathf.Max(0f, contentRect.xMax - splitterRect.xMax),
+                contentRect.height);
+
+            DrawPreviewPane(previewRect);
+            DrawSettingsPane(settingsRect);
+            DrawSplitter(splitterRect, contentRect);
+        }
+
+        private void DrawSettingsPane(Rect rect)
+        {
+            GUILayout.BeginArea(rect);
+            DrawDocumentToolbar();
+            scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+            DrawOutputSettings();
+            EditorGUILayout.Space();
+            DrawLayerHierarchy();
+            EditorGUILayout.Space();
+            DrawExportSection();
+            EditorGUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        private void DrawDocumentToolbar()
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            {
+                TextureCompositor selected = (TextureCompositor)EditorGUILayout.ObjectField(
+                    compositor,
+                    typeof(TextureCompositor),
+                    false,
+                    GUILayout.MinWidth(180f));
+                if (selected != null && selected != compositor)
+                {
+                    if (ResolveUnsavedTemporaryDocument())
+                        SetCompositor(selected);
+                }
+
+                if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(46f)) &&
+                    ResolveUnsavedTemporaryDocument())
+                {
+                    SetCompositor(CreateTemporaryCompositor());
+                }
+
+                if (GUILayout.Button("Save As", EditorStyles.toolbarButton, GUILayout.Width(64f)))
+                    SaveAsAsset();
+            }
+
+            if (!AssetDatabase.Contains(compositor))
+            {
+                EditorGUILayout.HelpBox(
+                    temporaryDocumentDirty
+                        ? "Unsaved compositor. Use Save As to keep this layer tree."
+                        : "Temporary compositor. It can be exported directly or saved as an asset.",
+                    temporaryDocumentDirty ? MessageType.Warning : MessageType.Info);
+            }
+        }
+
+        private void DrawOutputSettings()
+        {
+            EditorGUILayout.LabelField("Output", EditorStyles.boldLabel);
+            Undo.RecordObject(compositor, "Change Sprite Output Size");
+            EditorGUI.BeginChangeCheck();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                compositor.width = EditorGUILayout.IntField("Width", compositor.width);
+                compositor.height = EditorGUILayout.IntField("Height", compositor.height);
+            }
+            if (EditorGUI.EndChangeCheck())
+                CommitModelChange();
+        }
+
+        private void DrawLayerHierarchy()
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Layers (top to bottom)", EditorStyles.boldLabel);
+                GUILayout.FlexibleSpace();
+                GUILayout.Label(LayerDragHintContent, EditorStyles.miniLabel, GUILayout.Width(42f));
+                if (GUILayout.Button("Add", GUILayout.Width(54f)))
+                    ShowAddMenuForSelection();
+
+                using (new EditorGUI.DisabledScope(GetSelectedLayer() == null))
+                {
+                    if (GUILayout.Button("Group", GUILayout.Width(54f)))
+                        GroupSelectedLayer();
+                }
+            }
+
+            if (compositor.layers.Count == 0)
+            {
+                EditorGUILayout.HelpBox("Add a layer or group to start composing.", MessageType.Info);
+                return;
+            }
+
+            Undo.RecordObject(compositor, "Edit Sprite Layers");
+            EditorGUI.BeginChangeCheck();
+            DrawLayerList(compositor.layers, 0);
+            if (EditorGUI.EndChangeCheck())
+                CommitModelChange();
+        }
+
+        private void DrawLayerList(List<Layer> sourceLayers, int depth)
+        {
+            if (sourceLayers == null)
+                return;
+
+            for (int i = 0; i < sourceLayers.Count; i++)
+            {
+                Layer layer = sourceLayers[i];
+                if (layer == null)
+                {
+                    DrawMissingLayerRow(sourceLayers, i, depth);
+                    continue;
+                }
+
+                if (layer is GroupLayer group)
+                    DrawGroupRow(group, sourceLayers, i, depth);
+                else
+                    DrawLeafRow(layer, sourceLayers, i, depth);
+            }
+
+            DrawContainerEndDropZone(sourceLayers, depth);
+        }
+
+        private void DrawGroupRow(GroupLayer group, List<Layer> container, int index, int depth)
+        {
+            bool expanded = GetGroupExpanded(group);
+            bool nextExpanded = expanded;
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                GUILayout.Space(depth * 14f);
+                DrawLayerDragHandle(group);
+                DrawSelectionToggle(group);
+                group.enabled = EditorGUILayout.Toggle(group.enabled, GUILayout.Width(18f));
+                Rect foldoutRect = GUILayoutUtility.GetRect(
+                    14f,
+                    EditorGUIUtility.singleLineHeight,
+                    GUILayout.Width(14f));
+                nextExpanded = EditorGUI.Foldout(foldoutRect, expanded, GUIContent.none, false);
+                if (nextExpanded != expanded)
+                    groupExpansion[group.Id] = nextExpanded;
+                group.layerName = EditorGUILayout.TextField(group.layerName, GUILayout.MinWidth(100f));
+                GUILayout.Label($"{group.layers.Count} items", EditorStyles.miniLabel, GUILayout.Width(50f));
+                if (GUILayout.Button("+", EditorStyles.miniButton, GUILayout.Width(24f)))
+                    ShowAddMenu(group.layers, 0);
+                if (GUILayout.Button("...", EditorStyles.miniButton, GUILayout.Width(30f)))
+                    ShowLayerContextMenu(group, container, index);
+            }
+
+            Rect rowRect = GUILayoutUtility.GetLastRect();
+            HandleLayerRowDrop(rowRect, group, container, index, depth);
+
+            if (nextExpanded)
+                DrawLayerList(group.layers, depth + 1);
+        }
+
+        private void DrawLeafRow(Layer layer, List<Layer> container, int index, int depth)
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                GUILayout.Space(depth * 14f);
+                DrawLayerDragHandle(layer);
+                DrawSelectionToggle(layer);
+                layer.enabled = EditorGUILayout.Toggle(layer.enabled, GUILayout.Width(18f));
+                DrawLayerThumbnail(layer);
+                layer.layerName = EditorGUILayout.TextField(layer.layerName, GUILayout.MinWidth(90f));
+                layer.opacity = Mathf.Clamp01(EditorGUILayout.FloatField(layer.opacity, GUILayout.Width(38f)));
+                layer.blendMode = (BlendMode)EditorGUILayout.EnumPopup(layer.blendMode, GUILayout.Width(82f));
+
+                if (layer is TargetedLayerEffect effect &&
+                    !compositor.HasUsableEffectInput(effect, container, index))
+                {
+                    string tooltip = effect.inputMode == EffectInputMode.Specific
+                        ? "Select an existing non-cyclic target layer or group in the effect settings."
+                        : "This effect needs a layer or group directly below it.";
+                    GUILayout.Label(new GUIContent("!", tooltip), GUILayout.Width(10f));
+                }
+
+                if (GUILayout.Button("Edit", EditorStyles.miniButton, GUILayout.Width(38f)))
+                    OpenLayerEditor(layer);
+                if (GUILayout.Button("FX", EditorStyles.miniButton, GUILayout.Width(28f)))
+                    ModifierEditorWindow.Open(layer, compositor);
+                if (GUILayout.Button("...", EditorStyles.miniButton, GUILayout.Width(30f)))
+                    ShowLayerContextMenu(layer, container, index);
+            }
+            Rect rowRect = GUILayoutUtility.GetLastRect();
+            HandleLayerRowDrop(rowRect, layer, container, index, depth);
+        }
+
+        private void DrawSelectionToggle(Layer layer)
+        {
+            bool selected = layer.Id == selectedLayerId;
+            bool next = GUILayout.Toggle(selected, GUIContent.none, EditorStyles.radioButton, GUILayout.Width(14f));
+            if (next && !selected)
+            {
+                selectedLayerId = layer.Id;
+                Repaint();
+            }
+        }
+
+        private void DrawLayerDragHandle(Layer layer)
+        {
+            Rect handleRect = GUILayoutUtility.GetRect(
+                14f,
+                EditorGUIUtility.singleLineHeight,
+                GUILayout.Width(14f));
+            GUI.Label(handleRect, LayerDragHandleContent, EditorStyles.centeredGreyMiniLabel);
+            EditorGUIUtility.AddCursorRect(handleRect, MouseCursor.Pan);
+
+            int controlId = GUIUtility.GetControlID(LayerDragHandleHash, FocusType.Passive, handleRect);
+            Event current = Event.current;
+            switch (current.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (current.button == 0 && handleRect.Contains(current.mousePosition))
+                    {
+                        GUIUtility.hotControl = controlId;
+                        dragCandidateLayerId = layer.Id;
+                        selectedLayerId = layer.Id;
+                        Repaint();
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl == controlId && dragCandidateLayerId == layer.Id)
+                    {
+                        DragAndDrop.PrepareStartDrag();
+                        DragAndDrop.objectReferences = Array.Empty<UnityEngine.Object>();
+                        DragAndDrop.SetGenericData(DraggedLayerIdKey, layer.Id);
+                        DragAndDrop.SetGenericData(DraggedCompositorIdKey, compositor);
+                        DragAndDrop.StartDrag(string.IsNullOrEmpty(layer.layerName) ? "Layer" : layer.layerName);
+                        GUIUtility.hotControl = 0;
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl == controlId && current.button == 0)
+                    {
+                        GUIUtility.hotControl = 0;
+                        dragCandidateLayerId = null;
+                        current.Use();
+                    }
+                    break;
+            }
+        }
+
+        private void HandleLayerRowDrop(
+            Rect rowRect,
+            Layer rowLayer,
+            List<Layer> rowContainer,
+            int rowIndex,
+            int depth)
+        {
+            Layer draggedLayer = GetDraggedLayer();
+            Event current = Event.current;
+            if (draggedLayer == null || !rowRect.Contains(current.mousePosition))
+                return;
+
+            bool dropIntoGroup = false;
+            if (rowLayer is GroupLayer)
+            {
+                float centerHalfHeight = rowRect.height * GroupDropCenterFraction * 0.5f;
+                dropIntoGroup = current.mousePosition.y >= rowRect.center.y - centerHalfHeight &&
+                                current.mousePosition.y <= rowRect.center.y + centerHalfHeight;
+            }
+
+            List<Layer> destinationContainer;
+            int destinationIndex;
+            GroupLayer groupToExpand = null;
+            bool insertBefore = current.mousePosition.y < rowRect.center.y;
+            if (dropIntoGroup)
+            {
+                groupToExpand = (GroupLayer)rowLayer;
+                destinationContainer = groupToExpand.layers;
+                destinationIndex = 0;
+            }
+            else
+            {
+                destinationContainer = rowContainer;
+                destinationIndex = insertBefore ? rowIndex : rowIndex + 1;
+            }
+
+            bool canDrop = CanDropLayer(draggedLayer, destinationContainer, destinationIndex);
+            if (current.type == EventType.DragUpdated)
+            {
+                DragAndDrop.visualMode = canDrop ? DragAndDropVisualMode.Move : DragAndDropVisualMode.Rejected;
+                current.Use();
+                return;
+            }
+
+            if (current.type == EventType.Repaint && canDrop)
+            {
+                if (dropIntoGroup)
+                {
+                    EditorGUI.DrawRect(rowRect, GroupDropHighlightColor);
+                    DrawBorder(rowRect, DropIndicatorColor);
+                }
+                else
+                {
+                    float indicatorY = insertBefore ? rowRect.y : rowRect.yMax - 2f;
+                    float indicatorX = rowRect.x + depth * 14f + 4f;
+                    EditorGUI.DrawRect(
+                        new Rect(indicatorX, indicatorY, Mathf.Max(0f, rowRect.xMax - indicatorX), 2f),
+                        DropIndicatorColor);
+                }
+                return;
+            }
+
+            if (current.type != EventType.DragPerform || !canDrop)
+                return;
+
+            DragAndDrop.AcceptDrag();
+            PerformLayerDrop(draggedLayer, destinationContainer, destinationIndex, groupToExpand);
+            ClearLayerDragData();
+            current.Use();
+            GUIUtility.ExitGUI();
+        }
+
+        private void DrawContainerEndDropZone(List<Layer> destinationContainer, int depth)
+        {
+            Rect dropRect = GUILayoutUtility.GetRect(1f, 8f, GUILayout.ExpandWidth(true));
+            Layer draggedLayer = GetDraggedLayer();
+            Event current = Event.current;
+            if (draggedLayer == null || !dropRect.Contains(current.mousePosition))
+                return;
+
+            int destinationIndex = destinationContainer.Count;
+            bool canDrop = CanDropLayer(draggedLayer, destinationContainer, destinationIndex);
+            if (current.type == EventType.DragUpdated)
+            {
+                DragAndDrop.visualMode = canDrop ? DragAndDropVisualMode.Move : DragAndDropVisualMode.Rejected;
+                current.Use();
+                return;
+            }
+
+            if (current.type == EventType.Repaint && canDrop)
+            {
+                float indicatorX = dropRect.x + depth * 14f + 4f;
+                EditorGUI.DrawRect(
+                    new Rect(indicatorX, dropRect.center.y - 1f, Mathf.Max(0f, dropRect.xMax - indicatorX), 2f),
+                    DropIndicatorColor);
+                return;
+            }
+
+            if (current.type != EventType.DragPerform || !canDrop)
+                return;
+
+            DragAndDrop.AcceptDrag();
+            PerformLayerDrop(draggedLayer, destinationContainer, destinationIndex, null);
+            ClearLayerDragData();
+            current.Use();
+            GUIUtility.ExitGUI();
+        }
+
+        private Layer GetDraggedLayer()
+        {
+            TextureCompositor draggedCompositor =
+                DragAndDrop.GetGenericData(DraggedCompositorIdKey) as TextureCompositor;
+            if (draggedCompositor == null || compositor == null || draggedCompositor != compositor)
+            {
+                return null;
+            }
+
+            string draggedLayerId = DragAndDrop.GetGenericData(DraggedLayerIdKey) as string;
+            return compositor.FindLayer(draggedLayerId);
+        }
+
+        private bool CanDropLayer(Layer layer, List<Layer> destinationContainer, int destinationIndex)
+        {
+            return TryResolveLayerDrop(
+                layer,
+                destinationContainer,
+                destinationIndex,
+                out _,
+                out _,
+                out _);
+        }
+
+        private bool TryResolveLayerDrop(
+            Layer layer,
+            List<Layer> destinationContainer,
+            int destinationIndex,
+            out List<Layer> sourceContainer,
+            out int sourceIndex,
+            out int normalizedDestinationIndex)
+        {
+            sourceContainer = null;
+            sourceIndex = -1;
+            normalizedDestinationIndex = -1;
+            if (layer == null ||
+                destinationContainer == null ||
+                !compositor.TryFindLayer(layer, out sourceContainer, out sourceIndex))
+            {
+                return false;
+            }
+
+            if (layer is GroupLayer group && ContainsLayerContainer(group, destinationContainer))
+                return false;
+
+            normalizedDestinationIndex = Mathf.Clamp(destinationIndex, 0, destinationContainer.Count);
+            if (ReferenceEquals(sourceContainer, destinationContainer) && sourceIndex < normalizedDestinationIndex)
+                normalizedDestinationIndex--;
+
+            return !ReferenceEquals(sourceContainer, destinationContainer) ||
+                   normalizedDestinationIndex != sourceIndex;
+        }
+
+        private static bool ContainsLayerContainer(GroupLayer group, List<Layer> candidateContainer)
+        {
+            if (group == null || group.layers == null)
+                return false;
+            if (ReferenceEquals(group.layers, candidateContainer))
+                return true;
+
+            for (int i = 0; i < group.layers.Count; i++)
+            {
+                if (group.layers[i] is GroupLayer nestedGroup &&
+                    ContainsLayerContainer(nestedGroup, candidateContainer))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void PerformLayerDrop(
+            Layer layer,
+            List<Layer> destinationContainer,
+            int destinationIndex,
+            GroupLayer groupToExpand)
+        {
+            if (!TryResolveLayerDrop(
+                    layer,
+                    destinationContainer,
+                    destinationIndex,
+                    out List<Layer> sourceContainer,
+                    out int sourceIndex,
+                    out int normalizedDestinationIndex))
+            {
+                return;
+            }
+
+            ExecuteModelChange("Move Sprite Layer", () =>
+            {
+                sourceContainer.RemoveAt(sourceIndex);
+                normalizedDestinationIndex = Mathf.Clamp(
+                    normalizedDestinationIndex,
+                    0,
+                    destinationContainer.Count);
+                destinationContainer.Insert(normalizedDestinationIndex, layer);
+                selectedLayerId = layer.Id;
+                if (groupToExpand != null)
+                    groupExpansion[groupToExpand.Id] = true;
+            });
+        }
+
+        private void ClearLayerDragData()
+        {
+            dragCandidateLayerId = null;
+            DragAndDrop.SetGenericData(DraggedLayerIdKey, null);
+            DragAndDrop.SetGenericData(DraggedCompositorIdKey, null);
+        }
+
+        private static void DrawLayerThumbnail(Layer layer)
+        {
+            Rect rect = GUILayoutUtility.GetRect(18f, 18f, GUILayout.Width(18f));
+            Texture2D preview = layer.GetPreviewTexture(18);
+            if (preview != null)
+                GUI.DrawTexture(rect, preview, ScaleMode.ScaleToFit, true);
+            else
+                EditorGUI.DrawRect(rect, new Color(0.28f, 0.28f, 0.28f, 1f));
+        }
+
+        private void DrawMissingLayerRow(List<Layer> container, int index, int depth)
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox))
+            {
+                GUILayout.Space(depth * 14f + 14f);
+                EditorGUILayout.LabelField("Missing layer data", EditorStyles.miniLabel);
+                if (GUILayout.Button("Remove", EditorStyles.miniButton, GUILayout.Width(54f)))
+                    ExecuteModelChange("Remove Missing Layer", () => container.RemoveAt(index));
+            }
+        }
+
+        private void DrawPreviewPane(Rect rect)
+        {
+            Color background = EditorGUIUtility.isProSkin
+                ? new Color(0.105f, 0.105f, 0.105f, 1f)
+                : new Color(0.65f, 0.65f, 0.65f, 1f);
+            Color headerBackground = EditorGUIUtility.isProSkin
+                ? new Color(0.16f, 0.16f, 0.16f, 1f)
+                : new Color(0.78f, 0.78f, 0.78f, 1f);
+            EditorGUI.DrawRect(rect, background);
+
+            Rect headerRect = new Rect(rect.x, rect.y, rect.width, 28f);
+            EditorGUI.DrawRect(headerRect, headerBackground);
+            GUI.Label(
+                new Rect(headerRect.x + 10f, headerRect.y + 4f, 80f, 20f),
+                "Preview",
+                EditorStyles.boldLabel);
+
+            Rect refreshRect = new Rect(headerRect.xMax - 72f, headerRect.y + 4f, 64f, 20f);
+            if (GUI.Button(refreshRect, "Refresh", EditorStyles.miniButton))
+                RequestPreview(true);
+
+            string dimensions = $"{Mathf.Max(1, compositor.width)} × {Mathf.Max(1, compositor.height)}";
+            Rect dimensionsRect = new Rect(
+                headerRect.x + 92f,
+                headerRect.y + 4f,
+                Mathf.Max(0f, refreshRect.x - headerRect.x - 100f),
+                20f);
+            GUI.Label(dimensionsRect, dimensions, EditorStyles.centeredGreyMiniLabel);
+
+            Rect footerRect = new Rect(rect.x, rect.yMax - 22f, rect.width, 22f);
+            GUI.Label(
+                footerRect,
+                previewTexture != null ? "Transparent canvas • auto refresh" : "Rendering preview…",
+                EditorStyles.centeredGreyMiniLabel);
+
+            Rect canvasRect = new Rect(
+                rect.x + PanePadding,
+                headerRect.yMax + PanePadding,
+                Mathf.Max(0f, rect.width - PanePadding * 2f),
+                Mathf.Max(0f, footerRect.y - headerRect.yMax - PanePadding * 2f));
+
+            if (!string.IsNullOrEmpty(previewError))
+            {
+                float errorHeight = Mathf.Min(52f, canvasRect.height);
+                EditorGUI.HelpBox(
+                    new Rect(canvasRect.x, canvasRect.y, canvasRect.width, errorHeight),
+                    previewError,
+                    MessageType.Error);
+                canvasRect.yMin += errorHeight + PanePadding;
+            }
+
+            if (canvasRect.width <= 1f || canvasRect.height <= 1f)
+                return;
+
+            float sourceWidth = previewTexture != null
+                ? Mathf.Max(1, previewTexture.width)
+                : Mathf.Max(1, compositor.width);
+            float sourceHeight = previewTexture != null
+                ? Mathf.Max(1, previewTexture.height)
+                : Mathf.Max(1, compositor.height);
+            Rect imageRect = FitRect(canvasRect, sourceWidth / sourceHeight);
+            Rect shadowRect = new Rect(imageRect.x + 3f, imageRect.y + 3f, imageRect.width, imageRect.height);
+            EditorGUI.DrawRect(shadowRect, new Color(0f, 0f, 0f, 0.32f));
+            DrawCheckerboard(imageRect);
+
+            if (previewTexture != null)
+                GUI.DrawTexture(imageRect, previewTexture, ScaleMode.StretchToFill, true);
+            else
+                GUI.Label(imageRect, "Preparing preview…", EditorStyles.centeredGreyMiniLabel);
+
+            DrawBorder(imageRect, EditorGUIUtility.isProSkin
+                ? new Color(0.32f, 0.32f, 0.32f, 1f)
+                : new Color(0.38f, 0.38f, 0.38f, 1f));
+        }
+
+        private void DrawSplitter(Rect splitterRect, Rect contentRect)
+        {
+            int controlId = GUIUtility.GetControlID(SplitterControlHash, FocusType.Passive, splitterRect);
+            Event current = Event.current;
+            switch (current.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (current.button == 0 && splitterRect.Contains(current.mousePosition))
+                    {
+                        GUIUtility.hotControl = controlId;
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl == controlId)
+                    {
+                        float maxWidth = Mathf.Max(
+                            PreviewPaneMinWidth,
+                            contentRect.width - SettingsPaneMinWidth - SplitterWidth);
+                        previewPaneWidth = Mathf.Clamp(
+                            current.mousePosition.x - contentRect.x,
+                            PreviewPaneMinWidth,
+                            maxWidth);
+                        GUI.changed = true;
+                        Repaint();
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl == controlId && current.button == 0)
+                    {
+                        GUIUtility.hotControl = 0;
+                        current.Use();
+                    }
+                    break;
+            }
+
+            EditorGUIUtility.AddCursorRect(splitterRect, MouseCursor.ResizeHorizontal);
+            bool highlighted = GUIUtility.hotControl == controlId || splitterRect.Contains(current.mousePosition);
+            EditorGUI.DrawRect(
+                splitterRect,
+                highlighted
+                    ? new Color(0.20f, 0.52f, 0.82f, 1f)
+                    : new Color(0.10f, 0.10f, 0.10f, 1f));
+
+            float gripY = splitterRect.center.y - 14f;
+            Color gripColor = new Color(1f, 1f, 1f, highlighted ? 0.8f : 0.35f);
+            EditorGUI.DrawRect(new Rect(splitterRect.center.x - 1f, gripY, 1f, 28f), gripColor);
+            EditorGUI.DrawRect(new Rect(splitterRect.center.x + 1f, gripY, 1f, 28f), gripColor);
+        }
+
+        private static Rect FitRect(Rect container, float aspect)
+        {
+            aspect = Mathf.Max(0.0001f, aspect);
+            float width = container.width;
+            float height = width / aspect;
+            if (height > container.height)
+            {
+                height = container.height;
+                width = height * aspect;
+            }
+
+            return new Rect(
+                container.x + (container.width - width) * 0.5f,
+                container.y + (container.height - height) * 0.5f,
+                width,
+                height);
+        }
+
+        private static void DrawCheckerboard(Rect rect)
+        {
+            const float tileSize = 12f;
+            Color light = EditorGUIUtility.isProSkin
+                ? new Color(0.30f, 0.30f, 0.30f, 1f)
+                : new Color(0.82f, 0.82f, 0.82f, 1f);
+            Color dark = EditorGUIUtility.isProSkin
+                ? new Color(0.23f, 0.23f, 0.23f, 1f)
+                : new Color(0.70f, 0.70f, 0.70f, 1f);
+
+            int rows = Mathf.CeilToInt(rect.height / tileSize);
+            int columns = Mathf.CeilToInt(rect.width / tileSize);
+            for (int row = 0; row < rows; row++)
+            {
+                for (int column = 0; column < columns; column++)
+                {
+                    Rect tile = new Rect(
+                        rect.x + column * tileSize,
+                        rect.y + row * tileSize,
+                        Mathf.Min(tileSize, rect.xMax - (rect.x + column * tileSize)),
+                        Mathf.Min(tileSize, rect.yMax - (rect.y + row * tileSize)));
+                    EditorGUI.DrawRect(tile, ((row + column) & 1) == 0 ? light : dark);
+                }
+            }
+        }
+
+        private static void DrawBorder(Rect rect, Color color)
+        {
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, 1f), color);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - 1f, rect.width, 1f), color);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, 1f, rect.height), color);
+            EditorGUI.DrawRect(new Rect(rect.xMax - 1f, rect.y, 1f, rect.height), color);
+        }
+
+        private void DrawExportSection()
+        {
+            if (GUILayout.Button("Export PNG"))
+                ExportTexture();
+        }
+
+        private void ShowAddMenuForSelection()
+        {
+            Layer selected = GetSelectedLayer();
+            if (selected != null && compositor.TryFindLayer(selected, out List<Layer> container, out int index))
+                ShowAddMenu(container, index);
+            else
+                ShowAddMenu(compositor.layers, 0);
+        }
+
+        private void ShowAddMenu(List<Layer> container, int insertionIndex)
+        {
+            GenericMenu menu = new GenericMenu();
+            menu.AddItem(new GUIContent("File Layer"), false, () => AddLayer(container, insertionIndex, new FileLayer()));
+            menu.AddItem(new GUIContent("Color Fill Layer"), false, () => AddLayer(container, insertionIndex, new ColorFillLayer()));
+            menu.AddItem(new GUIContent("Gradient Layer"), false, () => AddLayer(container, insertionIndex, new GradientLayer()));
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Outline Layer"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
+            menu.AddItem(new GUIContent("SDF Layer"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
+            menu.ShowAsContext();
+        }
+
+        private void AddLayer(List<Layer> container, int insertionIndex, Layer layer)
+        {
+            string automaticName = compositor.AllocateLayerName();
+            ExecuteModelChange("Add Sprite Layer", () =>
+            {
+                layer.layerName = automaticName;
+                insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
+                container.Insert(insertionIndex, layer);
+                compositor.NormalizeModel();
+                selectedLayerId = layer.Id;
+                if (layer is GroupLayer)
+                    groupExpansion[layer.Id] = true;
+            });
+        }
+
+        private void GroupSelectedLayer()
+        {
+            Layer selected = GetSelectedLayer();
+            if (selected == null || !compositor.TryFindLayer(selected, out List<Layer> container, out int index))
+                return;
+
+            string automaticName = compositor.AllocateLayerName();
+            ExecuteModelChange("Group Sprite Layer", () =>
+            {
+                GroupLayer group = new GroupLayer { layerName = automaticName };
+                group.layers.Add(selected);
+                container[index] = group;
+                compositor.NormalizeModel();
+                selectedLayerId = group.Id;
+                groupExpansion[group.Id] = true;
+            });
+        }
+
+        private void Ungroup(GroupLayer group, List<Layer> container)
+        {
+            int index = container.IndexOf(group);
+            if (index < 0)
+                return;
+            ExecuteModelChange("Ungroup Sprite Layers", () =>
+            {
+                container.RemoveAt(index);
+                container.InsertRange(index, group.layers);
+                selectedLayerId = group.layers.Count > 0 ? group.layers[0]?.Id : null;
+            });
+        }
+
+        private void ShowLayerContextMenu(Layer layer, List<Layer> container, int index)
+        {
+            GenericMenu menu = new GenericMenu();
+            if (index > 0)
+                menu.AddItem(new GUIContent("Move Up"), false, () => MoveLayer(container, layer, -1));
+            else
+                menu.AddDisabledItem(new GUIContent("Move Up"));
+            if (index + 1 < container.Count)
+                menu.AddItem(new GUIContent("Move Down"), false, () => MoveLayer(container, layer, 1));
+            else
+                menu.AddDisabledItem(new GUIContent("Move Down"));
+
+            menu.AddSeparator(string.Empty);
+            if (index > 0 && container[index - 1] is GroupLayer groupAbove)
+                menu.AddItem(new GUIContent("Move Into Group Above"), false, () => MoveIntoGroup(container, layer, groupAbove));
+            else
+                menu.AddDisabledItem(new GUIContent("Move Into Group Above"));
+
+            if (compositor.TryFindParentGroup(container, out _, out _, out _))
+                menu.AddItem(new GUIContent("Move Out Of Group"), false, () => MoveOutOfGroup(container, layer));
+            else
+                menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
+
+            if (layer is GroupLayer group)
+            {
+                menu.AddSeparator(string.Empty);
+                menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddLayer(group.layers, 0, new FileLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddLayer(group.layers, 0, new ColorFillLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddLayer(group.layers, 0, new GradientLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddLayer(group.layers, 0, new OutlineLayer()));
+                menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddLayer(group.layers, 0, new SDFLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddLayer(group.layers, 0, new GroupLayer()));
+                menu.AddItem(new GUIContent("Ungroup"), false, () => Ungroup(group, container));
+            }
+            else
+            {
+                menu.AddItem(new GUIContent("Group This Layer"), false, () =>
+                {
+                    selectedLayerId = layer.Id;
+                    GroupSelectedLayer();
+                });
+            }
+
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
+            menu.ShowAsContext();
+        }
+
+        private void MoveLayer(List<Layer> container, Layer layer, int direction)
+        {
+            int index = container.IndexOf(layer);
+            int destination = index + direction;
+            if (index < 0 || destination < 0 || destination >= container.Count)
+                return;
+            ExecuteModelChange("Reorder Sprite Layer", () =>
+            {
+                container.RemoveAt(index);
+                container.Insert(destination, layer);
+            });
+        }
+
+        private void MoveIntoGroup(List<Layer> container, Layer layer, GroupLayer group)
+        {
+            ExecuteModelChange("Move Layer Into Group", () =>
+            {
+                container.Remove(layer);
+                group.layers.Add(layer);
+                groupExpansion[group.Id] = true;
+            });
+        }
+
+        private void MoveOutOfGroup(List<Layer> container, Layer layer)
+        {
+            if (!compositor.TryFindParentGroup(container, out GroupLayer parent, out List<Layer> parentContainer, out int parentIndex))
+                return;
+            ExecuteModelChange("Move Layer Out Of Group", () =>
+            {
+                container.Remove(layer);
+                parentContainer.Insert(parentIndex + 1, layer);
+                selectedLayerId = layer.Id;
+            });
+        }
+
+        private void DeleteLayer(List<Layer> container, Layer layer)
+        {
+            ExecuteModelChange("Delete Sprite Layer", () =>
+            {
+                container.Remove(layer);
+                layer.ReleaseTransientResources();
+                if (selectedLayerId == layer.Id)
+                    selectedLayerId = null;
+            });
+        }
+
+        private void OpenLayerEditor(Layer layer)
+        {
+            switch (layer)
+            {
+                case FileLayer fileLayer:
+                    FileLayerEditorWindow.Open(fileLayer, compositor);
+                    break;
+                case ColorFillLayer colorFillLayer:
+                    ColorFillLayerEditorWindow.Open(colorFillLayer, compositor);
+                    break;
+                case GradientLayer gradientLayer:
+                    GradientLayerEditorWindow.Open(gradientLayer, compositor);
+                    break;
+                case OutlineLayer outlineLayer:
+                    OutlineLayerEditorWindow.Open(outlineLayer, compositor);
+                    break;
+                case SDFLayer sdfLayer:
+                    SDFLayerEditorWindow.Open(sdfLayer, compositor);
+                    break;
+            }
+        }
+
+        private Layer GetSelectedLayer()
+        {
+            return compositor == null ? null : compositor.FindLayer(selectedLayerId);
+        }
+
+        private bool GetGroupExpanded(GroupLayer group)
+        {
+            groupExpansion ??= new Dictionary<string, bool>();
+            if (!groupExpansion.TryGetValue(group.Id, out bool expanded))
+            {
+                expanded = true;
+                groupExpansion.Add(group.Id, true);
+            }
+            return expanded;
+        }
+
+        private void ExecuteModelChange(string undoName, Action action)
+        {
+            Undo.RecordObject(compositor, undoName);
+            action();
+            CommitModelChange();
+        }
+
+        private void CommitModelChange()
+        {
+            temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+            compositor.MarkChanged();
+            RequestPreview();
+            Repaint();
+        }
+
+        private void RequestPreview(bool immediate = false)
+        {
+            previewRequested = true;
+            previewAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
+            Repaint();
+        }
+
+        private void UpdatePreview()
+        {
+            ReleasePreview();
+            previewError = null;
+            if (compositor == null)
+                return;
+
+            try
+            {
+                previewTexture = compositor.ComposePreview(PreviewMaxSize);
+            }
+            catch (Exception exception)
+            {
+                previewError = exception.Message;
+                Debug.LogException(exception);
+            }
+            Repaint();
+        }
+
+        private void ReleasePreview()
+        {
+            if (previewTexture == null)
+                return;
+            DestroyImmediate(previewTexture);
+            previewTexture = null;
+        }
+
+        private TextureCompositor CreateTemporaryCompositor()
+        {
+            TextureCompositor result = CreateInstance<TextureCompositor>();
+            result.name = "Unsaved Texture Compositor";
+            result.hideFlags = HideFlags.HideAndDontSave;
+            result.NormalizeModel();
+            temporaryDocumentDirty = false;
+            return result;
+        }
+
+        private void SetCompositor(TextureCompositor next)
+        {
+            if (next == null || next == compositor)
+                return;
+
+            ClearLayerDragData();
+            TextureCompositor previous = compositor;
+            compositor = next;
+            compositor.NormalizeModel();
+            selectedLayerId = null;
+            temporaryDocumentDirty = false;
+            groupExpansion?.Clear();
+            RequestPreview(true);
+
+            if (previous != null && !AssetDatabase.Contains(previous))
+                DestroyImmediate(previous);
+        }
+
+        private bool ResolveUnsavedTemporaryDocument()
+        {
+            if (compositor == null || AssetDatabase.Contains(compositor) || !temporaryDocumentDirty)
+                return true;
+
+            int choice = EditorUtility.DisplayDialogComplex(
+                "Unsaved Sprite Editor document",
+                "Save the current compositor before replacing it?",
+                "Save As",
+                "Discard",
+                "Cancel");
+            if (choice == 0)
+                return SaveAsAsset();
+            return choice == 1;
+        }
+
+        private bool SaveAsAsset()
+        {
+            string defaultName = compositor != null && !string.IsNullOrWhiteSpace(compositor.name)
+                ? compositor.name
+                : "TextureCompositor";
+            string path = EditorUtility.SaveFilePanelInProject(
+                "Save Texture Compositor",
+                defaultName,
+                "asset",
+                "Choose a location for the compositor asset.");
+            if (string.IsNullOrEmpty(path))
+                return false;
+
+            TextureCompositor copy = Instantiate(compositor);
+            copy.name = Path.GetFileNameWithoutExtension(path);
+            copy.hideFlags = HideFlags.None;
+            path = AssetDatabase.GenerateUniqueAssetPath(path);
+            AssetDatabase.CreateAsset(copy, path);
+            AssetDatabase.SaveAssets();
+            SetCompositor(copy);
+            Selection.activeObject = copy;
+            EditorGUIUtility.PingObject(copy);
+            return true;
+        }
+
+        private void ExportTexture()
+        {
+            string path = EditorUtility.SaveFilePanel("Export Sprite PNG", Application.dataPath, "sprite", "png");
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            Texture2D texture = null;
+            try
+            {
+                texture = compositor.Compose();
+                File.WriteAllBytes(path, texture.EncodeToPNG());
+                ImportExportedSpriteIfNeeded(path);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Sprite export failed", exception.Message, "OK");
+            }
+            finally
+            {
+                if (texture != null)
+                    DestroyImmediate(texture);
+            }
+        }
+
+        private static void ImportExportedSpriteIfNeeded(string path)
+        {
+            string fullPath = Path.GetFullPath(path).Replace('\\', '/');
+            string assetsPath = Path.GetFullPath(Application.dataPath).Replace('\\', '/');
+            if (!fullPath.StartsWith(assetsPath + "/", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            string assetPath = "Assets" + fullPath.Substring(assetsPath.Length);
+            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
+            if (AssetImporter.GetAtPath(assetPath) is TextureImporter importer)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.SaveAndReimport();
+            }
+
+            UnityEngine.Object imported = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            if (imported == null)
+                imported = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+            Selection.activeObject = imported;
+            EditorGUIUtility.PingObject(imported);
+        }
+
+        private void OnCompositorChanged(TextureCompositor changedCompositor)
+        {
+            if (changedCompositor == compositor)
+                RequestPreview();
+        }
+
+        private void OnUndoRedo()
+        {
+            if (compositor == null)
+                return;
+            compositor.NormalizeModel();
+            selectedLayerId = compositor.FindLayer(selectedLayerId)?.Id;
+            temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+            RequestPreview(true);
+            Repaint();
+        }
+    }
+}
