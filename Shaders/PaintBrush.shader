@@ -26,6 +26,9 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                float2 clipMin : TEXCOORD1;
+                float2 clipMax : TEXCOORD2;
+                float3 clipData : TEXCOORD3;
             };
 
             struct v2f
@@ -33,16 +36,15 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 float4 vertex : SV_POSITION;
                 float2 brushUv : TEXCOORD0;
                 float2 canvasUv : TEXCOORD1;
+                float2 clipMin : TEXCOORD2;
+                float2 clipMax : TEXCOORD3;
+                float3 clipData : TEXCOORD4;
             };
 
             fixed4 _Color;
             float _Hardness;
             float2 _CanvasSize;
-            float _ClipMode;
-            float4 _ClipRect;
             float2 _PatternCenter;
-            float _ClipAngleCenter;
-            float _ClipAngleHalfWidth;
 
             v2f vert(appdata input)
             {
@@ -50,27 +52,30 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 output.vertex = UnityObjectToClipPos(input.vertex);
                 output.brushUv = input.uv;
                 output.canvasUv = input.vertex.xy;
+                output.clipMin = input.clipMin;
+                output.clipMax = input.clipMax;
+                output.clipData = input.clipData;
                 return output;
             }
 
             fixed4 frag(v2f input) : SV_Target
             {
-                if (_ClipMode > 0.5 && _ClipMode < 1.5)
+                if (input.clipData.x > 0.5 && input.clipData.x < 1.5)
                 {
-                    if (input.canvasUv.x < _ClipRect.x || input.canvasUv.y < _ClipRect.y ||
-                        input.canvasUv.x > _ClipRect.z || input.canvasUv.y > _ClipRect.w)
+                    if (input.canvasUv.x < input.clipMin.x || input.canvasUv.y < input.clipMin.y ||
+                        input.canvasUv.x > input.clipMax.x || input.canvasUv.y > input.clipMax.y)
                     {
                         discard;
                     }
                 }
-                else if (_ClipMode > 1.5)
+                else if (input.clipData.x > 1.5)
                 {
                     float2 delta = (input.canvasUv - _PatternCenter) * _CanvasSize;
                     float angle = atan2(delta.y, delta.x);
                     float difference = atan2(
-                        sin(angle - _ClipAngleCenter),
-                        cos(angle - _ClipAngleCenter));
-                    if (abs(difference) > _ClipAngleHalfWidth)
+                        sin(angle - input.clipData.y),
+                        cos(angle - input.clipData.y));
+                    if (abs(difference) > input.clipData.z)
                         discard;
                 }
 

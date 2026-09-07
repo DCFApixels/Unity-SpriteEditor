@@ -10,6 +10,9 @@ namespace DCFApixels.SpriteEditor
     {
         private const int MinimumRepeatCount = 2;
         private const int MaximumRepeatCount = 64;
+        private const float DefaultBrushSpacing = 0.16f;
+        internal const float MinimumBrushSpacing = 0.01f;
+        internal const float MaximumBrushSpacing = 4f;
 
         [SerializeField] private Texture2D pixels;
 
@@ -17,6 +20,7 @@ namespace DCFApixels.SpriteEditor
         public Color brushColor = Color.white;
         public float brushSize = 32f;
         [Range(0f, 1f)] public float brushHardness = 0.8f;
+        [Range(MinimumBrushSpacing, MaximumBrushSpacing)] public float brushSpacing = DefaultBrushSpacing;
 
         public bool mirrorAcrossVerticalAxis;
         public bool mirrorAcrossHorizontalAxis;
@@ -31,6 +35,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private RenderTexture paintSurface;
         [NonSerialized] private List<Vector2> symmetryPoints;
         [NonSerialized] private List<PaintStamp> patternStamps;
+        [NonSerialized] private HashSet<PaintStamp> patternStampSet;
+        [NonSerialized] private List<PaintStamp> segmentStamps;
 
         internal Texture2D StoredTexture => pixels;
 
@@ -79,6 +85,9 @@ namespace DCFApixels.SpriteEditor
         {
             brushSize = Mathf.Max(1f, brushSize);
             brushHardness = Mathf.Clamp01(brushHardness);
+            if (brushSpacing <= 0f)
+                brushSpacing = DefaultBrushSpacing;
+            brushSpacing = Mathf.Clamp(brushSpacing, MinimumBrushSpacing, MaximumBrushSpacing);
             patternCenter.x = Mathf.Clamp01(patternCenter.x);
             patternCenter.y = Mathf.Clamp01(patternCenter.y);
             repeatCount = Mathf.Clamp(repeatCount, MinimumRepeatCount, MaximumRepeatCount);
@@ -125,26 +134,30 @@ namespace DCFApixels.SpriteEditor
                 (toSourceUv.x - fromSourceUv.x) * outputWidth,
                 (toSourceUv.y - fromSourceUv.y) * outputHeight);
             float distance = pixelDelta.magnitude;
-            float spacing = Mathf.Max(1f, brushSize * 0.16f);
-            int steps = Mathf.Max(1, Mathf.CeilToInt(distance / spacing));
+            float spacing = Mathf.Max(1f, brushSize * brushSpacing);
+            int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / spacing)) : 0;
             int firstStep = includeStart ? 0 : 1;
 
+            segmentStamps ??= new List<PaintStamp>(256);
+            segmentStamps.Clear();
             for (int step = firstStep; step <= steps; step++)
             {
-                float t = steps <= 0 ? 1f : (float)step / steps;
+                float t = steps <= 0 ? 0f : (float)step / steps;
                 Vector2 point = Vector2.Lerp(fromSourceUv, toSourceUv, t);
                 BuildPatternStamps(point, outputWidth, outputHeight);
-                PaintBrushRenderer.Draw(
-                    surface,
-                    patternStamps,
-                    brushSize,
-                    brushHardness,
-                    brushColor,
-                    tool == PaintToolMode.Eraser,
-                    outputWidth,
-                    outputHeight,
-                    patternCenter);
+                segmentStamps.AddRange(patternStamps);
             }
+
+            PaintBrushRenderer.Draw(
+                surface,
+                segmentStamps,
+                brushSize,
+                brushHardness,
+                brushColor,
+                tool == PaintToolMode.Eraser,
+                outputWidth,
+                outputHeight,
+                patternCenter);
         }
 
         internal void ClearSurface(int width, int height)
@@ -336,8 +349,10 @@ namespace DCFApixels.SpriteEditor
         {
             symmetryPoints ??= new List<Vector2>(4);
             patternStamps ??= new List<PaintStamp>(MaximumRepeatCount * 4);
+            patternStampSet ??= new HashSet<PaintStamp>();
             symmetryPoints.Clear();
             patternStamps.Clear();
+            patternStampSet.Clear();
 
             AddSymmetryPoint(sourceUv);
             if (mirrorAcrossVerticalAxis)
@@ -474,29 +489,16 @@ namespace DCFApixels.SpriteEditor
             float clipAngleCenter,
             float clipAngleHalfWidth)
         {
-            for (int i = 0; i < patternStamps.Count; i++)
-            {
-                PaintStamp existing = patternStamps[i];
-                if ((existing.center - center).sqrMagnitude >= 0.00000001f || existing.clipMode != clipMode)
-                    continue;
-                if (clipMode == 0 ||
-                    (clipMode == 1 && (existing.clipRect - clipRect).sqrMagnitude < 0.00000001f) ||
-                    (clipMode == 2 && Mathf.Abs(Mathf.DeltaAngle(
-                        existing.clipAngleCenter * Mathf.Rad2Deg,
-                        clipAngleCenter * Mathf.Rad2Deg)) < 0.001f))
-                {
-                    return;
-                }
-            }
-
-            patternStamps.Add(new PaintStamp
+            PaintStamp stamp = new PaintStamp
             {
                 center = center,
                 clipMode = clipMode,
                 clipRect = clipRect,
                 clipAngleCenter = clipAngleCenter,
                 clipAngleHalfWidth = clipAngleHalfWidth
-            });
+            };
+            if (patternStampSet.Add(stamp))
+                patternStamps.Add(stamp);
         }
 
         private void ReleasePaintSurface()
@@ -513,13 +515,40 @@ namespace DCFApixels.SpriteEditor
             return (string.IsNullOrWhiteSpace(layerName) ? "Drawing Layer" : layerName) + " Pixels";
         }
 
-        internal struct PaintStamp
+        internal struct PaintStamp : IEquatable<PaintStamp>
         {
             public Vector2 center;
             public int clipMode;
             public Vector4 clipRect;
             public float clipAngleCenter;
             public float clipAngleHalfWidth;
+
+            public bool Equals(PaintStamp other)
+            {
+                return center.Equals(other.center) &&
+                       clipMode == other.clipMode &&
+                       clipRect.Equals(other.clipRect) &&
+                       clipAngleCenter.Equals(other.clipAngleCenter) &&
+                       clipAngleHalfWidth.Equals(other.clipAngleHalfWidth);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is PaintStamp other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hashCode = center.GetHashCode();
+                    hashCode = (hashCode * 397) ^ clipMode;
+                    hashCode = (hashCode * 397) ^ clipRect.GetHashCode();
+                    hashCode = (hashCode * 397) ^ clipAngleCenter.GetHashCode();
+                    hashCode = (hashCode * 397) ^ clipAngleHalfWidth.GetHashCode();
+                    return hashCode;
+                }
+            }
         }
 
         private static class PaintBrushRenderer
@@ -527,11 +556,7 @@ namespace DCFApixels.SpriteEditor
             private static readonly int ColorId = Shader.PropertyToID("_Color");
             private static readonly int HardnessId = Shader.PropertyToID("_Hardness");
             private static readonly int CanvasSizeId = Shader.PropertyToID("_CanvasSize");
-            private static readonly int ClipModeId = Shader.PropertyToID("_ClipMode");
-            private static readonly int ClipRectId = Shader.PropertyToID("_ClipRect");
             private static readonly int PatternCenterId = Shader.PropertyToID("_PatternCenter");
-            private static readonly int ClipAngleCenterId = Shader.PropertyToID("_ClipAngleCenter");
-            private static readonly int ClipAngleHalfWidthId = Shader.PropertyToID("_ClipAngleHalfWidth");
             private static readonly int SourceBlendId = Shader.PropertyToID("_SrcBlend");
             private static readonly int DestinationBlendId = Shader.PropertyToID("_DstBlend");
 
@@ -576,36 +601,34 @@ namespace DCFApixels.SpriteEditor
                     try
                     {
                         GL.LoadOrtho();
-                        for (int i = 0; i < stamps.Count; i++)
+                        if (!material.SetPass(0))
+                            return;
+
+                        GL.Begin(GL.QUADS);
+                        try
                         {
-                            PaintStamp stamp = stamps[i];
-                            Rect brushRect = new Rect(
-                                stamp.center.x - radiusX,
-                                stamp.center.y - radiusY,
-                                radiusX * 2f,
-                                radiusY * 2f);
-                            if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
-                                brushRect.yMax <= 0f || brushRect.yMin >= 1f)
+                            for (int i = 0; i < stamps.Count; i++)
                             {
-                                continue;
+                                PaintStamp stamp = stamps[i];
+                                Rect brushRect = new Rect(
+                                    stamp.center.x - radiusX,
+                                    stamp.center.y - radiusY,
+                                    radiusX * 2f,
+                                    radiusY * 2f);
+                                if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
+                                    brushRect.yMax <= 0f || brushRect.yMin >= 1f)
+                                {
+                                    continue;
+                                }
+
+                                DrawVertex(brushRect.xMin, brushRect.yMin, 0f, 0f, stamp);
+                                DrawVertex(brushRect.xMin, brushRect.yMax, 0f, 1f, stamp);
+                                DrawVertex(brushRect.xMax, brushRect.yMax, 1f, 1f, stamp);
+                                DrawVertex(brushRect.xMax, brushRect.yMin, 1f, 0f, stamp);
                             }
-
-                            material.SetFloat(ClipModeId, stamp.clipMode);
-                            material.SetVector(ClipRectId, stamp.clipRect);
-                            material.SetFloat(ClipAngleCenterId, stamp.clipAngleCenter);
-                            material.SetFloat(ClipAngleHalfWidthId, stamp.clipAngleHalfWidth);
-                            if (!material.SetPass(0))
-                                continue;
-
-                            GL.Begin(GL.QUADS);
-                            GL.MultiTexCoord2(0, 0f, 0f);
-                            GL.Vertex3(brushRect.xMin, brushRect.yMin, 0f);
-                            GL.MultiTexCoord2(0, 0f, 1f);
-                            GL.Vertex3(brushRect.xMin, brushRect.yMax, 0f);
-                            GL.MultiTexCoord2(0, 1f, 1f);
-                            GL.Vertex3(brushRect.xMax, brushRect.yMax, 0f);
-                            GL.MultiTexCoord2(0, 1f, 0f);
-                            GL.Vertex3(brushRect.xMax, brushRect.yMin, 0f);
+                        }
+                        finally
+                        {
                             GL.End();
                         }
                     }
@@ -618,6 +641,19 @@ namespace DCFApixels.SpriteEditor
                 {
                     RenderTexture.active = previous;
                 }
+            }
+
+            private static void DrawVertex(float x, float y, float brushU, float brushV, PaintStamp stamp)
+            {
+                GL.MultiTexCoord2(0, brushU, brushV);
+                GL.MultiTexCoord2(1, stamp.clipRect.x, stamp.clipRect.y);
+                GL.MultiTexCoord2(2, stamp.clipRect.z, stamp.clipRect.w);
+                GL.MultiTexCoord3(
+                    3,
+                    stamp.clipMode,
+                    stamp.clipAngleCenter,
+                    stamp.clipAngleHalfWidth);
+                GL.Vertex3(x, y, 0f);
             }
         }
     }

@@ -2,6 +2,19 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.2.2] - 2026-09-07
+
+### Added
+
+- Configurable Drawing brush stamp spacing from 1% to 400% of the brush diameter.
+
+### Changed
+
+- Live painting previews are throttled to 30 updates per second and rendered at a lower working
+  resolution; the full-resolution preview is restored when the stroke ends.
+- Brush stamps for a mouse segment and pattern repetitions are submitted in one GPU batch.
+- Repeated-stamp deduplication now uses constant-time lookups instead of a quadratic scan.
+
 ## [0.2.1] - 2026-09-07
 
 ### Added

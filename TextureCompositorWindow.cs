@@ -9,7 +9,9 @@ namespace DCFApixels.SpriteEditor
     public sealed class TextureCompositorWindow : EditorWindow
     {
         private const int PreviewMaxSize = 512;
+        private const int PaintingPreviewMaxSize = 192;
         private const double PreviewDelay = 0.12d;
+        private const double PaintingPreviewInterval = 1d / 30d;
         private const float PreviewPaneMinWidth = 200f;
         private const float SettingsPaneMinWidth = 320f;
         private const float SplitterWidth = 6f;
@@ -39,6 +41,9 @@ namespace DCFApixels.SpriteEditor
         private static readonly GUIContent RepeatBoundaryContent = new GUIContent(
             "Edges",
             "Continue lets the brush cross each repeated shape boundary. Clip cuts every copy to its own cell or sector.");
+        private static readonly GUIContent BrushSpacingContent = new GUIContent(
+            "Step",
+            "Distance between brush stamps as a percentage of brush size. Larger values are faster and produce a dotted stroke.");
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
@@ -55,6 +60,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private DrawingLayer paintingLayer;
         [NonSerialized] private Vector2 lastPaintingUv;
         [NonSerialized] private bool hasLastPaintingUv;
+        [NonSerialized] private double nextPaintingPreviewAt;
 
         [MenuItem("Window/Sprite Editor")]
         public static void ShowWindow()
@@ -113,7 +119,10 @@ namespace DCFApixels.SpriteEditor
             if (!previewRequested || EditorApplication.timeSinceStartup < previewAt)
                 return;
             previewRequested = false;
+            bool paintingPreview = paintingLayer != null;
             UpdatePreview();
+            if (paintingPreview)
+                nextPaintingPreviewAt = EditorApplication.timeSinceStartup + PaintingPreviewInterval;
         }
 
         private void OnGUI()
@@ -744,6 +753,7 @@ namespace DCFApixels.SpriteEditor
             Color nextColor = layer.brushColor;
             float nextSize = layer.brushSize;
             float nextHardness = layer.brushHardness;
+            float nextSpacingPercent = layer.brushSpacing * 100f;
             bool nextMirrorVertical = layer.mirrorAcrossVerticalAxis;
             bool nextMirrorHorizontal = layer.mirrorAcrossHorizontalAxis;
             Vector2 nextCenter = layer.patternCenter;
@@ -837,8 +847,9 @@ namespace DCFApixels.SpriteEditor
                         GUILayout.Width(76f));
                 }
                 GUILayout.FlexibleSpace();
-                GUILayout.Label("[ / ] changes brush size", EditorStyles.centeredGreyMiniLabel);
-                GUILayout.FlexibleSpace();
+                GUILayout.Label(BrushSpacingContent, GUILayout.Width(28f));
+                nextSpacingPercent = EditorGUILayout.FloatField(nextSpacingPercent, GUILayout.Width(38f));
+                GUILayout.Label("%", EditorStyles.miniLabel, GUILayout.Width(12f));
             }
             bool changed = EditorGUI.EndChangeCheck();
             GUILayout.EndArea();
@@ -851,6 +862,10 @@ namespace DCFApixels.SpriteEditor
                     layer.brushColor = nextColor;
                     layer.brushSize = Mathf.Max(1f, nextSize);
                     layer.brushHardness = Mathf.Clamp01(nextHardness);
+                    layer.brushSpacing = Mathf.Clamp(
+                        nextSpacingPercent * 0.01f,
+                        DrawingLayer.MinimumBrushSpacing,
+                        DrawingLayer.MaximumBrushSpacing);
                     layer.mirrorAcrossVerticalAxis = nextMirrorVertical;
                     layer.mirrorAcrossHorizontalAxis = nextMirrorHorizontal;
                     layer.patternCenter = new Vector2(
@@ -960,8 +975,12 @@ namespace DCFApixels.SpriteEditor
 
         private void RefreshPreviewDuringPainting()
         {
-            previewRequested = false;
-            UpdatePreview();
+            double now = EditorApplication.timeSinceStartup;
+            double requestedAt = Math.Max(now, nextPaintingPreviewAt);
+            if (!previewRequested || requestedAt < previewAt)
+                previewAt = requestedAt;
+            previewRequested = true;
+            Repaint();
         }
 
         private void FinishPaintingStroke()
@@ -972,6 +991,7 @@ namespace DCFApixels.SpriteEditor
             paintingLayer.SyncSurfaceToTexture();
             paintingLayer = null;
             hasLastPaintingUv = false;
+            nextPaintingPreviewAt = 0d;
             temporaryDocumentDirty |= compositor != null && !AssetDatabase.Contains(compositor);
             if (compositor != null)
                 compositor.MarkChanged();
@@ -1462,7 +1482,8 @@ namespace DCFApixels.SpriteEditor
 
             try
             {
-                previewTexture = compositor.ComposePreview(PreviewMaxSize);
+                int maxSize = paintingLayer != null ? PaintingPreviewMaxSize : PreviewMaxSize;
+                previewTexture = compositor.ComposePreview(maxSize);
             }
             catch (Exception exception)
             {
