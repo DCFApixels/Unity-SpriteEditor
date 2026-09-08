@@ -62,7 +62,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private float settingsPaneWidth = DefaultSettingsPaneWidth;
         [SerializeField] private float layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
 
-        [NonSerialized] private Texture2D previewTexture;
+        [NonSerialized] private RenderTexture previewTexture;
         [NonSerialized] private bool previewRequested;
         [NonSerialized] private double previewAt;
         [SerializeField] private bool temporaryDocumentDirty;
@@ -945,7 +945,7 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 int maxSize = paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
-                previewTexture = compositor.ComposePreview(maxSize);
+                previewTexture = compositor.RenderPreview(maxSize);
                 UpdateChannelPreview();
             }
             catch (Exception exception)
@@ -974,20 +974,12 @@ namespace DCFApixels.SpriteEditor
 
         private void ReleasePreview(bool keepChannelBuffer = false)
         {
-            if (toolkitPreviewCanvas != null && compositor != null)
-            {
-                toolkitPreviewCanvas.SetDocument(
-                    null,
-                    compositor.width,
-                    compositor.height,
-                    IsPreviewBrushEnabled ? GetSelectedLayer() as DrawingLayer : null,
-                    IsPreviewTransformEnabled);
-            }
+            toolkitPreviewCanvas?.ClearTexture();
             if (!keepChannelBuffer)
                 ReleaseChannelPreview();
             if (previewTexture == null)
                 return;
-            DestroyImmediate(previewTexture);
+            RenderTexture.ReleaseTemporary(previewTexture);
             previewTexture = null;
         }
 

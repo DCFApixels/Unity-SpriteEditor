@@ -1566,8 +1566,15 @@ namespace DCFApixels.SpriteEditor
                     ? DisplayStyle.None
                     : DisplayStyle.Flex;
                 image.image = texture;
+                image.MarkDirtyRepaint();
                 UpdateImageLayout();
                 overlay.MarkDirtyRepaint();
+            }
+
+            public void ClearTexture()
+            {
+                texture = null;
+                image.image = null;
             }
 
             public void SetCursor(bool visible, Vector2 position, bool erase)

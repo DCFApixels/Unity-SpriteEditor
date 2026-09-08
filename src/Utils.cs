@@ -342,7 +342,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private string layerId;
 
         [NonSerialized] private Layer currentLayer;
-        [NonSerialized] private Texture2D previewTexture;
+        [NonSerialized] private RenderTexture previewTexture;
         [NonSerialized] private bool previewRequested;
         [NonSerialized] private double previewAt;
         [NonSerialized] private EffectTargetSettingsView effectTargetSettings;
@@ -573,19 +573,7 @@ namespace DCFApixels.SpriteEditor
             if (!ResolveLayer())
                 return;
 
-            RenderTexture rendered = compositor.RenderLayerPreview(currentLayer, PreviewMaxSize);
-            if (rendered != null)
-            {
-                try
-                {
-                    previewTexture = TextureCompositor.CopyToTexture2D(rendered);
-                    previewTexture.hideFlags = HideFlags.HideAndDontSave;
-                }
-                finally
-                {
-                    RenderTexture.ReleaseTemporary(rendered);
-                }
-            }
+            previewTexture = compositor.RenderLayerPreview(currentLayer, PreviewMaxSize);
 
             if (previewImage != null)
                 previewImage.image = previewTexture;
@@ -599,7 +587,7 @@ namespace DCFApixels.SpriteEditor
                 previewImage.image = null;
             if (previewTexture == null)
                 return;
-            DestroyImmediate(previewTexture);
+            RenderTexture.ReleaseTemporary(previewTexture);
             previewTexture = null;
         }
     }

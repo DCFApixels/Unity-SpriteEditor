@@ -157,6 +157,12 @@ namespace DCFApixels.SpriteEditor
             return ComposeAtSize(previewWidth, previewHeight, scaleMultiplier);
         }
 
+        internal RenderTexture RenderPreview(int maxSize)
+        {
+            GetPreviewDimensions(maxSize, out int previewWidth, out int previewHeight, out float scaleMultiplier);
+            return RenderComposite(previewWidth, previewHeight, scaleMultiplier);
+        }
+
         internal RenderTexture RenderLayerPreview(Layer layer, int maxSize)
         {
             if (layer == null || !TryFindLayer(layer, out List<Layer> container, out int index))
@@ -317,7 +323,7 @@ namespace DCFApixels.SpriteEditor
                 DestroyLayerAssets(group.layers[i]);
         }
 
-        internal static Texture2D CopyToTexture2D(RenderTexture source)
+        internal static Texture2D CopyToTexture2D(RenderTexture source, bool uploadToGpu = true)
         {
             if (source == null)
                 return null;
@@ -333,7 +339,8 @@ namespace DCFApixels.SpriteEditor
             {
                 RenderTexture.active = source;
                 texture.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0, false);
-                texture.Apply(false, false);
+                if (uploadToGpu)
+                    texture.Apply(false, false);
                 return texture;
             }
             catch
