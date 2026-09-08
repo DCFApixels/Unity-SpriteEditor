@@ -44,9 +44,13 @@ namespace DCFApixels.SpriteEditor
         private void AddPreviewTransformSettings()
         {
             VisualElement row = SpriteEditorUI.CreateToolbar();
-            row.Add(CreateCompactLabel("Tiling", 38f));
+            row.AddToClassList("sprite-editor-transform-settings");
+            VisualElement tilingGroup = SpriteEditorUI.CreateRow();
+            tilingGroup.AddToClassList("sprite-editor-transform-option");
+            tilingGroup.Add(CreateCompactLabel("Tiling", 38f));
             EnumField tiling = CompactField(new EnumField(TransformTilingMode.Clip), 100f);
-            tiling.tooltip = "Clip: transparent outside the frame. Repeat: tile. Mirror: alternate reflected tiles on both axes.";
+            tiling.tooltip = "Clip: transparent outside the frame. Repeat: tile. Mirror: reflected tiles. " +
+                "Source: inherit the texture's wrap modes; Clamp extends edge pixels instead of clipping.";
             toolkitHeaderBindings.Track(tiling, () => (Enum)(GetSelectedLayer()?.transform.tiling ?? TransformTilingMode.Clip));
             toolkitHeaderBindings.Add(() => row.style.display = IsPreviewTransformEnabled ? DisplayStyle.Flex : DisplayStyle.None);
             tiling.RegisterValueChangedCallback(evt =>
@@ -57,7 +61,34 @@ namespace DCFApixels.SpriteEditor
                 FinishPreviewTransform();
                 ApplyToolkitChange("Change Transform Tiling", () => selected.transform.tiling = (TransformTilingMode)evt.newValue);
             });
-            row.Add(tiling);
+            tilingGroup.Add(tiling);
+            row.Add(tilingGroup);
+            VisualElement filterGroup = SpriteEditorUI.CreateRow();
+            filterGroup.AddToClassList("sprite-editor-transform-option");
+            filterGroup.Add(CreateCompactLabel("Filter", 36f));
+            EnumField filter = CompactField(new EnumField(LayerFilterMode.Source), 100f);
+            filter.tooltip = "Source: inherit the texture's Filter Mode. Point: sharp pixels. Bilinear: smooth. " +
+                "Trilinear: smooth mip transitions (requires source mipmaps). Independent of Tiling.";
+            toolkitHeaderBindings.Track(filter, () => (Enum)(GetSelectedLayer()?.filterMode ?? LayerFilterMode.Source));
+            filter.RegisterValueChangedCallback(evt =>
+            {
+                Layer selected = GetSelectedLayer();
+                if (selected == null || selected.IsGroup)
+                    return;
+                FinishPreviewTransform();
+                FinishPaintingStroke();
+                ApplyToolkitChange("Change Layer Filter", () => selected.filterMode = (LayerFilterMode)evt.newValue);
+            });
+            filterGroup.Add(filter);
+            row.Add(filterGroup);
+            row.Add(SpriteEditorUI.CreateOriginalAspectButton(
+                GetSelectedLayer, () => compositor,
+                (undoName, change) =>
+                {
+                    FinishPreviewTransform();
+                    FinishPaintingStroke();
+                    ApplyToolkitChange(undoName, change);
+                }, toolkitHeaderBindings));
             toolkitPreviewHeader.Add(row);
         }
 

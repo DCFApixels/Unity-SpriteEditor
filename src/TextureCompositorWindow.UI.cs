@@ -147,6 +147,7 @@ namespace DCFApixels.SpriteEditor
 
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitSettingsScroll.name = "layer-list";
+            toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
             toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
             toolkitSettingsScroll.style.paddingLeft = 8f;
@@ -191,6 +192,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewError.style.display = DisplayStyle.None;
 
             toolkitPreviewCanvas = new SpritePreviewElement();
+            toolkitPreviewCanvas.AddManipulator(new ProjectTextureDropManipulator(this, prependToRoot: true));
             toolkitPreviewCanvas.style.flexGrow = 1f;
             toolkitPreviewCanvas.style.marginLeft = PanePadding;
             toolkitPreviewCanvas.style.marginRight = PanePadding;
@@ -884,6 +886,7 @@ namespace DCFApixels.SpriteEditor
         private VisualElement BuildContainerEndDropZone(List<Layer> destination, int depth)
         {
             VisualElement zone = new VisualElement();
+            zone.userData = destination;
             zone.style.height = 8f;
             zone.style.marginLeft = 4f + depth * ToolkitLayerIndent;
             zone.RegisterCallback<DragUpdatedEvent>(evt =>

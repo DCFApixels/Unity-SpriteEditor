@@ -79,23 +79,23 @@ namespace DCFApixels.SpriteEditor
             switch (layer)
             {
                 case DrawingLayer drawing:
-                    DrawingLayerEditorWindow.BuildFields(root, drawing, ApplyToolkitChange, toolkitInspectorBindings);
+                    DrawingLayerEditorWindow.BuildFields(root, drawing, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
                 case FileLayer file:
-                    FileLayerEditorWindow.BuildFields(root, file, ApplyToolkitChange, toolkitInspectorBindings);
+                    FileLayerEditorWindow.BuildFields(root, file, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
                 case ColorFillLayer fill:
-                    ColorFillLayerEditorWindow.BuildFields(root, fill, ApplyToolkitChange, toolkitInspectorBindings);
+                    ColorFillLayerEditorWindow.BuildFields(root, fill, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
                 case GradientLayer gradient:
-                    GradientLayerEditorWindow.BuildFields(root, gradient, ApplyToolkitChange, toolkitInspectorBindings);
+                    GradientLayerEditorWindow.BuildFields(root, gradient, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
                 case OutlineLayer outline:
-                    OutlineLayerEditorWindow.BuildFields(root, outline, ApplyToolkitChange, toolkitInspectorBindings,
+                    OutlineLayerEditorWindow.BuildFields(root, outline, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
                 case SDFLayer sdf:
-                    SDFLayerEditorWindow.BuildFields(root, sdf, ApplyToolkitChange, toolkitInspectorBindings,
+                    SDFLayerEditorWindow.BuildFields(root, sdf, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
             }

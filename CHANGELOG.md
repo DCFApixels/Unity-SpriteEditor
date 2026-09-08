@@ -4,7 +4,28 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-08
+
 ### Added
+
+- Independent layer Filter modes: Source (default), Point, Bilinear, and Trilinear in retained
+  Transform settings and the Preview toolbar. Inherit assigned texture filtering without changing
+  its importer; preserve the choice through Transform Reset, rasterization, and Undo/Redo.
+- Source tiling inherits texture wrap modes per axis, including Clamp and MirrorOnce.
+  Keep Clip as the default and distinct from Source Clamp's edge extension. Repeat/Mirror no longer
+  force bilinear sampling; all tiling modes honor Filter and existing source mipmaps.
+
+- Drag Texture2D assets from Project into the layer list to create File layers, including
+  multi-texture drops, insertion between rows, and drops into groups. Fit original proportions,
+  select the created layers, and undo the entire drop in one step without modifying source assets.
+- Drop Project textures onto Preview to create File layers at the top of the root stack,
+  independently of the active layer/group, and scroll Layers to the newly inserted layers.
+- Automatically fit original proportions when assigning a texture to an empty File layer;
+  preserve Transform when replacing an existing source.
+
+- Original Aspect in layer Transform settings and the Preview Transform toolbar. Fit source
+  proportions by shrinking one axis while preserving image center, pivot, rotation, flips,
+  and tiling; account for canvas dimensions and support Undo/Redo without rebuilding fields.
 
 - Layer multi-selection with Ctrl/Cmd-click and Shift ranges, with the last selected layer
   active for inspector/painting/transform tools. Group, delete, and drag selected layers together

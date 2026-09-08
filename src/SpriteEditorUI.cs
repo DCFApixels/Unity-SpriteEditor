@@ -262,11 +262,13 @@ namespace DCFApixels.SpriteEditor
 
         public static void AddTextureTransform(
             VisualElement parent,
-            Func<TextureTransform> read,
-            Action<TextureTransform> write,
+            Layer layer,
+            TextureCompositor compositor,
             Action<string, Action> applyChange,
             ValueBindings bindings)
         {
+            TextureTransform read() => layer.transform;
+            void write(TextureTransform value) => layer.transform = value;
             VisualElement container = CreateCard();
             Foldout card = new Foldout { text = "Transform", value = false };
             container.Add(card);
@@ -280,13 +282,18 @@ namespace DCFApixels.SpriteEditor
             FloatField rotation = ConfigureField(new FloatField("Rotation"));
             rotation.tooltip = "Clockwise visual rotation in degrees.";
             EnumField tiling = ConfigureField(new EnumField("Tiling", TransformTilingMode.Clip));
-            tiling.tooltip = "Outside the transformed source canvas: Clip = transparent; Repeat = tile; Mirror = alternate mirrored tiles on both axes.";
+            tiling.tooltip = "Clip = transparent outside the frame; Repeat = tile; Mirror = reflected tiles; " +
+                "Source = the source texture's wrap modes, including separate U/V settings. Source Clamp extends edge pixels, unlike Clip.";
+            EnumField filter = ConfigureField(new EnumField("Filter", LayerFilterMode.Source));
+            filter.tooltip = "Source = inherit the texture's Filter Mode (default); Point = sharp pixels; " +
+                "Bilinear = smooth; Trilinear = smooth mip transitions when the source has mipmaps. Independent of Tiling; does not change texture import settings.";
 
             bindings.Track(pivot, () => read().pivot);
             bindings.Track(position, () => read().position);
             bindings.Track(scale, () => read().scale);
             bindings.Track(rotation, () => read().rotation);
             bindings.Track(tiling, () => (Enum)read().tiling);
+            bindings.Track(filter, () => (Enum)layer.filterMode);
 
             Button reset = CreateButton("Reset", () =>
             {
@@ -298,7 +305,10 @@ namespace DCFApixels.SpriteEditor
                 });
                 bindings.Refresh(true);
             }, 54f);
-            card.Add(reset);
+            VisualElement actions = CreateRow();
+            actions.Add(reset);
+            actions.Add(CreateOriginalAspectButton(() => layer, () => compositor, applyChange, bindings));
+            card.Add(actions);
 
             pivot.RegisterValueChangedCallback(evt =>
             {
@@ -351,7 +361,32 @@ namespace DCFApixels.SpriteEditor
                 });
             });
             card.Add(tiling);
+            filter.RegisterValueChangedCallback(evt =>
+                applyChange("Change Layer Filter", () => layer.filterMode = (LayerFilterMode)evt.newValue));
+            card.Add(filter);
             parent.Add(container);
+        }
+
+        internal static Button CreateOriginalAspectButton(
+            Func<Layer> readLayer,
+            Func<TextureCompositor> readCompositor,
+            Action<string, Action> applyChange,
+            ValueBindings bindings)
+        {
+            Button button = CreateButton("Original Aspect", () =>
+            {
+                Layer layer = readLayer();
+                if (layer == null || !layer.TryGetOriginalAspectTransform(readCompositor(), out TextureTransform fitted) ||
+                    fitted.Equals(layer.transform))
+                    return;
+                applyChange("Restore Original Aspect", () => layer.transform = fitted);
+            });
+            button.tooltip = "Fit the source aspect ratio inside the current frame by shrinking one axis. " +
+                "Preserve image center, pivot, rotation, and flips. Generated layers use the canvas ratio. " +
+                "Requires a source image for File layers and nonzero scale.";
+            bindings.Add(() => button.SetEnabled(
+                readLayer() is Layer layer && layer.TryGetOriginalAspectTransform(readCompositor(), out _)));
+            return button;
         }
     }
 }

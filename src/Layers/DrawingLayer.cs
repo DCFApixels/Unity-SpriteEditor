@@ -58,6 +58,11 @@ namespace DCFApixels.SpriteEditor
                 result.modifiers.Clear();
             }
             result.pixels = texture;
+            // Source settings must survive conversion from a File layer to owned pixels.
+            Texture samplingSource = source.SamplingSource;
+            texture.filterMode = source.ResolveFilterMode();
+            texture.wrapModeU = samplingSource != null ? samplingSource.wrapModeU : TextureWrapMode.Clamp;
+            texture.wrapModeV = samplingSource != null ? samplingSource.wrapModeV : TextureWrapMode.Clamp;
             texture.name = result.GetTextureName();
             return result;
         }
@@ -73,13 +78,16 @@ namespace DCFApixels.SpriteEditor
             if (surface == null)
                 return null;
 
+            // This is an owned transient surface, never the imported source texture.
+            surface.filterMode = ResolveFilterMode();
+
             RenderTexture straight = RenderTexture.GetTemporary(
                 context.width,
                 context.height,
                 0,
                 RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Default);
-            straight.filterMode = FilterMode.Bilinear;
+            straight.filterMode = ResolveFilterMode();
             straight.wrapMode = TextureWrapMode.Clamp;
 
             try

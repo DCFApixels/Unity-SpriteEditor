@@ -44,6 +44,7 @@ namespace DCFApixels.SpriteEditor
         public BlendMode blendMode = BlendMode.Normal;
         public List<Material> modifiers = new List<Material>();
         public TextureTransform transform = TextureTransform.Default;
+        public LayerFilterMode filterMode = LayerFilterMode.Source;
 
         public string Id => id;
         internal virtual bool RequiresInput => false;
@@ -59,6 +60,40 @@ namespace DCFApixels.SpriteEditor
 
         internal abstract RenderTexture Render(in LayerRenderContext context);
 
+        internal Texture SamplingSource => this is FileLayer file ? file.sourceTexture :
+            this is DrawingLayer drawing ? drawing.StoredTexture : null;
+
+        internal FilterMode ResolveFilterMode(Texture fallback = null)
+        {
+            switch (filterMode)
+            {
+                case LayerFilterMode.Point: return FilterMode.Point;
+                case LayerFilterMode.Bilinear: return FilterMode.Bilinear;
+                case LayerFilterMode.Trilinear: return FilterMode.Trilinear;
+                default:
+                    Texture source = SamplingSource;
+                    if (source == null)
+                        source = fallback;
+                    return source != null ? source.filterMode : FilterMode.Bilinear;
+            }
+        }
+
+        internal bool TryGetOriginalAspectTransform(TextureCompositor owner, out TextureTransform fitted)
+        {
+            fitted = transform;
+            if (owner == null || IsGroup)
+                return false;
+            Vector2 canvasSize = new Vector2(owner.width, owner.height);
+            Vector2 sourceSize = canvasSize;
+            Texture source = this is FileLayer file ? file.sourceTexture :
+                this is DrawingLayer drawing ? drawing.StoredTexture : null;
+            if (this is FileLayer && source == null)
+                return false;
+            if (source != null)
+                sourceSize = new Vector2(source.width, source.height);
+            return transform.TryFitOriginalAspect(canvasSize, sourceSize, out fitted);
+        }
+
         internal void CopyRasterizedIdentityFrom(Layer source)
         {
             id = source.id;
@@ -66,6 +101,7 @@ namespace DCFApixels.SpriteEditor
             enabled = source.enabled;
             opacity = source.opacity;
             blendMode = source.blendMode;
+            filterMode = source.filterMode;
             modifiers = source.modifiers == null ? new List<Material>() : new List<Material>(source.modifiers);
         }
 
@@ -89,24 +125,49 @@ namespace DCFApixels.SpriteEditor
                 0,
                 RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Default);
-            current.filterMode = FilterMode.Bilinear;
+            FilterMode resolvedFilter = ResolveFilterMode(source);
+            current.filterMode = resolvedFilter;
             current.wrapMode = TextureWrapMode.Clamp;
 
             try
             {
                 Material transformMaterial = SpriteEditorMaterials.Transform;
-                if (!context.applyTransform || transform.IsIdentity() || transformMaterial == null)
+                if (transformMaterial == null)
                 {
                     Graphics.Blit(source, current);
                 }
                 else
                 {
-                    transformMaterial.SetVector("_Pivot", new Vector4(transform.pivot.x, transform.pivot.y, 0f, 0f));
-                    Vector2 scaledPosition = transform.position / context.scaleMultiplier;
+                    // Even identity transforms must use the independent filter/wrap settings.
+                    TextureTransform applied = context.applyTransform ? transform : TextureTransform.Default;
+                    Texture samplingSource = SamplingSource;
+                    if (samplingSource == null)
+                        samplingSource = source;
+                    TextureWrapMode wrapU = TextureWrapMode.Clamp;
+                    TextureWrapMode wrapV = TextureWrapMode.Clamp;
+                    switch (applied.tiling)
+                    {
+                        case TransformTilingMode.Source:
+                            wrapU = samplingSource.wrapModeU;
+                            wrapV = samplingSource.wrapModeV;
+                            break;
+                        case TransformTilingMode.Repeat:
+                            wrapU = wrapV = TextureWrapMode.Repeat;
+                            break;
+                        case TransformTilingMode.Mirror:
+                            wrapU = wrapV = TextureWrapMode.Mirror;
+                            break;
+                    }
+                    transformMaterial.SetVector("_Pivot", new Vector4(applied.pivot.x, applied.pivot.y, 0f, 0f));
+                    Vector2 scaledPosition = applied.position / context.scaleMultiplier;
                     transformMaterial.SetVector("_Position", new Vector4(scaledPosition.x, scaledPosition.y, 0f, 0f));
-                    transformMaterial.SetVector("_Scale", new Vector4(transform.scale.x, transform.scale.y, 0f, 0f));
-                    transformMaterial.SetFloat("_Rotation", transform.rotation * Mathf.Deg2Rad);
-                    transformMaterial.SetInt("_TilingMode", (int)transform.tiling);
+                    transformMaterial.SetVector("_Scale", new Vector4(applied.scale.x, applied.scale.y, 0f, 0f));
+                    transformMaterial.SetFloat("_Rotation", applied.rotation * Mathf.Deg2Rad);
+                    transformMaterial.SetInt("_ClipOutside", applied.tiling == TransformTilingMode.Clip ? 1 : 0);
+                    transformMaterial.SetInt("_WrapModeU", (int)wrapU);
+                    transformMaterial.SetInt("_WrapModeV", (int)wrapV);
+                    transformMaterial.SetInt("_FilterMode", (int)resolvedFilter);
+                    transformMaterial.SetInt("_SourceMipCount", source is Texture2D texture ? texture.mipmapCount : 1);
                     transformMaterial.SetVector("_OutputSize", new Vector4(context.width, context.height, 0f, 0f));
                     Graphics.Blit(source, current, transformMaterial);
                 }
@@ -126,7 +187,7 @@ namespace DCFApixels.SpriteEditor
                         0,
                         RenderTextureFormat.ARGB32,
                         RenderTextureReadWrite.Default);
-                    next.filterMode = FilterMode.Bilinear;
+                    next.filterMode = resolvedFilter;
                     next.wrapMode = TextureWrapMode.Clamp;
                     try
                     {

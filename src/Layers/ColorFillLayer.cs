@@ -35,6 +35,8 @@ namespace DCFApixels.SpriteEditor
                 0,
                 RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Default);
+            source.filterMode = FilterMode.Bilinear;
+            source.wrapMode = TextureWrapMode.Clamp;
             RenderTexture previous = RenderTexture.active;
             try
             {

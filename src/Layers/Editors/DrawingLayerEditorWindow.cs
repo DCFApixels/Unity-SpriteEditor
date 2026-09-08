@@ -14,17 +14,17 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (DrawingLayer)source, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (DrawingLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, DrawingLayer layer,
+            VisualElement root, DrawingLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             SpriteEditorUI.AddTextureTransform(
                 root,
-                () => layer.transform,
-                value => layer.transform = value,
+                layer,
+                compositor,
                 applyChange,
                 bindings);
             SpriteEditorUI.AddHelpBox(root,

@@ -81,7 +81,16 @@ namespace DCFApixels.SpriteEditor
     {
         Clip = 0,
         Repeat = 1,
-        Mirror = 2
+        Mirror = 2,
+        Source = 3
+    }
+
+    public enum LayerFilterMode
+    {
+        Source = 0,
+        Point = 1,
+        Bilinear = 2,
+        Trilinear = 3
     }
 
     [Serializable]
@@ -112,6 +121,41 @@ namespace DCFApixels.SpriteEditor
         {
             this = Default;
         }
+
+        internal bool TryFitOriginalAspect(Vector2 canvasSize, Vector2 sourceSize, out TextureTransform fitted)
+        {
+            fitted = this;
+            if (!Finite(canvasSize) || !Finite(sourceSize) || !Finite(scale) || !Finite(pivot) ||
+                !Finite(position) || float.IsNaN(rotation) || float.IsInfinity(rotation) ||
+                canvasSize.x <= 0f || canvasSize.y <= 0f || sourceSize.x <= 0f || sourceSize.y <= 0f ||
+                Mathf.Abs(scale.x) < 0.000001f || Mathf.Abs(scale.y) < 0.000001f)
+                return false;
+
+            double fit = Math.Min(
+                Math.Abs((double)scale.x) * canvasSize.x / sourceSize.x,
+                Math.Abs((double)scale.y) * canvasSize.y / sourceSize.y);
+            Vector2 nextScale = new Vector2(
+                (float)(sourceSize.x * fit / canvasSize.x) * Mathf.Sign(scale.x),
+                (float)(sourceSize.y * fit / canvasSize.y) * Mathf.Sign(scale.y));
+            if (!Finite(nextScale) || nextScale.x == 0f || nextScale.y == 0f)
+                return false;
+            Vector2 centerOffset = Vector2.Scale(new Vector2(0.5f, 0.5f) - pivot, canvasSize);
+            Vector2 delta = Vector2.Scale(centerOffset, scale - nextScale);
+            float angle = rotation * Mathf.Deg2Rad;
+            float cosine = Mathf.Cos(angle);
+            float sine = Mathf.Sin(angle);
+            Vector2 nextPosition = position + new Vector2(
+                cosine * delta.x - sine * delta.y, sine * delta.x + cosine * delta.y);
+            if (!Finite(nextPosition))
+                return false;
+            fitted.scale = nextScale;
+            fitted.position = nextPosition;
+            return true;
+        }
+
+        private static bool Finite(Vector2 value) =>
+            !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
+            !float.IsNaN(value.y) && !float.IsInfinity(value.y);
     }
 
     public static class GradientUtility

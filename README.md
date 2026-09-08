@@ -123,6 +123,13 @@ a Drawing layer is active. Each **⋮ → Properties** invocation opens a separa
 
 **Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Group.
 
+Drag one or more **Texture2D assets from Project** into Layers to create File layers. Drop
+between rows, inside a group, or onto the empty list area. New layers are selected together,
+the last one is active, and the entire drop supports a single Undo. Source assets are not modified.
+Dropping textures onto **Preview** adds them at the top of the root Layers list, outside any group.
+Assigning a texture to an empty File layer automatically applies **Original Aspect**;
+replacing an already assigned texture leaves its Transform unchanged.
+
 Layers appear top-to-bottom and render from the bottom up. Groups are nested,
 **pass-through** containers: their children blend into the surrounding stack without an isolated
 color composite.
@@ -229,8 +236,21 @@ Select a non-group layer and enable **Transform** in the Preview header, or pres
 - `Escape` cancels the drag; `T` / `Enter` exits Transform mode. Painting is paused while it is active.
 
 **Tiling:** Clip leaves pixels outside the frame transparent; Repeat tiles the texture;
-Mirror alternates reflected tiles. These settings affect Preview and export without changing
-the source texture importer.
+Mirror alternates reflected tiles; Source inherits the source texture's wrap modes, including
+separate U/V settings. Source with Clamp extends edge pixels, unlike transparent Clip.
+Clip remains the default. These settings affect Preview and export without changing the source importer.
+
+**Filter:** Source (default) inherits the assigned texture's Filter Mode; Point keeps hard pixel
+edges; Bilinear smooths sampling; Trilinear also blends between existing mip levels.
+Without source mipmaps, Trilinear behaves like Bilinear. Filter is independent of Tiling,
+survives Transform Reset, and is available in Transform settings and the Preview Transform toolbar.
+Generated layers use Bilinear for Source; no texture import settings are modified.
+
+**Original Aspect**, next to Reset in layer settings and in the Preview Transform toolbar,
+fits the source proportions inside the current frame by shrinking one axis. It preserves the
+image center, pivot, rotation, flips, and tiling. File layers use their source texture dimensions;
+Drawing layers use their stored pixels; generated layers use the canvas ratio. Missing File
+sources and zero/near-zero scales disable the button. The change supports Undo/Redo.
 
 <details>
 <summary>Transform details</summary>

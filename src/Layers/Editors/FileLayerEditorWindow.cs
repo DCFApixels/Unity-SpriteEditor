@@ -17,17 +17,17 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (FileLayer)source, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (FileLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, FileLayer layer,
+            VisualElement root, FileLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             SpriteEditorUI.AddTextureTransform(
                 root,
-                () => layer.transform,
-                value => layer.transform = value,
+                layer,
+                compositor,
                 applyChange,
                 bindings);
 
@@ -37,7 +37,7 @@ namespace DCFApixels.SpriteEditor
             texture.SetValueWithoutNotify(layer.sourceTexture);
             bindings.Track(texture, () => (UnityEngine.Object)layer.sourceTexture);
             texture.RegisterValueChangedCallback(evt =>
-                applyChange("Change Source Texture", () => layer.sourceTexture = evt.newValue as Texture2D));
+                applyChange("Change Source Texture", () => layer.AssignSourceTexture(evt.newValue as Texture2D, compositor)));
             root.Add(texture);
         }
     }
@@ -53,17 +53,17 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (ColorFillLayer)source, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (ColorFillLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, ColorFillLayer layer,
+            VisualElement root, ColorFillLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             SpriteEditorUI.AddTextureTransform(
                 root,
-                () => layer.transform,
-                value => layer.transform = value,
+                layer,
+                compositor,
                 applyChange,
                 bindings);
 
