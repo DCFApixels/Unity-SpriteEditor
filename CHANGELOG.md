@@ -4,6 +4,8 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-09-08
+
 ### Fixed
 
 - Default and reset layouts reserve 400 UI pixels for the right pane and give Preview the
