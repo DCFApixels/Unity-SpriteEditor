@@ -68,6 +68,15 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                         discard;
                     }
                 }
+                else if (input.clipData.x > 2.5)
+                {
+                    float2 delta = (input.canvasUv - _PatternCenter) * _CanvasSize;
+                    float x = dot(delta, input.clipMin);
+                    float y = dot(delta, float2(-input.clipMin.y, input.clipMin.x));
+                    if ((input.clipMax.x > 0.5 && x < 0.0) || (input.clipMax.x < -0.5 && x >= 0.0) ||
+                        (input.clipMax.y > 0.5 && y < 0.0) || (input.clipMax.y < -0.5 && y >= 0.0))
+                        discard;
+                }
                 else if (input.clipData.x > 1.5)
                 {
                     float2 delta = (input.canvasUv - _PatternCenter) * _CanvasSize;

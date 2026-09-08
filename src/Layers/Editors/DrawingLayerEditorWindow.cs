@@ -48,14 +48,14 @@ namespace DCFApixels.SpriteEditor
             root.Add(mode);
 
             Toggle mirrorX = SpriteEditorUI.ConfigureField(new Toggle("Mirror X"));
-            mirrorX.tooltip = "Reflect each brush stroke across the vertical axis through Center.";
+            mirrorX.tooltip = "Reflect across the vertical axis through Center, rotated by Angle.";
             bindings.Track(mirrorX, () => layer.mirrorAcrossVerticalAxis);
             mirrorX.RegisterValueChangedCallback(evt => applyChange(
                 "Change Drawing Symmetry", () => layer.mirrorAcrossVerticalAxis = evt.newValue));
             root.Add(mirrorX);
 
             Toggle mirrorY = SpriteEditorUI.ConfigureField(new Toggle("Mirror Y"));
-            mirrorY.tooltip = "Reflect each brush stroke across the horizontal axis through Center.";
+            mirrorY.tooltip = "Reflect across the horizontal axis through Center, rotated by Angle.";
             bindings.Track(mirrorY, () => layer.mirrorAcrossHorizontalAxis);
             mirrorY.RegisterValueChangedCallback(evt => applyChange(
                 "Change Drawing Symmetry", () => layer.mirrorAcrossHorizontalAxis = evt.newValue));
@@ -68,6 +68,16 @@ namespace DCFApixels.SpriteEditor
                 "Change Pattern Center", () => layer.patternCenter = new Vector2(
                     Mathf.Clamp01(evt.newValue.x), Mathf.Clamp01(evt.newValue.y))));
             root.Add(center);
+
+            Slider mirrorAngle = SpriteEditorUI.ConfigureField(new Slider("Angle (°)", 0f, 360f)
+            {
+                showInputField = true,
+                tooltip = "Rotate both mirror axes counterclockwise around Center. 0° keeps the vertical and horizontal axes."
+            });
+            bindings.Track(mirrorAngle, () => layer.mirrorAngle);
+            mirrorAngle.RegisterValueChangedCallback(evt => applyChange(
+                "Change Mirror Angle", () => layer.mirrorAngle = Mathf.Clamp(evt.newValue, 0f, 360f)));
+            root.Add(mirrorAngle);
 
             Slider startAngle = SpriteEditorUI.ConfigureField(new Slider("Start Angle (°)", 0f, 360f)
             {
@@ -98,8 +108,8 @@ namespace DCFApixels.SpriteEditor
             root.Add(elementMode);
 
             EnumField boundary = SpriteEditorUI.ConfigureField(new EnumField("Edges", layer.repeatBoundaryMode));
-            boundary.tooltip = "Continue lets a stroke cross repeated shape boundaries. " +
-                "Clip keeps the whole stroke inside the cell or sector where it started.";
+            boundary.tooltip = "Continue lets a stroke cross symmetry or repeat boundaries. " +
+                "Clip keeps the stroke inside its initial region and clips each copy's brush footprint to its region.";
             bindings.Track(boundary, () => (Enum)layer.repeatBoundaryMode);
             boundary.RegisterValueChangedCallback(evt => applyChange(
                 "Change Repeat Boundary", () => layer.repeatBoundaryMode = (PaintRepeatBoundaryMode)evt.newValue));
@@ -111,6 +121,7 @@ namespace DCFApixels.SpriteEditor
                 bool grid = layer.repeatMode == PaintRepeatMode.Grid;
                 mirrorX.EnableInClassList("sprite-editor-pattern-field--hidden", !layer.UsesMirrorPattern);
                 mirrorY.EnableInClassList("sprite-editor-pattern-field--hidden", !layer.UsesMirrorPattern);
+                mirrorAngle.EnableInClassList("sprite-editor-pattern-field--hidden", !layer.UsesMirrorPattern);
                 center.EnableInClassList("sprite-editor-pattern-field--hidden",
                     !layer.UsesMirrorPattern && layer.repeatMode != PaintRepeatMode.Radial);
                 startAngle.EnableInClassList("sprite-editor-pattern-field--hidden", layer.repeatMode != PaintRepeatMode.Radial);
@@ -118,7 +129,7 @@ namespace DCFApixels.SpriteEditor
                 count.label = grid ? "Count X" : "Count";
                 countY.EnableInClassList("sprite-editor-pattern-field--hidden", !grid);
                 elementMode.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating);
-                boundary.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating);
+                boundary.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating && !layer.UsesMirrorPattern);
             });
         }
     }

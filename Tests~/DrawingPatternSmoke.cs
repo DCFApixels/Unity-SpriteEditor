@@ -26,6 +26,7 @@ var legacy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLay
     "{\"mirrorAcrossVerticalAxis\":true,\"repeatMode\":0}");
 Normalize(legacy);
 Check(legacy.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.Mirror, "Legacy mirror-only migration");
+Check(legacy.mirrorAngle == 0f, "Legacy Mirror keeps unrotated axes");
 legacy.repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.None;
 Normalize(legacy);
 Check(legacy.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.None, "Migration must not re-enable Mirror");
@@ -51,7 +52,7 @@ var expected = new[]
 for (int i = 0; i < expected.Length; i++)
     Check((Center(mirrored[i]) - expected[i]).sqrMagnitude < 0.00000001f, "Mirror uses movable center");
 begin.Invoke(mirror, new object[] { point });
-Check(!(bool)clipped.GetValue(mirror), "Hidden Clip setting must not clip Mirror");
+Check((bool)clipped.GetValue(mirror), "Mirror Clip anchors to its initial region");
 var restored = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(
     UnityEngine.JsonUtility.ToJson(mirror));
 Normalize(restored);
@@ -73,6 +74,7 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatMode mode in System.Enum.GetValues(t
         for (int i = 0; i < centers.Length; i++) centers[i] = Center(baseline[i]);
         layer.mirrorAcrossVerticalAxis = true;
         layer.mirrorAcrossHorizontalAxis = true;
+        layer.mirrorAngle = 37f;
         Normalize(layer);
         var actual = Stamps(layer);
         Check(actual.Count == centers.Length, mode + ": hidden mirrors cannot add stamps");
@@ -131,5 +133,106 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatElementMode elements in System.Enum.
     Check(sectors[0] == sectors[1] && sectors[0] != sectors[2], "CPU Clip follows rotated boundaries");
     var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(UnityEngine.JsonUtility.ToJson(radial));
     Check(copy.radialStartAngle == degrees, "Start angle survives JSON round-trip");
+}
+UnityEngine.Vector2 Rotate(UnityEngine.Vector2 value, float angle)
+{
+    float sine = UnityEngine.Mathf.Sin(angle), cosine = UnityEngine.Mathf.Cos(angle);
+    return new UnityEngine.Vector2(cosine * value.x - sine * value.y, sine * value.x + cosine * value.y);
+}
+foreach (float degrees in new[] { 0f, 17.5f, 45f, 90f, 360f })
+foreach (var size in new[] { new UnityEngine.Vector2Int(512, 256), new UnityEngine.Vector2Int(256, 512) })
+foreach (int axes in new[] { 1, 2, 3 })
+{
+    var layer = new DCFApixels.SpriteEditor.DrawingLayer
+    {
+        repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Mirror,
+        mirrorAcrossVerticalAxis = (axes & 1) != 0,
+        mirrorAcrossHorizontalAxis = (axes & 2) != 0,
+        mirrorAngle = degrees,
+        radialStartAngle = 123f,
+        patternCenter = new UnityEngine.Vector2(0.4f, 0.6f)
+    };
+    Normalize(layer);
+    build.Invoke(layer, new object[] { point, size.x, size.y });
+    var actual = (System.Collections.IList)stampsField.GetValue(layer);
+    Check(actual.Count == (axes == 3 ? 4 : 2), "Rotated Mirror stamp count");
+    Check(Center(actual[0]) == point, "Rotated Mirror keeps the original stamp under the cursor");
+    float angle = UnityEngine.Mathf.Repeat(degrees, 360f) * UnityEngine.Mathf.Deg2Rad;
+    var pixels = UnityEngine.Vector2.Scale(point - layer.patternCenter, (UnityEngine.Vector2)size);
+    var local = Rotate(pixels, -angle);
+    int index = 1;
+    foreach (int axis in new[] { 1, 2, 3 })
+    {
+        if ((axes & axis) != axis) continue;
+        var reflected = Rotate(new UnityEngine.Vector2((axis & 1) != 0 ? -local.x : local.x,
+            (axis & 2) != 0 ? -local.y : local.y), angle);
+        var expectedUv = layer.patternCenter + new UnityEngine.Vector2(reflected.x / size.x, reflected.y / size.y);
+        Check((Center(actual[index++]) - expectedUv).sqrMagnitude < 0.00000001f,
+            "Rotated Mirror reflects in pixels rather than stretched UV coordinates");
+    }
+    var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(UnityEngine.JsonUtility.ToJson(layer));
+    Check(copy.mirrorAngle == degrees && copy.radialStartAngle == 123f, "Mirror and Radial angles persist independently");
+    var axisDirection = (UnityEngine.Vector2)type.GetMethod("GetMirrorAxisDirection", flags).Invoke(layer, new object[] { true });
+    var onAxis = layer.patternCenter + new UnityEngine.Vector2(axisDirection.x * 10f / size.x, axisDirection.y * 10f / size.y);
+    layer.mirrorAcrossVerticalAxis = true;
+    layer.mirrorAcrossHorizontalAxis = false;
+    build.Invoke(layer, new object[] { onAxis, size.x, size.y });
+    Check(((System.Collections.IList)stampsField.GetValue(layer)).Count == 1, "Points on the rotated axis are not painted twice");
+}
+var insideMethod = type.GetMethod("IsStrokePointInsideRepeatShape", flags);
+var clipMethod = type.GetMethod("TryClipStrokeSegmentToRepeatShape", flags);
+foreach (float degrees in new[] { 0f, 37f, 90f })
+foreach (int axes in new[] { 0, 1, 2, 3 })
+{
+    var layer = new DCFApixels.SpriteEditor.DrawingLayer
+    {
+        repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Mirror,
+        mirrorAngle = degrees,
+        mirrorAcrossVerticalAxis = (axes & 1) != 0,
+        mirrorAcrossHorizontalAxis = (axes & 2) != 0,
+        repeatBoundaryMode = DCFApixels.SpriteEditor.PaintRepeatBoundaryMode.Clip
+    };
+    Normalize(layer);
+    UnityEngine.Vector2 ToUv(float x, float y)
+    {
+        var offset = Rotate(new UnityEngine.Vector2(x, y), degrees * UnityEngine.Mathf.Deg2Rad);
+        return layer.patternCenter + new UnityEngine.Vector2(offset.x / 512f, offset.y / 256f);
+    }
+    bool Inside(UnityEngine.Vector2 uv) => (bool)insideMethod.Invoke(layer, new object[] { uv, 512, 256 });
+    var start = ToUv(25, 30);
+    begin.Invoke(layer, new object[] { start });
+    Check(Inside(start), "Mirror Clip accepts the starting point");
+    Check(Inside(ToUv(-25, 30)) == ((axes & 1) == 0), "Only enabled X reflection clips crossing its rotated axis");
+    Check(Inside(ToUv(25, -30)) == ((axes & 2) == 0), "Only enabled Y reflection clips crossing its rotated axis");
+    if (axes != 0)
+    {
+        var target = (axes & 1) != 0 ? ToUv(-25, 30) : ToUv(25, -30);
+        object[] args = { start, target, 512, 256, UnityEngine.Vector2.zero };
+        Check((bool)clipMethod.Invoke(layer, args) && Inside((UnityEngine.Vector2)args[4]), "Mirror segment ends at the initial region boundary");
+        var endPixels = UnityEngine.Vector2.Scale((UnityEngine.Vector2)args[4] - layer.patternCenter, new UnityEngine.Vector2(512, 256));
+        var local = Rotate(endPixels, -degrees * UnityEngine.Mathf.Deg2Rad);
+        Check(UnityEngine.Mathf.Abs((axes & 1) != 0 ? local.x : local.y) < 0.01f, "Clipped endpoint reaches the rotated axis");
+        build.Invoke(layer, new object[] { start, 512, 256 });
+        var copies = (System.Collections.IList)stampsField.GetValue(layer);
+        Check(copies.Count == (axes == 3 ? 4 : 2), "Mirror Clip retains every reflected copy");
+        foreach (float x in new[] { -40f, 0f, 40f })
+        foreach (float y in new[] { -40f, 0f, 40f })
+        {
+            var sample = UnityEngine.Vector2.Scale(ToUv(x, y) - layer.patternCenter, new UnityEngine.Vector2(512, 256));
+            int owners = 0;
+            foreach (var stamp in copies)
+            {
+                Check((int)stamp.GetType().GetField("clipMode").GetValue(stamp) == 3, "Mirror stamps use rotated half-plane masks");
+                var mask = (UnityEngine.Vector4)stamp.GetType().GetField("clipRect").GetValue(stamp);
+                float sx = sample.x * mask.x + sample.y * mask.y;
+                float sy = -sample.x * mask.y + sample.y * mask.x;
+                if ((mask.z == 0 || (sx >= 0) == (mask.z > 0)) && (mask.w == 0 || (sy >= 0) == (mask.w > 0))) owners++;
+            }
+            Check(owners == 1, "Mirror masks partition the canvas without overlapping seams");
+        }
+    }
+    layer.repeatBoundaryMode = DCFApixels.SpriteEditor.PaintRepeatBoundaryMode.Continue;
+    begin.Invoke(layer, new object[] { start });
+    Check(Inside(ToUv(-25, -30)), "Mirror Continue crosses both axes");
 }
 return "Drawing pattern checks passed: " + checks + ". No assets or GPU resources created.";

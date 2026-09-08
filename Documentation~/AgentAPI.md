@@ -216,6 +216,7 @@ Color alpha zero leaves no mark, including for the eraser; eraser strength other
 | `repeat` | `None`, `Mirror`, `Horizontal`, `Vertical`, `Grid`, `Radial` (mutually exclusive) |
 | `repeatCount`, `repeatSecondaryCount` | Integers 2..64; secondary is the grid Y count |
 | `radialStartAngle` | 0..360 degrees counterclockwise from the left; Radial only, default 0 preserves the original layout |
+| `mirrorAngle` | 0..360 degrees counterclockwise around `center`; Mirror only. Rotates both axes in source-pixel space. Default 0 keeps the original vertical/horizontal axes |
 | `elements` | `Copy`, `AlternateMirror` |
 | `boundary` | `Continue`, `Clip` |
 
@@ -226,6 +227,9 @@ For reflected radial sectors, use `repeat:"Radial", elements:"AlternateMirror"`.
 Legacy mirror-only settings migrate to Mirror; legacy Repeat+Mirror uses Repeat without extra mirrors.
 
 Clip anchors to the stroke's first cell/sector and terminates the polyline at its first exit.
+In Mirror mode it anchors to the starting side of each enabled, rotated axis; each
+reflected brush footprint is clipped to its own half-plane or quadrant. Continue
+allows crossing axes and overlapping brush footprints. Mirror without enabled axes is unrestricted.
 Start a new stroke to draw in another segment. Continue permits crossing segment boundaries.
 The validator caps estimated replicated stamps at 100,000 per stroke, covered brush pixels at
 250,000,000 per stroke and source UV at -4..5. Documents support up to 1024 layers and

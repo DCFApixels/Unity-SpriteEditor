@@ -1053,8 +1053,8 @@ namespace DCFApixels.SpriteEditor
 
             AddPaintColorFields(brushRow);
 
-            brushRow.Add(CreateCompactLabel("Size", 30f));
-            FloatField size = CompactField(new FloatField(), 46f);
+            FloatField size = CompactField(new FloatField("Size"), 76f);
+            size.AddToClassList("sprite-editor-brush-size");
             size.SetValueWithoutNotify(paintSettings.brushSize);
             toolkitHeaderBindings.Track(size, () => paintSettings.brushSize);
             size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
@@ -1710,15 +1710,9 @@ namespace DCFApixels.SpriteEditor
             private void DrawPatternGuides(Painter2D painter, Rect rect)
             {
                 if (drawingLayer.UsesMirrorPattern && drawingLayer.mirrorAcrossVerticalAxis)
-                {
-                    float x = rect.width * drawingLayer.patternCenter.x;
-                    StrokeLine(painter, new Vector2(x, 0f), new Vector2(x, rect.height));
-                }
+                    DrawMirrorGuide(painter, rect, true);
                 if (drawingLayer.UsesMirrorPattern && drawingLayer.mirrorAcrossHorizontalAxis)
-                {
-                    float y = rect.height * (1f - drawingLayer.patternCenter.y);
-                    StrokeLine(painter, new Vector2(0f, y), new Vector2(rect.width, y));
-                }
+                    DrawMirrorGuide(painter, rect, false);
 
                 int count = Mathf.Clamp(drawingLayer.repeatCount, 2, 64);
                 if (drawingLayer.repeatMode == PaintRepeatMode.Horizontal ||
@@ -1757,6 +1751,28 @@ namespace DCFApixels.SpriteEditor
                         StrokeLine(painter, center, center + direction * length);
                     }
                 }
+            }
+
+            private void DrawMirrorGuide(Painter2D painter, Rect rect, bool vertical)
+            {
+                Vector2 center = new Vector2(rect.width * drawingLayer.patternCenter.x,
+                    rect.height * (1f - drawingLayer.patternCenter.y));
+                Vector2 axis = drawingLayer.GetMirrorAxisDirection(vertical);
+                Vector2 direction = new Vector2(axis.x * rect.width / Mathf.Max(1, documentWidth),
+                    -axis.y * rect.height / Mathf.Max(1, documentHeight)).normalized;
+                float forward = float.PositiveInfinity, backward = float.PositiveInfinity;
+                if (Mathf.Abs(direction.x) > 0.000001f)
+                {
+                    forward = (direction.x > 0f ? rect.width - center.x : -center.x) / direction.x;
+                    backward = (direction.x > 0f ? center.x : center.x - rect.width) / direction.x;
+                }
+                if (Mathf.Abs(direction.y) > 0.000001f)
+                {
+                    forward = Mathf.Min(forward, (direction.y > 0f ? rect.height - center.y : -center.y) / direction.y);
+                    backward = Mathf.Min(backward, (direction.y > 0f ? center.y : center.y - rect.height) / direction.y);
+                }
+                if (!float.IsInfinity(forward) && !float.IsInfinity(backward))
+                    StrokeLine(painter, center - direction * backward, center + direction * forward);
             }
 
             private static void FillRect(Painter2D painter, float x, float y, float width, float height)

@@ -8,7 +8,7 @@ namespace DCFApixels.SpriteEditor
     {
         private static void SetBrush(DrawingLayer layer, JObject brush)
         {
-            Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary");
+            Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "mirrorAngle", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary");
             layer.NormalizeSettings();
             if (brush["color"] != null) layer.brushColor = Color(brush["color"]);
             layer.brushSize = Number(brush, "size", layer.brushSize, 1f, 4096f);
@@ -16,6 +16,7 @@ namespace DCFApixels.SpriteEditor
             layer.brushSpacing = Number(brush, "spacing", layer.brushSpacing, DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing);
             layer.mirrorAcrossVerticalAxis = Bool(brush, "mirrorX", layer.mirrorAcrossVerticalAxis);
             layer.mirrorAcrossHorizontalAxis = Bool(brush, "mirrorY", layer.mirrorAcrossHorizontalAxis);
+            layer.mirrorAngle = Number(brush, "mirrorAngle", layer.mirrorAngle, 0f, 360f);
             if (brush["center"] != null)
             {
                 Vector2 center = Vector(brush["center"], "center");

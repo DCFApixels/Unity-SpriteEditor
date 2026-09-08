@@ -32,6 +32,7 @@ namespace DCFApixels.SpriteEditor
 
         public bool mirrorAcrossVerticalAxis;
         public bool mirrorAcrossHorizontalAxis;
+        [Range(0f, 360f)] public float mirrorAngle;
         public Vector2 patternCenter = new Vector2(0.5f, 0.5f);
 
         public PaintRepeatMode repeatMode;
@@ -142,6 +143,7 @@ namespace DCFApixels.SpriteEditor
             repeatCount = Mathf.Clamp(repeatCount, MinimumRepeatCount, MaximumRepeatCount);
             repeatSecondaryCount = Mathf.Clamp(repeatSecondaryCount, MinimumRepeatCount, MaximumRepeatCount);
             radialStartAngle = Mathf.Clamp(radialStartAngle, 0f, 360f);
+            mirrorAngle = Mathf.Clamp(mirrorAngle, 0f, 360f);
             fillTolerance = Mathf.Clamp(fillTolerance, 0, 255);
             fillExpand = Mathf.Clamp(fillExpand, 0, 32);
         }
@@ -191,7 +193,7 @@ namespace DCFApixels.SpriteEditor
             strokeRepeatShapeAnchor = sourceUv;
             clipStrokeToInitialShape =
                 repeatBoundaryMode == PaintRepeatBoundaryMode.Clip &&
-                UsesRepeatedPattern;
+                (UsesRepeatedPattern || UsesMirrorPattern && (mirrorAcrossVerticalAxis || mirrorAcrossHorizontalAxis));
         }
 
         internal void EndStroke()
@@ -527,11 +529,25 @@ namespace DCFApixels.SpriteEditor
             patternStamps.Clear();
             patternStampSet.Clear();
 
+            if (UsesMirrorPattern && repeatBoundaryMode == PaintRepeatBoundaryMode.Clip &&
+                (mirrorAcrossVerticalAxis || mirrorAcrossHorizontalAxis))
+            {
+                int region = GetMirrorRegion(clipStrokeToInitialShape ? strokeRepeatShapeAnchor : sourceUv, outputWidth, outputHeight);
+                AddMirrorClippedStamp(sourceUv, region);
+                if (mirrorAcrossVerticalAxis)
+                    AddMirrorClippedStamp(ReflectPoint(sourceUv, true, outputWidth, outputHeight), region ^ 1);
+                if (mirrorAcrossHorizontalAxis)
+                    AddMirrorClippedStamp(ReflectPoint(sourceUv, false, outputWidth, outputHeight), region ^ 2);
+                if (mirrorAcrossVerticalAxis && mirrorAcrossHorizontalAxis)
+                    AddMirrorClippedStamp(patternCenter * 2f - sourceUv, region ^ 3);
+                return;
+            }
+
             AddSymmetryPoint(sourceUv);
             if (UsesMirrorPattern && mirrorAcrossVerticalAxis)
-                AddSymmetryPoint(new Vector2(patternCenter.x * 2f - sourceUv.x, sourceUv.y));
+                AddSymmetryPoint(ReflectPoint(sourceUv, true, outputWidth, outputHeight));
             if (UsesMirrorPattern && mirrorAcrossHorizontalAxis)
-                AddSymmetryPoint(new Vector2(sourceUv.x, patternCenter.y * 2f - sourceUv.y));
+                AddSymmetryPoint(ReflectPoint(sourceUv, false, outputWidth, outputHeight));
             if (UsesMirrorPattern && mirrorAcrossVerticalAxis && mirrorAcrossHorizontalAxis)
             {
                 AddSymmetryPoint(new Vector2(
@@ -551,6 +567,40 @@ namespace DCFApixels.SpriteEditor
                     return;
             }
             symmetryPoints.Add(point);
+        }
+
+        internal Vector2 GetMirrorAxisDirection(bool vertical)
+        {
+            float angle = Mathf.Repeat(mirrorAngle, 360f) * Mathf.Deg2Rad;
+            float sine = Mathf.Sin(angle);
+            float cosine = Mathf.Cos(angle);
+            return vertical ? new Vector2(-sine, cosine) : new Vector2(cosine, sine);
+        }
+
+        private Vector2 ReflectPoint(Vector2 sourceUv, bool vertical, int width, int height)
+        {
+            Vector2 size = new Vector2(Mathf.Max(1, width), Mathf.Max(1, height));
+            Vector2 delta = Vector2.Scale(sourceUv - patternCenter, size);
+            Vector2 axis = GetMirrorAxisDirection(vertical);
+            Vector2 reflected = 2f * Vector2.Dot(delta, axis) * axis - delta;
+            return patternCenter + new Vector2(reflected.x / size.x, reflected.y / size.y);
+        }
+
+        private int GetMirrorRegion(Vector2 pointUv, int width, int height)
+        {
+            Vector2 delta = Vector2.Scale(pointUv - patternCenter, new Vector2(Mathf.Max(1, width), Mathf.Max(1, height)));
+            Vector2 horizontal = GetMirrorAxisDirection(false);
+            Vector2 vertical = new Vector2(-horizontal.y, horizontal.x);
+            return (mirrorAcrossVerticalAxis && Vector2.Dot(delta, horizontal) >= 0f ? 1 : 0) |
+                   (mirrorAcrossHorizontalAxis && Vector2.Dot(delta, vertical) >= 0f ? 2 : 0);
+        }
+
+        private void AddMirrorClippedStamp(Vector2 point, int region)
+        {
+            Vector2 horizontal = GetMirrorAxisDirection(false);
+            AddStamp(point, 3, new Vector4(horizontal.x, horizontal.y,
+                mirrorAcrossVerticalAxis ? ((region & 1) != 0 ? 1f : -1f) : 0f,
+                mirrorAcrossHorizontalAxis ? ((region & 2) != 0 ? 1f : -1f) : 0f), 0f, 0f);
         }
 
         private void AddRepeatedStamps(Vector2 point, int outputWidth, int outputHeight)
@@ -690,6 +740,10 @@ namespace DCFApixels.SpriteEditor
 
             switch (repeatMode)
             {
+                case PaintRepeatMode.Mirror:
+                    return GetMirrorRegion(anchorUv, outputWidth, outputHeight) ==
+                           GetMirrorRegion(pointUv, outputWidth, outputHeight);
+
                 case PaintRepeatMode.Horizontal:
                     return GetCanvasRepeatCell(anchorUv.x, primaryCount) ==
                            GetCanvasRepeatCell(pointUv.x, primaryCount);

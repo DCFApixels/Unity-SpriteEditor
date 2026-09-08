@@ -150,6 +150,7 @@ namespace DCFApixels.SpriteEditor
             ["spacing"] = layer.brushSpacing, ["mirrorX"] = layer.mirrorAcrossVerticalAxis, ["mirrorY"] = layer.mirrorAcrossHorizontalAxis,
             ["center"] = Json(layer.patternCenter), ["repeat"] = layer.repeatMode.ToString(), ["repeatCount"] = layer.repeatCount,
             ["radialStartAngle"] = layer.radialStartAngle,
+            ["mirrorAngle"] = layer.mirrorAngle,
             ["repeatSecondaryCount"] = layer.repeatSecondaryCount, ["elements"] = layer.repeatElementMode.ToString(), ["boundary"] = layer.repeatBoundaryMode.ToString()
         };
 
