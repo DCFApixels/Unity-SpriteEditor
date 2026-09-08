@@ -206,8 +206,12 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.Add(SpriteEditorUI.CreateHeading("Output"));
 
             VisualElement output = SpriteEditorUI.CreateRow();
-            IntegerField width = new IntegerField("Width");
+            IntegerField width = new IntegerField("W");
+            width.tooltip = "Output width in pixels.";
             width.style.flexGrow = 1f;
+            width.labelElement.style.width = 22f;
+            width.labelElement.style.minWidth = 22f;
+            width.labelElement.style.flexShrink = 0f;
             width.SetValueWithoutNotify(compositor.width);
             width.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Sprite Output Width",
@@ -215,8 +219,12 @@ namespace DCFApixels.SpriteEditor
                 rebuildHeader: true));
             output.Add(width);
 
-            IntegerField height = new IntegerField("Height");
+            IntegerField height = new IntegerField("H");
+            height.tooltip = "Output height in pixels.";
             height.style.flexGrow = 1f;
+            height.labelElement.style.width = 22f;
+            height.labelElement.style.minWidth = 22f;
+            height.labelElement.style.flexShrink = 0f;
             height.SetValueWithoutNotify(compositor.height);
             height.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Sprite Output Height",
