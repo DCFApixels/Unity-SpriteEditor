@@ -6,6 +6,14 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Added
 
+- Layer multi-selection with Ctrl/Cmd-click and Shift ranges, with the last selected layer
+  active for inspector/painting/transform tools. Group, delete, and drag selected layers together
+  in tree order, treating selected groups and descendants as a single subtree.
+
+- Save button for existing documents and Ctrl+S/Cmd+S, falling back to Save As for temporary
+  documents. Commit focused fields, active strokes, and transforms before saving the document
+  and its drawing textures, without saving unrelated project assets.
+
 - Split the right pane into a retained selected-layer inspector above the layer list, with a
   draggable horizontal divider, remembered inspector height, and independent vertical scrolling.
   Reuse type-specific Edit controls and Outline/SDF target selection without rebuilding on value edits.
@@ -36,6 +44,10 @@ All notable changes to Sprite Editor are documented in this file.
   consecutive Shift-clicks, with the existing brush spacing, symmetry, repeat clipping, and Undo.
 
 ### Changed
+
+- Move canvas dimensions into a persistent Canvas toolbar above Preview, separate from the
+  selected drawing layer controls. Anchor the main divider to the right pane so resizing the
+  window preserves the settings/layers width instead of the preview width.
 
 - Restyle the Layers footer as a compact 26-pixel toolbar with contiguous flat icon buttons,
   hover/pressed feedback, and a thin top border.

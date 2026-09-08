@@ -67,6 +67,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private string selectedLayerId;
         [SerializeField] private Vector2 scrollPosition;
         [SerializeField] private float previewPaneWidth = 340f;
+        [SerializeField] private float settingsPaneWidth = -1f;
         [SerializeField] private float layerSettingsPaneHeight = 320f;
 
         [NonSerialized] private Texture2D previewTexture;
@@ -266,6 +267,11 @@ namespace DCFApixels.SpriteEditor
 
         private bool CanDropLayer(Layer layer, List<Layer> destinationContainer, int destinationIndex)
         {
+            List<Layer> dragged = GetDraggedRoots();
+            if (dragged != null)
+                return dragged.Count == 1
+                    ? TryResolveLayerDrop(dragged[0], destinationContainer, destinationIndex, out _, out _, out _)
+                    : CanDropLayers(dragged, destinationContainer);
             return TryResolveLayerDrop(
                 layer,
                 destinationContainer,
@@ -328,6 +334,12 @@ namespace DCFApixels.SpriteEditor
             int destinationIndex,
             GroupLayer groupToExpand)
         {
+            List<Layer> dragged = GetDraggedRoots();
+            if (dragged != null)
+            {
+                PerformSelectedLayersDrop(dragged, destinationContainer, destinationIndex, groupToExpand);
+                return;
+            }
             if (!TryResolveLayerDrop(
                     layer,
                     destinationContainer,
@@ -347,7 +359,6 @@ namespace DCFApixels.SpriteEditor
                     0,
                     destinationContainer.Count);
                 destinationContainer.Insert(normalizedDestinationIndex, layer);
-                selectedLayerId = layer.Id;
                 if (groupToExpand != null)
                     groupExpansion[groupToExpand.Id] = true;
             });
@@ -355,8 +366,10 @@ namespace DCFApixels.SpriteEditor
 
         private void ClearLayerDragData()
         {
+            ClearFooterDropIndicator();
             activeLayerDrag?.Cancel();
             DragAndDrop.SetGenericData(DraggedLayerIdKey, null);
+            DragAndDrop.SetGenericData(DraggedLayersKey, null);
             DragAndDrop.SetGenericData(DraggedCompositorIdKey, null);
         }
 
@@ -506,7 +519,7 @@ namespace DCFApixels.SpriteEditor
                 insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
                 container.Insert(insertionIndex, layer);
                 compositor.NormalizeModel();
-                selectedLayerId = layer.Id;
+                SelectOnlyLayer(layer.Id);
                 if (layer is GroupLayer)
                     groupExpansion[layer.Id] = true;
             });
@@ -514,18 +527,40 @@ namespace DCFApixels.SpriteEditor
 
         private void GroupSelectedLayer()
         {
-            Layer selected = GetSelectedLayer();
-            if (selected == null || !compositor.TryFindLayer(selected, out List<Layer> container, out int index))
+            GroupLayers(GetSelectedRoots());
+        }
+
+        private void GroupLayers(List<Layer> selected)
+        {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            if (selected.Count == 0 || !compositor.TryFindLayer(selected[0], out List<Layer> container, out _))
                 return;
 
+            foreach (Layer layer in selected)
+            {
+                while (!ContainerContainsLayer(container, layer))
+                {
+                    if (!compositor.TryFindParentGroup(container, out _, out List<Layer> parent, out _))
+                        return;
+                    container = parent;
+                }
+            }
+            int index = 0;
+            while (index < container.Count && container[index] != selected[0] &&
+                !(container[index] is GroupLayer parentGroup && ContainerContainsLayer(parentGroup.layers, selected[0])))
+                index++;
             string automaticName = compositor.AllocateGroupName();
-            ExecuteModelChange("Group Sprite Layer", () =>
+            ExecuteModelChange("Group Sprite Layers", () =>
             {
                 GroupLayer group = new GroupLayer { layerName = automaticName };
-                group.layers.Add(selected);
-                container[index] = group;
+                foreach (Layer layer in selected)
+                    if (compositor.TryFindLayer(layer, out List<Layer> source, out _))
+                        source.Remove(layer);
+                group.layers.AddRange(selected);
+                container.Insert(Mathf.Min(index, container.Count), group);
                 compositor.NormalizeModel();
-                selectedLayerId = group.Id;
+                SelectOnlyLayer(group.Id);
                 groupExpansion[group.Id] = true;
             });
         }
@@ -539,7 +574,7 @@ namespace DCFApixels.SpriteEditor
             {
                 container.RemoveAt(index);
                 container.InsertRange(index, group.layers);
-                selectedLayerId = group.layers.Count > 0 ? group.layers[0]?.Id : null;
+                SelectOnlyLayer(group.layers.Count > 0 ? group.layers[0]?.Id : null);
             });
         }
 
@@ -582,7 +617,7 @@ namespace DCFApixels.SpriteEditor
             {
                 menu.AddItem(new GUIContent("Group This Layer"), false, () =>
                 {
-                    selectedLayerId = layer.Id;
+                    SelectOnlyLayer(layer.Id);
                     GroupSelectedLayer();
                 });
             }
@@ -636,7 +671,7 @@ namespace DCFApixels.SpriteEditor
                 container[index] = replacement;
                 compositor.DestroyLayerAssets(layer, undoTransient: true);
                 layer.ReleaseTransientResources();
-                selectedLayerId = replacement.Id;
+                SelectOnlyLayer(replacement.Id);
                 lineAnchorLayer = null;
                 applyingToolkitChange = true;
                 CommitModelChange();
@@ -698,7 +733,7 @@ namespace DCFApixels.SpriteEditor
             {
                 container.Remove(layer);
                 parentContainer.Insert(parentIndex + 1, layer);
-                selectedLayerId = layer.Id;
+                SelectOnlyLayer(layer.Id);
             });
         }
 
@@ -709,8 +744,7 @@ namespace DCFApixels.SpriteEditor
                 compositor.DestroyLayerAssets(layer);
                 container.Remove(layer);
                 layer.ReleaseTransientResources();
-                if (selectedLayerId == layer.Id)
-                    selectedLayerId = null;
+                selectedLayerIds.Remove(layer.Id);
             });
         }
 
@@ -862,7 +896,7 @@ namespace DCFApixels.SpriteEditor
             TextureCompositor previous = compositor;
             compositor = next;
             compositor.NormalizeModel();
-            selectedLayerId = null;
+            SelectOnlyLayer(null);
             temporaryDocumentDirty = false;
             groupExpansion?.Clear();
             RequestPreview(true);
@@ -888,8 +922,33 @@ namespace DCFApixels.SpriteEditor
             return choice == 1;
         }
 
+        private void PrepareDocumentSave()
+        {
+            rootVisualElement.Focus();
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            Undo.FlushUndoRecordObjects();
+        }
+
+        private void SaveAsset()
+        {
+            PrepareDocumentSave();
+            if (compositor == null || !AssetDatabase.Contains(compositor))
+                return;
+
+            compositor.SyncDrawingLayerTextures();
+            compositor.PersistDrawingLayerTextures();
+            EditorUtility.SetDirty(compositor);
+            AssetDatabase.SaveAssetIfDirty(compositor);
+            RefreshToolkitInterface();
+        }
+
         private bool SaveAsAsset()
         {
+            PrepareDocumentSave();
+            if (compositor == null)
+                return false;
+
             string defaultName = compositor != null && !string.IsNullOrWhiteSpace(compositor.name)
                 ? compositor.name
                 : "TextureCompositor";
@@ -909,7 +968,7 @@ namespace DCFApixels.SpriteEditor
             path = AssetDatabase.GenerateUniqueAssetPath(path);
             AssetDatabase.CreateAsset(copy, path);
             copy.PersistDrawingLayerTextures();
-            AssetDatabase.SaveAssets();
+            AssetDatabase.SaveAssetIfDirty(copy);
             SetCompositor(copy);
             Selection.activeObject = copy;
             EditorGUIUtility.PingObject(copy);

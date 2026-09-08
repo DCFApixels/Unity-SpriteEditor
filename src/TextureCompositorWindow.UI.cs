@@ -15,6 +15,8 @@ namespace DCFApixels.SpriteEditor
 
         [NonSerialized] private VisualElement toolkitPreviewPane;
         [NonSerialized] private VisualElement toolkitPreviewHeader;
+        [NonSerialized] private VisualElement toolkitCanvasToolbar;
+        [NonSerialized] private VisualElement toolkitPreviewActions;
         [NonSerialized] private VisualElement toolkitDocumentRoot;
         [NonSerialized] private ScrollView toolkitSettingsScroll;
         [NonSerialized] private VisualElement toolkitLayerFooter;
@@ -91,9 +93,11 @@ namespace DCFApixels.SpriteEditor
             toolkitDocumentRoot.style.flexShrink = 0f;
             root.Add(toolkitDocumentRoot);
 
+            if (settingsPaneWidth <= 0f)
+                settingsPaneWidth = Mathf.Max(SettingsPaneMinWidth, position.width - previewPaneWidth - 3f);
             TwoPaneSplitView split = new TwoPaneSplitView(
-                0,
-                Mathf.Max(PreviewPaneMinWidth, previewPaneWidth),
+                1,
+                Mathf.Max(SettingsPaneMinWidth, settingsPaneWidth),
                 TwoPaneSplitViewOrientation.Horizontal);
             SpriteEditorUI.StyleSplitView(split);
             split.style.flexGrow = 1f;
@@ -102,17 +106,16 @@ namespace DCFApixels.SpriteEditor
 
             toolkitPreviewPane = BuildToolkitPreviewPane();
             toolkitPreviewPane.style.minWidth = PreviewPaneMinWidth;
-            toolkitPreviewPane.RegisterCallback<GeometryChangedEvent>(evt =>
-            {
-                if (evt.newRect.width >= PreviewPaneMinWidth)
-                    previewPaneWidth = evt.newRect.width;
-            });
             split.Add(toolkitPreviewPane);
 
             VisualElement settingsPane = new VisualElement();
             settingsPane.style.minWidth = SettingsPaneMinWidth;
-            settingsPane.style.flexGrow = 1f;
             settingsPane.style.minHeight = 0f;
+            settingsPane.RegisterCallback<GeometryChangedEvent>(evt =>
+            {
+                if (evt.newRect.width >= SettingsPaneMinWidth)
+                    settingsPaneWidth = evt.newRect.width;
+            });
             settingsPane.AddToClassList("sprite-editor-settings-pane");
             settingsPane.EnableInClassList("sprite-editor-settings-pane--light", !EditorGUIUtility.isProSkin);
             split.Add(settingsPane);
@@ -171,6 +174,10 @@ namespace DCFApixels.SpriteEditor
             pane.style.flexDirection = FlexDirection.Column;
             pane.style.backgroundColor = SpriteEditorUI.PanelColor;
 
+            toolkitCanvasToolbar = SpriteEditorUI.CreateToolbar();
+            toolkitCanvasToolbar.AddToClassList("sprite-editor-canvas-toolbar");
+            pane.Add(toolkitCanvasToolbar);
+
             toolkitPreviewHeader = new VisualElement();
             toolkitPreviewHeader.style.flexShrink = 0f;
             pane.Add(toolkitPreviewHeader);
@@ -216,6 +223,7 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 toolkitRefreshRequested = false;
+                NormalizeLayerSelection();
                 if (toolkitBoundDocument != compositor)
                 {
                     toolkitBoundDocument = compositor;
@@ -224,6 +232,7 @@ namespace DCFApixels.SpriteEditor
                     toolkitLayerTree.Clear();
                     toolkitHeaderBuilt = false;
                     BuildToolkitDocumentArea();
+                    BuildToolkitCanvasToolbar();
                     BuildToolkitSettings();
                 }
                 toolkitSettingsBindings.Refresh(forceValues);
@@ -246,6 +255,13 @@ namespace DCFApixels.SpriteEditor
             toolbar.style.borderBottomWidth = StyleKeyword.Null;
             toolbar.AddToClassList("sprite-editor-document-header");
             toolbar.EnableInClassList("sprite-editor-document-header--light", !EditorGUIUtility.isProSkin);
+
+            toolbar.Add(SpriteEditorUI.CreateToolbarButton("New", () =>
+            {
+                if (!ResolveUnsavedTemporaryDocument())
+                    return;
+                SetCompositor(CreateTemporaryCompositor());
+            }, 46f));
 
             toolkitDocumentField = new ObjectField
             {
@@ -274,12 +290,11 @@ namespace DCFApixels.SpriteEditor
                 }
             });
             toolbar.Add(toolkitDocumentField);
-            toolbar.Add(SpriteEditorUI.CreateToolbarButton("New", () =>
-            {
-                if (!ResolveUnsavedTemporaryDocument())
-                    return;
-                SetCompositor(CreateTemporaryCompositor());
-            }, 46f));
+            Button save = SpriteEditorUI.CreateToolbarButton("Save", SaveAsset, 46f);
+            save.tooltip = "Save this document to its existing asset (Ctrl+S).";
+            save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor));
+            toolkitSettingsBindings.Add(() => save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor)));
+            toolbar.Add(save);
             toolbar.Add(SpriteEditorUI.CreateToolbarButton("Save As", () =>
             {
                 SaveAsAsset();
@@ -309,39 +324,42 @@ namespace DCFApixels.SpriteEditor
             toolkitDocumentRoot.Add(separator);
         }
 
-        private void BuildToolkitSettings()
+        private void BuildToolkitCanvasToolbar()
         {
-            toolkitSettingsScroll.Clear();
-            toolkitSettingsScroll.Add(SpriteEditorUI.CreateHeading("Output"));
+            toolkitCanvasToolbar.Clear();
+            Label title = new Label("Canvas");
+            title.AddToClassList("sprite-editor-canvas-title");
+            toolkitCanvasToolbar.Add(title);
 
-            VisualElement output = SpriteEditorUI.CreateRow();
             IntegerField width = new IntegerField("W") { isDelayed = true };
-            width.tooltip = "Output width in pixels. Press Enter or leave the field to apply.";
-            width.style.flexGrow = 1f;
-            width.labelElement.style.width = 22f;
-            width.labelElement.style.minWidth = 22f;
-            width.labelElement.style.flexShrink = 0f;
+            width.AddToClassList("sprite-editor-canvas-size");
+            width.tooltip = "Canvas width in pixels. Press Enter or leave the field to apply.";
             width.SetValueWithoutNotify(compositor.width);
             toolkitSettingsBindings.Track(width, () => compositor.width);
             width.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Sprite Output Width",
+                "Change Sprite Canvas Width",
                 () => compositor.width = Mathf.Max(1, evt.newValue)));
-            output.Add(width);
+            toolkitCanvasToolbar.Add(width);
+            toolkitCanvasToolbar.Add(new Label("×") { pickingMode = PickingMode.Ignore });
 
             IntegerField height = new IntegerField("H") { isDelayed = true };
-            height.tooltip = "Output height in pixels. Press Enter or leave the field to apply.";
-            height.style.flexGrow = 1f;
-            height.labelElement.style.width = 22f;
-            height.labelElement.style.minWidth = 22f;
-            height.labelElement.style.flexShrink = 0f;
+            height.AddToClassList("sprite-editor-canvas-size");
+            height.tooltip = "Canvas height in pixels. Press Enter or leave the field to apply.";
             height.SetValueWithoutNotify(compositor.height);
             toolkitSettingsBindings.Track(height, () => compositor.height);
             height.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Sprite Output Height",
+                "Change Sprite Canvas Height",
                 () => compositor.height = Mathf.Max(1, evt.newValue)));
-            output.Add(height);
-            toolkitSettingsScroll.Add(output);
+            toolkitCanvasToolbar.Add(height);
 
+            toolkitPreviewActions = new VisualElement();
+            toolkitPreviewActions.AddToClassList("sprite-editor-preview-actions");
+            toolkitCanvasToolbar.Add(toolkitPreviewActions);
+        }
+
+        private void BuildToolkitSettings()
+        {
+            toolkitSettingsScroll.Clear();
             VisualElement layerHeader = SpriteEditorUI.CreateRow();
             layerHeader.style.marginTop = 8f;
             Label title = SpriteEditorUI.CreateHeading("Layers");
@@ -364,11 +382,15 @@ namespace DCFApixels.SpriteEditor
             toolkitLayerFooter.Add(CreateLayerActionButton(
                 LayerActionIcon.Kind.Add, "Add layer", ShowAddMenuForSelection));
             Button group = CreateLayerActionButton(
-                LayerActionIcon.Kind.Group, "Group selected layer", GroupSelectedLayer);
+                LayerActionIcon.Kind.Group, "Group selected layers", GroupSelectedLayer);
             Button delete = CreateLayerActionButton(
-                LayerActionIcon.Kind.Delete, "Delete selected layer", DeleteSelectedLayer);
+                LayerActionIcon.Kind.Delete, "Delete selected layers", DeleteSelectedLayers);
             group.AddToClassList("sprite-editor-layer-action--separated");
             delete.AddToClassList("sprite-editor-layer-action--separated");
+            group.tooltip = "Group selected layers. You can also drop layers here.";
+            delete.tooltip = "Delete selected layers. You can also drop layers here.";
+            group.AddManipulator(new LayerFooterDropManipulator(this, delete: false));
+            delete.AddManipulator(new LayerFooterDropManipulator(this, delete: true));
             toolkitLayerFooter.Add(group);
             toolkitLayerFooter.Add(delete);
             toolkitSettingsBindings.Add(() =>
@@ -385,13 +407,6 @@ namespace DCFApixels.SpriteEditor
             button.AddToClassList("sprite-editor-layer-action");
             button.Add(new LayerActionIcon(icon));
             return button;
-        }
-
-        private void DeleteSelectedLayer()
-        {
-            Layer layer = GetSelectedLayer();
-            if (layer != null && compositor.TryFindLayer(layer, out List<Layer> container, out _))
-                DeleteLayer(container, layer);
         }
 
         private void RefreshToolkitLayerHierarchy(bool forceValues = false)
@@ -477,26 +492,31 @@ namespace DCFApixels.SpriteEditor
             row.style.marginBottom = 1f;
             row.style.paddingLeft = 3f + depth * ToolkitLayerIndent;
             row.style.paddingRight = 3f;
-            row.style.backgroundColor = layer.Id == selectedLayerId
-                ? SpriteEditorUI.SelectedColor
-                : SpriteEditorUI.RowColor;
+            ApplyLayerSelectionStyle(row, layer.Id);
             row.style.borderTopLeftRadius = 2f;
             row.style.borderTopRightRadius = 2f;
             row.style.borderBottomLeftRadius = 2f;
             row.style.borderBottomRightRadius = 2f;
+            VisualElement activeOutline = new VisualElement { pickingMode = PickingMode.Ignore };
+            activeOutline.AddToClassList("sprite-editor-layer-active-outline");
+            row.Add(activeOutline);
             toolkitLayerBindings.Add(() =>
             {
                 if (row != activeDropElement)
-                    row.style.backgroundColor = layer.Id == selectedLayerId
-                        ? SpriteEditorUI.SelectedColor : SpriteEditorUI.RowColor;
+                    ApplyLayerSelectionStyle(row, layer.Id);
             });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
-                if (evt.button != 0 || selectedLayerId == layer.Id)
+                if (evt.button != 0 || evt.target is VisualElement target &&
+                    target.ClassListContains("sprite-editor-layer-drag-handle"))
                     return;
-                selectedLayerId = layer.Id;
-                RefreshToolkitInterface();
-            });
+                SelectLayerFromPointer(layer, evt);
+                if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                }
+            }, TrickleDown.TrickleDown);
             return row;
         }
 
@@ -663,6 +683,7 @@ namespace DCFApixels.SpriteEditor
         private VisualElement CreateToolkitDragHandle(Layer layer)
         {
             Label handle = new Label("≡");
+            handle.AddToClassList("sprite-editor-layer-drag-handle");
             handle.tooltip = LayerDragHandleContent.tooltip;
             handle.style.width = 18f;
             handle.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -707,8 +728,12 @@ namespace DCFApixels.SpriteEditor
             {
                 if (evt.button != 0 || pointerId >= 0)
                     return;
-                owner.selectedLayerId = layer.Id;
-                owner.RefreshToolkitInterface();
+                owner.SelectLayerFromPointer(layer, evt, preserveSelection: true);
+                if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
+                {
+                    evt.StopImmediatePropagation();
+                    return;
+                }
                 owner.activeLayerDrag?.Cancel();
                 owner.activeLayerDrag = this;
                 start = evt.position;
@@ -726,6 +751,7 @@ namespace DCFApixels.SpriteEditor
                 DragAndDrop.objectReferences = Array.Empty<UnityEngine.Object>();
                 DragAndDrop.SetGenericData(DraggedLayerIdKey, layer.Id);
                 DragAndDrop.SetGenericData(DraggedCompositorIdKey, owner.compositor);
+                DragAndDrop.SetGenericData(DraggedLayersKey, owner.GetSelectedRoots());
                 DragAndDrop.StartDrag(string.IsNullOrEmpty(layer.layerName) ? "Layer" : layer.layerName);
                 Release();
                 evt.StopImmediatePropagation();
@@ -933,9 +959,8 @@ namespace DCFApixels.SpriteEditor
             activeDropElement.style.marginLeft = activeDropMarginLeft;
             if (activeDropElement.userData is string layerId)
             {
-                activeDropElement.style.backgroundColor = layerId == selectedLayerId
-                    ? SpriteEditorUI.SelectedColor
-                    : SpriteEditorUI.RowColor;
+                activeDropElement.style.backgroundColor = StyleKeyword.Null;
+                ApplyLayerSelectionStyle(activeDropElement, layerId);
             }
             else
             {
@@ -974,34 +999,15 @@ namespace DCFApixels.SpriteEditor
 
         private void BuildToolkitPreviewHeader(DrawingLayer layer)
         {
-            if (layer == null)
-            {
-                VisualElement header = SpriteEditorUI.CreateToolbar();
-                Label title = new Label("Preview");
-                title.style.unityFontStyleAndWeight = FontStyle.Bold;
-                header.Add(title);
-                Label dimensions = new Label($"{Mathf.Max(1, compositor.width)} × {Mathf.Max(1, compositor.height)}");
-                toolkitHeaderBindings.Add(() => dimensions.text = $"{compositor.width} × {compositor.height}");
-                dimensions.style.flexGrow = 1f;
-                dimensions.style.unityTextAlign = TextAnchor.MiddleCenter;
-                header.Add(dimensions);
-                AddPreviewTransformButton(header);
-                header.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
-                toolkitPreviewHeader.Add(header);
-                AddPreviewTransformSettings();
-                return;
-            }
-
-            VisualElement titleRow = SpriteEditorUI.CreateToolbar();
-            Label drawingTitle = new Label("Preview • Drawing");
-            drawingTitle.style.flexGrow = 1f;
-            drawingTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
-            titleRow.Add(drawingTitle);
-            AddPreviewTransformButton(titleRow);
-            titleRow.Add(SpriteEditorUI.CreateToolbarButton("Clear", () => ClearDrawingLayer(layer), 46f));
-            titleRow.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 58f));
-            toolkitPreviewHeader.Add(titleRow);
+            toolkitPreviewActions.Clear();
+            AddPreviewTransformButton(toolkitPreviewActions);
+            if (layer != null)
+                toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Clear", () => ClearDrawingLayer(layer), 46f));
+            toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();
+
+            if (layer == null)
+                return;
 
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             EnumField tool = CompactField(new EnumField(layer.tool), 72f);
@@ -1448,6 +1454,17 @@ namespace DCFApixels.SpriteEditor
 
         private void OnToolkitKeyDown(KeyDownEvent evt)
         {
+            if ((evt.ctrlKey || evt.commandKey) && !evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.S)
+            {
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                if (compositor != null && AssetDatabase.Contains(compositor))
+                    SaveAsset();
+                else
+                    SaveAsAsset();
+                return;
+            }
+
             if (IsTextInputTarget(evt.target as VisualElement))
                 return;
 

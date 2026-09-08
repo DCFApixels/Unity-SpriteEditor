@@ -41,6 +41,76 @@
     background-color: var(--menu-dot);
 }
 
+.sprite-editor-canvas-toolbar {
+    flex-shrink: 0;
+}
+
+.sprite-editor-preview-actions {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: 4px;
+}
+
+.sprite-editor-canvas-title {
+    -unity-font-style: bold;
+    flex-shrink: 0;
+    margin-right: 6px;
+}
+
+.sprite-editor-canvas-size {
+    flex-basis: 98px;
+    min-width: 60px;
+    flex-shrink: 1;
+}
+
+.sprite-editor-canvas-size > .unity-base-field__label {
+    width: 22px;
+    min-width: 22px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-layer-row {
+    --layer-row-background: #2e2e2e;
+    --layer-row-selected: #2e4766;
+    --layer-row-active: #2e619e;
+    --layer-row-outline: #4377b0;
+    background-color: var(--layer-row-background);
+}
+
+.sprite-editor-layer-row--light {
+    --layer-row-background: #d1d1d1;
+    --layer-row-selected: #99b8d9;
+    --layer-row-active: #619ee0;
+    --layer-row-outline: #78afe8;
+}
+
+.sprite-editor-layer-row--selected {
+    background-color: var(--layer-row-selected);
+}
+
+.sprite-editor-layer-row--active {
+    background-color: var(--layer-row-active);
+}
+
+.sprite-editor-layer-active-outline {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-width: 1px;
+    border-color: var(--layer-row-outline);
+    border-radius: 2px;
+}
+
+.sprite-editor-layer-row--active > .sprite-editor-layer-active-outline {
+    display: flex;
+}
+
 .sprite-editor-layers-pane {
     min-height: 100px;
 }
@@ -101,6 +171,10 @@
 
 .sprite-editor-layers-footer > .sprite-editor-layer-action:disabled {
     background-color: var(--footer-button);
+}
+
+.sprite-editor-layers-footer > .sprite-editor-layer-action.sprite-editor-layer-action--drop-target {
+    background-color: #3b6997;
 }
 
 .sprite-editor-layer-action-icon {

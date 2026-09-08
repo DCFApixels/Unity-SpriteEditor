@@ -5,7 +5,9 @@ including its resizable Preview, recursive layer tree, inspectors, and auxiliary
 
 Open it from **Window > Sprite Editor**. A composition can stay temporary, be saved as a
 `TextureCompositor` asset, previewed in the editor, and exported through the **Export** menu.
-The document field, **New**, **Save As**, and **Export** share a full-window header above both panes.
+The full-window header contains **New**, the document field, **Save**, **Save As**, and **Export**.
+**Save** writes to the existing asset without a dialog and is disabled for temporary documents.
+**Ctrl+S** (**Cmd+S** on macOS) saves the current asset, or opens **Save As** for a temporary document.
 
 The right pane has a selected-layer inspector above the layer list. Drag their horizontal divider
 to set the inspector height; it stays fixed when selecting layers and is remembered by the window.
@@ -57,7 +59,7 @@ To track a specific published release, append its tag to the URL, for example `#
   Other asset types and files with sub-assets are protected from replacement.
 
 PNG/JPEG/TGA exported inside `Assets` are imported as single Sprite assets. EXR is imported as a
-linear texture. **Save As** remains the way to save the editable composition with all its layers.
+linear texture. **Save** and **Save As** store the editable composition with all its layers.
 
 ## Preview transform tool
 
@@ -82,6 +84,17 @@ export without changing the source texture's import settings. For Drawing layers
 rendered copies; painting still edits the source inside the primary tile, independently of brush repeat.
 
 ## Layer stack
+
+Click a row to select one layer; **Ctrl-click** (**Cmd-click** on macOS) toggles individual
+layers, and **Shift-click** selects a range of visible rows. Ctrl/Cmd+Shift adds a range.
+The last selected layer is active (brighter highlight): its inspector, drawing controls,
+and Preview Transform remain single-layer tools. Removing it from the selection activates
+the most recently selected remaining layer.
+The footer's **Group** and **Delete** actions affect the full selection. Drag a selected layer's
+handle to move the selection together, preserving tree order; selected groups carry their
+children only once. Per-row context menus and inline fields still operate on that row.
+Drop the dragged selection onto the footer's folder or trash icon to group or delete it.
+Valid targets highlight blue; each drop can be undone in one step.
 
 Use a layer's **… > Convert to Drawing** menu to rasterize it, including an existing Drawing:
 
