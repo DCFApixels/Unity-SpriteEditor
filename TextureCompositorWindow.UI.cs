@@ -884,17 +884,23 @@ namespace DCFApixels.SpriteEditor
             VisualElement boundarySpacer = new VisualElement();
             boundarySpacer.style.flexGrow = 1f;
             boundaryRow.Add(boundarySpacer);
-            Label spacingLabel = CreateCompactLabel("Step", 30f);
-            spacingLabel.tooltip = BrushSpacingContent.tooltip;
-            boundaryRow.Add(spacingLabel);
-            FloatField spacing = CompactField(new FloatField(), 42f);
+            FloatField spacing = CompactField(new FloatField("Step"), 72f);
+            spacing.tooltip = BrushSpacingContent.tooltip;
+            spacing.labelElement.style.width = 30f;
+            spacing.labelElement.style.minWidth = 30f;
+            spacing.labelElement.style.flexShrink = 0f;
             spacing.SetValueWithoutNotify(layer.brushSpacing * 100f);
-            spacing.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Brush Step",
-                () => layer.brushSpacing = Mathf.Clamp(
-                    evt.newValue * 0.01f,
-                    DrawingLayer.MinimumBrushSpacing,
-                    DrawingLayer.MaximumBrushSpacing)));
+            spacing.RegisterValueChangedCallback(evt =>
+            {
+                float clampedPercent = Mathf.Clamp(
+                    evt.newValue,
+                    DrawingLayer.MinimumBrushSpacing * 100f,
+                    DrawingLayer.MaximumBrushSpacing * 100f);
+                spacing.SetValueWithoutNotify(clampedPercent);
+                ApplyToolkitChange(
+                    "Change Brush Step",
+                    () => layer.brushSpacing = clampedPercent * 0.01f);
+            });
             boundaryRow.Add(spacing);
             boundaryRow.Add(CreateCompactLabel("%", 14f));
             toolkitPreviewHeader.Add(boundaryRow);

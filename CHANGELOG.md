@@ -11,6 +11,7 @@ All notable changes to Sprite Editor are documented in this file.
   tree, drawing toolbar, and UI Toolkit drag-and-drop while preserving the existing editing workflow.
 - Preserved direct Preview painting, brush and eraser hotkeys, groups, effect targets, modifiers,
   layer selection, Undo/Redo, and saved-compositor reopening across the migration.
+- The Drawing `Step` value can now be scrubbed by dragging its label horizontally.
 
 ### Performance
 
