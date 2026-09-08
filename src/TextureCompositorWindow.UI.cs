@@ -1499,6 +1499,7 @@ namespace DCFApixels.SpriteEditor
         {
             private readonly PreviewViewport viewport;
             private readonly VisualElement checker;
+            private Texture2D checkerTexture;
             private readonly Image image;
             private readonly VisualElement overlay;
             private Texture texture;
@@ -1532,6 +1533,8 @@ namespace DCFApixels.SpriteEditor
                     : new Color(0.76f, 0.76f, 0.76f, 1f);
                 checker.generateVisualContent += DrawCheckerboard;
                 Add(checker);
+                RegisterCallback<AttachToPanelEvent>(_ => CreateCheckerTexture());
+                RegisterCallback<DetachFromPanelEvent>(_ => ReleaseCheckerTexture());
 
                 image = new Image
                 {
@@ -1615,37 +1618,57 @@ namespace DCFApixels.SpriteEditor
                 element.style.height = rect.height;
             }
 
-            private void DrawCheckerboard(MeshGenerationContext context)
+            private void CreateCheckerTexture()
             {
-                const float tileSize = 16f;
-                Rect rect = checker.contentRect;
-                if (rect.width <= 0f || rect.height <= 0f)
-                    return;
-
+                if (checkerTexture != null) return;
                 Color light = EditorGUIUtility.isProSkin
                     ? new Color(0.30f, 0.30f, 0.30f, 1f)
                     : new Color(0.84f, 0.84f, 0.84f, 1f);
                 Color dark = EditorGUIUtility.isProSkin
                     ? new Color(0.23f, 0.23f, 0.23f, 1f)
                     : new Color(0.70f, 0.70f, 0.70f, 1f);
-                Painter2D painter = context.painter2D;
-                int firstRow = Mathf.Max(0, Mathf.FloorToInt((contentRect.yMin - ImageRect.y) / tileSize));
-                int firstColumn = Mathf.Max(0, Mathf.FloorToInt((contentRect.xMin - ImageRect.x) / tileSize));
-                int rows = Mathf.CeilToInt(Mathf.Min(rect.height, contentRect.yMax - ImageRect.y) / tileSize);
-                int columns = Mathf.CeilToInt(Mathf.Min(rect.width, contentRect.xMax - ImageRect.x) / tileSize);
-                for (int row = firstRow; row < rows; row++)
+                checkerTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
                 {
-                    for (int column = firstColumn; column < columns; column++)
-                    {
-                        painter.fillColor = ((row + column) & 1) == 0 ? light : dark;
-                        FillRect(
-                            painter,
-                            column * tileSize,
-                            row * tileSize,
-                            Mathf.Min(tileSize, rect.width - column * tileSize),
-                            Mathf.Min(tileSize, rect.height - row * tileSize));
-                    }
-                }
+                    name = "Sprite Editor Checkerboard",
+                    hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Repeat
+                };
+                checkerTexture.SetPixels(new[] { light, dark, dark, light });
+                checkerTexture.Apply(false, false);
+                checker.MarkDirtyRepaint();
+            }
+
+            public void ReleaseCheckerTexture()
+            {
+                if (checkerTexture == null) return;
+                UnityEngine.Object.DestroyImmediate(checkerTexture);
+                checkerTexture = null;
+            }
+
+            private void DrawCheckerboard(MeshGenerationContext context)
+            {
+                Rect rect = checker.contentRect;
+                if (checkerTexture == null || rect.width <= 0f || rect.height <= 0f) return;
+
+                float u = rect.width / 32f;
+                float v = rect.height / 32f;
+                context.AllocateTempMesh(4, 6, out var vertices, out var indices);
+                vertices[0] = new Vertex { position = new Vector3(rect.xMin, rect.yMin, Vertex.nearZ), tint = Color.white, uv = Vector2.zero };
+                vertices[1] = new Vertex { position = new Vector3(rect.xMax, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(u, 0f) };
+                vertices[2] = new Vertex { position = new Vector3(rect.xMax, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(u, v) };
+                vertices[3] = new Vertex { position = new Vector3(rect.xMin, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(0f, v) };
+                indices[0] = 0;
+                indices[1] = 1;
+                indices[2] = 2;
+                indices[3] = 0;
+                indices[4] = 2;
+                indices[5] = 3;
+#if UNITY_6000_3_OR_NEWER
+                context.DrawMesh(vertices, indices, checkerTexture, TextureOptions.SkipDynamicAtlas);
+#else
+                context.DrawMesh(vertices, indices, checkerTexture);
+#endif
             }
 
             private void DrawOverlay(MeshGenerationContext context)

@@ -205,6 +205,7 @@ namespace DCFApixels.SpriteEditor
             Undo.undoRedoPerformed -= OnUndoRedo;
             ClearLayerDragData();
             ReleasePreview();
+            toolkitPreviewCanvas?.ReleaseCheckerTexture();
         }
 
         private void OnFocus()
