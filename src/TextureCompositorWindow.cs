@@ -11,7 +11,7 @@ namespace DCFApixels.SpriteEditor
         private const int PreviewMaxSize = 512;
         private const double PreviewDelay = 0.12d;
         private const double PaintingPreviewInterval = 1d / 30d;
-        private const float DefaultPaintingPreviewScale = 0.375f;
+        private const float DefaultPaintingPreviewScale = 0.8f;
         private const float MinimumPaintingPreviewScale = 0.125f;
         private const float MaximumPaintingPreviewScale = 1f;
         private const float DefaultSettingsPaneWidth = 400f;

@@ -230,7 +230,7 @@
     padding-left: 8px;
     padding-right: 8px;
     -unity-text-align: middle-left;
-    background-color: #303030;
+    background-color: #454545;
     color: #cfcfcf;
     border-bottom-width: 1px;
     border-bottom-color: #171717;
@@ -239,7 +239,7 @@
 }
 
 .sprite-editor-pane-header--light {
-    background-color: #b4b4b4;
+    background-color: #d0d0d0;
     color: #252525;
     border-bottom-color: #858585;
 }
