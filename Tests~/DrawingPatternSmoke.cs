@@ -128,7 +128,7 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatElementMode elements in System.Enum.
         float angle = start + offsets[i] * UnityEngine.Mathf.PI * 2f / count;
         var uv = radial.patternCenter + new UnityEngine.Vector2(
             UnityEngine.Mathf.Cos(angle) * 0.1f, UnityEngine.Mathf.Sin(angle) * 0.2f);
-        sectors[i] = (int)sectorMethod.Invoke(radial, new object[] { uv, 512, 256 });
+        sectors[i] = (int)sectorMethod.Invoke(radial, new object[] { uv, count, 512, 256 });
     }
     Check(sectors[0] == sectors[1] && sectors[0] != sectors[2], "CPU Clip follows rotated boundaries");
     var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(UnityEngine.JsonUtility.ToJson(radial));

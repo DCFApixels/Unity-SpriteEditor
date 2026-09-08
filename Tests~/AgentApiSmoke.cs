@@ -15,35 +15,55 @@ try
 }
 finally { UnityEngine.Object.DestroyImmediate(image); }
 
-Newtonsoft.Json.Linq.JObject Json(string value) => Newtonsoft.Json.Linq.JObject.Parse(value);
+// Resolve the API's JSON assembly explicitly: some Editor packages embed another copy.
+var jsonType = typeof(DCFApixels.SpriteEditor.SpriteEditorApi)
+    .GetMethod("SetBrush", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+    .GetParameters()[1].ParameterType;
+object Json(string value) => jsonType.GetMethod("Parse", new[] { typeof(string) }).Invoke(null, new object[] { value });
+object At(object value, params object[] keys)
+{
+    foreach (var key in keys)
+        value = value.GetType().GetProperty("Item", new[] { key.GetType() }).GetValue(value, new[] { key });
+    return value;
+}
+void Set(object value, object key, object item)
+{
+    var tokenType = jsonType.Assembly.GetType("Newtonsoft.Json.Linq.JToken");
+    var token = tokenType.IsInstanceOfType(item) ? item :
+        tokenType.GetMethod("FromObject", new[] { typeof(object) }).Invoke(null, new[] { item });
+    value.GetType().GetProperty("Item", new[] { key.GetType() }).SetValue(value, token, new[] { key });
+}
+string Text(object value, params object[] keys) => At(value, keys).ToString();
+bool Flag(object value, params object[] keys) => bool.Parse(Text(value, keys));
+float Number(object value, params object[] keys) => float.Parse(Text(value, keys), System.Globalization.CultureInfo.InvariantCulture);
 void Check(bool condition, string message)
 {
     if (!condition) throw new System.Exception(message + " | Fixtures: " + fixture);
     checks++;
 }
-Newtonsoft.Json.Linq.JObject Ok(string response)
+object Ok(string response)
 {
     var result = Json(response);
-    Check((bool)result["success"], result.ToString());
+    Check(Flag(result, "success"), result.ToString());
     return result;
 }
-Newtonsoft.Json.Linq.JObject Inspect() => Ok(DCFApixels.SpriteEditor.SpriteEditorApi.Inspect(fixture + "/Icon.asset"));
-Newtonsoft.Json.Linq.JObject Batch(string operations)
+object Inspect() => Ok(DCFApixels.SpriteEditor.SpriteEditorApi.Inspect(fixture + "/Icon.asset"));
+object Batch(string operations)
 {
     var request = Json("{\"apiVersion\":1,\"save\":false,\"operations\":" + operations + "}");
-    request["assetPath"] = fixture + "/Icon.asset";
-    request["expectedRevision"] = Inspect()["document"]["revision"];
+    Set(request, "assetPath", fixture + "/Icon.asset");
+    Set(request, "expectedRevision", At(Inspect(), "document", "revision"));
     return request;
 }
-void Reject(Newtonsoft.Json.Linq.JObject request, string code)
+void Reject(object request, string code)
 {
     var result = Json(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(request.ToString()));
-    Check(!(bool)result["success"] && (string)result["errorCode"] == code, "Expected " + code + ": " + result);
+    Check(!Flag(result, "success") && Text(result, "errorCode") == code, "Expected " + code + ": " + result);
 }
-string LayerId(Newtonsoft.Json.Linq.JObject document, string name)
+string LayerId(object document, string name)
 {
-    foreach (var layer in document["layers"])
-        if ((string)layer["settings"]["name"] == name) return (string)layer["id"];
+    foreach (var layer in (System.Collections.IEnumerable)At(document, "layers"))
+        if (Text(layer, "settings", "name") == name) return Text(layer, "id");
     throw new System.Exception("Missing layer: " + name);
 }
 UnityEngine.Color Pixel(string suffix, int x, int y)
@@ -53,7 +73,7 @@ UnityEngine.Color Pixel(string suffix, int x, int y)
     var texture = new UnityEngine.Texture2D(2, 2);
     try
     {
-        Check(UnityEngine.ImageConversion.LoadImage(texture, System.IO.File.ReadAllBytes((string)result["outputPath"])), "Preview decodes");
+        Check(UnityEngine.ImageConversion.LoadImage(texture, System.IO.File.ReadAllBytes(Text(result, "outputPath"))), "Preview decodes");
         return texture.GetPixel(x, y);
     }
     finally { UnityEngine.Object.DestroyImmediate(texture); }
@@ -71,30 +91,30 @@ var create = Json(@"{
     {'op':'target','layer':'@edge','target':'@art'}
   ]
 }".Replace('\'', '"'));
-create["assetPath"] = fixture + "/Icon.asset";
-create["operations"][1]["settings"]["source"] = fixture + "/source.png";
-create["dryRun"] = true;
+Set(create, "assetPath", fixture + "/Icon.asset");
+Set(At(create, "operations", 1, "settings"), "source", fixture + "/source.png");
+Set(create, "dryRun", true);
 Ok(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(create.ToString()));
 Check(!System.IO.File.Exists(System.IO.Path.Combine(projectRoot, fixture, "Icon.asset")), "Dry run does not create a document");
-create["dryRun"] = false;
+Set(create, "dryRun", false);
 var created = Ok(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(create.ToString()));
-var doc = (Newtonsoft.Json.Linq.JObject)created["document"];
-Check((bool)doc["hasOutputTexture"] && (bool)doc["hasOutputSprite"], "Output texture and sprite exist");
-Check(((Newtonsoft.Json.Linq.JArray)doc["layers"]).Count == 4, "Four layers including a group child");
+var doc = At(created, "document");
+Check(Flag(doc, "hasOutputTexture") && Flag(doc, "hasOutputSprite"), "Output texture and sprite exist");
+Check(((System.Collections.ICollection)At(doc, "layers")).Count == 4, "Four layers including a group child");
 var inkId = LayerId(doc, "Ink");
 var imageId = LayerId(doc, "Image");
 var artId = LayerId(doc, "Art");
-foreach (var layer in doc["layers"])
-    if ((string)layer["id"] == imageId)
-        Check(System.Math.Abs((float)layer["transform"]["scale"][1] - 0.5f) < 0.0001f, "Initial File assignment fits source aspect");
+foreach (var layer in (System.Collections.IEnumerable)At(doc, "layers"))
+    if (Text(layer, "id") == imageId)
+        Check(System.Math.Abs(Number(layer, "transform", "scale", 1) - 0.5f) < 0.0001f, "Initial File assignment fits source aspect");
 var pixel = Pixel("initial", 12, 56);
 Check(pixel.r > 0.9f && pixel.a > 0.9f, "Top-left canvas stroke paints expected pixel");
 Reject(create, "already_exists");
 
 var invalid = Batch("[{\"op\":\"set\",\"layer\":\"" + inkId + "\",\"settings\":{\"opacity\":0.2}}, {\"op\":\"set\",\"layer\":\"missing\",\"settings\":{\"opacity\":0.1}}]");
-var beforeInvalid = (string)Inspect()["document"]["revision"];
+var beforeInvalid = Text(Inspect(), "document", "revision");
 Reject(invalid, "layer_not_found");
-Check((string)Inspect()["document"]["revision"] == beforeInvalid, "Failed preflight leaves model unchanged");
+Check(Text(Inspect(), "document", "revision") == beforeInvalid, "Failed preflight leaves model unchanged");
 var typo = Batch("[{\"op\":\"set\",\"layer\":\"" + inkId + "\",\"settings\":{\"opactiy\":0.2}}]");
 Reject(typo, "invalid_request");
 var duplicateAlias = Batch("[{\"op\":\"add\",\"type\":\"color\",\"as\":\"same\"},{\"op\":\"add\",\"type\":\"color\",\"as\":\"same\"}]");
@@ -123,8 +143,8 @@ Check(Pixel("redo-paint", 44, 56).g > 0.9f, "Redo restores drawing pixels");
 var transform = Batch("[{\"op\":\"transform\",\"layer\":\"" + imageId + "\",\"transform\":{\"position\":[10,-4],\"rotation\":30}}]");
 Ok(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(transform.ToString()));
 var save = Batch("[]");
-save["save"] = true;
+Set(save, "save", true);
 Ok(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(save.ToString()));
 var reloaded = Inspect();
-Check((bool)reloaded["document"]["hasOutputTexture"] && (bool)reloaded["document"]["hasOutputSprite"], "Rebaked subassets remain available");
+Check(Flag(reloaded, "document", "hasOutputTexture") && Flag(reloaded, "document", "hasOutputSprite"), "Rebaked subassets remain available");
 return new { success = true, checks, fixture, sourcePng };
