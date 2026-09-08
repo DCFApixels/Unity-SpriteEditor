@@ -35,7 +35,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             root.Bind(serializedObject);
-            root.TrackSerializedObjectValue(serializedObject, _ =>
+            root.RegisterCallback<SerializedPropertyChangeEvent>(_ =>
             {
                 foreach (Object inspectedTarget in targets)
                 {

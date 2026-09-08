@@ -970,7 +970,6 @@ namespace DCFApixels.SpriteEditor
                 RebuildToolkitLayerHierarchy();
             if (rebuildHeader)
                 BuildToolkitPreviewHeader();
-            BuildToolkitDocumentArea();
             UpdateToolkitPreviewPresentation();
         }
 

@@ -18,6 +18,10 @@ All notable changes to Sprite Editor are documented in this file.
 - Settings panels and layer rows now rebuild only when editor state changes instead of every GUI
   event, and the Preview caches its image layout so the checkerboard is not repainted unnecessarily.
 
+### Fixed
+
+- Numeric label scrubbing no longer loses pointer capture after its first value change.
+
 ## [0.3.2] - 2026-09-07
 
 ### Changed
