@@ -2,6 +2,60 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Hold Shift during a brush/eraser stroke to lock its direction horizontally or vertically on
+  the canvas. Shift-click connects the previous painted endpoint to the clicked point, including
+  consecutive Shift-clicks, with the existing brush spacing, symmetry, repeat clipping, and Undo.
+
+### Changed
+
+- Keep output fields, layer rows, and drawing controls alive during value changes and selection.
+  Rebuild only the affected subtree when the document, visible layer structure, or bound layer
+  instance changes. Repeat modes, gradient modes, and effect inputs toggle existing controls.
+- Synchronize fields through shared value bindings: update only changed values without emitting
+  change events, preserve active text/caret and pointer interactions, and reconcile on focus or
+  capture release. External notifications are coalesced instead of scheduling full UI rebuilds.
+- Refresh modifier items only when their source list or contents change, and handle layer dragging
+  with a pointer manipulator that cleans up capture on cancellation and detachment.
+
+### Fixed
+
+- Output width and height commit typed values on Enter or focus loss, so temporarily clearing
+  a dimension while typing does not shrink the document and preview to a one-pixel strip.
+- Selecting an unselected layer while editing its name or opacity no longer detaches the field.
+- Brush Step no longer rewrites and clamps its text during typing; the model remains clamped and
+  the field is reconciled when editing ends.
+- External changes no longer discard UI refreshes while a field is focused. Effect and modifier
+  windows also synchronize directly after Undo/Redo.
+- Preview errors reuse one HelpBox, and cancelled layer drops restore the row's original margin.
+
+## [0.4.0] - 2026-09-08
+
+### Changed
+
+- Rebuilt every Sprite Editor window and its `TextureCompositor` custom inspector with UI Toolkit.
+- Replaced the main window with a resizable two-pane layout, retained-mode preview, recursive layer
+  tree, drawing toolbar, and UI Toolkit drag-and-drop while preserving the existing editing workflow.
+- Preserved direct Preview painting, brush and eraser hotkeys, groups, effect targets, modifiers,
+  layer selection, Undo/Redo, and saved-compositor reopening across the migration.
+- The Drawing `Step` value can now be scrubbed by dragging its label horizontally.
+
+### Performance
+
+- Settings panels and layer rows now rebuild only when editor state changes instead of every GUI
+  event, and the Preview caches its image layout so the checkerboard is not repainted unnecessarily.
+
+### Fixed
+
+- Numeric label scrubbing no longer loses pointer capture after its first value change.
+- Text and numeric field editing is no longer interrupted by a delayed external refresh while the
+  active UI Toolkit field has keyboard focus.
+- Drawing symmetry and repetition guides are hidden immediately after selecting a non-Drawing layer,
+  preventing stale guide geometry from appearing offset after the Preview layout changes.
+
 ## [0.3.2] - 2026-09-07
 
 ### Changed

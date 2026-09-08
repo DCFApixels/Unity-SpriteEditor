@@ -1,32 +1,49 @@
 using UnityEditor;
 using UnityEditor.Callbacks;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
 {
     [CustomEditor(typeof(TextureCompositor))]
     public sealed class TextureCompositorEditor : Editor
     {
-        private static readonly GUIContent OpenButtonContent = new GUIContent(
-            "Open in Sprite Editor",
-            "Open this saved composition in the Sprite Editor window.");
-
-        public override void OnInspectorGUI()
+        public override VisualElement CreateInspectorGUI()
         {
-            if (GUILayout.Button(OpenButtonContent, GUILayout.Height(28f)))
-                TextureCompositorWindow.Open((TextureCompositor)target);
+            VisualElement root = new VisualElement();
+            root.style.paddingTop = 4f;
 
-            EditorGUILayout.Space();
-            EditorGUI.BeginChangeCheck();
-            DrawDefaultInspector();
-            if (!EditorGUI.EndChangeCheck())
-                return;
-
-            foreach (Object inspectedTarget in targets)
+            Button open = new Button(() => TextureCompositorWindow.Open((TextureCompositor)target))
             {
-                if (inspectedTarget is TextureCompositor compositor)
-                    compositor.MarkChanged();
+                text = "Open in Sprite Editor",
+                tooltip = "Open this saved composition in the Sprite Editor window."
+            };
+            open.style.height = 28f;
+            open.style.marginBottom = 6f;
+            root.Add(open);
+
+            SerializedProperty property = serializedObject.GetIterator();
+            bool enterChildren = true;
+            while (property.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                PropertyField field = new PropertyField(property.Copy());
+                if (property.propertyPath == "m_Script")
+                    field.SetEnabled(false);
+                root.Add(field);
             }
+
+            root.Bind(serializedObject);
+            root.RegisterCallback<SerializedPropertyChangeEvent>(_ =>
+            {
+                foreach (Object inspectedTarget in targets)
+                {
+                    if (inspectedTarget is TextureCompositor compositor)
+                        compositor.MarkChanged();
+                }
+            });
+            return root;
         }
 
         [OnOpenAsset]
