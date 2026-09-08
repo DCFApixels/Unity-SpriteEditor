@@ -12,6 +12,10 @@ Project window, or by selecting the asset and pressing **Open in Sprite Editor**
 
 ## Installation
 
+All implementation files live in `src/`, including the editor-only assembly definition,
+layer implementations, editor windows, and shaders. Package metadata, documentation, and
+the license remain at the repository root.
+
 Requires Unity 6 (`6000.0`) or newer. Burst and Collections are declared as package
 dependencies and are installed by Unity Package Manager.
 

@@ -18,6 +18,9 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Changed
 
+- Move implementation files and the editor assembly definition into `src/`, preserving all
+  existing Unity asset GUIDs. Keep package metadata and documentation at the repository root.
+
 - Replace the Drawing layer's Paint button with Edit, opening retained numeric Transform
   settings. Selecting a Drawing layer still enables painting in Preview.
 
