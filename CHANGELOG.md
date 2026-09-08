@@ -4,6 +4,39 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Default and reset layouts reserve 400 UI pixels for the right pane and give Preview the
+  remaining width, instead of fixing Preview to a narrow 340-pixel strip. Keep the upper-right
+  settings section at 320 pixels and preserve manually adjusted pane sizes across reopening.
+- Explicit code-editor Undo/Redo shortcuts and command handling when Sprite Editor suppresses
+  Unity shortcuts. Record draft edits once in Unity's Undo history, group continuous typing,
+  separate navigation/paste/cut/replacement/newline actions, and restore caret/selection without
+  rebuilding the field or compiling shaders. Keep parameter and Apply operations out of typing groups.
+
+### Added
+
+- Reset Sprite Editor Settings from Unity's window tab menu, with confirmation. Restore layout,
+  selection, scroll/foldout/tool state in open Sprite Editor windows and remove the saved Live
+  Quality preference without replacing documents, changing layer data or clearing Unity preferences.
+- Duplicate a layer or nested group from its row menu, or drop selected layers onto the footer
+  plus button to duplicate the selection in one Undo step. Select copies above the originals;
+  clone drawing pixels and embedded Shader FX independently, remap copied effect targets,
+  and retain Previous inputs explicitly when duplication changes their adjacency.
+- Inline Shader FX in the selected layer's settings: create, edit code/parameters, reorder and
+  remove effects without opening another window or saving a separate asset. Apply works before
+  the first document save. Save embeds effects and shaders in the compositor; Save As clones them
+  independently, while external reusable FX remain references. Preserve code fields on value edits.
+- Shader FX assets with an HLSL `ApplyFX` function, live Float/Color/Vector/Texture2D parameters,
+  input-texture sampling and preview/full-canvas dimensions. Apply explicitly compiles the draft,
+  reports shader diagnostics and saves a hidden embedded shader; invalid drafts retain the last
+  successful program. No shader generation or CPU readback in the per-effect render path.
+- Standard `#include` and `#include_with_pragmas` support for Assets, Packages and paths relative
+  to the FX asset. Nested includes use Unity's preprocessor; no custom import language.
+- Mix Shader FX and existing Materials in one ordered modifier list, create FX from that list,
+  and open selected modifiers in the Inspector. Retained UI Toolkit code and parameter fields;
+  refresh dependent open compositor previews when FX parameters or applied code change.
+
 ## [0.5.1] - 2026-09-08
 
 ### Fixed

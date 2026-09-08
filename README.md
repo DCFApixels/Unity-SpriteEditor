@@ -133,6 +133,11 @@ Settings follow the active layer. **Transform** starts collapsed; brush settings
 a Drawing layer is active. Each **⋮ → Properties** invocation opens a separate window.
 **FX** lives in the same menu.
 
+The **window tab's ⋮ menu → Reset Sprite Editor Settings…** restores panel sizes, scrolling,
+selection, foldouts, preview tool state and Live Quality defaults after confirmation.
+It resets all open Sprite Editor windows, without deleting documents (including unsaved work),
+layer/brush settings or assets, or changing Unity settings and docking. The settings reset has no Undo.
+
 <a id="layers"></a>
 ## Layers & groups
 
@@ -163,6 +168,12 @@ Use the footer to add, group, or delete layers. Drag a selected layer's handle t
 selection together; drop into the center of a group to move inside it. Dropping onto the
 **folder** or **trash** icon groups or deletes the dragged selection in one Undo step.
 A selected group carries its descendants only once.
+
+Choose **⋮ → Duplicate** to copy one layer or a whole group. Drop the selection onto **+**
+to duplicate it in one Undo step. Copies appear above the originals and become selected;
+Drawing pixels and embedded Shader FX are independent, while external assets stay linked.
+Outline/SDF targets inside the copied set follow the copies. If a Previous input is no longer
+adjacent, the copied effect uses that input explicitly to preserve its result.
 
 Per-row menus and inline controls affect that row. New names use independent, document-local
 counters: `Layer 1…` and `Group 1…`. Deleted numbers are not reused.
@@ -307,11 +318,67 @@ Difference · Exclusion · Negation.
 
 - **None** leaves the composite unchanged.
 - **Overwrite** replaces complete RGBA pixels; layer opacity interpolates between the old and new pixels.
-- **FX modifiers** are materials applied in list order after a layer's transform.
+- **FX modifiers** are Materials or Shader FX assets applied in list order after a layer's transform.
 
 Existing serialized values for Normal, Multiply, and Overwrite are preserved for older documents.
 
 </details>
+
+### Shader FX
+
+Write a fragment effect without creating a complete shader or material:
+
+1. Select a layer and click **+ Shader FX** in the **FX** section of its settings.
+   No file dialog or separate asset is required, even in an unsaved document.
+2. Write `ApplyFX` and add parameters directly in the layer settings. Click **Apply** to
+   compile and preview the effect; **Save / Ctrl+S** saves it inside the compositor document.
+3. Change parameter values to update the preview immediately. Code and parameter declarations
+   remain drafts until **Apply**; an unsuccessful compilation leaves the last working effect in use.
+
+The code editor supports `Ctrl+Z`, `Ctrl+Y` and `Ctrl+Shift+Z` (`Cmd` on macOS), using Unity's
+Undo history. Continuous typing is grouped; pauses, navigation, pasting, cutting and selection
+replacement separate editing steps. Undo/Redo restores the caret and selection without rebuilding
+the field. It edits the draft only: click **Apply** to compile the restored code.
+
+For example, add a **Float** parameter named `_Amount` and use:
+
+```hlsl
+float4 ApplyFX(float2 uv, float4 color)
+{
+    return float4(lerp(color.rgb, 1.0 - color.rgb, saturate(_Amount)), color.a);
+}
+```
+
+Parameters support **Float**, **Color**, **Vector** and **Texture2D**. Their uniforms are generated
+automatically; do not declare them a second time. Each **+ Shader FX** creates a document-owned
+effect. **Save As** copies embedded FX and their shaders independently. External reusable FX are
+still supported through **+ Reference**; editing an external FX affects every layer using it.
+Use **Embed** to turn an external FX reference into an independent document-owned copy without
+changing or deleting the original asset.
+`SampleInput(uv)` reads the incoming layer, including earlier modifiers. Return **straight RGBA**;
+layer opacity and blending are applied afterwards. One FX is one GPU pass, with no CPU pixel readback.
+
+Use standard `#include` for your HLSL libraries, with quoted project, package or relative paths:
+
+```hlsl
+#include "Assets/Shaders/MyLibrary.hlsl"
+// Or: #include "Packages/com.example.library/Shaders/MyLibrary.hlsl"
+// Or: #include "./MyLibrary.hlsl"  // Relative to the containing document/FX asset.
+```
+
+Nested includes and include guards use Unity's shader preprocessor. `#include_with_pragmas` is
+also supported. `UnityCG.cginc` is already included by the wrapper. Libraries must be compatible
+with this fragment-shader environment; a complete ShaderLab shader or a pipeline-specific library
+is not automatically a portable function library. Before the document's first save, relative paths
+start at **Assets**. Click **Apply** again after changing a library. After saving to a different folder,
+check relative paths before applying again; the previously applied shader remains available.
+
+Built-in inputs: `_MainTex`, `_MainTex_TexelSize`, `_InputSize` and `_CanvasSize`
+(`width, height, 1/width, 1/height`), plus `_PreviewScale` (full-size pixels per preview pixel).
+Use canvas-relative distances for consistent reduced previews and full-resolution exports.
+Embedded FX code, parameters and compiled shaders live inside the compositor's `.asset` file;
+parameter edits and rendering do not regenerate shaders. External FX keep their own `.asset` file.
+Save the compositor again to update its embedded output texture after editing an FX.
 
 <a id="export"></a>
 ## Export formats

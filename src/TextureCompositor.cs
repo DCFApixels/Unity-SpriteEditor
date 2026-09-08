@@ -17,8 +17,31 @@ namespace DCFApixels.SpriteEditor
         [SerializeReference] public List<Layer> layers = new List<Layer>();
         [SerializeField, HideInInspector] private int nextLayerNumber = 1;
         [SerializeField, HideInInspector] private int nextGroupNumber = 1;
+        [SerializeField, HideInInspector] private List<ShaderFX> embeddedShaderFX = new List<ShaderFX>();
 
         internal static event Action<TextureCompositor> Changed;
+
+        internal static void NotifyShaderFXChanged(ShaderFX effect)
+        {
+            // Only loaded documents need repainting; never load or rebake saved assets here.
+            foreach (TextureCompositor document in Resources.FindObjectsOfTypeAll<TextureCompositor>())
+                if (ContainsShaderFX(document.layers, effect))
+                    Changed?.Invoke(document);
+        }
+
+        private static bool ContainsShaderFX(List<Layer> source, ShaderFX effect)
+        {
+            if (source == null)
+                return false;
+            foreach (Layer layer in source)
+            {
+                if (layer?.modifiers != null && layer.modifiers.Contains(effect))
+                    return true;
+                if (layer is GroupLayer group && ContainsShaderFX(group.layers, effect))
+                    return true;
+            }
+            return false;
+        }
 
         private void OnEnable()
         {
@@ -33,6 +56,71 @@ namespace DCFApixels.SpriteEditor
         private void OnDisable()
         {
             ReleaseLayerResources(layers);
+        }
+
+        private void OnDestroy()
+        {
+            foreach (ShaderFX effect in embeddedShaderFX)
+                if (effect != null && effect.EmbeddedOwner == this && !AssetDatabase.Contains(effect))
+                    DestroyImmediate(effect);
+        }
+
+        internal ShaderFX AddEmbeddedShaderFX(Layer layer)
+        {
+            ShaderFX effect = ShaderFX.CreateEmbedded(this);
+            Undo.RecordObject(this, "Add Shader FX");
+            embeddedShaderFX.Add(effect);
+            layer.modifiers.Add(effect);
+            return effect;
+        }
+
+        internal void EmbedShaderFX(Layer layer, int index)
+        {
+            if (!(layer.modifiers[index] is ShaderFX source))
+                return;
+            ShaderFX copy = source.CloneForDocument(this);
+            Undo.RegisterCreatedObjectUndo(copy, "Embed Shader FX");
+            Undo.RecordObject(this, "Embed Shader FX");
+            embeddedShaderFX.Add(copy);
+            layer.modifiers[index] = copy;
+        }
+
+        internal void PersistEmbeddedShaderFX()
+        {
+            foreach (ShaderFX effect in embeddedShaderFX)
+                if (effect != null)
+                    effect.PersistEmbedded(this);
+        }
+
+        internal void CloneEmbeddedShaderFX()
+        {
+            embeddedShaderFX = new List<ShaderFX>();
+            Dictionary<ShaderFX, ShaderFX> copies = new Dictionary<ShaderFX, ShaderFX>();
+            CloneIn(layers);
+            void CloneIn(List<Layer> source)
+            {
+                if (source == null)
+                    return;
+                foreach (Layer layer in source)
+                {
+                    if (layer == null)
+                        continue;
+                    if (layer.modifiers != null)
+                        for (int i = 0; i < layer.modifiers.Count; i++)
+                            if (layer.modifiers[i] is ShaderFX effect && effect.EmbeddedOwner != null)
+                            {
+                                if (!copies.TryGetValue(effect, out ShaderFX copy))
+                                {
+                                    copy = effect.CloneForDocument(this);
+                                    copies.Add(effect, copy);
+                                    embeddedShaderFX.Add(copy);
+                                }
+                                layer.modifiers[i] = copy;
+                            }
+                    if (layer is GroupLayer group)
+                        CloneIn(group.layers);
+                }
+            }
         }
 
         public Texture2D Compose()
@@ -177,6 +265,7 @@ namespace DCFApixels.SpriteEditor
             NormalizeModel();
             if (AssetDatabase.Contains(this))
             {
+                PersistEmbeddedShaderFX();
                 PersistDrawingLayerTextures();
                 EditorUtility.SetDirty(this);
             }

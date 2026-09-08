@@ -328,3 +328,66 @@
 .sprite-editor-split-handle:active > .sprite-editor-split-line > .sprite-editor-split-grip {
     background-color: rgb(239, 246, 255);
 }
+
+.sprite-editor-shader-fx {
+    padding: 4px;
+}
+
+.sprite-editor-shader-fx-heading {
+    -unity-font-style: bold;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.sprite-editor-shader-fx-code {
+    height: 320px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-shader-fx-code .unity-text-field__input {
+    -unity-text-align: upper-left;
+    white-space: normal;
+}
+
+.sprite-editor-shader-fx-diagnostics {
+    min-height: 48px;
+    max-height: 180px;
+    margin-top: 4px;
+}
+
+.sprite-editor-shader-fx-parameter {
+    padding: 4px;
+    margin-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 0, 0, 0.3);
+}
+
+.sprite-editor-shader-fx-hidden {
+    display: none;
+}
+
+.sprite-editor-modifier-buttons {
+    flex-wrap: wrap;
+}
+
+.sprite-editor-layer-fx {
+    margin-top: 8px;
+}
+
+.sprite-editor-layer-fx-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.sprite-editor-layer-fx-name {
+    flex-grow: 1;
+    min-width: 60px;
+}
+
+.sprite-editor-layer-fx-entry {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top-width: 1px;
+    border-top-color: rgba(0, 0, 0, 0.3);
+}

@@ -20,7 +20,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private bool refreshRequested;
         [NonSerialized] private TextureCompositor boundCompositor;
         [NonSerialized] private string boundLayerId;
-        private readonly List<Material> displayedModifiers = new List<Material>();
+        private readonly List<UnityEngine.Object> displayedModifiers = new List<UnityEngine.Object>();
 
         public static void Open(Layer layer, TextureCompositor compositor)
         {
@@ -75,6 +75,7 @@ namespace DCFApixels.SpriteEditor
             displayedModifiers.Clear();
             VisualElement root = rootVisualElement;
             root.Clear();
+            SpriteEditorUI.ApplyWindowStyles(root);
             root.style.paddingLeft = 8f;
             root.style.paddingRight = 8f;
             root.style.paddingTop = 8f;
@@ -92,10 +93,10 @@ namespace DCFApixels.SpriteEditor
 
             SpriteEditorUI.AddHelpBox(
                 root,
-                "Materials are applied in list order after the layer transform.",
+                "Materials and Shader FX are applied in list order after the layer transform. Select an entry and click Edit to open its Inspector.",
                 HelpBoxMessageType.Info);
 
-            layer.modifiers ??= new List<Material>();
+            layer.modifiers ??= new List<UnityEngine.Object>();
             modifiersList = new ListView(layer.modifiers, 22f, MakeModifierField, BindModifierField)
             {
                 selectionType = SelectionType.Single,
@@ -130,9 +131,12 @@ namespace DCFApixels.SpriteEditor
             RememberModifierItems();
 
             VisualElement buttons = SpriteEditorUI.CreateRow();
+            buttons.AddToClassList("sprite-editor-modifier-buttons");
             buttons.style.justifyContent = Justify.FlexEnd;
             buttons.style.marginTop = 6f;
             buttons.Add(SpriteEditorUI.CreateButton("Add", AddModifier, 64f));
+            buttons.Add(SpriteEditorUI.CreateButton("New Shader FX", CreateShaderFX));
+            buttons.Add(SpriteEditorUI.CreateButton("Edit", EditSelectedModifier));
             buttons.Add(SpriteEditorUI.CreateButton("Remove", RemoveSelectedModifier, 72f));
             buttons.Add(SpriteEditorUI.CreateButton("Close", Close, 64f));
             root.Add(buttons);
@@ -142,7 +146,7 @@ namespace DCFApixels.SpriteEditor
         {
             ObjectField field = new ObjectField
             {
-                objectType = typeof(Material),
+                objectType = typeof(UnityEngine.Object),
                 allowSceneObjects = false
             };
             field.style.flexGrow = 1f;
@@ -156,7 +160,12 @@ namespace DCFApixels.SpriteEditor
                     return;
                 }
 
-                ApplyChange("Edit Layer Modifier", () => layer.modifiers[index] = evt.newValue as Material);
+                if (evt.newValue != null && !(evt.newValue is Material) && !(evt.newValue is ShaderFX))
+                {
+                    field.SetValueWithoutNotify(layer.modifiers[index]);
+                    return;
+                }
+                ApplyChange("Edit Layer Modifier", () => layer.modifiers[index] = evt.newValue);
                 RememberModifierItems();
             });
             return field;
@@ -178,6 +187,27 @@ namespace DCFApixels.SpriteEditor
             ApplyChange("Add Layer Modifier", () => layer.modifiers.Add(null));
             RefreshModifierItems();
             modifiersList?.SetSelection(layer.modifiers.Count - 1);
+        }
+
+        private void CreateShaderFX()
+        {
+            if (!ResolveLayer())
+                return;
+            ApplyChange("Add Shader FX", () => compositor.AddEmbeddedShaderFX(layer));
+            RefreshModifierItems();
+            modifiersList?.SetSelection(layer.modifiers.Count - 1);
+        }
+
+        private void EditSelectedModifier()
+        {
+            if (!ResolveLayer() || modifiersList == null)
+                return;
+            int index = modifiersList.selectedIndex;
+            if (index >= 0 && index < layer.modifiers.Count && layer.modifiers[index] != null)
+            {
+                Selection.activeObject = layer.modifiers[index];
+                EditorGUIUtility.PingObject(layer.modifiers[index]);
+            }
         }
 
         private void RemoveSelectedModifier()
@@ -252,7 +282,7 @@ namespace DCFApixels.SpriteEditor
                 return false;
             }
             layer = resolved;
-            layer.modifiers ??= new List<Material>();
+            layer.modifiers ??= new List<UnityEngine.Object>();
             return true;
         }
 

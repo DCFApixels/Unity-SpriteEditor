@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
-    public sealed partial class TextureCompositorWindow : EditorWindow
+    public sealed partial class TextureCompositorWindow : EditorWindow, IHasCustomMenu
     {
         private const int PreviewMaxSize = 512;
         private const double PreviewDelay = 0.12d;
@@ -14,6 +14,8 @@ namespace DCFApixels.SpriteEditor
         private const float DefaultPaintingPreviewScale = 0.375f;
         private const float MinimumPaintingPreviewScale = 0.125f;
         private const float MaximumPaintingPreviewScale = 1f;
+        private const float DefaultSettingsPaneWidth = 400f;
+        private const float DefaultLayerSettingsPaneHeight = 320f;
         private const float PreviewPaneMinWidth = 200f;
         private const float SettingsPaneMinWidth = 320f;
         private const float PanePadding = 8f;
@@ -66,9 +68,8 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string selectedLayerId;
         [SerializeField] private Vector2 scrollPosition;
-        [SerializeField] private float previewPaneWidth = 340f;
-        [SerializeField] private float settingsPaneWidth = -1f;
-        [SerializeField] private float layerSettingsPaneHeight = 320f;
+        [SerializeField] private float settingsPaneWidth = DefaultSettingsPaneWidth;
+        [SerializeField] private float layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
 
         [NonSerialized] private Texture2D previewTexture;
         [NonSerialized] private bool previewRequested;
@@ -97,6 +98,58 @@ namespace DCFApixels.SpriteEditor
         public static void ShowWindow()
         {
             GetWindow<TextureCompositorWindow>("Sprite Editor");
+        }
+
+        public void AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Reset Sprite Editor Settings…"), false, ConfirmResetEditorSettings);
+        }
+
+        private void ConfirmResetEditorSettings()
+        {
+            if (!EditorUtility.DisplayDialog(
+                "Reset Sprite Editor Settings",
+                "Reset panel sizes, scrolling, selection, foldouts and preview tool state in all open " +
+                "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
+                "Open documents (including unsaved work), layers, brush settings, textures and Shader FX " +
+                "will be preserved. Unity settings and window docking will not change. " +
+                "This settings reset cannot be undone.",
+                "Reset Settings", "Cancel"))
+                return;
+
+            TextureCompositorWindow[] windows = Resources.FindObjectsOfTypeAll<TextureCompositorWindow>();
+            foreach (TextureCompositorWindow window in windows)
+            {
+                window.rootVisualElement.Focus();
+                window.FinishPreviewTransform();
+                window.FinishPaintingStroke();
+            }
+            Undo.FlushUndoRecordObjects();
+            EditorPrefs.DeleteKey(PaintingPreviewScalePrefKey);
+            foreach (TextureCompositorWindow window in windows)
+                window.ResetEditorWindowSettings();
+            ShowNotification(new GUIContent("Sprite Editor settings reset."));
+        }
+
+        private void ResetEditorWindowSettings()
+        {
+            ClearLayerDragData();
+            ClearToolkitDropIndicator();
+            settingsPaneWidth = DefaultSettingsPaneWidth;
+            layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
+            paintingPreviewScale = DefaultPaintingPreviewScale;
+            scrollPosition = Vector2.zero;
+            SelectOnlyLayer(null);
+            groupExpansion?.Clear();
+            previewTransformActive = false;
+            lineAnchorLayer = null;
+            hasLastPaintingUv = false;
+            paintingShiftHeld = false;
+            paintingLockedAxis = 0;
+            ReleasePreview();
+            CreateGUI();
+            RequestPreview(true);
+            Repaint();
         }
 
         public static void Open(TextureCompositor target)
@@ -628,6 +681,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("Convert to Drawing/Apply Transform"), false,
                 () => ConvertLayerToDrawing(layer, true));
             menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Duplicate"), false, () => DuplicateLayers(new List<Layer> { layer }));
             menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
             if (!(layer is GroupLayer))
             {
@@ -960,6 +1014,17 @@ namespace DCFApixels.SpriteEditor
 
             compositor.SyncDrawingLayerTextures();
             TextureCompositor copy = Instantiate(compositor);
+            try
+            {
+                copy.CloneEmbeddedShaderFX();
+            }
+            catch (Exception exception)
+            {
+                DestroyImmediate(copy);
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Sprite Editor Save As failed", exception.Message, "OK");
+                return false;
+            }
             copy.CloneDrawingLayerTextures();
             copy.name = Path.GetFileNameWithoutExtension(path);
             copy.hideFlags = HideFlags.None;

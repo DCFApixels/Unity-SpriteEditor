@@ -42,7 +42,8 @@ namespace DCFApixels.SpriteEditor
         public bool enabled = true;
         [Range(0f, 1f)] public float opacity = 1f;
         public BlendMode blendMode = BlendMode.Normal;
-        public List<Material> modifiers = new List<Material>();
+        // Keep the serialized field name and object-reference layout for existing Material FX.
+        public List<UnityEngine.Object> modifiers = new List<UnityEngine.Object>();
         public TextureTransform transform = TextureTransform.Default;
         public LayerFilterMode filterMode = LayerFilterMode.Source;
 
@@ -50,12 +51,14 @@ namespace DCFApixels.SpriteEditor
         internal virtual bool RequiresInput => false;
         internal virtual bool IsGroup => false;
 
+        internal void AssignNewId() => id = Guid.NewGuid().ToString("N");
+
         internal void EnsureId(HashSet<string> usedIds)
         {
             if (string.IsNullOrEmpty(id) || usedIds.Contains(id))
                 id = Guid.NewGuid().ToString("N");
             usedIds.Add(id);
-            modifiers ??= new List<Material>();
+            modifiers ??= new List<UnityEngine.Object>();
         }
 
         internal abstract RenderTexture Render(in LayerRenderContext context);
@@ -102,7 +105,7 @@ namespace DCFApixels.SpriteEditor
             opacity = source.opacity;
             blendMode = source.blendMode;
             filterMode = source.filterMode;
-            modifiers = source.modifiers == null ? new List<Material>() : new List<Material>(source.modifiers);
+            modifiers = source.modifiers == null ? new List<UnityEngine.Object>() : new List<UnityEngine.Object>(source.modifiers);
         }
 
         public virtual Texture2D GetPreviewTexture(int size)
@@ -177,7 +180,9 @@ namespace DCFApixels.SpriteEditor
 
                 for (int i = 0; i < modifiers.Count; i++)
                 {
-                    Material modifier = modifiers[i];
+                    Material modifier = modifiers[i] is ShaderFX shaderFX
+                        ? shaderFX.GetMaterial(context)
+                        : modifiers[i] as Material;
                     if (modifier == null)
                         continue;
 

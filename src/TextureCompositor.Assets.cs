@@ -75,6 +75,7 @@ namespace DCFApixels.SpriteEditor
                         throw new InvalidOperationException("Unity could not create the document asset at " + path);
                 }
                 PersistDrawingLayerTextures(reimport: false);
+                PersistEmbeddedShaderFX();
                 RecoverOutputReferences(path);
 
                 rendered.name = Path.GetFileNameWithoutExtension(path);

@@ -128,6 +128,43 @@ namespace DCFApixels.SpriteEditor
             DeleteLayers(GetSelectedRoots());
         }
 
+        private void DuplicateLayers(List<Layer> layers)
+        {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            Layer active = GetSelectedLayer();
+            applyingToolkitChange = true;
+            try
+            {
+                Dictionary<Layer, Layer> copies = compositor.DuplicateLayers(layers);
+                if (copies.Count == 0)
+                    return;
+                SelectOnlyLayer(null);
+                foreach (Layer source in layers)
+                    if (copies.TryGetValue(source, out Layer copy))
+                        ActivateSelectedLayer(copy.Id);
+                foreach (KeyValuePair<Layer, Layer> pair in copies)
+                    if (pair.Key is GroupLayer group)
+                        groupExpansion[pair.Value.Id] = GetGroupExpanded(group);
+                if (active != null && copies.TryGetValue(active, out Layer activeCopy))
+                    ActivateSelectedLayer(activeCopy.Id);
+                selectionAnchorId = selectedLayerId;
+                temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+                lineAnchorLayer = null;
+                RequestPreview();
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Cannot Duplicate Layers", exception.Message, "OK");
+            }
+            finally
+            {
+                applyingToolkitChange = false;
+                RefreshToolkitInterface();
+            }
+        }
+
         private void DeleteLayers(List<Layer> layers)
         {
             FinishPreviewTransform();
@@ -157,15 +194,17 @@ namespace DCFApixels.SpriteEditor
             footerDropTarget = null;
         }
 
+        private enum LayerFooterDropAction { Group, Delete, Duplicate }
+
         private sealed class LayerFooterDropManipulator : PointerManipulator
         {
             private readonly TextureCompositorWindow owner;
-            private readonly bool delete;
+            private readonly LayerFooterDropAction action;
 
-            public LayerFooterDropManipulator(TextureCompositorWindow owner, bool delete)
+            public LayerFooterDropManipulator(TextureCompositorWindow owner, LayerFooterDropAction action)
             {
                 this.owner = owner;
-                this.delete = delete;
+                this.action = action;
             }
 
             protected override void RegisterCallbacksOnTarget()
@@ -202,7 +241,8 @@ namespace DCFApixels.SpriteEditor
             {
                 owner.ClearToolkitDropIndicator();
                 bool valid = TryGetLayers(out _);
-                DragAndDrop.visualMode = valid ? DragAndDropVisualMode.Move : DragAndDropVisualMode.Rejected;
+                DragAndDrop.visualMode = !valid ? DragAndDropVisualMode.Rejected :
+                    action == LayerFooterDropAction.Duplicate ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Move;
                 owner.ClearFooterDropIndicator();
                 if (valid)
                 {
@@ -227,7 +267,9 @@ namespace DCFApixels.SpriteEditor
                 int undoGroup = Undo.GetCurrentGroup();
                 try
                 {
-                    if (delete)
+                    if (action == LayerFooterDropAction.Duplicate)
+                        owner.DuplicateLayers(layers);
+                    else if (action == LayerFooterDropAction.Delete)
                         owner.DeleteLayers(layers);
                     else
                         owner.GroupLayers(layers);

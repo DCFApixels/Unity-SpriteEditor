@@ -11,6 +11,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private TextureCompositor toolkitInspectorDocument;
         [NonSerialized] private bool toolkitInspectorBuilt;
         [NonSerialized] private EffectTargetSettingsView toolkitInspectorEffectTarget;
+        [NonSerialized] private LayerShaderFXView toolkitInspectorShaderFX;
         private readonly SpriteEditorUI.ValueBindings toolkitInspectorBindings = new SpriteEditorUI.ValueBindings();
 
         private void ResetToolkitLayerInspector()
@@ -19,6 +20,7 @@ namespace DCFApixels.SpriteEditor
             toolkitInspectorLayer = null;
             toolkitInspectorDocument = null;
             toolkitInspectorEffectTarget = null;
+            toolkitInspectorShaderFX = null;
             toolkitInspectorBindings.Clear();
         }
 
@@ -42,6 +44,7 @@ namespace DCFApixels.SpriteEditor
                 BuildToolkitLayerInspector(toolkitLayerSettingsScroll, selected);
             }
             toolkitInspectorEffectTarget?.Invalidate();
+            toolkitInspectorShaderFX?.Refresh();
             toolkitInspectorBindings.Refresh(forceValues);
         }
 
@@ -99,6 +102,8 @@ namespace DCFApixels.SpriteEditor
                         AddToolkitInspectorEffectTarget);
                     break;
             }
+            toolkitInspectorShaderFX = new LayerShaderFXView(layer, compositor, ApplyToolkitChange);
+            root.Add(toolkitInspectorShaderFX);
         }
 
         private void AddToolkitInspectorEffectTarget(VisualElement root, TargetedLayerEffect effect)

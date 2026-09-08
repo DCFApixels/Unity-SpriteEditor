@@ -94,7 +94,7 @@ namespace DCFApixels.SpriteEditor
             root.Add(toolkitDocumentRoot);
 
             if (settingsPaneWidth <= 0f)
-                settingsPaneWidth = Mathf.Max(SettingsPaneMinWidth, position.width - previewPaneWidth - 3f);
+                settingsPaneWidth = DefaultSettingsPaneWidth;
             TwoPaneSplitView split = new TwoPaneSplitView(
                 1,
                 Mathf.Max(SettingsPaneMinWidth, settingsPaneWidth),
@@ -383,8 +383,8 @@ namespace DCFApixels.SpriteEditor
         private void BuildToolkitLayerFooter()
         {
             toolkitLayerFooter.Clear();
-            toolkitLayerFooter.Add(CreateLayerActionButton(
-                LayerActionIcon.Kind.Add, "Add layer", ShowAddMenuForSelection));
+            Button add = CreateLayerActionButton(
+                LayerActionIcon.Kind.Add, "Add layer. Drop layers here to duplicate them.", ShowAddMenuForSelection);
             Button group = CreateLayerActionButton(
                 LayerActionIcon.Kind.Group, "Group selected layers", GroupSelectedLayer);
             Button delete = CreateLayerActionButton(
@@ -393,8 +393,10 @@ namespace DCFApixels.SpriteEditor
             delete.AddToClassList("sprite-editor-layer-action--separated");
             group.tooltip = "Group selected layers. You can also drop layers here.";
             delete.tooltip = "Delete selected layers. You can also drop layers here.";
-            group.AddManipulator(new LayerFooterDropManipulator(this, delete: false));
-            delete.AddManipulator(new LayerFooterDropManipulator(this, delete: true));
+            add.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Duplicate));
+            group.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Group));
+            delete.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Delete));
+            toolkitLayerFooter.Add(add);
             toolkitLayerFooter.Add(group);
             toolkitLayerFooter.Add(delete);
             toolkitSettingsBindings.Add(() =>
