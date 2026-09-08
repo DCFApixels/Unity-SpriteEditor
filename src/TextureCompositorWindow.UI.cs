@@ -1243,7 +1243,7 @@ namespace DCFApixels.SpriteEditor
             if (connect && originUv != startUv)
                 PaintTowardsLayerPoint(startUv);
             else
-                layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase, GetPaintingColor(), paintSettings);
+                layer.PaintPoint(startUv, compositor.width, compositor.height, GetPaintingParameters());
             paintingShiftHeld = false;
             SetPaintingShift(evt.shiftKey);
             RefreshPreviewDuringPainting();
@@ -1288,8 +1288,8 @@ namespace DCFApixels.SpriteEditor
                 if (hasLastPaintingUv && paintingLayer.TryClipStrokeSegmentToRepeatShape(
                         lastPaintingUv, pointUv, compositor.width, compositor.height, out Vector2 clippedUv))
                 {
-                    paintingLayer.PaintSegment(lastPaintingUv, clippedUv, compositor.width, compositor.height, false, paintingErase,
-                        GetPaintingColor(), paintSettings);
+                    paintingLayer.PaintSegment(lastPaintingUv, clippedUv, compositor.width, compositor.height, false,
+                        GetPaintingParameters());
                     RememberPaintingPoint(clippedUv);
                     RefreshPreviewDuringPainting();
                 }
@@ -1301,12 +1301,12 @@ namespace DCFApixels.SpriteEditor
             {
                 if (lastPaintingUv == pointUv)
                     return;
-                paintingLayer.PaintSegment(lastPaintingUv, pointUv, compositor.width, compositor.height, false, paintingErase,
-                    GetPaintingColor(), paintSettings);
+                paintingLayer.PaintSegment(lastPaintingUv, pointUv, compositor.width, compositor.height, false,
+                    GetPaintingParameters());
             }
             else
             {
-                paintingLayer.PaintPoint(pointUv, compositor.width, compositor.height, paintingErase, GetPaintingColor(), paintSettings);
+                paintingLayer.PaintPoint(pointUv, compositor.width, compositor.height, GetPaintingParameters());
             }
             RememberPaintingPoint(pointUv);
             hasLastPaintingUv = true;

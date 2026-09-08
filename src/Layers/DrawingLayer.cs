@@ -270,10 +270,15 @@ namespace DCFApixels.SpriteEditor
             secondaryBrushColor = previousPrimary;
         }
 
-        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase, Color? colorOverride = null,
-            PaintToolSettings settings = null)
+        internal PaintStrokeParameters GetStrokeParameters(bool erase)
         {
-            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase, colorOverride, settings);
+            NormalizeSettings();
+            return new PaintStrokeParameters(brushColor, brushSize, brushHardness, brushSpacing, erase);
+        }
+
+        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, PaintStrokeParameters parameters)
+        {
+            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, parameters);
         }
 
         internal void PaintSegment(
@@ -282,11 +287,9 @@ namespace DCFApixels.SpriteEditor
             int outputWidth,
             int outputHeight,
             bool includeStart,
-            bool erase,
-            Color? colorOverride = null,
-            PaintToolSettings settings = null)
+            PaintStrokeParameters parameters)
         {
-            Color color = colorOverride ?? settings?.brushColor ?? brushColor;
+            Color color = parameters.Color;
             if (color.a <= 0f)
                 return;
             RenderTexture surface = EnsurePaintSurface(outputWidth, outputHeight);
@@ -300,11 +303,7 @@ namespace DCFApixels.SpriteEditor
                 (toSourceUv.x - fromSourceUv.x) * outputWidth,
                 (toSourceUv.y - fromSourceUv.y) * outputHeight);
             float distance = pixelDelta.magnitude;
-            float size = Mathf.Max(1f, settings?.brushSize ?? brushSize);
-            float hardness = Mathf.Clamp01(settings?.brushHardness ?? brushHardness);
-            float spacing = Mathf.Max(1f, size * Mathf.Clamp(settings?.brushSpacing ?? brushSpacing,
-                MinimumBrushSpacing, MaximumBrushSpacing));
-            int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / spacing)) : 0;
+            int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / parameters.SpacingPixels)) : 0;
             int firstStep = includeStart ? 0 : 1;
 
             segmentStamps ??= new List<PaintStamp>(256);
@@ -320,10 +319,10 @@ namespace DCFApixels.SpriteEditor
             PaintBrushRenderer.Draw(
                 surface,
                 segmentStamps,
-                size,
-                hardness,
+                parameters.Size,
+                parameters.Hardness,
                 color,
-                erase,
+                parameters.Erase,
                 outputWidth,
                 outputHeight,
                 patternCenter);
@@ -484,15 +483,23 @@ namespace DCFApixels.SpriteEditor
 
             if (pixels != null)
             {
-                Material conversion = SpriteEditorMaterials.AlphaConversion;
-                if (conversion == null)
+                RenderTexture previous = RenderTexture.active;
+                try
                 {
-                    Graphics.Blit(pixels, paintSurface);
+                    Material conversion = SpriteEditorMaterials.AlphaConversion;
+                    if (conversion == null)
+                    {
+                        Graphics.Blit(pixels, paintSurface);
+                    }
+                    else
+                    {
+                        conversion.SetFloat("_Mode", 0f);
+                        Graphics.Blit(pixels, paintSurface, conversion);
+                    }
                 }
-                else
+                finally
                 {
-                    conversion.SetFloat("_Mode", 0f);
-                    Graphics.Blit(pixels, paintSurface, conversion);
+                    RenderTexture.active = previous;
                 }
             }
             else

@@ -51,6 +51,11 @@ namespace DCFApixels.SpriteEditor
             EditorPrefs.SetString(PaintToolSettingsPrefKey, JsonUtility.ToJson(paintSettings));
         }
 
+        private PaintStrokeParameters GetPaintingParameters()
+        {
+            return paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
+        }
+
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)
         {
             bool painting = previewTool == PreviewTool.Brush && (evt.button == 0 || evt.button == 1);

@@ -40,9 +40,10 @@ namespace DCFApixels.SpriteEditor
             Require(space != "canvasPixels" || layer.transform.tiling == TransformTilingMode.Clip,
                 "canvasPixels painting requires Clip tiling. For repeating transforms, use layerUv to edit the source tile explicitly.");
             bool erase = Bool(operation, "erase");
+            PaintStrokeParameters parameters = layer.GetStrokeParameters(erase);
             var uv = new Vector2[values.Count];
             double stamps = 1d;
-            float spacing = Mathf.Max(1f, layer.brushSize * layer.brushSpacing);
+            float spacing = parameters.SpacingPixels;
             for (int i = 0; i < values.Count; i++)
             {
                 Vector2 point = Vector(values[i], "point");
@@ -56,20 +57,20 @@ namespace DCFApixels.SpriteEditor
             if (layer.UsesMirrorPattern && layer.mirrorAcrossVerticalAxis) copies *= 2;
             if (layer.UsesMirrorPattern && layer.mirrorAcrossHorizontalAxis) copies *= 2;
             Require(stamps * copies <= 100000d, "Stroke exceeds the 100,000 stamp budget. Increase spacing or split/simplify the stroke.", "resource_limit");
-            double area = System.Math.Min(layer.brushSize, document.width) * System.Math.Min(layer.brushSize, document.height);
+            double area = System.Math.Min(parameters.Size, document.width) * System.Math.Min(parameters.Size, document.height);
             Require(stamps * copies * area <= 250000000d, "Stroke exceeds the brush coverage budget. Reduce repetitions, size or point count.", "resource_limit");
-            if (!execute || layer.brushColor.a <= 0f) return;
+            if (!execute || parameters.Color.a <= 0f) return;
             layer.PrepareStroke(document.width, document.height, UndoName);
             layer.BeginStroke(uv[0]);
             try
             {
-                layer.PaintPoint(uv[0], document.width, document.height, erase);
+                layer.PaintPoint(uv[0], document.width, document.height, parameters);
                 for (int i = 1; i < uv.Length; i++)
                 {
                     Vector2 end = uv[i];
                     bool inside = layer.IsStrokePointInsideRepeatShape(end, document.width, document.height);
                     if (!inside && !layer.TryClipStrokeSegmentToRepeatShape(uv[i - 1], end, document.width, document.height, out end)) break;
-                    layer.PaintSegment(uv[i - 1], end, document.width, document.height, false, erase);
+                    layer.PaintSegment(uv[i - 1], end, document.width, document.height, false, parameters);
                     if (!inside) break;
                 }
                 layer.SyncSurfaceToTexture();

@@ -18,6 +18,11 @@ namespace DCFApixels.SpriteEditor
         public bool fillAntialias = true;
         public int fillExpand;
 
+        internal PaintStrokeParameters GetStrokeParameters(bool erase, Color? colorOverride = null)
+        {
+            return new PaintStrokeParameters(colorOverride ?? brushColor, brushSize, brushHardness, brushSpacing, erase);
+        }
+
         internal void SwapBrushColors()
         {
             Color previous = brushColor;

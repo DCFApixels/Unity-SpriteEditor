@@ -8,6 +8,8 @@ namespace DCFApixels.SpriteEditor
     {
         [NonSerialized] private PreviewViewport previewViewport = new PreviewViewport();
         private PreviewZoomManipulator previewZoomManipulator;
+        private Label previewZoomPercent;
+        private float displayedPreviewScale = float.NaN;
         private bool IsPreviewZoomEnabled => previewTool == PreviewTool.Zoom && compositor != null;
 
         private void BuildPreviewZoomTool()
@@ -16,7 +18,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.AddManipulator(previewZoomManipulator);
             toolkitPreviewCanvas.ViewChanged += () =>
             {
-                toolkitHeaderBindings.Refresh();
+                RefreshPreviewZoomReadout();
                 RefreshPreviewTransformTool();
             };
         }
@@ -26,13 +28,25 @@ namespace DCFApixels.SpriteEditor
             VisualElement row = SpriteEditorUI.CreateToolbar();
             row.AddToClassList("sprite-editor-zoom-settings");
             BindPreviewSettingsRow(row, PreviewTool.Zoom);
-            Label percent = new Label();
-            percent.AddToClassList("sprite-editor-zoom-percent");
-            toolkitHeaderBindings.Add(() => percent.text = $"{toolkitPreviewCanvas.PixelScale * 100f:0.##}%");
-            row.Add(percent);
+            previewZoomPercent = new Label();
+            displayedPreviewScale = float.NaN;
+            previewZoomPercent.AddToClassList("sprite-editor-zoom-percent");
+            toolkitHeaderBindings.Add(RefreshPreviewZoomReadout);
+            row.Add(previewZoomPercent);
             row.Add(SpriteEditorUI.CreateButton("Fit", () => ChangePreviewZoom(true)));
             row.Add(SpriteEditorUI.CreateButton("100%", () => ChangePreviewZoom(false)));
             toolkitPreviewHeader.Add(row);
+        }
+
+        private void RefreshPreviewZoomReadout()
+        {
+            if (previewZoomPercent == null || toolkitPreviewCanvas == null)
+                return;
+            float scale = toolkitPreviewCanvas.PixelScale;
+            if (scale == displayedPreviewScale)
+                return;
+            displayedPreviewScale = scale;
+            previewZoomPercent.text = $"{scale * 100f:0.##}%";
         }
 
         private void ChangePreviewZoom(bool fit)
