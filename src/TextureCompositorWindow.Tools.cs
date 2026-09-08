@@ -9,7 +9,12 @@ namespace DCFApixels.SpriteEditor
     {
         private enum PreviewTool { None, Brush, Transform, Fill, Zoom }
 
-        [NonSerialized] private PreviewTool previewTool = PreviewTool.Brush;
+        [NonSerialized] private PreviewTool previewTool = PreviewTool.None;
+        [NonSerialized] private PreviewTool previewSettingsTool = PreviewTool.None;
+        [SerializeField] private PaintToolSettings paintSettings = new PaintToolSettings();
+        private const string PaintToolSettingsPrefKey = "DCFApixels.SpriteEditor.PaintToolSettings";
+        [NonSerialized] private bool conversionPromptOpen;
+        [NonSerialized] private string savedPaintToolSettingsJson;
         [NonSerialized] private Button previewNoneButton;
         [NonSerialized] private Button previewBrushButton;
         [NonSerialized] private Button previewTransformButton;
@@ -18,6 +23,107 @@ namespace DCFApixels.SpriteEditor
 
         private bool IsPreviewBrushEnabled => previewTool == PreviewTool.Brush && GetSelectedLayer() is DrawingLayer;
         private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer;
+
+        private void LoadPaintToolSettings()
+        {
+            paintSettings ??= new PaintToolSettings();
+            try
+            {
+                if (EditorPrefs.HasKey(PaintToolSettingsPrefKey))
+                    JsonUtility.FromJsonOverwrite(EditorPrefs.GetString(PaintToolSettingsPrefKey), paintSettings);
+            }
+            catch (ArgumentException)
+            {
+                paintSettings = new PaintToolSettings();
+            }
+            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
+        }
+
+        private void ApplyPaintToolChange(string undoName, Action change)
+        {
+            FinishPaintingStroke();
+            Undo.RecordObject(this, undoName);
+            change();
+            SavePaintToolSettings();
+            toolkitHeaderBindings.Refresh();
+            UpdateToolkitPreviewPresentation();
+        }
+
+        private void SavePaintToolSettings()
+        {
+            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
+            EditorPrefs.SetString(PaintToolSettingsPrefKey, savedPaintToolSettingsJson);
+        }
+
+        private bool RefreshPaintToolSettingsAfterUndo()
+        {
+            if (JsonUtility.ToJson(paintSettings) == savedPaintToolSettingsJson) return false;
+            SavePaintToolSettings();
+            RefreshToolkitInterface(forceValues: true);
+            return true;
+        }
+
+        private bool HandlePaintConversionPrompt(PointerDownEvent evt)
+        {
+            bool painting = previewTool == PreviewTool.Brush && (evt.button == 0 || evt.button == 1);
+            bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
+            if ((!painting && !filling) || evt.altKey || compositor == null ||
+                !toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) ||
+                !toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
+                return false;
+
+            evt.PreventDefault();
+            evt.StopImmediatePropagation();
+            if (conversionPromptOpen) return true;
+            conversionPromptOpen = true;
+            try
+            {
+                Layer layer = GetSelectedLayer();
+                if (layer == null)
+                {
+                    EditorUtility.DisplayDialog("No Layer Selected", "Select a layer before painting or filling.", "OK");
+                    return true;
+                }
+                string warning = layer.IsGroup ? "\n\n" + GroupConversionWarning : string.Empty;
+                int choice = EditorUtility.DisplayDialogComplex("Convert to Drawing",
+                    $"The selected layer '{layer.layerName}' is not a Drawing layer. Convert it to enable painting and filling?\n\n" +
+                    "Keep Transform: preserve the current transform.\n" +
+                    "Apply Transform: bake it into the pixels and reset the transform.\n\n" +
+                    "This click will not paint or fill. Conversion can be undone." + warning,
+                    "Keep Transform", "Cancel", "Apply Transform");
+                if (choice == 0 || choice == 2)
+                    ConvertLayerToDrawing(layer, choice == 2, groupConfirmed: true);
+            }
+            finally
+            {
+                conversionPromptOpen = false;
+            }
+            return true;
+        }
+
+        private bool IsPreviewToolAvailable(PreviewTool tool)
+        {
+            Layer layer = GetSelectedLayer();
+            switch (tool)
+            {
+                case PreviewTool.Brush:
+                case PreviewTool.Fill: return layer is DrawingLayer;
+                case PreviewTool.Transform: return layer != null && !layer.IsGroup;
+                case PreviewTool.Zoom: return compositor != null;
+                default: return false;
+            }
+        }
+
+        private void BindPreviewSettingsRow(VisualElement row, PreviewTool tool)
+        {
+            toolkitHeaderBindings.Add(() =>
+            {
+                bool empty = previewTool == PreviewTool.None;
+                bool visible = (empty ? previewSettingsTool : previewTool) == tool;
+                row.EnableInClassList("sprite-editor-tool-options--hidden", !visible);
+                row.EnableInClassList("sprite-editor-tool-options--empty", empty);
+            });
+        }
 
         private VisualElement BuildPreviewToolToolbar()
         {
@@ -56,22 +162,22 @@ namespace DCFApixels.SpriteEditor
         private void RefreshPreviewToolToolbar()
         {
             Layer selected = GetSelectedLayer();
-            previewZoomButton?.SetEnabled(compositor != null);
+            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
             previewZoomButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Zoom);
             previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.None);
             if (previewBrushButton != null)
             {
-                previewBrushButton.SetEnabled(selected is DrawingLayer);
+                previewBrushButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
                 previewBrushButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Brush);
             }
             if (previewTransformButton != null)
             {
-                previewTransformButton.SetEnabled(selected != null && !selected.IsGroup);
+                previewTransformButton.EnableInClassList("sprite-editor-tool-button--unavailable", selected == null || selected.IsGroup);
                 previewTransformButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Transform);
             }
             if (previewFillButton != null)
             {
-                previewFillButton.SetEnabled(selected is DrawingLayer);
+                previewFillButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
                 previewFillButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Fill);
             }
         }

@@ -102,7 +102,8 @@ namespace DCFApixels.SpriteEditor
                 "Reset Sprite Editor Settings",
                 "Reset panel sizes, scrolling, selection, foldouts, RGBA channels and preview tool state in all open " +
                 "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
-                "Open documents (including unsaved work), layers, brush settings, textures and Shader FX " +
+                "Shared brush, color and fill settings will also be reset. " +
+                "Open documents (including unsaved work), layers, textures and Shader FX " +
                 "will be preserved. Unity settings and window docking will not change. " +
                 "This settings reset cannot be undone.",
                 "Reset Settings", "Cancel"))
@@ -117,6 +118,7 @@ namespace DCFApixels.SpriteEditor
             }
             Undo.FlushUndoRecordObjects();
             EditorPrefs.DeleteKey(PaintingPreviewScalePrefKey);
+            EditorPrefs.DeleteKey(PaintToolSettingsPrefKey);
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
             ShowNotification(new GUIContent("Sprite Editor settings reset."));
@@ -124,6 +126,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ResetEditorWindowSettings()
         {
+            Undo.ClearUndo(this);
             CancelPreviewZoomGesture();
             previewViewport.Reset();
             ClearLayerDragData();
@@ -135,7 +138,10 @@ namespace DCFApixels.SpriteEditor
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
             groupExpansion?.Clear();
-            previewTool = PreviewTool.Brush;
+            previewTool = PreviewTool.None;
+            previewSettingsTool = PreviewTool.None;
+            paintSettings = new PaintToolSettings();
+            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
             lineAnchorLayer = null;
             hasLastPaintingUv = false;
             paintingShiftHeld = false;
@@ -171,6 +177,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
+            LoadPaintToolSettings();
             minSize = new Vector2(640f, 420f);
             groupExpansion = new Dictionary<string, bool>();
             paintingPreviewScale = ClampPaintingPreviewScale(
@@ -692,18 +699,21 @@ namespace DCFApixels.SpriteEditor
             menu.ShowAsContext();
         }
 
-        private void ConvertLayerToDrawing(Layer layer, bool applyTransform)
+        private const string GroupConversionWarning =
+            "The group's visible children will be merged against transparency into one Drawing layer. " +
+            "Pass-through blending with layers outside the group may change. Effects targeting individual " +
+            "children will lose those targets. Groups have no active Transform, so both conversion modes " +
+            "produce an identity Transform. You can undo the entire conversion.";
+
+        private void ConvertLayerToDrawing(Layer layer, bool applyTransform, bool groupConfirmed = false)
         {
             FinishPreviewTransform();
             FinishPaintingStroke();
             if (compositor == null || !compositor.TryFindLayer(layer, out List<Layer> container, out int index))
                 return;
-            if (layer is GroupLayer && !EditorUtility.DisplayDialog(
+            if (layer is GroupLayer && !groupConfirmed && !EditorUtility.DisplayDialog(
                 "Convert Group to Drawing",
-                "The group's visible children will be merged against transparency into one Drawing layer. " +
-                "Pass-through blending with layers outside the group may change. Effects targeting individual " +
-                "children will lose those targets. Groups have no active Transform, so both conversion modes " +
-                "produce an identity Transform. You can undo the entire conversion.",
+                GroupConversionWarning,
                 "Convert", "Cancel"))
                 return;
 
@@ -1094,6 +1104,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnUndoRedo()
         {
+            if (RefreshPaintToolSettingsAfterUndo()) return;
             ResetOpacityEntry();
             previewTransformManipulator?.End(false, false);
             if (compositor == null)

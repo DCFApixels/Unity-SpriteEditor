@@ -36,7 +36,8 @@ namespace DCFApixels.SpriteEditor
             tiling.tooltip = "Clip: transparent outside the frame. Repeat: tile. Mirror: reflected tiles. " +
                 "Source: inherit the texture's wrap modes; Clamp extends edge pixels instead of clipping.";
             toolkitHeaderBindings.Track(tiling, () => (Enum)(GetSelectedLayer()?.transform.tiling ?? TransformTilingMode.Clip));
-            toolkitHeaderBindings.Add(() => row.style.display = IsPreviewTransformEnabled ? DisplayStyle.Flex : DisplayStyle.None);
+            toolkitHeaderBindings.Add(() => tiling.SetEnabled(IsPreviewToolAvailable(PreviewTool.Transform)));
+            BindPreviewSettingsRow(row, PreviewTool.Transform);
             tiling.RegisterValueChangedCallback(evt =>
             {
                 Layer selected = GetSelectedLayer();
@@ -54,6 +55,7 @@ namespace DCFApixels.SpriteEditor
             filter.tooltip = "Source: inherit the texture's Filter Mode. Point: sharp pixels. Bilinear: smooth. " +
                 "Trilinear: smooth mip transitions (requires source mipmaps). Independent of Tiling.";
             toolkitHeaderBindings.Track(filter, () => (Enum)(GetSelectedLayer()?.filterMode ?? LayerFilterMode.Source));
+            toolkitHeaderBindings.Add(() => filter.SetEnabled(IsPreviewToolAvailable(PreviewTool.Transform)));
             filter.RegisterValueChangedCallback(evt =>
             {
                 Layer selected = GetSelectedLayer();
@@ -100,14 +102,12 @@ namespace DCFApixels.SpriteEditor
 
         private void SetPreviewTool(PreviewTool tool)
         {
-            if (tool == PreviewTool.Transform && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
-                return;
-            if ((tool == PreviewTool.Brush || tool == PreviewTool.Fill) && !(GetSelectedLayer() is DrawingLayer))
-                return;
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             FinishPaintingStroke();
             previewTool = tool;
+            if (tool != PreviewTool.None)
+                previewSettingsTool = tool;
             lineAnchorLayer = null;
             RefreshToolkitInterface();
             toolkitPreviewCanvas?.Focus();
@@ -119,9 +119,9 @@ namespace DCFApixels.SpriteEditor
                 return false;
             if (evt.keyCode == KeyCode.T)
                 TogglePreviewTransform();
-            else if (evt.keyCode == KeyCode.B && GetSelectedLayer() is DrawingLayer)
+            else if (evt.keyCode == KeyCode.B)
                 SetPreviewTool(PreviewTool.Brush);
-            else if (evt.keyCode == KeyCode.G && GetSelectedLayer() is DrawingLayer)
+            else if (evt.keyCode == KeyCode.G)
                 SetPreviewTool(PreviewTool.Fill);
             else if (evt.keyCode == KeyCode.Z)
                 SetPreviewTool(PreviewTool.Zoom);

@@ -201,6 +201,9 @@ Color alpha zero leaves no mark, including for the eraser; eraser strength other
 - `brush` is optional; supplied fields update the layer's saved brush settings. Missing fields retain
   their current values, including symmetry/repeat. Set `repeat:"None"`
   explicitly when a one-off unmirrored stroke is intended.
+- API brush parameters remain independent of the window's shared interactive brush/color/fill
+  preferences. API strokes do not read or change those preferences. Symmetry/repeat and transforms
+  are layer-local and are shared by API and interactive painting.
 
 | Brush field | Values |
 |---|---|

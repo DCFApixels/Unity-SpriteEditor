@@ -6,6 +6,7 @@ namespace DCFApixels.SpriteEditor
     {
         internal const float MinimumScale = 1f / 1024f;
         internal const float MaximumScale = 64f;
+        private const float FitInset = 36f;
         private bool fit = true;
         private float scale = 1f;
         private Vector2 center = new Vector2(0.5f, 0.5f);
@@ -17,13 +18,12 @@ namespace DCFApixels.SpriteEditor
             center = new Vector2(0.5f, 0.5f);
         }
 
-        internal Rect ImageRect(Rect viewport, Vector2 dimensions, bool transforming)
+        internal Rect ImageRect(Rect viewport, Vector2 dimensions)
         {
             if (!Valid(viewport, dimensions)) return Rect.zero;
-            float inset = transforming ? 36f : 4f;
             float currentScale = fit
-                ? Mathf.Min(Mathf.Max(0f, viewport.width - inset * 2f) / dimensions.x,
-                    Mathf.Max(0f, viewport.height - inset * 2f) / dimensions.y)
+                ? Mathf.Min(Mathf.Max(0f, viewport.width - FitInset * 2f) / dimensions.x,
+                    Mathf.Max(0f, viewport.height - FitInset * 2f) / dimensions.y)
                 : scale;
             Vector2 size = dimensions * currentScale;
             return new Rect(viewport.center - Vector2.Scale(center, size), size);

@@ -12,62 +12,62 @@ namespace DCFApixels.SpriteEditor
     {
         private const int MaximumFillPixels = 16777216;
 
-        private void AddPaintColorFields(VisualElement row, DrawingLayer layer)
+        private void AddPaintColorFields(VisualElement row)
         {
             ColorField primary = CompactField(new ColorField(), 54f);
             primary.tooltip = PrimaryBrushColorContent.tooltip;
-            toolkitHeaderBindings.Track(primary, () => layer.brushColor);
-            primary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Foreground Color", () => layer.brushColor = evt.newValue));
+            toolkitHeaderBindings.Track(primary, () => paintSettings.brushColor);
+            primary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Foreground Color", () => paintSettings.brushColor = evt.newValue));
             row.Add(primary);
             ColorField secondary = CompactField(new ColorField(), 54f);
             secondary.tooltip = SecondaryBrushColorContent.tooltip;
-            toolkitHeaderBindings.Track(secondary, () => layer.secondaryBrushColor);
-            secondary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Background Color", () => layer.secondaryBrushColor = evt.newValue));
+            toolkitHeaderBindings.Track(secondary, () => paintSettings.secondaryBrushColor);
+            secondary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Background Color", () => paintSettings.secondaryBrushColor = evt.newValue));
             row.Add(secondary);
         }
 
-        private void AddFillSettings(DrawingLayer layer)
+        private void AddFillSettings()
         {
             VisualElement row = SpriteEditorUI.CreateToolbar();
             row.AddToClassList("sprite-editor-fill-settings");
-            toolkitHeaderBindings.Add(() => row.EnableInClassList("sprite-editor-tool-options--hidden", !IsPreviewFillEnabled));
-            AddPaintColorFields(row, layer);
+            BindPreviewSettingsRow(row, PreviewTool.Fill);
+            AddPaintColorFields(row);
             Toggle allLayers = new Toggle("All Layers");
             allLayers.AddToClassList("sprite-editor-fill-all-layers");
             allLayers.tooltip = "On: sample the full-resolution visible composition. Off: sample this layer's stored pixels. Both paint only this Drawing layer.";
-            toolkitHeaderBindings.Track(allLayers, () => layer.fillSampleMode == FillSampleMode.AllLayers);
-            allLayers.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Fill Sample", () => layer.fillSampleMode = evt.newValue ? FillSampleMode.AllLayers : FillSampleMode.CurrentLayer));
+            toolkitHeaderBindings.Track(allLayers, () => paintSettings.fillSampleMode == FillSampleMode.AllLayers);
+            allLayers.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Fill Sample", () => paintSettings.fillSampleMode = evt.newValue ? FillSampleMode.AllLayers : FillSampleMode.CurrentLayer));
             row.Add(allLayers);
             Toggle contiguous = new Toggle("Contiguous");
             contiguous.AddToClassList("sprite-editor-fill-contiguous");
             contiguous.tooltip = "On: fill only the connected area at the clicked pixel. Off: fill all similar pixels across the layer, even in separate areas. Uses the All Layers setting and Tolerance.";
-            toolkitHeaderBindings.Track(contiguous, () => layer.fillContiguous);
-            contiguous.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Fill Contiguous", () => layer.fillContiguous = evt.newValue));
+            toolkitHeaderBindings.Track(contiguous, () => paintSettings.fillContiguous);
+            contiguous.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Fill Contiguous", () => paintSettings.fillContiguous = evt.newValue));
             row.Add(contiguous);
             Slider tolerance = new Slider("Tolerance", 0f, 255f) { showInputField = true };
             tolerance.AddToClassList("sprite-editor-fill-tolerance");
             tolerance.tooltip = "Color/alpha similarity to the clicked pixel (0–255). Low values stop at small differences; high values include more colors. Contiguous limits matching to the connected area.";
-            toolkitHeaderBindings.Track(tolerance, () => (float)layer.fillTolerance);
-            tolerance.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Fill Tolerance", () => layer.fillTolerance = Mathf.Clamp(Mathf.RoundToInt(evt.newValue), 0, 255)));
+            toolkitHeaderBindings.Track(tolerance, () => (float)paintSettings.fillTolerance);
+            tolerance.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Fill Tolerance", () => paintSettings.fillTolerance = Mathf.Clamp(Mathf.RoundToInt(evt.newValue), 0, 255)));
             row.Add(tolerance);
             Toggle antialias = new Toggle("Antialias");
             antialias.AddToClassList("sprite-editor-fill-antialias");
             antialias.tooltip = "Soften the fill edge with partial pixel coverage. Disable for hard pixel-art edges.";
-            toolkitHeaderBindings.Track(antialias, () => layer.fillAntialias);
-            antialias.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Fill Antialias", () => layer.fillAntialias = evt.newValue));
+            toolkitHeaderBindings.Track(antialias, () => paintSettings.fillAntialias);
+            antialias.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Fill Antialias", () => paintSettings.fillAntialias = evt.newValue));
             row.Add(antialias);
             IntegerField expand = new IntegerField("Expand (px)");
             expand.AddToClassList("sprite-editor-fill-expand");
             expand.tooltip = "Grow the detected area by 0–32 source pixels to overlap outlines. Unlike Tolerance, this does not change which colors are connected.";
-            toolkitHeaderBindings.Track(expand, () => layer.fillExpand);
-            expand.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Fill Expansion", () => layer.fillExpand = Mathf.Clamp(evt.newValue, 0, 32)));
+            toolkitHeaderBindings.Track(expand, () => paintSettings.fillExpand);
+            expand.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                "Change Fill Expansion", () => paintSettings.fillExpand = Mathf.Clamp(evt.newValue, 0, 32)));
             row.Add(expand);
             toolkitPreviewHeader.Add(row);
         }
@@ -89,7 +89,7 @@ namespace DCFApixels.SpriteEditor
                 return true;
             }
             Vector4 channels = PreviewChannelMask;
-            Color foreground = layer.brushColor;
+            Color foreground = paintSettings.brushColor;
             Color32 color = new Color(foreground.r * channels.x, foreground.g * channels.y,
                 foreground.b * channels.z, foreground.a * channels.w);
             if (color.a == 0) return true;
@@ -104,7 +104,7 @@ namespace DCFApixels.SpriteEditor
                 int width = stored != null ? stored.width : compositor.width;
                 int height = stored != null ? stored.height : compositor.height;
                 int length = checked(width * height);
-                if (length > MaximumFillPixels || (layer.fillSampleMode == FillSampleMode.AllLayers &&
+                if (length > MaximumFillPixels || (paintSettings.fillSampleMode == FillSampleMode.AllLayers &&
                     (long)compositor.width * compositor.height > MaximumFillPixels))
                     throw new InvalidOperationException("Fill supports up to 16,777,216 pixels (for example, 4096 × 4096) per source/reference image.");
                 using var source = new NativeArray<Color32>(length, Allocator.TempJob);
@@ -112,7 +112,7 @@ namespace DCFApixels.SpriteEditor
                 using var valid = new NativeArray<byte>(length, Allocator.TempJob);
                 using var output = new NativeArray<Color32>(length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
                 if (stored != null) NativeArray<Color32>.Copy(stored.GetRawTextureData<Color32>(), source);
-                if (layer.fillSampleMode == FillSampleMode.AllLayers)
+                if (paintSettings.fillSampleMode == FillSampleMode.AllLayers)
                 {
                     composite = compositor.Compose();
                     Vector2 origin = MapLayerToDocumentUv(Vector2.zero, layer);
@@ -135,7 +135,7 @@ namespace DCFApixels.SpriteEditor
                 int seed = Mathf.Clamp(Mathf.FloorToInt(uv.y * height), 0, height - 1) * width +
                     Mathf.Clamp(Mathf.FloorToInt(uv.x * width), 0, width - 1);
                 if (!FloodFillUtility.Fill(source, reference, valid, output, width, height, seed, color,
-                    layer.fillTolerance, layer.fillExpand, layer.fillAntialias, layer.fillContiguous)) return true;
+                    paintSettings.fillTolerance, paintSettings.fillExpand, paintSettings.fillAntialias, paintSettings.fillContiguous)) return true;
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName("Fill Drawing Layer");

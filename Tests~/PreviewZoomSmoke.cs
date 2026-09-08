@@ -5,8 +5,8 @@ var bounds = new UnityEngine.Rect(0, 0, 808, 408);
 var dimensions = new UnityEngine.Vector2(200, 100);
 int checks = 0;
 void Call(string method, params object[] args) => type.GetMethod(method, flags).Invoke(viewport, args);
-UnityEngine.Rect Image(UnityEngine.Rect area, bool transforming = false) =>
-    (UnityEngine.Rect)type.GetMethod("ImageRect", flags).Invoke(viewport, new object[] { area, dimensions, transforming });
+UnityEngine.Rect Image(UnityEngine.Rect area) =>
+    (UnityEngine.Rect)type.GetMethod("ImageRect", flags).Invoke(viewport, new object[] { area, dimensions });
 UnityEngine.Vector2 UV(UnityEngine.Rect image, UnityEngine.Vector2 point) =>
     new UnityEngine.Vector2((point.x - image.x) / image.width, (point.y - image.y) / image.height);
 void Check(bool value, string message)
@@ -17,15 +17,16 @@ void Check(bool value, string message)
 bool Close(UnityEngine.Vector2 a, UnityEngine.Vector2 b) => (a - b).sqrMagnitude < 0.00001f;
 
 var fitted = Image(bounds);
-Check(fitted == new UnityEngine.Rect(4, 4, 800, 400), "Initial view fits the full image with padding");
+Check(fitted == new UnityEngine.Rect(68, 36, 672, 336), "Initial view reserves fixed tool-independent padding");
+Check(fitted.yMin - 24f - 9f >= bounds.yMin, "Default rotation handle and its hit area fit inside the viewport");
+float fittedScale = fitted.width / dimensions.x;
 var anchor = new UnityEngine.Vector2(204, 104);
 var uv = UV(fitted, anchor);
-Call("ZoomAt", bounds, dimensions, fitted, anchor, 8f);
+Call("ZoomAt", bounds, dimensions, fitted, anchor, fittedScale * 2f);
 var zoomed = Image(bounds);
-Check(UnityEngine.Mathf.Approximately(zoomed.width, 1600), "Click doubles image scale");
+Check(UnityEngine.Mathf.Approximately(zoomed.width, fitted.width * 2f), "Click doubles image scale without imposing Fit padding");
 Check(Close(UV(zoomed, anchor), uv), "Pixel under click stays under cursor");
-Check(Image(bounds, true) == zoomed, "Manual zoom is stable when selecting Transform");
-Call("ZoomAt", bounds, dimensions, zoomed, anchor, 4f);
+Call("ZoomAt", bounds, dimensions, zoomed, anchor, fittedScale);
 Check(Close(Image(bounds).position, fitted.position), "Zoom-out reverses anchored zoom-in");
 var selection = new UnityEngine.Rect(204, 104, 200, 100);
 Call("Frame", bounds, dimensions, Image(bounds), selection);

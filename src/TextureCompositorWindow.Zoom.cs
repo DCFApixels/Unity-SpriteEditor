@@ -25,7 +25,7 @@ namespace DCFApixels.SpriteEditor
         {
             VisualElement row = SpriteEditorUI.CreateToolbar();
             row.AddToClassList("sprite-editor-zoom-settings");
-            toolkitHeaderBindings.Add(() => row.EnableInClassList("sprite-editor-tool-options--hidden", !IsPreviewZoomEnabled));
+            BindPreviewSettingsRow(row, PreviewTool.Zoom);
             Label percent = new Label();
             percent.AddToClassList("sprite-editor-zoom-percent");
             toolkitHeaderBindings.Add(() => percent.text = $"{toolkitPreviewCanvas.PixelScale * 100f:0.##}%");

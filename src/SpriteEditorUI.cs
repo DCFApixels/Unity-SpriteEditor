@@ -269,7 +269,10 @@ namespace DCFApixels.SpriteEditor
         {
             TextureTransform read() => layer.transform;
             void write(TextureTransform value) => layer.transform = value;
-            VisualElement container = CreateCard();
+            VisualElement container = new VisualElement();
+            ApplyWindowStyles(container);
+            container.AddToClassList(HelpBox.ussClassName);
+            container.AddToClassList("sprite-editor-transform-card");
             Foldout card = new Foldout { text = "Transform", value = false };
             container.Add(card);
 

@@ -4,6 +4,28 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-09-09
+
+### Added
+
+- Opt-in shared paint settings regression checks in `Tests~/PaintToolSettingsSmoke.cs`.
+
+### Changed
+
+- Open with No Tool selected. Keep unavailable tool icons dimmed but selectable.
+- Store interactive brush, color and fill settings separately from layers in window/user preferences;
+  preserve per-layer transforms and repeat/symmetry settings, and retain legacy layer/API brush fields.
+- Keep tool controls retained across layer selection changes. Show the brush cursor on non-Drawing layers.
+- Use native HelpBox styling for the Transform section, stretching its contents and X/Y fields to the right edge.
+- Offer cancellable Keep Transform / Apply Transform conversion on brush or fill clicks on non-Drawing
+  layers. Consume the triggering click without painting or filling; preserve conversion Undo/Redo.
+
+### Fixed
+
+- Preserve the previous tool settings row as an empty toolbar in No Tool mode, including its wrapped height.
+- Keep Fit preview padding at 36 UI units for every tool, reserving room for the default
+  rotation handle without changing image scale when selecting Transform. Leave manual zoom unchanged.
+
 ## [0.5.8] - 2026-09-09
 
 ### Added

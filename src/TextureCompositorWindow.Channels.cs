@@ -97,9 +97,9 @@ namespace DCFApixels.SpriteEditor
                 channelButtons[i].EnableInClassList("sprite-editor-channel-button--enabled", (previewChannels & (1 << i)) != 0);
         }
 
-        private Color GetPaintingColor(DrawingLayer layer)
+        private Color GetPaintingColor()
         {
-            Color color = layer.brushColor;
+            Color color = paintSettings.brushColor;
             if (paintingErase)
                 return color;
             Vector4 mask = PreviewChannelMask;

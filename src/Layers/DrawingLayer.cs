@@ -267,9 +267,10 @@ namespace DCFApixels.SpriteEditor
             secondaryBrushColor = previousPrimary;
         }
 
-        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase, Color? colorOverride = null)
+        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase, Color? colorOverride = null,
+            PaintToolSettings settings = null)
         {
-            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase, colorOverride);
+            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase, colorOverride, settings);
         }
 
         internal void PaintSegment(
@@ -279,9 +280,10 @@ namespace DCFApixels.SpriteEditor
             int outputHeight,
             bool includeStart,
             bool erase,
-            Color? colorOverride = null)
+            Color? colorOverride = null,
+            PaintToolSettings settings = null)
         {
-            Color color = colorOverride ?? brushColor;
+            Color color = colorOverride ?? settings?.brushColor ?? brushColor;
             if (color.a <= 0f)
                 return;
             RenderTexture surface = EnsurePaintSurface(outputWidth, outputHeight);
@@ -295,7 +297,10 @@ namespace DCFApixels.SpriteEditor
                 (toSourceUv.x - fromSourceUv.x) * outputWidth,
                 (toSourceUv.y - fromSourceUv.y) * outputHeight);
             float distance = pixelDelta.magnitude;
-            float spacing = Mathf.Max(1f, brushSize * brushSpacing);
+            float size = Mathf.Max(1f, settings?.brushSize ?? brushSize);
+            float hardness = Mathf.Clamp01(settings?.brushHardness ?? brushHardness);
+            float spacing = Mathf.Max(1f, size * Mathf.Clamp(settings?.brushSpacing ?? brushSpacing,
+                MinimumBrushSpacing, MaximumBrushSpacing));
             int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / spacing)) : 0;
             int firstStep = includeStart ? 0 : 1;
 
@@ -312,8 +317,8 @@ namespace DCFApixels.SpriteEditor
             PaintBrushRenderer.Draw(
                 surface,
                 segmentStamps,
-                brushSize,
-                brushHardness,
+                size,
+                hardness,
                 color,
                 erase,
                 outputWidth,

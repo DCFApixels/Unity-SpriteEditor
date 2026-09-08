@@ -155,9 +155,9 @@ The view stays when switching tools/layers; opening another document or resettin
 restores Fit. Image content and all guides are clipped to the preview viewport, away from its header/footer.
 
 The **window tab's ⋮ menu → Reset Sprite Editor Settings…** restores panel sizes, scrolling,
-selection, foldouts, preview tool state and Live Quality defaults after confirmation.
+selection, foldouts, preview tool state, shared painting settings and Live Quality defaults after confirmation.
 It resets all open Sprite Editor windows, without deleting documents (including unsaved work),
-layer/brush settings or assets, or changing Unity settings and docking. The settings reset has no Undo.
+per-layer settings or assets, or changing Unity settings and docking. The settings reset has no Undo.
 
 <a id="layers"></a>
 ## Layers & groups
@@ -227,7 +227,7 @@ Use **⋮ → Convert to Drawing** — including on an existing Drawing layer.
 | **Apply Transform** | Bake the current Transform and tiling into full-resolution pixels, then reset Transform to identity and tiling to Clip. |
 
 The replacement retains its ID, name, stack position, visibility, opacity, blend mode, and FX.
-FX remain live. Drawing layers also retain brush and repetition settings. Outline/SDF become
+FX remain live. Drawing layers also retain repetition settings. Outline/SDF become
 static pixels. Pixels beyond the canvas are cropped when applying the transform.
 
 A group is flattened against transparency using its visible descendants, their transforms,
@@ -250,8 +250,17 @@ ignores transparency; A alone shows alpha in grayscale; all channels off shows b
 Switching channels does not edit existing pixels or affect Save/Export. New masked strokes
 are real pixel edits with normal Undo/Redo. All channels start enabled and are restored by Reset.
 
-Select a **Drawing Layer** and paint directly in the Preview. The image still shows the complete
+The window opens with **No Tool** selected. Choose Brush (`B`) and a **Drawing Layer** to paint
+directly in the Preview. The image still shows the complete
 layer stack, with blending and effects applied.
+
+Brush/Eraser mode, colors, size, hardness, spacing and Fill options are shared window tool settings,
+saved in user preferences. Switching layers or documents does not replace them. Repeat, symmetry
+and transforms remain local to each layer. Reset Settings also resets the shared tool settings.
+Brush and Fill remain selectable and configurable without a Drawing layer; their icons are dimmed
+when they cannot act on the selection. The brush cursor remains visible. Clicking a non-Drawing
+layer offers **Keep Transform**, **Apply Transform**, or **Cancel**. That click never paints or fills;
+after conversion, click again. Conversion supports Undo/Redo.
 
 - `LMB` uses the selected Brush/Eraser tool; `RMB` temporarily erases.
 - Adjust **Size**, **Hardness**, and **Step**. Step is stamp spacing as a percentage of brush diameter.
@@ -281,8 +290,8 @@ color; disabled A makes the operation a no-op.
 - **Expand (px)** (`0–32`, default `0`) grows the region under a contour using approximate distance
   in source pixels. This is separate from Tolerance and can deliberately cross color boundaries.
 
-These controls appear in the header while Fill is active and are saved independently per Drawing
-layer. Fill edits the primary source frame; it does not repeat through Brush symmetry/repetition.
+These controls appear in the header while Fill is selected and are shared across Drawing layers.
+Fill edits the primary source frame; it does not repeat through Brush symmetry/repetition.
 For clicks on transformed tiled copies outside that frame, apply the transform first via
 **Convert to Drawing → Apply Transform**. All Layers is projected into the source pixel grid;
 use an untransformed canvas-sized Drawing layer for canvas-pixel-accurate boundaries.

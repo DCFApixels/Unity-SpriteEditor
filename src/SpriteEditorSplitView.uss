@@ -117,6 +117,10 @@
     opacity: 0.4;
 }
 
+.sprite-editor-tool-button--unavailable > .sprite-editor-tool-icon {
+    opacity: 0.4;
+}
+
 .sprite-editor-tool-icon {
     width: 22px;
     height: 22px;
@@ -125,6 +129,10 @@
 
 .sprite-editor-tool-options--hidden {
     display: none;
+}
+
+.sprite-editor-tool-options--empty > * {
+    visibility: hidden;
 }
 
 .sprite-editor-preview-canvas {
@@ -209,6 +217,29 @@
 .sprite-editor-transform-settings {
     flex-wrap: wrap;
     flex-shrink: 0;
+}
+
+.unity-help-box.sprite-editor-transform-card {
+    flex-direction: column;
+    flex-shrink: 0;
+    align-items: stretch;
+    margin: 4px 0;
+    padding: 5px 6px 6px;
+}
+
+.sprite-editor-transform-card > .unity-foldout {
+    align-self: stretch;
+    min-width: 0;
+}
+
+.sprite-editor-transform-card .unity-vector2-field .unity-composite-field__field-spacer {
+    display: none;
+}
+
+.sprite-editor-transform-card .unity-vector2-field .unity-composite-field__field {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
 }
 
 .sprite-editor-transform-option,
