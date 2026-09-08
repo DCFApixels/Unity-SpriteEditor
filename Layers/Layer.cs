@@ -90,6 +90,7 @@ namespace DCFApixels.SpriteEditor
                     transformMaterial.SetVector("_Position", new Vector4(scaledPosition.x, scaledPosition.y, 0f, 0f));
                     transformMaterial.SetVector("_Scale", new Vector4(transform.scale.x, transform.scale.y, 0f, 0f));
                     transformMaterial.SetFloat("_Rotation", transform.rotation * Mathf.Deg2Rad);
+                    transformMaterial.SetInt("_TilingMode", (int)transform.tiling);
                     transformMaterial.SetVector("_OutputSize", new Vector4(context.width, context.height, 0f, 0f));
                     Graphics.Blit(source, current, transformMaterial);
                 }

@@ -62,6 +62,7 @@ namespace DCFApixels.SpriteEditor
 
         public void CreateGUI()
         {
+            FinishPreviewTransform();
             if (compositor == null)
                 SetCompositor(CreateTemporaryCompositor());
 
@@ -149,6 +150,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.style.marginRight = PanePadding;
             toolkitPreviewCanvas.style.marginTop = PanePadding;
             toolkitPreviewCanvas.style.marginBottom = PanePadding;
+            BuildPreviewTransformTool();
             toolkitPreviewCanvas.RegisterCallback<PointerDownEvent>(OnPreviewPointerDown);
             toolkitPreviewCanvas.RegisterCallback<PointerMoveEvent>(OnPreviewPointerMove);
             toolkitPreviewCanvas.RegisterCallback<PointerUpEvent>(OnPreviewPointerUp);
@@ -547,20 +549,7 @@ namespace DCFApixels.SpriteEditor
                 });
             }
 
-            string editLabel = layer is DrawingLayer ? "Paint" : "Edit";
-            row.Add(SpriteEditorUI.CreateButton(editLabel, () =>
-            {
-                if (layer is DrawingLayer)
-                {
-                    selectedLayerId = layer.Id;
-                    RefreshToolkitInterface();
-                    toolkitPreviewCanvas?.Focus();
-                }
-                else
-                {
-                    OpenLayerEditor(layer);
-                }
-            }, 42f));
+            row.Add(SpriteEditorUI.CreateButton("Edit", () => OpenLayerEditor(layer), 42f));
             row.Add(SpriteEditorUI.CreateButton("FX", () => ModifierEditorWindow.Open(layer, compositor), 30f));
             row.Add(SpriteEditorUI.CreateButton("…", () => ShowLayerContextMenu(layer, container, index), 30f));
             RegisterToolkitLayerDrop(row, layer, container, index, depth);
@@ -906,8 +895,10 @@ namespace DCFApixels.SpriteEditor
                 dimensions.style.flexGrow = 1f;
                 dimensions.style.unityTextAlign = TextAnchor.MiddleCenter;
                 header.Add(dimensions);
+                AddPreviewTransformButton(header);
                 header.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
                 toolkitPreviewHeader.Add(header);
+                AddPreviewTransformSettings();
                 return;
             }
 
@@ -916,9 +907,11 @@ namespace DCFApixels.SpriteEditor
             drawingTitle.style.flexGrow = 1f;
             drawingTitle.style.unityFontStyleAndWeight = FontStyle.Bold;
             titleRow.Add(drawingTitle);
+            AddPreviewTransformButton(titleRow);
             titleRow.Add(SpriteEditorUI.CreateToolbarButton("Clear", () => ClearDrawingLayer(layer), 46f));
             titleRow.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 58f));
             toolkitPreviewHeader.Add(titleRow);
+            AddPreviewTransformSettings();
 
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             EnumField tool = CompactField(new EnumField(layer.tool), 72f);
@@ -1149,7 +1142,10 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
-            toolkitPreviewCanvas.SetDocument(previewTexture, compositor.width, compositor.height, drawing);
+            RefreshPreviewTransformTool();
+            bool transforming = IsPreviewTransformEnabled;
+            toolkitPreviewCanvas.SetDocument(previewTexture, compositor.width, compositor.height,
+                transforming ? null : drawing, transforming);
             if (toolkitPreviewError != null)
             {
                 toolkitPreviewError.text = previewError ?? string.Empty;
@@ -1158,7 +1154,11 @@ namespace DCFApixels.SpriteEditor
 
             if (toolkitPreviewFooter != null)
             {
-                if (drawing != null)
+                if (transforming)
+                {
+                    toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • Shift constrain • Esc cancel • T exit";
+                }
+                else if (drawing != null)
                 {
                     toolkitPreviewFooter.text = previewTexture != null
                         ? $"LMB paint • RMB erase • Shift lines • X colors • [ ] size • {drawing.brushSize:0.#} px"
@@ -1187,7 +1187,7 @@ namespace DCFApixels.SpriteEditor
         private void OnPreviewPointerDown(PointerDownEvent evt)
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            if (paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
+            if (IsPreviewTransformEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
             if (!toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) ||
                 !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv))
@@ -1346,7 +1346,7 @@ namespace DCFApixels.SpriteEditor
         private void UpdatePreviewCursor(Vector2 localPosition, bool alt)
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            bool visible = layer != null &&
+            bool visible = !IsPreviewTransformEnabled && layer != null &&
                            !alt &&
                            toolkitPreviewCanvas != null &&
                            toolkitPreviewCanvas.ImageRect.Contains(localPosition);
@@ -1359,6 +1359,9 @@ namespace DCFApixels.SpriteEditor
         private void OnToolkitKeyDown(KeyDownEvent evt)
         {
             if (IsTextInputTarget(evt.target as VisualElement))
+                return;
+
+            if (HandlePreviewTransformKey(evt))
                 return;
 
             if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
@@ -1375,6 +1378,7 @@ namespace DCFApixels.SpriteEditor
                          (evt.keyCode == KeyCode.Y && !evt.shiftKey));
             if (undo || redo)
             {
+                FinishPreviewTransform();
                 FinishPaintingStroke();
                 if (undo)
                     Undo.PerformUndo();
@@ -1448,6 +1452,7 @@ namespace DCFApixels.SpriteEditor
             private int documentHeight = 1;
             private bool cursorVisible;
             private bool cursorErase;
+            private bool transformMode;
             private Vector2 cursorPosition;
 
             public Rect ImageRect { get; private set; }
@@ -1484,8 +1489,9 @@ namespace DCFApixels.SpriteEditor
                 RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
             }
 
-            public void SetDocument(Texture2D nextTexture, int width, int height, DrawingLayer layer)
+            public void SetDocument(Texture2D nextTexture, int width, int height, DrawingLayer layer, bool transforming = false)
             {
+                transformMode = transforming;
                 texture = nextTexture;
                 documentWidth = Mathf.Max(1, width);
                 documentHeight = Mathf.Max(1, height);
@@ -1512,10 +1518,11 @@ namespace DCFApixels.SpriteEditor
             private void UpdateImageLayout()
             {
                 Rect available = contentRect;
-                available.x += 4f;
-                available.y += 4f;
-                available.width = Mathf.Max(0f, available.width - 8f);
-                available.height = Mathf.Max(0f, available.height - 8f);
+                float inset = transformMode ? 36f : 4f;
+                available.x += inset;
+                available.y += inset;
+                available.width = Mathf.Max(0f, available.width - inset * 2f);
+                available.height = Mathf.Max(0f, available.height - inset * 2f);
                 float aspect = texture != null && texture.height > 0
                     ? (float)texture.width / texture.height
                     : (float)documentWidth / documentHeight;

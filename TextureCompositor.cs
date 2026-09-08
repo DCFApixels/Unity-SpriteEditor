@@ -16,6 +16,7 @@ namespace DCFApixels.SpriteEditor
         public int height = 512;
         [SerializeReference] public List<Layer> layers = new List<Layer>();
         [SerializeField, HideInInspector] private int nextLayerNumber = 1;
+        [SerializeField, HideInInspector] private int nextGroupNumber = 1;
 
         internal static event Action<TextureCompositor> Changed;
 
@@ -116,11 +117,20 @@ namespace DCFApixels.SpriteEditor
 
         internal string AllocateLayerName()
         {
-            SynchronizeNextLayerNumber();
+            SynchronizeNextAutomaticNumbers();
             int allocatedNumber = nextLayerNumber;
             if (nextLayerNumber < int.MaxValue)
                 nextLayerNumber++;
             return $"Layer {allocatedNumber}";
+        }
+
+        internal string AllocateGroupName()
+        {
+            SynchronizeNextAutomaticNumbers();
+            int allocatedNumber = nextGroupNumber;
+            if (nextGroupNumber < int.MaxValue)
+                nextGroupNumber++;
+            return $"Group {allocatedNumber}";
         }
 
         internal void NormalizeModel()
@@ -130,7 +140,7 @@ namespace DCFApixels.SpriteEditor
             layers ??= new List<Layer>();
             HashSet<string> usedIds = new HashSet<string>();
             NormalizeLayers(layers, usedIds);
-            SynchronizeNextLayerNumber();
+            SynchronizeNextAutomaticNumbers();
         }
 
         internal void MarkChanged()
@@ -650,22 +660,27 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private void SynchronizeNextLayerNumber()
+        private void SynchronizeNextAutomaticNumbers()
         {
-            int highestExistingNumber = 0;
-            FindHighestAutomaticLayerNumber(layers, ref highestExistingNumber);
-            int numberAfterExisting = highestExistingNumber < int.MaxValue
-                ? highestExistingNumber + 1
-                : int.MaxValue;
-            nextLayerNumber = Mathf.Max(1, Mathf.Max(nextLayerNumber, numberAfterExisting));
+            int highestLayerNumber = 0;
+            int highestGroupNumber = 0;
+            FindHighestAutomaticNumbers(layers, ref highestLayerNumber, ref highestGroupNumber);
+            nextLayerNumber = SynchronizeCounter(nextLayerNumber, highestLayerNumber);
+            nextGroupNumber = SynchronizeCounter(nextGroupNumber, highestGroupNumber);
         }
 
-        private static void FindHighestAutomaticLayerNumber(List<Layer> sourceLayers, ref int highestNumber)
+        private static int SynchronizeCounter(int nextNumber, int highestNumber)
+        {
+            int numberAfterExisting = highestNumber < int.MaxValue ? highestNumber + 1 : int.MaxValue;
+            return Mathf.Max(1, Mathf.Max(nextNumber, numberAfterExisting));
+        }
+
+        private static void FindHighestAutomaticNumbers(
+            List<Layer> sourceLayers, ref int highestLayerNumber, ref int highestGroupNumber)
         {
             if (sourceLayers == null)
                 return;
 
-            const string prefix = "Layer ";
             for (int i = 0; i < sourceLayers.Count; i++)
             {
                 Layer layer = sourceLayers[i];
@@ -673,16 +688,19 @@ namespace DCFApixels.SpriteEditor
                     continue;
 
                 string layerName = layer.layerName;
+                string prefix = layer is GroupLayer ? "Group " : "Layer ";
                 if (!string.IsNullOrEmpty(layerName) &&
                     layerName.StartsWith(prefix, StringComparison.Ordinal) &&
-                    int.TryParse(layerName.Substring(prefix.Length), out int number) &&
-                    number > highestNumber)
+                    int.TryParse(layerName.Substring(prefix.Length), out int number))
                 {
-                    highestNumber = number;
+                    if (layer is GroupLayer)
+                        highestGroupNumber = Mathf.Max(highestGroupNumber, number);
+                    else
+                        highestLayerNumber = Mathf.Max(highestLayerNumber, number);
                 }
 
                 if (layer is GroupLayer group)
-                    FindHighestAutomaticLayerNumber(group.layers, ref highestNumber);
+                    FindHighestAutomaticNumbers(group.layers, ref highestLayerNumber, ref highestGroupNumber);
             }
         }
 

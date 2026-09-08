@@ -141,6 +141,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            FinishPreviewTransform();
             RestoreUnityShortcuts();
             FinishPaintingStroke();
             TextureCompositor.Changed -= OnCompositorChanged;
@@ -156,6 +157,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            FinishPreviewTransform();
             RestoreUnityShortcuts();
         }
 
@@ -244,6 +246,8 @@ namespace DCFApixels.SpriteEditor
             previewRequested = false;
             bool paintingPreview = paintingLayer != null;
             UpdatePreview();
+            if (previewTransformManipulator != null && previewTransformManipulator.IsDragging)
+                nextTransformPreviewAt = EditorApplication.timeSinceStartup + PaintingPreviewInterval;
             if (paintingPreview)
                 nextPaintingPreviewAt = EditorApplication.timeSinceStartup + PaintingPreviewInterval;
         }
@@ -490,7 +494,9 @@ namespace DCFApixels.SpriteEditor
 
         private void AddLayer(List<Layer> container, int insertionIndex, Layer layer)
         {
-            string automaticName = compositor.AllocateLayerName();
+            string automaticName = layer is GroupLayer
+                ? compositor.AllocateGroupName()
+                : compositor.AllocateLayerName();
             ExecuteModelChange("Add Sprite Layer", () =>
             {
                 layer.layerName = automaticName;
@@ -511,7 +517,7 @@ namespace DCFApixels.SpriteEditor
             if (selected == null || !compositor.TryFindLayer(selected, out List<Layer> container, out int index))
                 return;
 
-            string automaticName = compositor.AllocateLayerName();
+            string automaticName = compositor.AllocateGroupName();
             ExecuteModelChange("Group Sprite Layer", () =>
             {
                 GroupLayer group = new GroupLayer { layerName = automaticName };
@@ -642,6 +648,9 @@ namespace DCFApixels.SpriteEditor
         {
             switch (layer)
             {
+                case DrawingLayer drawingLayer:
+                    DrawingLayerEditorWindow.Open(drawingLayer, compositor);
+                    break;
                 case FileLayer fileLayer:
                     FileLayerEditorWindow.Open(fileLayer, compositor);
                     break;
@@ -752,7 +761,8 @@ namespace DCFApixels.SpriteEditor
                     null,
                     compositor.width,
                     compositor.height,
-                    GetSelectedLayer() as DrawingLayer);
+                    IsPreviewTransformEnabled ? null : GetSelectedLayer() as DrawingLayer,
+                    IsPreviewTransformEnabled);
             }
             if (previewTexture == null)
                 return;
@@ -775,6 +785,7 @@ namespace DCFApixels.SpriteEditor
             if (next == null || next == compositor)
                 return;
 
+            FinishPreviewTransform();
             FinishPaintingStroke();
             ClearLayerDragData();
             lineAnchorLayer = null;
@@ -899,6 +910,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnUndoRedo()
         {
+            previewTransformManipulator?.End(false, false);
             if (compositor == null)
                 return;
             paintingLayer?.EndStroke();

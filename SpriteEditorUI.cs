@@ -217,11 +217,14 @@ namespace DCFApixels.SpriteEditor
             scale.tooltip = "Visual scale. One means 100 percent; negative values flip the image.";
             FloatField rotation = ConfigureField(new FloatField("Rotation"));
             rotation.tooltip = "Clockwise visual rotation in degrees.";
+            EnumField tiling = ConfigureField(new EnumField("Tiling", TransformTilingMode.Clip));
+            tiling.tooltip = "Outside the transformed source canvas: Clip = transparent; Repeat = tile; Mirror = alternate mirrored tiles on both axes.";
 
             bindings.Track(pivot, () => read().pivot);
             bindings.Track(position, () => read().position);
             bindings.Track(scale, () => read().scale);
             bindings.Track(rotation, () => read().rotation);
+            bindings.Track(tiling, () => (Enum)read().tiling);
 
             Button reset = CreateButton("Reset", () =>
             {
@@ -276,6 +279,16 @@ namespace DCFApixels.SpriteEditor
             card.Add(position);
             card.Add(scale);
             card.Add(rotation);
+            tiling.RegisterValueChangedCallback(evt =>
+            {
+                applyChange("Change Transform Tiling", () =>
+                {
+                    TextureTransform value = read();
+                    value.tiling = (TransformTilingMode)evt.newValue;
+                    write(value);
+                });
+            });
+            card.Add(tiling);
             parent.Add(card);
         }
     }

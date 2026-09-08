@@ -77,6 +77,13 @@ namespace DCFApixels.SpriteEditor
         Clip = 1
     }
 
+    public enum TransformTilingMode
+    {
+        Clip = 0,
+        Repeat = 1,
+        Mirror = 2
+    }
+
     [Serializable]
     public struct TextureTransform
     {
@@ -85,17 +92,20 @@ namespace DCFApixels.SpriteEditor
             pivot = new Vector2(0.5f, 0.5f),
             position = Vector2.zero,
             scale = Vector2.one,
-            rotation = 0f
+            rotation = 0f,
+            tiling = TransformTilingMode.Clip
         };
 
         public Vector2 pivot;
         public Vector2 position;
         public Vector2 scale;
         public float rotation;
+        public TransformTilingMode tiling;
 
         public bool IsIdentity()
         {
-            return position == Vector2.zero && scale == Vector2.one && Mathf.Approximately(rotation, 0f);
+            return position == Vector2.zero && scale == Vector2.one && Mathf.Approximately(rotation, 0f) &&
+                tiling == TransformTilingMode.Clip;
         }
 
         public void Reset()

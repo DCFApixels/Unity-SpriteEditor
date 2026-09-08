@@ -6,12 +6,23 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Added
 
+- Per-layer Transform tiling: Clip (default), Repeat, and Mirror, with retained controls in
+  the layer settings and Preview Transform toolbar. Shared by Preview and export.
+
+- Preview Transform tool (T): retained move/resize/rotate frame, Shift constraints, Escape
+  cancellation, and one Undo step per drag. Available for non-group layers without painting conflicts.
+
 - Hold Shift during a brush/eraser stroke to lock its direction horizontally or vertically on
   the canvas. Shift-click connects the previous painted endpoint to the clicked point, including
   consecutive Shift-clicks, with the existing brush spacing, symmetry, repeat clipping, and Undo.
 
 ### Changed
 
+- Replace the Drawing layer's Paint button with Edit, opening retained numeric Transform
+  settings. Selecting a Drawing layer still enables painting in Preview.
+
+- Name new groups `Group n` using a separate serialized counter from `Layer n`, including
+  nested groups and grouping an existing layer. Preserve existing names.
 - Keep output fields, layer rows, and drawing controls alive during value changes and selection.
   Rebuild only the affected subtree when the document, visible layer structure, or bound layer
   instance changes. Repeat modes, gradient modes, and effect inputs toggle existing controls.

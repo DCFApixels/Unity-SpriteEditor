@@ -30,6 +30,24 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 
 To track a specific published release, append its tag to the URL, for example `#v0.3.2`.
 
+## Preview transform tool
+
+Select a non-group layer and enable **Transform** in the Preview header (shortcut **T**).
+Drag inside the frame to move, drag its eight handles to resize, or drag the round handle
+to rotate around the layer pivot. **Shift** constrains movement to an axis, preserves resize
+proportions, or snaps rotation to 15°. **Escape** cancels the current drag; **T** or **Enter**
+exits the tool. Each drag is one Undo action. Drawing is suspended while this tool is active.
+The frame represents the layer's full source canvas, including transparent pixels, and edits
+the same Position, Scale, and Rotation values as the layer settings. Groups remain pass-through
+containers without a transform.
+
+**Tiling** in the Transform settings (also shown below the Preview header while Transform is
+active) controls both axes: **Clip** leaves pixels outside the frame transparent, **Repeat**
+tiles the source canvas, and **Mirror** alternates reflected tiles. Clip is the default, including
+for existing documents. The mode is saved per layer, supports Undo, and applies to Preview and
+export without changing the source texture's import settings. For Drawing layers these are
+rendered copies; painting still edits the source inside the primary tile, independently of brush repeat.
+
 ## Layer stack
 
 The list is displayed from top to bottom, like Photoshop. Rendering walks the list from the
@@ -53,8 +71,10 @@ a group, ungroup it, or add children directly to a group. Layers can also be dra
 handle: insertion lines reorder or move them between hierarchy levels, while dropping on the
 highlighted center of a group moves the layer inside it.
 
-New layers and groups receive document-local sequential names (`Layer 1`, `Layer 2`, and so on).
-The counter is serialized with the compositor and does not reuse numbers after deletion.
+New layers receive document-local sequential names (`Layer 1`, `Layer 2`, and so on).
+Groups use a separate sequence (`Group 1`, `Group 2`, and so on). Both counters are serialized
+with the compositor and do not reuse numbers after deletion. Existing names are preserved;
+number detection includes nested groups and layers.
 
 ## Drawing on the Preview
 
