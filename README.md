@@ -1,245 +1,328 @@
-# Unity Sprite Editor
+<a id="top"></a>
+<h1 align="center">Unity Sprite Editor</h1>
 
-Editor-only layered texture compositor for Unity. The editor interface is built with UI Toolkit,
-including its resizable Preview, recursive layer tree, inspectors, and auxiliary editor windows.
+<p align="center">
+  A layered sprite and texture editor, right inside Unity.
+</p>
 
-Open it from **Window > Sprite Editor**. A composition can stay temporary, be saved as a
-`TextureCompositor` asset, previewed in the editor, and exported through the **Export** menu.
-The full-window header contains **New**, the document field, **Save**, **Save As**, and **Export**.
-**Save** writes to the existing asset without a dialog and is disabled for temporary documents.
-**Ctrl+S** (**Cmd+S** on macOS) saves the current asset, or opens **Save As** for a temporary document.
+<p align="center">
+  <a href="package.json"><img alt="Package version" src="https://img.shields.io/github/package-json/v/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="LICENSE.md"><img alt="License: MIT" src="https://img.shields.io/github/license/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="#installation"><img alt="Unity 6 or newer" src="https://img.shields.io/badge/Unity-6%2B-383838?logo=unity&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
+  <a href="https://discord.gg/kqmJjExuCf"><img alt="Join Discord" src="https://img.shields.io/badge/Discord-JOIN-6473c8?logo=discord&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
+</p>
 
-The right pane has a selected-layer inspector above the layer list. Drag their horizontal divider
-to set the inspector height; it stays fixed when selecting layers and is remembered by the window.
-Both sections scroll independently when their contents do not fit. Type-specific settings and
-Transform controls share their implementation with **Properties** windows; ordinary changes refresh
-values without rebuilding focused fields. Drawing brush controls remain in the Preview header.
-Inline name, visibility, opacity, and blend mode controls are not duplicated in the inspector.
-**Transform** is a foldout, collapsed by default in the inspector and **Properties** windows.
-The narrow vertical-ellipsis menu in each non-group layer row contains **FX** and, as its last item,
-**Properties**. Each Properties invocation opens a separate window, including for the same layer.
+<p align="center">
+  <b>English</b> · <a href="README-RU.md">Русский</a>
+</p>
 
-Saved compositions can be reopened by double-clicking their `TextureCompositor` asset in the
-Project window, or by selecting the asset and pressing **Open in Sprite Editor** in the Inspector.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#shortcuts">Shortcuts</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/DCFApixels/Unity-SpriteEditor/issues">Report an issue</a>
+</p>
 
+---
+
+Create sprites, icons, patterns, and layered textures without leaving the Editor. Paint directly
+on the Preview, organize layers into nested groups, add Outline/SDF effects, and keep
+the editable composition alongside the exported result.
+
+> [!NOTE]
+> This is an **Editor-only** tool built with UI Toolkit, not a runtime drawing component.
+
+## At a glance
+
+| Tool | What you can do |
+| :--- | :--- |
+| Layers & groups | Combine images, drawing, fills, gradients, Outline, and SDF; nest groups and reorder with drag-and-drop. |
+| Live painting | Adjust brush size, hardness, and spacing; erase with `RMB` and draw straight lines with `Shift`. |
+| Symmetry & repetition | Mirror strokes, tile in rows or grids, or repeat around a circle with alternating reflection. |
+| Visual transforms | Move, resize, rotate, and reposition the pivot directly in the Preview. |
+| Multi-selection | Select ranges, move layers together, and drop them onto the folder or trash icon. |
+| Editable documents | Save the layer tree and drawing textures in a self-contained Unity asset. |
+| Export | PNG, JPEG, TGA, EXR, or a native Unity Texture2D asset. |
+
+## Contents
+
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Workspace & saving](#workspace)
+- [Layers & groups](#layers)
+- [Painting & repetition](#painting)
+- [Transform & pivot](#transform)
+- [Outline, SDF & blending](#effects)
+- [Export formats](#export)
+- [Shortcuts](#shortcuts)
+- [Community & license](#community)
+
+<a id="installation"></a>
 ## Installation
 
-All implementation files live in `src/`, including the editor-only assembly definition,
-layer implementations, editor windows, and shaders. Package metadata, documentation, and
-the license remain at the repository root.
+**Requires Unity 6 (`6000.0`) or newer.** Burst and Collections are declared package dependencies.
 
-Requires Unity 6 (`6000.0`) or newer. Burst and Collections are declared as package
-dependencies and are installed by Unity Package Manager.
-
-In Unity, open **Window > Package Management > Package Manager**, choose
-**Install package from git URL**, and enter:
+Open **Window → Package Management → Package Manager**, choose **Install package from git URL**,
+and paste:
 
 ```text
 https://github.com/DCFApixels/Unity-SpriteEditor.git
 ```
 
-Alternatively, add the package directly to `Packages/manifest.json`:
+<details>
+<summary>Install through manifest.json or pin a version</summary>
+
+Add this entry to the `dependencies` object in `Packages/manifest.json`:
 
 ```json
 "com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
 ```
 
-To track a specific published release, append its tag to the URL, for example `#v0.3.2`.
+The URL above follows the default branch. To pin a release, append an existing tag from
+[Tags](https://github.com/DCFApixels/Unity-SpriteEditor/tags). The version badge reads
+[`package.json`](package.json); it is not the latest release-tag number.
 
+</details>
+
+<a id="quick-start"></a>
+## Quick start
+
+1. Open **Window → Sprite Editor** and click **New**.
+2. Set **Canvas → W / H** above the Preview.
+3. Use the **+** button at the bottom of Layers to add a **Drawing Layer**.
+4. Select the layer and paint in the Preview. Adjust the brush in its header.
+5. Press `Ctrl+S` to save the editable composition.
+6. Choose **Export** when you need a flattened texture.
+
+> [!TIP]
+> Reopen a saved document by double-clicking its asset in Project, or use
+> **Open in Sprite Editor** in its Inspector.
+
+<a id="workspace"></a>
+## Workspace & saving
+
+The document header is shared by the entire window:
+
+**New → document field → Save → Save As → Export**
+
+- **Save** writes to the current asset without a dialog. It is disabled for temporary documents.
+- **Save As** creates a separate editable document.
+- `Ctrl+S` saves an existing asset, or opens Save As for a temporary document.
+- **Export** writes the flattened image, not the editable layer tree.
+
+The **Preview is on the left**; selected-layer settings and the layer list are on the right.
+Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
+window. The right pane has its own horizontal divider and independently scrolling sections.
+
+Settings follow the active layer. **Transform** starts collapsed; brush settings appear when
+a Drawing layer is active. Each **⋮ → Properties** invocation opens a separate window.
+**FX** lives in the same menu.
+
+<a id="layers"></a>
+## Layers & groups
+
+**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Group.
+
+Layers appear top-to-bottom and render from the bottom up. Groups are nested,
+**pass-through** containers: their children blend into the surrounding stack without an isolated
+color composite.
+
+| Selection | Result |
+| :--- | :--- |
+| Click | Select one layer. |
+| `Ctrl`-click | Add or remove an individual layer. |
+| `Shift`-click | Select a range of visible rows. |
+| `Ctrl+Shift`-click | Add a range to the selection. |
+
+The **last selected layer is active**, with a brighter fill and a subtle blue border. Inspector,
+painting, and Transform tools operate on that layer, not the whole selection.
+
+Use the footer to add, group, or delete layers. Drag a selected layer's handle to move the
+selection together; drop into the center of a group to move inside it. Dropping onto the
+**folder** or **trash** icon groups or deletes the dragged selection in one Undo step.
+A selected group carries its descendants only once.
+
+Per-row menus and inline controls affect that row. New names use independent, document-local
+counters: `Layer 1…` and `Group 1…`. Deleted numbers are not reused.
+
+> [!IMPORTANT]
+> Groups currently have no group-level opacity, blend mode, Transform, or FX.
+> Their visibility can be toggled, and Outline/SDF can use a group as input.
+
+<details>
+<summary>Convert any layer to Drawing / bake its transform</summary>
+
+Use **⋮ → Convert to Drawing** — including on an existing Drawing layer.
+
+| Mode | Result |
+| :--- | :--- |
+| **Keep Transform** | Rasterize the source while leaving its Transform editable. |
+| **Apply Transform** | Bake the current Transform and tiling into full-resolution pixels, then reset Transform to identity and tiling to Clip. |
+
+The replacement retains its ID, name, stack position, visibility, opacity, blend mode, and FX.
+FX remain live. Drawing layers also retain brush and repetition settings. Outline/SDF become
+static pixels. Pixels beyond the canvas are cropped when applying the transform.
+
+A group is flattened against transparency using its visible descendants, their transforms,
+and FX. The replacement uses Normal blending, opacity 1, and an identity Transform; both
+conversion modes therefore produce the same result for groups.
+
+Group conversion asks for confirmation: pass-through interactions with outside layers can
+change, and effects targeting removed descendants lose those targets. References to the
+converted layer itself remain valid. Conversion supports Undo/Redo, including pixel textures.
+
+</details>
+
+<a id="painting"></a>
+## Painting & repetition
+
+Select a **Drawing Layer** and paint directly in the Preview. The image still shows the complete
+layer stack, with blending and effects applied.
+
+- `LMB` uses the selected Brush/Eraser tool; `RMB` temporarily erases.
+- Adjust **Size**, **Hardness**, and **Step**. Step is stamp spacing as a percentage of brush diameter.
+- Two color swatches store foreground/background colors; `X` swaps them.
+- `Shift`-drag locks a stroke horizontally or vertically; `Shift`-click connects the previous
+  painted endpoint to the new point.
+- **Live Quality** sets painting-time Preview resolution: **12.5–100%**, default **37.5%**.
+  Lower values reduce preview work; exports and saved canvas dimensions are unchanged.
+
+### Symmetry & repeated strokes
+
+Set a normalized **Center**, then combine the following:
+
+| Setting | Behavior |
+| :--- | :--- |
+| Mirror X / Mirror Y | Reflect across the vertical / horizontal axis through Center. |
+| Horizontal / Vertical | Repeat in a row or column. |
+| Grid | Repeat with independent X/Y counts. |
+| Radial | Repeat around a circle with an adjustable sector count. |
+| Copy / Alternate Mirror | Repeat directly / reflect every second cell or sector. |
+| Continue / Clip | Let the stroke cross boundaries / constrain it to the cell or sector where the stroke began. |
+
+Painting from a mirrored cell keeps the active copy under the cursor.
+
+<details>
+<summary>Straight-line behavior & drawing storage</summary>
+
+For an independent axis-aligned line, click the start without `Shift`, then hold `Shift` while dragging.
+The first movement chooses the lock axis in canvas space. Repeated `Shift`-clicks form connected
+segments. Eraser, spacing, symmetry, and repetition apply to these lines too.
+
+Clip constrains a connection to the repeat shape containing its starting endpoint. Undo/Redo,
+clearing the layer, and switching documents reset the connection anchor. Connections do not
+carry across different drawing layers or canvas sizes.
+
+Drawing textures are stored as sub-assets of the document. They travel with the composition.
+
+</details>
+
+<a id="transform"></a>
+## Transform & pivot
+
+Select a non-group layer and enable **Transform** in the Preview header, or press `T`.
+
+- Drag inside the frame to move; use its eight handles to resize and the round handle to rotate.
+- Drag the **gold pivot cross** without moving the visible image.
+- The pivot snaps to nine anchors: corners, edge midpoints, and center. Hold `Ctrl` to bypass snapping.
+- Hold `Shift` for axis-constrained movement, proportional resizing, or 15° rotation steps.
+- `Escape` cancels the drag; `T` / `Enter` exits Transform mode. Painting is paused while it is active.
+
+**Tiling:** Clip leaves pixels outside the frame transparent; Repeat tiles the texture;
+Mirror alternates reflected tiles. These settings affect Preview and export without changing
+the source texture importer.
+
+<details>
+<summary>Transform details</summary>
+
+The frame covers the full source canvas, including transparent pixels. Its values are the same
+Position, Scale, and Rotation fields found in layer settings. Each drag is one Undo action.
+
+Position uses output pixels, Pivot uses normalized coordinates, Scale is a multiplier, and
+Rotation uses degrees. The pivot may lie outside the frame; snapping uses a 10-UI-pixel radius.
+Pivot dragging is disabled at zero/near-zero scale.
+
+On Drawing layers, transform tiling produces rendered copies; painting still edits the primary
+tile. Brush repetition is a separate feature.
+
+</details>
+
+<a id="effects"></a>
+## Outline, SDF & blending
+
+**Outline and SDF** can target the item directly below them in the same group, or a specific
+layer/group. Group inputs combine the alpha of visible descendants into a mask without isolating
+their color blending. Self-references and cyclic effect dependencies are rejected.
+
+Distance metrics: **exact Euclidean EDT**, approximate Euclidean (8-neighbour chamfer),
+Manhattan, and Chebyshev. Width, softness, and maximum distance use output pixels.
+Processing uses Burst and Native Collections, with parallel exact-EDT passes and direct output
+buffer writes.
+
+**Blend modes** use source-over alpha: the RGB blend function affects overlapping
+regions; non-overlapping regions retain the color and alpha of the layer present there.
+
+<details>
+<summary>All blend modes & modifiers</summary>
+
+Normal · Add · Subtract · Multiply · Divide · Screen · Overlay · Darken · Lighten ·
+Color Dodge · Color Burn · Linear Dodge (Add) · Linear Burn · Linear Light ·
+Linear Light Add/Sub · Vivid Light · Pin Light · Hard Mix · Hard Light · Soft Light ·
+Difference · Exclusion · Negation.
+
+- **None** leaves the composite unchanged.
+- **Overwrite** replaces complete RGBA pixels; layer opacity interpolates between the old and new pixels.
+- **FX modifiers** are materials applied in list order after a layer's transform.
+
+Existing serialized values for Normal, Multiply, and Overwrite are preserved for older documents.
+
+</details>
+
+<a id="export"></a>
 ## Export formats
 
-**Export**, immediately to the right of **Save As**, saves the full-resolution flattened result:
+| Format | Alpha / behavior |
+| :--- | :--- |
+| **PNG** | Transparency preserved. |
+| **TGA** | Transparency preserved. |
+| **JPEG** | White background, quality 95. |
+| **EXR** | Linear RGB + alpha, half-float output with ZIP compression. |
+| **Texture2D (.asset)** | Readable native Unity texture, separate from the editable document. |
 
-- **PNG** and **TGA** preserve transparency.
-- **JPEG** uses quality 95 and flattens transparency onto white.
-- **OpenEXR** saves linear RGB and alpha as 16-bit floating point with ZIP compression.
-  The compositor currently renders in 8-bit RGBA: EXR does not add HDR range or recover lost precision.
-- **Unity Texture2D (.asset)** saves a readable native texture inside `Assets`, not a layer document.
-  Replacing an existing standalone Texture2D requires confirmation and preserves its references.
-  Other asset types and files with sub-assets are protected from replacement.
+PNG/JPEG/TGA exported under `Assets` are imported as single Sprite assets; EXR as a linear texture.
+Replacing an existing standalone Texture2D requires confirmation and preserves its references.
+Other asset types and sub-assets are protected.
 
-PNG/JPEG/TGA exported inside `Assets` are imported as single Sprite assets. EXR is imported as a
-linear texture. **Save** and **Save As** store the editable composition with all its layers.
+> [!NOTE]
+> The compositor renders in 8-bit RGBA. EXR export does not add HDR range or recover lost precision.
 
-## Preview transform tool
+<a id="shortcuts"></a>
+## Shortcuts
 
-Select a non-group layer and enable **Transform** in the Preview header (shortcut **T**).
-Drag inside the frame to move, drag its eight handles to resize, or drag the round handle
-to rotate around the layer pivot. Drag the **gold cross** to reposition the pivot; Position is
-compensated so the image and frame stay in place. The pivot may be placed outside the frame.
-Within 10 UI pixels it snaps to the nearest corner, edge midpoint, or center (nine anchors).
-Hold **Ctrl** to disable pivot snapping; pressing/releasing Ctrl updates it without moving the mouse.
-Its handle is disabled for zero/near-zero scale on either axis. **Shift** constrains movement to an axis, preserves resize
-proportions, or snaps rotation to 15°. **Escape** cancels the current drag; **T** or **Enter**
-exits the tool. Each drag is one Undo action. Drawing is suspended while this tool is active.
-The frame represents the layer's full source canvas, including transparent pixels, and edits
-the same Position, Scale, and Rotation values as the layer settings. Groups remain pass-through
-containers without a transform.
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+S` | Save, or Save As for a new document. |
+| `Ctrl+Z` | Undo. |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | Redo. |
+| `[` / `]` | Decrease / increase brush size. |
+| `X` | Swap foreground and background colors. |
+| `RMB` | Temporary eraser. |
+| `Shift`-drag / `Shift`-click | Axis-aligned stroke / line from the previous endpoint. |
+| `T` | Toggle Preview Transform. |
+| `Enter` / `Escape` | Exit Transform / cancel the current transform drag. |
+| `Ctrl` during pivot drag | Disable snapping. |
 
-**Tiling** in the Transform settings (also shown below the Preview header while Transform is
-active) controls both axes: **Clip** leaves pixels outside the frame transparent, **Repeat**
-tiles the source canvas, and **Mirror** alternates reflected tiles. Clip is the default, including
-for existing documents. The mode is saved per layer, supports Undo, and applies to Preview and
-export without changing the source texture's import settings. For Drawing layers these are
-rendered copies; painting still edits the source inside the primary tile, independently of brush repeat.
+On macOS, `Cmd` also works for saving, selection, and Undo/Redo.
 
-## Layer stack
+Unity Shortcut Manager commands are suspended **only while this window has focus**, so they do
+not consume drawing keys. Text/numeric fields keep normal input. Unity shortcuts are restored
+when the window loses focus or closes.
 
-Click a row to select one layer; **Ctrl-click** (**Cmd-click** on macOS) toggles individual
-layers, and **Shift-click** selects a range of visible rows. Ctrl/Cmd+Shift adds a range.
-The last selected layer is active (brighter highlight): its inspector, drawing controls,
-and Preview Transform remain single-layer tools. Removing it from the selection activates
-the most recently selected remaining layer.
-The footer's **Group** and **Delete** actions affect the full selection. Drag a selected layer's
-handle to move the selection together, preserving tree order; selected groups carry their
-children only once. Per-row context menus and inline fields still operate on that row.
-Drop the dragged selection onto the footer's folder or trash icon to group or delete it.
-Valid targets highlight blue; each drop can be undone in one step.
+<a id="community"></a>
+## Community & license
 
-Use a layer's **… > Convert to Drawing** menu to rasterize it, including an existing Drawing:
+Questions, ideas, or something unexpected? Join **[Discord · RU / EN](https://discord.gg/kqmJjExuCf)**.
+For reproducible bugs, open a [GitHub issue](https://github.com/DCFApixels/Unity-SpriteEditor/issues)
+with your Unity version and reproduction steps.
 
-- **Keep Transform** captures the source pixels and keeps Pivot, Position, Scale, Rotation, and
-  Tiling editable. The transform is not included in the captured pixels.
-- **Apply Transform** captures the transformed pixels at the full document resolution, including
-  Repeat/Mirror tiling, then resets the entire Transform to its default (including Clip).
-  Content outside the document canvas is cropped when applying the transform.
-
-The replacement keeps its name, ID, stack position, visibility, opacity, blend mode, and FX.
-FX stay live after the transform instead of being applied twice. Drawing brush/symmetry/repeat
-settings are retained when converting an existing Drawing. Outline/SDF sources are resolved
-using their current previous/specific target, but the resulting Drawing is a static snapshot.
-Undo/Redo covers the replacement and its pixel textures, including temporary compositions.
-
-Groups are merged in color against transparency, including their visible descendants and
-their transforms/FX. The replacement uses Normal blending, opacity 1, and an identity Transform;
-groups have no active transform, so their two conversion modes produce the same result.
-A confirmation warns that pass-through interactions with external layers can change and
-effects targeting removed descendants lose their targets. References to the converted layer's
-own ID are retained.
-
-The list is displayed from top to bottom, like Photoshop. Rendering walks the list from the
-bottom layer to the top layer. Supported layers:
-
-- File
-- Drawing
-- Color Fill
-- Gradient
-- Outline
-- SDF
-- Group
-
-Groups are non-isolated structural containers. Their child layers are blended into the parent
-stack as if the group did not introduce an intermediate color surface. Nested groups are
-supported. Group opacity, blend mode, transforms, and modifiers are intentionally reserved for
-a later isolated-group implementation.
-
-Use the row context menu to reorder layers, move a layer into the group above it, move it out of
-a group, ungroup it, or add children directly to a group. Layers can also be dragged by their
-handle: insertion lines reorder or move them between hierarchy levels, while dropping on the
-highlighted center of a group moves the layer inside it.
-
-New layers receive document-local sequential names (`Layer 1`, `Layer 2`, and so on).
-Groups use a separate sequence (`Group 1`, `Group 2`, and so on). Both counters are serialized
-with the compositor and do not reuse numbers after deletion. Existing names are preserved;
-number detection includes nested groups and layers.
-
-## Drawing on the Preview
-
-Select a Drawing layer and paint directly on the left Preview. The brush writes only to the
-selected layer while the displayed result still respects the complete layer order, groups,
-opacity, blend modes, modifiers, and effects. LMB uses the selected Brush/Eraser tool; RMB temporarily
-erases without changing that selection. The foreground and background color swatches can both be
-edited, and `X` swaps them. Use `[` and `]` to decrease or increase brush size.
-Hold Shift during a stroke to lock it horizontally or vertically, chosen by the first movement
-and held until Shift is released. The axes follow the canvas, including on transformed layers.
-Shift-click connects the last painted endpoint to the clicked point; repeated Shift-clicks draw
-connected straight segments. To start an independent axis-aligned line, click its start without
-Shift, then hold Shift while dragging. These modes also work with the eraser, brush spacing,
-mirroring, and repetition. Clip still limits a connection to the repeat shape containing its
-starting endpoint. Undo/Redo, clearing that layer, and changing documents reset the connection anchor;
-connections never carry over from another drawing layer or a different canvas size.
-`Step` controls the distance between consecutive brush stamps as a percentage of brush diameter:
-lower values produce a smoother stroke, while higher values are faster and can produce dotted lines.
-
-While the Sprite Editor window has focus, Unity's global and contextual Shortcut Manager commands
-are suspended so they cannot consume drawing hotkeys. Text and numeric fields continue to receive
-normal keyboard input. `Ctrl/Cmd+Z` remains available for Undo; use `Ctrl+Y` or
-`Ctrl/Cmd+Shift+Z` for Redo. Unity shortcuts are restored as soon as the window loses focus or closes.
-
-`Live Quality` controls the temporary Preview resolution used while a stroke is active, from 12.5%
-to 100%. The default is 37.5%; selecting 100% disables downscaling. This is an editor preference and
-does not alter the saved composition or exported texture.
-
-The Preview header exposes brush color, size, hardness, Brush/Eraser mode, and a normalized pattern
-center. `Mirror X` reflects across the vertical axis through that center; `Mirror Y` reflects across
-the horizontal axis. Both can be enabled together.
-
-Live repetition modes include Horizontal, Vertical, Grid, and Radial. The copy count is adjustable,
-including independent X/Y counts for Grid. `Copy` repeats the stroke directly, while
-`Alternate Mirror` reflects every second cell or sector. `Continue` allows brush dabs to cross a
-cell/sector boundary; `Clip` confines the complete drag stroke to the cell or radial sector where it
-started. Drawing from any repeated or alternately mirrored cell/sector keeps the active copy directly
-under the cursor.
-
-Saved Drawing layers keep their pixel texture as a sub-asset of the `TextureCompositor`, so a
-composition remains self-contained.
-
-## Outline and SDF
-
-Outline and SDF can consume either the item directly below them in the same container or a
-specific layer/group selected by stable ID. If the input is a group, SpriteEditor builds one
-mask by combining the alpha channels of all visible descendant layers. The group's color is not
-composited separately. Self-references and cyclic effect dependencies are rejected.
-
-Distance algorithms include exact Euclidean EDT, approximate Euclidean (8-neighbour chamfer),
-Manhattan, and Chebyshev. Outline width, outline softness, SDF maximum distance, and transform
-position are expressed in output pixels. Pivot is normalized, scale is a multiplier, and
-rotation is expressed in degrees.
-
-Distance transforms use Burst and Native Collections. Exact Euclidean rows and columns run in
-parallel, while SDF and Outline output is written directly into the destination texture buffer to
-avoid managed pixel arrays and redundant copies.
-
-## Blend modes
-
-- Photoshop-style modes use source-over alpha composition. The blend function affects RGB only
-  where source and backdrop alpha overlap; non-overlapping pixels preserve the color and alpha of
-  the layer that is present.
-- Supported modes: Normal, Add, Subtract, Multiply, Divide, Screen, Overlay, Darken, Lighten,
-  Color Dodge, Color Burn, Linear Dodge (Add), Linear Burn, Linear Light, Linear Light Add/Sub,
-  Vivid Light, Pin Light, Hard Mix, Hard Light, Soft Light, Difference, Exclusion, and Negation.
-- None leaves the existing composite unchanged.
-- Overwrite: replaces the complete RGBA pixel; layer opacity interpolates between the backdrop
-  and replacement pixel.
-
-For direct Photoshop comparisons, use an sRGB document with **Blend RGB Colors Using Gamma**
-disabled. Other Photoshop document profiles or gamma-blending settings intentionally produce
-different RGB values, although alpha composition remains the same.
-
-Normal, Multiply, and Overwrite retain their existing serialized values, so compositions created
-with earlier package versions keep the same modes after upgrading.
-
-Layer modifiers are materials applied in list order after that layer's transform.
-
-## UI maintenance
-
-Create controls when their document or layer is bound. Register model readers in
-`SpriteEditorUI.ValueBindings` and update through `Refresh`, which uses
-`SetValueWithoutNotify` only when values differ. An active field owns its unfinished input;
-normal model refreshes reconcile it after focus/capture release. Explicit Undo/Redo can force
-model values into the existing controls. Bind every new editable field, including fields whose
-values can change through hotkeys or another window.
-
-Value callbacks must not clear or recreate parent containers. Toggle conditional controls with
-visibility/enabled state. `RefreshToolkitLayerHierarchy` compares the visible tree's layer and
-container references, order, and depth before rebuilding rows; selection only updates their
-presentation. Layer-setting windows rebuild when their bound layer instance changes, including
-managed-reference replacement during Undo. Modifier list refreshes compare the list and contents.
-Keep external model notifications coalesced and pending until processed rather than dropping
-notifications during input. None of these UI refresh paths should emit model-change events.
-
-After changing these paths, check in Unity: type multi-digit W/H and fractional Step values;
-scrub Step and both components of Center/Transform; edit an unselected layer's name/opacity;
-switch Repeat/Gradient/Input modes; change a layer in another window while an input is focused;
-then exercise Undo/Redo, group collapse/reordering, and cancelled drag-and-drop. Verify that
-focus, caret, pointer capture, and scroll survive ordinary value updates.
+Distributed under the **[MIT License](LICENSE.md)**.
