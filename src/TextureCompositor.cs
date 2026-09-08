@@ -69,6 +69,35 @@ namespace DCFApixels.SpriteEditor
             return FindLayerRecursive(layers, id);
         }
 
+        internal Texture2D RasterizeLayer(Layer layer, bool applyTransform)
+        {
+            if (layer == null || !TryFindLayer(layer, out List<Layer> container, out int index))
+                throw new InvalidOperationException("The layer no longer belongs to this composition.");
+
+            RenderTexture rendered = null;
+            try
+            {
+                if (layer is GroupLayer group)
+                {
+                    rendered = GetClearRenderTexture(width, height);
+                    CompositeLayers(group.layers, ref rendered, width, height, 1f, new HashSet<Layer>());
+                }
+                else
+                {
+                    rendered = RenderStandalone(container, index, width, height, 1f, new HashSet<Layer>(),
+                        applyTransform: applyTransform, applyModifiers: false, includeDisabled: true);
+                    if (rendered == null)
+                        rendered = GetClearRenderTexture(width, height);
+                }
+                return CopyToTexture2D(rendered);
+            }
+            finally
+            {
+                if (rendered != null)
+                    RenderTexture.ReleaseTemporary(rendered);
+            }
+        }
+
         internal bool TryFindLayer(Layer target, out List<Layer> container, out int index)
         {
             return TryFindLayerRecursive(layers, target, out container, out index);
@@ -184,14 +213,14 @@ namespace DCFApixels.SpriteEditor
             VisitDrawingLayers(layers, drawing => drawing.InvalidatePaintSurface());
         }
 
-        internal void DestroyLayerAssets(Layer layer)
+        internal void DestroyLayerAssets(Layer layer, bool undoTransient = false)
         {
             if (layer is DrawingLayer drawing)
-                drawing.DestroyStoredTextureWithUndo();
+                drawing.DestroyStoredTextureWithUndo(undoTransient);
             if (!(layer is GroupLayer group) || group.layers == null)
                 return;
             for (int i = 0; i < group.layers.Count; i++)
-                DestroyLayerAssets(group.layers[i]);
+                DestroyLayerAssets(group.layers[i], undoTransient);
         }
 
         internal static Texture2D CopyToTexture2D(RenderTexture source)
@@ -308,13 +337,16 @@ namespace DCFApixels.SpriteEditor
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
-            HashSet<Layer> renderStack)
+            HashSet<Layer> renderStack,
+            bool applyTransform = true,
+            bool applyModifiers = true,
+            bool includeDisabled = false)
         {
             if (container == null || index < 0 || index >= container.Count)
                 return null;
 
             Layer layer = container[index];
-            if (layer == null || !layer.enabled)
+            if (layer == null || (!includeDisabled && !layer.enabled))
                 return null;
             if (layer is GroupLayer group)
                 return RenderGroupAlpha(group, outputWidth, outputHeight, scaleMultiplier, renderStack);
@@ -343,7 +375,9 @@ namespace DCFApixels.SpriteEditor
                     input,
                     outputWidth,
                     outputHeight,
-                    scaleMultiplier);
+                    scaleMultiplier,
+                    applyTransform,
+                    applyModifiers);
                 return layer.Render(context);
             }
             finally

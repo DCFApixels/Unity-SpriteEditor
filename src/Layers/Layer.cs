@@ -11,19 +11,25 @@ namespace DCFApixels.SpriteEditor
         public readonly int width;
         public readonly int height;
         public readonly float scaleMultiplier;
+        public readonly bool applyTransform;
+        public readonly bool applyModifiers;
 
         public LayerRenderContext(
             TextureCompositor compositor,
             RenderTexture input,
             int width,
             int height,
-            float scaleMultiplier)
+            float scaleMultiplier,
+            bool applyTransform = true,
+            bool applyModifiers = true)
         {
             this.compositor = compositor;
             this.input = input;
             this.width = width;
             this.height = height;
             this.scaleMultiplier = Mathf.Max(0.0001f, scaleMultiplier);
+            this.applyTransform = applyTransform;
+            this.applyModifiers = applyModifiers;
         }
     }
 
@@ -53,6 +59,16 @@ namespace DCFApixels.SpriteEditor
 
         internal abstract RenderTexture Render(in LayerRenderContext context);
 
+        internal void CopyRasterizedIdentityFrom(Layer source)
+        {
+            id = source.id;
+            layerName = source.layerName;
+            enabled = source.enabled;
+            opacity = source.opacity;
+            blendMode = source.blendMode;
+            modifiers = source.modifiers == null ? new List<Material>() : new List<Material>(source.modifiers);
+        }
+
         public virtual Texture2D GetPreviewTexture(int size)
         {
             return null;
@@ -79,7 +95,7 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 Material transformMaterial = SpriteEditorMaterials.Transform;
-                if (transform.IsIdentity() || transformMaterial == null)
+                if (!context.applyTransform || transform.IsIdentity() || transformMaterial == null)
                 {
                     Graphics.Blit(source, current);
                 }
@@ -95,7 +111,7 @@ namespace DCFApixels.SpriteEditor
                     Graphics.Blit(source, current, transformMaterial);
                 }
 
-                if (modifiers == null)
+                if (!context.applyModifiers || modifiers == null)
                     return current;
 
                 for (int i = 0; i < modifiers.Count; i++)

@@ -54,6 +54,27 @@ rendered copies; painting still edits the source inside the primary tile, indepe
 
 ## Layer stack
 
+Use a layer's **… > Convert to Drawing** menu to rasterize it, including an existing Drawing:
+
+- **Keep Transform** captures the source pixels and keeps Pivot, Position, Scale, Rotation, and
+  Tiling editable. The transform is not included in the captured pixels.
+- **Apply Transform** captures the transformed pixels at the full document resolution, including
+  Repeat/Mirror tiling, then resets the entire Transform to its default (including Clip).
+  Content outside the document canvas is cropped when applying the transform.
+
+The replacement keeps its name, ID, stack position, visibility, opacity, blend mode, and FX.
+FX stay live after the transform instead of being applied twice. Drawing brush/symmetry/repeat
+settings are retained when converting an existing Drawing. Outline/SDF sources are resolved
+using their current previous/specific target, but the resulting Drawing is a static snapshot.
+Undo/Redo covers the replacement and its pixel textures, including temporary compositions.
+
+Groups are merged in color against transparency, including their visible descendants and
+their transforms/FX. The replacement uses Normal blending, opacity 1, and an identity Transform;
+groups have no active transform, so their two conversion modes produce the same result.
+A confirmation warns that pass-through interactions with external layers can change and
+effects targeting removed descendants lose their targets. References to the converted layer's
+own ID are retained.
+
 The list is displayed from top to bottom, like Photoshop. Rendering walks the list from the
 bottom layer to the top layer. Supported layers:
 

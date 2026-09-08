@@ -587,8 +587,71 @@ namespace DCFApixels.SpriteEditor
             }
 
             menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Convert to Drawing/Keep Transform"), false,
+                () => ConvertLayerToDrawing(layer, false));
+            menu.AddItem(new GUIContent("Convert to Drawing/Apply Transform"), false,
+                () => ConvertLayerToDrawing(layer, true));
+            menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
             menu.ShowAsContext();
+        }
+
+        private void ConvertLayerToDrawing(Layer layer, bool applyTransform)
+        {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            if (compositor == null || !compositor.TryFindLayer(layer, out List<Layer> container, out int index))
+                return;
+            if (layer is GroupLayer && !EditorUtility.DisplayDialog(
+                "Convert Group to Drawing",
+                "The group's visible children will be merged against transparency into one Drawing layer. " +
+                "Pass-through blending with layers outside the group may change. Effects targeting individual " +
+                "children will lose those targets. Groups have no active Transform, so both conversion modes " +
+                "produce an identity Transform. You can undo the entire conversion.",
+                "Convert", "Cancel"))
+                return;
+
+            Texture2D texture = null;
+            int undoGroup = -1;
+            bool registeredTexture = false;
+            try
+            {
+                texture = compositor.RasterizeLayer(layer, applyTransform);
+                DrawingLayer replacement = DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform);
+                string undoName = applyTransform ? "Convert to Drawing (Apply Transform)" : "Convert to Drawing (Keep Transform)";
+                Undo.IncrementCurrentGroup();
+                undoGroup = Undo.GetCurrentGroup();
+                Undo.SetCurrentGroupName(undoName);
+                Undo.RegisterCompleteObjectUndo(compositor, undoName);
+                replacement.MakeTexturePersistent(compositor);
+                Undo.RegisterCreatedObjectUndo(texture, undoName);
+                registeredTexture = true;
+                container[index] = replacement;
+                compositor.DestroyLayerAssets(layer, undoTransient: true);
+                layer.ReleaseTransientResources();
+                selectedLayerId = replacement.Id;
+                lineAnchorLayer = null;
+                applyingToolkitChange = true;
+                CommitModelChange();
+                Undo.FlushUndoRecordObjects();
+                Undo.CollapseUndoOperations(undoGroup);
+                Undo.IncrementCurrentGroup();
+            }
+            catch (Exception exception)
+            {
+                if (undoGroup >= 0)
+                    Undo.RevertAllDownToGroup(undoGroup);
+                if (!registeredTexture && texture != null)
+                    DestroyImmediate(texture, true);
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Cannot Convert Layer", exception.Message, "OK");
+            }
+            finally
+            {
+                applyingToolkitChange = false;
+                RequestPreview(true);
+                RefreshToolkitInterface(forceValues: true);
+            }
         }
 
         private void MoveLayer(List<Layer> container, Layer layer, int direction)

@@ -6,6 +6,11 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Added
 
+- Convert any layer to Drawing through its context menu: keep the editable Transform or bake
+  it (including tiling) into full-resolution pixels and reset it. Preserve layer identity,
+  blend/opacity/FX, and existing Drawing brush settings; group conversion warns about isolation
+  and descendant targets. Record texture creation/deletion with the replacement for Undo/Redo.
+
 - Per-layer Transform tiling: Clip (default), Repeat, and Mirror, with retained controls in
   the layer settings and Preview Transform toolbar. Shared by Preview and export.
 

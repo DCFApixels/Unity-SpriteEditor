@@ -43,6 +43,25 @@ namespace DCFApixels.SpriteEditor
 
         internal Texture2D StoredTexture => pixels;
 
+        internal static DrawingLayer FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform)
+        {
+            DrawingLayer result = source is DrawingLayer drawing
+                ? JsonUtility.FromJson<DrawingLayer>(JsonUtility.ToJson(drawing))
+                : new DrawingLayer();
+            result.CopyRasterizedIdentityFrom(source);
+            result.transform = applyTransform ? TextureTransform.Default : source.transform;
+            if (source.IsGroup)
+            {
+                result.transform = TextureTransform.Default;
+                result.opacity = 1f;
+                result.blendMode = BlendMode.Normal;
+                result.modifiers.Clear();
+            }
+            result.pixels = texture;
+            texture.name = result.GetTextureName();
+            return result;
+        }
+
         public override Texture2D GetPreviewTexture(int size)
         {
             return pixels;
@@ -351,13 +370,13 @@ namespace DCFApixels.SpriteEditor
             return true;
         }
 
-        internal void DestroyStoredTextureWithUndo()
+        internal void DestroyStoredTextureWithUndo(bool undoTransient = false)
         {
             ReleasePaintSurface();
             if (pixels == null)
                 return;
 
-            if (AssetDatabase.Contains(pixels))
+            if (undoTransient || AssetDatabase.Contains(pixels))
                 Undo.DestroyObjectImmediate(pixels);
             else
                 UnityEngine.Object.DestroyImmediate(pixels);
