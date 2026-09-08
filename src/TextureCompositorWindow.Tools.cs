@@ -7,13 +7,14 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        private enum PreviewTool { None, Brush, Transform, Fill }
+        private enum PreviewTool { None, Brush, Transform, Fill, Zoom }
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.Brush;
         [NonSerialized] private Button previewNoneButton;
         [NonSerialized] private Button previewBrushButton;
         [NonSerialized] private Button previewTransformButton;
         [NonSerialized] private Button previewFillButton;
+        [NonSerialized] private Button previewZoomButton;
 
         private bool IsPreviewBrushEnabled => previewTool == PreviewTool.Brush && GetSelectedLayer() is DrawingLayer;
         private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer;
@@ -38,6 +39,9 @@ namespace DCFApixels.SpriteEditor
             toolbar.Add(previewTransformButton);
             toolbar.Add(previewBrushButton);
             toolbar.Add(previewFillButton);
+            previewZoomButton = CreatePreviewToolButton("zoomTool", PreviewTool.Zoom,
+                "Zoom (Z). Click to zoom in, drag a rectangle to frame an area, or Alt-click to zoom out. MMB-drag pans the preview.");
+            toolbar.Add(previewZoomButton);
             return toolbar;
         }
 
@@ -52,6 +56,8 @@ namespace DCFApixels.SpriteEditor
         private void RefreshPreviewToolToolbar()
         {
             Layer selected = GetSelectedLayer();
+            previewZoomButton?.SetEnabled(compositor != null);
+            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Zoom);
             previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.None);
             if (previewBrushButton != null)
             {
@@ -98,6 +104,8 @@ namespace DCFApixels.SpriteEditor
                     DrawHand(painter);
                 else if (tool == PreviewTool.Fill)
                     DrawBucket(painter);
+                else if (tool == PreviewTool.Zoom)
+                    DrawMagnifier(painter);
                 else
                     DrawBrush(painter);
             }
@@ -105,6 +113,19 @@ namespace DCFApixels.SpriteEditor
             private Vector2 P(float x, float y) => new Vector2(
                 contentRect.x + x * contentRect.width / 24f,
                 contentRect.y + y * contentRect.height / 24f);
+
+            private void DrawMagnifier(Painter2D painter)
+            {
+                painter.BeginPath();
+                painter.Arc(P(9.5f, 9.5f), contentRect.width * 6.5f / 24f, 0f, 360f);
+                painter.ClosePath();
+                painter.Stroke();
+                painter.lineWidth = 3f;
+                painter.BeginPath();
+                painter.MoveTo(P(14.5f, 14.5f));
+                painter.LineTo(P(21f, 21f));
+                painter.Stroke();
+            }
 
             private void DrawBucket(Painter2D painter)
             {

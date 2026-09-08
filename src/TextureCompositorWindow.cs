@@ -124,6 +124,8 @@ namespace DCFApixels.SpriteEditor
 
         private void ResetEditorWindowSettings()
         {
+            CancelPreviewZoomGesture();
+            previewViewport.Reset();
             ClearLayerDragData();
             ClearToolkitDropIndicator();
             settingsPaneWidth = DefaultSettingsPaneWidth;
@@ -188,6 +190,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            CancelPreviewZoomGesture();
             FinishPreviewTransform();
             RestoreUnityShortcuts();
             FinishPaintingStroke();
@@ -204,6 +207,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            CancelPreviewZoomGesture();
             ResetOpacityEntry();
             FinishPreviewTransform();
             RestoreUnityShortcuts();
@@ -946,6 +950,8 @@ namespace DCFApixels.SpriteEditor
             if (next == null || next == compositor)
                 return;
 
+            CancelPreviewZoomGesture();
+            previewViewport.Reset();
             FinishPreviewTransform();
             FinishPaintingStroke();
             ClearLayerDragData();

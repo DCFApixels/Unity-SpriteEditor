@@ -104,6 +104,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             if ((tool == PreviewTool.Brush || tool == PreviewTool.Fill) && !(GetSelectedLayer() is DrawingLayer))
                 return;
+            CancelPreviewZoomGesture();
             FinishPreviewTransform();
             FinishPaintingStroke();
             previewTool = tool;
@@ -122,6 +123,10 @@ namespace DCFApixels.SpriteEditor
                 SetPreviewTool(PreviewTool.Brush);
             else if (evt.keyCode == KeyCode.G && GetSelectedLayer() is DrawingLayer)
                 SetPreviewTool(PreviewTool.Fill);
+            else if (evt.keyCode == KeyCode.Z)
+                SetPreviewTool(PreviewTool.Zoom);
+            else if (IsPreviewZoomEnabled && evt.keyCode == KeyCode.Escape)
+                CancelPreviewZoomGesture();
             else if (evt.keyCode == KeyCode.V)
                 SetPreviewTool(PreviewTool.None);
             else if (IsPreviewTransformEnabled && evt.keyCode == KeyCode.Escape)

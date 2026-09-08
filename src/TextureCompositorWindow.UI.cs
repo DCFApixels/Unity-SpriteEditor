@@ -65,6 +65,7 @@ namespace DCFApixels.SpriteEditor
 
         public void CreateGUI()
         {
+            CancelPreviewZoomGesture();
             FinishPreviewTransform();
             if (compositor == null)
                 SetCompositor(CreateTemporaryCompositor());
@@ -206,13 +207,14 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewError = SpriteEditorUI.AddHelpBox(toolkitPreviewErrorRoot, string.Empty, HelpBoxMessageType.Error);
             toolkitPreviewError.style.display = DisplayStyle.None;
 
-            toolkitPreviewCanvas = new SpritePreviewElement();
+            toolkitPreviewCanvas = new SpritePreviewElement(previewViewport);
             toolkitPreviewCanvas.AddManipulator(new ProjectTextureDropManipulator(this, prependToRoot: true));
             toolkitPreviewCanvas.style.flexGrow = 1f;
             toolkitPreviewCanvas.style.marginLeft = PanePadding;
             toolkitPreviewCanvas.style.marginRight = PanePadding;
             toolkitPreviewCanvas.style.marginTop = PanePadding;
             toolkitPreviewCanvas.style.marginBottom = PanePadding;
+            BuildPreviewZoomTool();
             BuildPreviewTransformTool();
             toolkitPreviewCanvas.RegisterCallback<PointerDownEvent>(OnPreviewPointerDown);
             toolkitPreviewCanvas.RegisterCallback<PointerMoveEvent>(OnPreviewPointerMove);
@@ -1018,6 +1020,7 @@ namespace DCFApixels.SpriteEditor
 
             toolkitHeaderBuilt = true;
             toolkitHeaderLayer = layer;
+            CancelPreviewZoomGesture();
             toolkitHeaderBindings.Clear();
             toolkitPreviewHeader.Clear();
             BuildToolkitPreviewHeader(layer);
@@ -1031,6 +1034,7 @@ namespace DCFApixels.SpriteEditor
                 toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Clear", () => ClearDrawingLayer(layer), 46f));
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();
+            AddPreviewZoomSettings();
 
             if (layer == null)
                 return;
@@ -1155,6 +1159,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • gold cross pivot • Shift constrain • Esc cancel • T exit";
                 }
+                else if (IsPreviewZoomEnabled)
+                {
+                    toolkitPreviewFooter.text = "Click zoom in • Alt-click zoom out • Area drag to frame • MMB pan • Esc cancel";
+                }
                 else if (IsPreviewFillEnabled)
                 {
                     toolkitPreviewFooter.text = "LMB fill • G fill tool • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
@@ -1245,7 +1253,7 @@ namespace DCFApixels.SpriteEditor
             paintingPointerMoved |= evt.deltaPosition.sqrMagnitude > 0f;
             UpdatePreviewCursor(paintPosition, evt.altKey);
 
-            if (TryMapPreviewToLayerUv(
+            if (toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) && TryMapPreviewToLayerUv(
                     paintPosition,
                     toolkitPreviewCanvas.ImageRect,
                     paintingLayer,
@@ -1333,7 +1341,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
-            if (paintingPointerMoved &&
+            if (paintingPointerMoved && toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) &&
                 TryMapPreviewToLayerUv(paintPosition, toolkitPreviewCanvas.ImageRect, paintingLayer, out Vector2 endUv))
                 PaintTowardsLayerPoint(endUv);
 
@@ -1360,6 +1368,7 @@ namespace DCFApixels.SpriteEditor
             bool visible = IsPreviewBrushEnabled && layer != null &&
                            !alt &&
                            toolkitPreviewCanvas != null &&
+                           toolkitPreviewCanvas.contentRect.Contains(localPosition) &&
                            toolkitPreviewCanvas.ImageRect.Contains(localPosition);
             toolkitPreviewCanvas?.SetCursor(
                 visible,
@@ -1474,6 +1483,7 @@ namespace DCFApixels.SpriteEditor
 
         private sealed class SpritePreviewElement : VisualElement
         {
+            private readonly PreviewViewport viewport;
             private readonly VisualElement checker;
             private readonly Image image;
             private readonly VisualElement overlay;
@@ -1487,9 +1497,13 @@ namespace DCFApixels.SpriteEditor
             private Vector2 cursorPosition;
 
             public Rect ImageRect { get; private set; }
+            public float PixelScale => ImageRect.width / Mathf.Max(1, documentWidth);
+            public event Action ViewChanged;
 
-            public SpritePreviewElement()
+            public SpritePreviewElement(PreviewViewport viewport)
             {
+                this.viewport = viewport;
+                AddToClassList("sprite-editor-preview-canvas");
                 focusable = true;
                 style.minHeight = 96f;
                 style.backgroundColor = EditorGUIUtility.isProSkin
@@ -1546,18 +1560,27 @@ namespace DCFApixels.SpriteEditor
                 overlay.MarkDirtyRepaint();
             }
 
-            private void UpdateImageLayout()
+            public void ZoomAt(Vector2 point, float scale)
             {
-                Rect available = contentRect;
-                float inset = transformMode ? 36f : 4f;
-                available.x += inset;
-                available.y += inset;
-                available.width = Mathf.Max(0f, available.width - inset * 2f);
-                available.height = Mathf.Max(0f, available.height - inset * 2f);
-                float aspect = texture != null && texture.height > 0
-                    ? (float)texture.width / texture.height
-                    : (float)documentWidth / documentHeight;
-                Rect nextRect = FitRect(available, aspect);
+                viewport.ZoomAt(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, point, scale);
+                UpdateImageLayout();
+            }
+
+            public void Frame(Rect region)
+            {
+                viewport.Frame(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, region);
+                UpdateImageLayout();
+            }
+
+            public void Pan(Vector2 delta)
+            {
+                viewport.Pan(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, delta);
+                UpdateImageLayout();
+            }
+
+            public void UpdateImageLayout()
+            {
+                Rect nextRect = viewport.ImageRect(contentRect, new Vector2(documentWidth, documentHeight), transformMode);
                 if (nextRect == ImageRect)
                     return;
                 ImageRect = nextRect;
@@ -1566,6 +1589,7 @@ namespace DCFApixels.SpriteEditor
                 PositionElement(overlay, ImageRect);
                 checker.MarkDirtyRepaint();
                 overlay.MarkDirtyRepaint();
+                ViewChanged?.Invoke();
             }
 
             private static void PositionElement(VisualElement element, Rect rect)
@@ -1590,11 +1614,13 @@ namespace DCFApixels.SpriteEditor
                     ? new Color(0.23f, 0.23f, 0.23f, 1f)
                     : new Color(0.70f, 0.70f, 0.70f, 1f);
                 Painter2D painter = context.painter2D;
-                int rows = Mathf.CeilToInt(rect.height / tileSize);
-                int columns = Mathf.CeilToInt(rect.width / tileSize);
-                for (int row = 0; row < rows; row++)
+                int firstRow = Mathf.Max(0, Mathf.FloorToInt((contentRect.yMin - ImageRect.y) / tileSize));
+                int firstColumn = Mathf.Max(0, Mathf.FloorToInt((contentRect.xMin - ImageRect.x) / tileSize));
+                int rows = Mathf.CeilToInt(Mathf.Min(rect.height, contentRect.yMax - ImageRect.y) / tileSize);
+                int columns = Mathf.CeilToInt(Mathf.Min(rect.width, contentRect.xMax - ImageRect.x) / tileSize);
+                for (int row = firstRow; row < rows; row++)
                 {
-                    for (int column = 0; column < columns; column++)
+                    for (int column = firstColumn; column < columns; column++)
                     {
                         painter.fillColor = ((row + column) & 1) == 0 ? light : dark;
                         FillRect(
@@ -1683,23 +1709,6 @@ namespace DCFApixels.SpriteEditor
                     ? new Color(1f, 0.35f, 0.25f, 1f)
                     : new Color(1f, 1f, 1f, 0.95f);
                 StrokeCircle(painter, localCursor, radius);
-            }
-
-            private static Rect FitRect(Rect container, float aspect)
-            {
-                aspect = Mathf.Max(0.0001f, aspect);
-                float width = container.width;
-                float height = width / aspect;
-                if (height > container.height)
-                {
-                    height = container.height;
-                    width = height * aspect;
-                }
-                return new Rect(
-                    container.x + (container.width - width) * 0.5f,
-                    container.y + (container.height - height) * 0.5f,
-                    width,
-                    height);
             }
 
             private static void FillRect(Painter2D painter, float x, float y, float width, float height)

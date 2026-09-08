@@ -1,0 +1,69 @@
+using UnityEngine;
+
+namespace DCFApixels.SpriteEditor
+{
+    internal sealed class PreviewViewport
+    {
+        internal const float MinimumScale = 1f / 1024f;
+        internal const float MaximumScale = 64f;
+        private bool fit = true;
+        private float scale = 1f;
+        private Vector2 center = new Vector2(0.5f, 0.5f);
+
+        internal void Reset()
+        {
+            fit = true;
+            scale = 1f;
+            center = new Vector2(0.5f, 0.5f);
+        }
+
+        internal Rect ImageRect(Rect viewport, Vector2 dimensions, bool transforming)
+        {
+            if (!Valid(viewport, dimensions)) return Rect.zero;
+            float inset = transforming ? 36f : 4f;
+            float currentScale = fit
+                ? Mathf.Min(Mathf.Max(0f, viewport.width - inset * 2f) / dimensions.x,
+                    Mathf.Max(0f, viewport.height - inset * 2f) / dimensions.y)
+                : scale;
+            Vector2 size = dimensions * currentScale;
+            return new Rect(viewport.center - Vector2.Scale(center, size), size);
+        }
+
+        internal void ZoomAt(Rect viewport, Vector2 dimensions, Rect current, Vector2 anchor, float nextScale)
+        {
+            if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f ||
+                float.IsNaN(nextScale) || float.IsInfinity(nextScale)) return;
+            Vector2 uv = new Vector2((anchor.x - current.x) / current.width, (anchor.y - current.y) / current.height);
+            scale = Mathf.Clamp(nextScale, MinimumScale, MaximumScale);
+            Vector2 size = dimensions * scale;
+            center = uv + new Vector2((viewport.center.x - anchor.x) / size.x, (viewport.center.y - anchor.y) / size.y);
+            fit = false;
+        }
+
+        internal void Frame(Rect viewport, Vector2 dimensions, Rect current, Rect selection)
+        {
+            if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f ||
+                selection.width < 4f || selection.height < 4f) return;
+            center = new Vector2((selection.center.x - current.x) / current.width,
+                (selection.center.y - current.y) / current.height);
+            float ratio = Mathf.Min(Mathf.Max(1f, viewport.width - 8f) / selection.width,
+                Mathf.Max(1f, viewport.height - 8f) / selection.height);
+            scale = Mathf.Clamp(current.width / dimensions.x * ratio, MinimumScale, MaximumScale);
+            fit = false;
+        }
+
+        internal void Pan(Rect viewport, Vector2 dimensions, Rect current, Vector2 delta)
+        {
+            if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f) return;
+            ZoomAt(viewport, dimensions, current, viewport.center, current.width / dimensions.x);
+            center -= new Vector2(delta.x / (dimensions.x * scale), delta.y / (dimensions.y * scale));
+        }
+
+        private static bool Valid(Rect viewport, Vector2 dimensions) =>
+            viewport.width > 0f && viewport.height > 0f && dimensions.x > 0f && dimensions.y > 0f &&
+            !float.IsNaN(viewport.x) && !float.IsNaN(viewport.y) &&
+            !float.IsInfinity(viewport.width) && !float.IsInfinity(viewport.height) &&
+            !float.IsInfinity(viewport.x) && !float.IsInfinity(viewport.y) &&
+            !float.IsInfinity(dimensions.x) && !float.IsInfinity(dimensions.y);
+    }
+}

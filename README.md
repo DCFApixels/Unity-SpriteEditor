@@ -128,7 +128,7 @@ than recompositing layers. No layer rendering is needed at runtime to use the ba
 
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
 The narrow toolbar at the far left selects **No Tool** (cursor icon, `V`), **Transform** (hand icon, `T`),
-**Brush** (brush icon, `B`) or **Fill** (bucket icon, `G`). No Tool leaves the preview non-editing, without brush/pattern guides
+**Brush** (brush icon, `B`), **Fill** (bucket icon, `G`) or **Zoom** (magnifier icon, `Z`). No Tool leaves the preview non-editing, without brush/pattern guides
 or transform handles, and remains active when switching layers.
 Eraser remains a Brush mode in the header; `RMB` temporarily erases. Brush and Fill require a Drawing layer;
 Transform supports any non-group layer. The active tool is highlighted, and its options appear in the header.
@@ -140,6 +140,19 @@ active layer's name, or **Layer Settings** when nothing is selected; the lower h
 Settings follow the active layer. **Transform** starts collapsed; brush settings appear when
 a Drawing layer is active. Each **⋮ → Properties** invocation opens a separate window.
 **FX** lives in the same menu.
+
+### Preview zoom
+
+Choose **Zoom** (`Z`). Its header offers a scale readout, **Fit** and **100%**; clicks and drags work together without a mode switch.
+
+- **Click** doubles the scale around the clicked point; **Alt-click** halves it.
+- **Drag** a rectangle to frame that area, including empty space outside the image within the preview. Small pointer movements are treated as clicks.
+- **MMB-drag** pans while Zoom is active. **Escape** cancels the pending click or area selection.
+- **Fit** shows the whole canvas; **100%** uses one UI unit per source pixel.
+
+Zoom and pan affect only the view, not the layer transform, pixels, export or document Undo history.
+The view stays when switching tools/layers; opening another document or resetting window settings
+restores Fit. Image content and all guides are clipped to the preview viewport, away from its header/footer.
 
 The **window tab's ⋮ menu → Reset Sprite Editor Settings…** restores panel sizes, scrolling,
 selection, foldouts, preview tool state and Live Quality defaults after confirmation.
@@ -476,6 +489,7 @@ Other asset types and sub-assets are protected.
 | `T` | Toggle Preview Transform. |
 | `B` | Select the Brush tool, retaining its Brush/Eraser mode. |
 | `G` | Select Fill on a Drawing layer. |
+| `Z` | Select Zoom: click to zoom, drag to frame, Alt-click zoom-out and MMB-drag pan. |
 | `V` | Select No Tool: preview without painting or transform handles. |
 | `Enter` / `Escape` | Exit Transform / cancel the current transform drag. |
 | `Ctrl` during pivot drag | Disable snapping. |

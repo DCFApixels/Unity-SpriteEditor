@@ -4,6 +4,20 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-09-09
+
+### Added
+
+- Zoom tool (magnifier, Z) with anchored click steps, Alt-click zoom-out, area framing,
+  middle-button panning, scale readout, Fit and 100% controls. Keep view state separate from
+  document transforms and preserve it when switching tools/layers.
+- Opt-in viewport geometry regression checks in `Tests~/PreviewZoomSmoke.cs`.
+
+### Fixed
+
+- Clip preview images, repeat guides, transform handles and zoom selection to the canvas viewport.
+  Avoid painting outside that viewport during captured drags and only draw visible checkerboard cells.
+
 ## [0.5.7] - 2026-09-09
 
 ### Added
