@@ -76,6 +76,7 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsBindings.Clear();
             toolkitHeaderBindings.Clear();
             toolkitLayerBindings.Clear();
+            ResetToolkitLayerInspector();
             toolkitLayerTree.Clear();
             root.focusable = true;
             root.style.flexGrow = 1f;
@@ -84,11 +85,17 @@ namespace DCFApixels.SpriteEditor
             root.RegisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.RegisterCallback<DragExitedEvent>(OnToolkitDragExited);
 
+            toolkitDocumentRoot = new VisualElement();
+            toolkitDocumentRoot.style.flexShrink = 0f;
+            root.Add(toolkitDocumentRoot);
+
             TwoPaneSplitView split = new TwoPaneSplitView(
                 0,
                 Mathf.Max(PreviewPaneMinWidth, previewPaneWidth),
                 TwoPaneSplitViewOrientation.Horizontal);
+            SpriteEditorUI.StyleSplitView(split);
             split.style.flexGrow = 1f;
+            split.style.minHeight = 0f;
             root.Add(split);
 
             toolkitPreviewPane = BuildToolkitPreviewPane();
@@ -103,19 +110,41 @@ namespace DCFApixels.SpriteEditor
             VisualElement settingsPane = new VisualElement();
             settingsPane.style.minWidth = SettingsPaneMinWidth;
             settingsPane.style.flexGrow = 1f;
+            settingsPane.style.minHeight = 0f;
             settingsPane.style.backgroundColor = EditorGUIUtility.isProSkin
                 ? new Color(0.13f, 0.13f, 0.13f, 1f)
                 : new Color(0.76f, 0.76f, 0.76f, 1f);
             split.Add(settingsPane);
 
-            toolkitDocumentRoot = new VisualElement();
-            settingsPane.Add(toolkitDocumentRoot);
+            TwoPaneSplitView settingsSplit = new TwoPaneSplitView(
+                0, Mathf.Max(100f, layerSettingsPaneHeight), TwoPaneSplitViewOrientation.Vertical);
+            SpriteEditorUI.StyleSplitView(settingsSplit);
+            settingsSplit.name = "layer-settings-split";
+            settingsSplit.style.flexGrow = 1f;
+            settingsSplit.style.minHeight = 0f;
+            settingsPane.Add(settingsSplit);
+
+            toolkitLayerSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
+            toolkitLayerSettingsScroll.name = "selected-layer-settings";
+            toolkitLayerSettingsScroll.style.minHeight = 100f;
+            toolkitLayerSettingsScroll.style.paddingLeft = 8f;
+            toolkitLayerSettingsScroll.style.paddingRight = 8f;
+            toolkitLayerSettingsScroll.style.paddingBottom = 8f;
+            toolkitLayerSettingsScroll.RegisterCallback<GeometryChangedEvent>(evt =>
+            {
+                if (evt.newRect.height >= 100f)
+                    layerSettingsPaneHeight = evt.newRect.height;
+            });
+            settingsSplit.Add(toolkitLayerSettingsScroll);
+
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
+            toolkitSettingsScroll.name = "layer-list";
+            toolkitSettingsScroll.style.minHeight = 100f;
             toolkitSettingsScroll.style.flexGrow = 1f;
             toolkitSettingsScroll.style.paddingLeft = 8f;
             toolkitSettingsScroll.style.paddingRight = 8f;
             toolkitSettingsScroll.style.paddingBottom = 8f;
-            settingsPane.Add(toolkitSettingsScroll);
+            settingsSplit.Add(toolkitSettingsScroll);
 
             RefreshToolkitInterface();
         }
@@ -189,6 +218,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 toolkitSettingsBindings.Refresh(forceValues);
                 RefreshToolkitLayerHierarchy(forceValues);
+                RefreshToolkitLayerInspector(forceValues);
                 RefreshToolkitPreviewHeader(forceValues);
                 UpdateToolkitPreviewPresentation();
             }
@@ -240,6 +270,9 @@ namespace DCFApixels.SpriteEditor
             {
                 SaveAsAsset();
             }, 64f));
+            Button export = SpriteEditorUI.CreateToolbarButton("Export", ShowExportMenu, 64f);
+            export.tooltip = "Export the flattened texture as PNG, JPEG, TGA, EXR, or a Unity Texture2D asset.";
+            toolbar.Add(export);
             toolkitDocumentRoot.Add(toolbar);
 
             toolkitDocumentStatus = SpriteEditorUI.AddHelpBox(toolkitDocumentRoot, string.Empty, HelpBoxMessageType.Info);
@@ -307,11 +340,6 @@ namespace DCFApixels.SpriteEditor
             toolkitLayerHierarchyRoot = new VisualElement();
             toolkitLayerHierarchyRoot.style.flexShrink = 0f;
             toolkitSettingsScroll.Add(toolkitLayerHierarchyRoot);
-
-            Button export = SpriteEditorUI.CreateButton("Export PNG", ExportTexture);
-            export.style.marginTop = 10f;
-            export.style.height = 24f;
-            toolkitSettingsScroll.Add(export);
 
             toolkitSettingsScroll.scrollOffset = scrollPosition;
         }
@@ -1156,7 +1184,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (transforming)
                 {
-                    toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • Shift constrain • Esc cancel • T exit";
+                    toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • gold cross pivot • Shift constrain • Esc cancel • T exit";
                 }
                 else if (drawing != null)
                 {

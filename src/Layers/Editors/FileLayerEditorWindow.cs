@@ -19,21 +19,27 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            FileLayer layer = (FileLayer)source;
+            BuildFields(root, (FileLayer)source, ApplyLayerChange, SettingsBindings);
+        }
+
+        internal static void BuildFields(
+            VisualElement root, FileLayer layer,
+            Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
+        {
             SpriteEditorUI.AddTextureTransform(
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange,
-                SettingsBindings);
+                applyChange,
+                bindings);
 
             ObjectField texture = SpriteEditorUI.ConfigureField(new ObjectField("Source Texture")) as ObjectField;
             texture.objectType = typeof(Texture2D);
             texture.allowSceneObjects = false;
             texture.SetValueWithoutNotify(layer.sourceTexture);
-            SettingsBindings.Track(texture, () => (UnityEngine.Object)layer.sourceTexture);
+            bindings.Track(texture, () => (UnityEngine.Object)layer.sourceTexture);
             texture.RegisterValueChangedCallback(evt =>
-                ApplyLayerChange("Change Source Texture", () => layer.sourceTexture = evt.newValue as Texture2D));
+                applyChange("Change Source Texture", () => layer.sourceTexture = evt.newValue as Texture2D));
             root.Add(texture);
         }
     }
@@ -51,19 +57,25 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            ColorFillLayer layer = (ColorFillLayer)source;
+            BuildFields(root, (ColorFillLayer)source, ApplyLayerChange, SettingsBindings);
+        }
+
+        internal static void BuildFields(
+            VisualElement root, ColorFillLayer layer,
+            Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
+        {
             SpriteEditorUI.AddTextureTransform(
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange,
-                SettingsBindings);
+                applyChange,
+                bindings);
 
             ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
             color.SetValueWithoutNotify(layer.color);
-            SettingsBindings.Track(color, () => layer.color);
+            bindings.Track(color, () => layer.color);
             color.RegisterValueChangedCallback(evt =>
-                ApplyLayerChange("Change Fill Color", () => layer.color = evt.newValue));
+                applyChange("Change Fill Color", () => layer.color = evt.newValue));
             root.Add(color);
         }
     }

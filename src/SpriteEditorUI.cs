@@ -9,6 +9,57 @@ namespace DCFApixels.SpriteEditor
 {
     internal static class SpriteEditorUI
     {
+        private static StyleSheet splitViewStyles;
+
+        internal static void StyleSplitView(TwoPaneSplitView split)
+        {
+            if (splitViewStyles == null)
+                splitViewStyles = AssetDatabase.LoadAssetAtPath<StyleSheet>(
+                    AssetDatabase.GUIDToAssetPath("933b61aeef77442fb4567dbf6f21ce96"));
+            if (splitViewStyles == null)
+                return;
+
+            VisualElement anchor = split.Q<VisualElement>("unity-dragline-anchor");
+            VisualElement line = anchor?.Q<VisualElement>("unity-dragline");
+            if (line == null)
+                return;
+
+            split.styleSheets.Add(splitViewStyles);
+            bool columns = split.orientation == TwoPaneSplitViewOrientation.Horizontal;
+            anchor.RegisterCallback<GeometryChangedEvent>(evt =>
+            {
+                float thickness = columns ? evt.newRect.width : evt.newRect.height;
+                float previousThickness = columns ? evt.oldRect.width : evt.oldRect.height;
+                if (Mathf.Approximately(thickness, previousThickness) || split.childCount != 2 ||
+                    split[0].resolvedStyle.display == DisplayStyle.None ||
+                    split[1].resolvedStyle.display == DisplayStyle.None)
+                    return;
+
+                if (columns)
+                {
+                    split[1].style.left = thickness;
+                    split.contentContainer.style.paddingRight = thickness;
+                }
+                else
+                {
+                    split[1].style.top = thickness;
+                    split.contentContainer.style.paddingBottom = thickness;
+                }
+            });
+            anchor.AddToClassList("sprite-editor-split-handle");
+            anchor.AddToClassList(columns ? "sprite-editor-split-handle--columns" : "sprite-editor-split-handle--rows");
+            anchor.EnableInClassList("sprite-editor-split-handle--light", !EditorGUIUtility.isProSkin);
+            anchor.tooltip = columns ? "Drag left or right to resize panes" : "Drag up or down to resize panes";
+            line.AddToClassList("sprite-editor-split-line");
+            line.pickingMode = PickingMode.Ignore;
+            for (int i = 0; i < 3; i++)
+            {
+                VisualElement dot = new VisualElement { pickingMode = PickingMode.Ignore };
+                dot.AddToClassList("sprite-editor-split-grip");
+                line.Add(dot);
+            }
+        }
+
         internal sealed class ValueBindings
         {
             private readonly List<Action<bool>> updates = new List<Action<bool>>();
@@ -201,13 +252,9 @@ namespace DCFApixels.SpriteEditor
             Action<string, Action> applyChange,
             ValueBindings bindings)
         {
-            VisualElement card = CreateCard();
-            VisualElement header = CreateRow();
-            Label title = new Label("Transform");
-            title.style.unityFontStyleAndWeight = FontStyle.Bold;
-            title.style.flexGrow = 1f;
-            header.Add(title);
-            card.Add(header);
+            VisualElement container = CreateCard();
+            Foldout card = new Foldout { text = "Transform", value = false };
+            container.Add(card);
 
             Vector2Field pivot = ConfigureField(new Vector2Field("Pivot"));
             pivot.tooltip = "Normalized pivot inside the output canvas.";
@@ -236,7 +283,7 @@ namespace DCFApixels.SpriteEditor
                 });
                 bindings.Refresh(true);
             }, 54f);
-            header.Add(reset);
+            card.Add(reset);
 
             pivot.RegisterValueChangedCallback(evt =>
             {
@@ -289,7 +336,7 @@ namespace DCFApixels.SpriteEditor
                 });
             });
             card.Add(tiling);
-            parent.Add(card);
+            parent.Add(container);
         }
     }
 }

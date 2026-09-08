@@ -67,6 +67,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private string selectedLayerId;
         [SerializeField] private Vector2 scrollPosition;
         [SerializeField] private float previewPaneWidth = 340f;
+        [SerializeField] private float layerSettingsPaneHeight = 320f;
 
         [NonSerialized] private Texture2D previewTexture;
         [NonSerialized] private bool previewRequested;
@@ -909,32 +910,7 @@ namespace DCFApixels.SpriteEditor
             return true;
         }
 
-        private void ExportTexture()
-        {
-            string path = EditorUtility.SaveFilePanel("Export Sprite PNG", Application.dataPath, "sprite", "png");
-            if (string.IsNullOrEmpty(path))
-                return;
-
-            Texture2D texture = null;
-            try
-            {
-                texture = compositor.Compose();
-                File.WriteAllBytes(path, texture.EncodeToPNG());
-                ImportExportedSpriteIfNeeded(path);
-            }
-            catch (Exception exception)
-            {
-                Debug.LogException(exception);
-                EditorUtility.DisplayDialog("Sprite export failed", exception.Message, "OK");
-            }
-            finally
-            {
-                if (texture != null)
-                    DestroyImmediate(texture);
-            }
-        }
-
-        private static void ImportExportedSpriteIfNeeded(string path)
+        private static void ImportExportedTextureIfNeeded(string path, bool asSprite)
         {
             string fullPath = Path.GetFullPath(path).Replace('\\', '/');
             string assetsPath = Path.GetFullPath(Application.dataPath).Replace('\\', '/');
@@ -945,9 +921,11 @@ namespace DCFApixels.SpriteEditor
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             if (AssetImporter.GetAtPath(assetPath) is TextureImporter importer)
             {
-                importer.textureType = TextureImporterType.Sprite;
-                importer.spriteImportMode = SpriteImportMode.Single;
-                importer.alphaIsTransparency = true;
+                importer.textureType = asSprite ? TextureImporterType.Sprite : TextureImporterType.Default;
+                if (asSprite)
+                    importer.spriteImportMode = SpriteImportMode.Single;
+                importer.sRGBTexture = asSprite;
+                importer.alphaIsTransparency = asSprite;
                 importer.mipmapEnabled = false;
                 importer.wrapMode = TextureWrapMode.Clamp;
                 importer.filterMode = FilterMode.Bilinear;

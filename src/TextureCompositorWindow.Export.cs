@@ -1,0 +1,175 @@
+using System;
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+
+namespace DCFApixels.SpriteEditor
+{
+    public sealed partial class TextureCompositorWindow
+    {
+        private enum TextureExportFormat { Png, Jpeg, Tga, Exr, Asset }
+
+        private void ShowExportMenu()
+        {
+            GenericMenu menu = new GenericMenu();
+            menu.AddItem(new GUIContent("PNG (.png)"), false, () => ExportTexture(TextureExportFormat.Png));
+            menu.AddItem(new GUIContent("JPEG (.jpg, white background)"), false, () => ExportTexture(TextureExportFormat.Jpeg));
+            menu.AddItem(new GUIContent("TGA (.tga)"), false, () => ExportTexture(TextureExportFormat.Tga));
+            menu.AddItem(new GUIContent("OpenEXR (.exr)"), false, () => ExportTexture(TextureExportFormat.Exr));
+            menu.AddSeparator(string.Empty);
+            menu.AddItem(new GUIContent("Unity Texture2D (.asset)"), false, () => ExportTexture(TextureExportFormat.Asset));
+            menu.ShowAsContext();
+        }
+
+        private void ExportTexture(TextureExportFormat format)
+        {
+            if (compositor == null)
+                return;
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            string extension = GetExportExtension(format);
+            string path = format == TextureExportFormat.Asset
+                ? EditorUtility.SaveFilePanelInProject("Export Unity Texture2D", "sprite", "asset",
+                    "Save the flattened texture, without the layer tree.")
+                : EditorUtility.SaveFilePanel("Export Sprite " + extension.ToUpperInvariant(), Application.dataPath, "sprite", extension);
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            Texture2D texture = null;
+            try
+            {
+                string selectedExtension = Path.GetExtension(path);
+                if (!string.Equals(selectedExtension, "." + extension, StringComparison.OrdinalIgnoreCase) &&
+                    !(format == TextureExportFormat.Jpeg && string.Equals(selectedExtension, ".jpeg", StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException("Choose a file with the ." + extension + " extension for this export format.");
+
+                if (format == TextureExportFormat.Asset && !CanExportTextureAsset(path))
+                    return;
+                texture = compositor.Compose();
+                if (format == TextureExportFormat.Asset)
+                {
+                    SaveExportedTextureAsset(texture, path);
+                }
+                else
+                {
+                    byte[] bytes = EncodeExportTexture(texture, format);
+                    if (bytes == null || bytes.Length == 0)
+                        throw new InvalidOperationException("Unity returned no image data for this format.");
+                    File.WriteAllBytes(path, bytes);
+                    ImportExportedTextureIfNeeded(path, format != TextureExportFormat.Exr);
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Sprite export failed", exception.Message, "OK");
+            }
+            finally
+            {
+                if (texture != null && !AssetDatabase.Contains(texture))
+                    DestroyImmediate(texture);
+            }
+        }
+
+        private static string GetExportExtension(TextureExportFormat format)
+        {
+            switch (format)
+            {
+                case TextureExportFormat.Png: return "png";
+                case TextureExportFormat.Jpeg: return "jpg";
+                case TextureExportFormat.Tga: return "tga";
+                case TextureExportFormat.Exr: return "exr";
+                case TextureExportFormat.Asset: return "asset";
+                default: throw new ArgumentOutOfRangeException(nameof(format));
+            }
+        }
+
+        private static byte[] EncodeExportTexture(Texture2D texture, TextureExportFormat format)
+        {
+            switch (format)
+            {
+                case TextureExportFormat.Png: return texture.EncodeToPNG();
+                case TextureExportFormat.Tga: return texture.EncodeToTGA();
+                case TextureExportFormat.Exr: return EncodeLinearExr(texture);
+                case TextureExportFormat.Jpeg:
+                    var pixels = texture.GetRawTextureData<Color32>();
+                    for (int i = 0; i < pixels.Length; i++)
+                    {
+                        Color32 color = pixels[i];
+                        int background = 255 * (255 - color.a);
+                        pixels[i] = new Color32(
+                            (byte)((color.r * color.a + background + 127) / 255),
+                            (byte)((color.g * color.a + background + 127) / 255),
+                            (byte)((color.b * color.a + background + 127) / 255), 255);
+                    }
+                    texture.Apply(false, false);
+                    return texture.EncodeToJPG(95);
+                default: throw new ArgumentOutOfRangeException(nameof(format));
+            }
+        }
+
+        private static byte[] EncodeLinearExr(Texture2D source)
+        {
+            Texture2D linear = new Texture2D(source.width, source.height, TextureFormat.RGBAFloat, false, true)
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            try
+            {
+                var input = source.GetRawTextureData<Color32>();
+                var output = linear.GetRawTextureData<Color>();
+                for (int i = 0; i < input.Length; i++)
+                    output[i] = ((Color)input[i]).linear;
+                linear.Apply(false, false);
+                return linear.EncodeToEXR(Texture2D.EXRFlags.CompressZIP);
+            }
+            finally
+            {
+                DestroyImmediate(linear);
+            }
+        }
+
+        private static bool CanExportTextureAsset(string path)
+        {
+            if (!path.StartsWith("Assets/", StringComparison.Ordinal) ||
+                path.StartsWith("Assets/StreamingAssets/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Save the texture inside Assets, outside StreamingAssets.");
+
+            string assetsRoot = Path.GetFullPath(Application.dataPath).Replace('\\', '/');
+            string fullPath = Path.GetFullPath(Path.Combine(Application.dataPath, path.Substring("Assets/".Length))).Replace('\\', '/');
+            if (!fullPath.StartsWith(assetsRoot + "/", StringComparison.OrdinalIgnoreCase) ||
+                fullPath.StartsWith(assetsRoot + "/StreamingAssets/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Save the texture inside Assets, outside StreamingAssets.");
+
+            UnityEngine.Object existing = AssetDatabase.LoadMainAssetAtPath(path);
+            if (existing == null && !File.Exists(fullPath))
+                return true;
+            if (!(existing is Texture2D) || AssetDatabase.LoadAllAssetsAtPath(path).Length != 1)
+                throw new InvalidOperationException("This path belongs to another asset or contains sub-assets. Choose a different file to avoid losing data.");
+            return EditorUtility.DisplayDialog("Replace Texture Asset?",
+                "Replace the pixels in " + path + "? Existing references to this texture will be preserved.", "Replace", "Cancel");
+        }
+
+        private static void SaveExportedTextureAsset(Texture2D texture, string path)
+        {
+            texture.name = Path.GetFileNameWithoutExtension(path);
+            texture.hideFlags = HideFlags.None;
+            Texture2D existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null)
+            {
+                EditorUtility.CopySerialized(texture, existing);
+                EditorUtility.SetDirty(existing);
+                AssetDatabase.SaveAssetIfDirty(existing);
+                Selection.activeObject = existing;
+                EditorGUIUtility.PingObject(existing);
+            }
+            else
+            {
+                AssetDatabase.CreateAsset(texture, path);
+                AssetDatabase.SaveAssetIfDirty(texture);
+                Selection.activeObject = texture;
+                EditorGUIUtility.PingObject(texture);
+            }
+        }
+    }
+}

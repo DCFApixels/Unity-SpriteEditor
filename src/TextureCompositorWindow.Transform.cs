@@ -30,7 +30,9 @@ namespace DCFApixels.SpriteEditor
         {
             Button button = SpriteEditorUI.CreateToolbarButton("Transform", TogglePreviewTransform, 84f);
             button.tooltip = "Transform selected layer (T). Drag inside to move, handles to scale, circle to rotate. " +
-                "Shift: preserve proportions / snap rotation to 15°. Groups do not support transforms yet.";
+                "Drag the gold cross to move the pivot without moving the image (requires nonzero scale). " +
+                "The pivot snaps to the nine frame anchors within 10 UI pixels; hold Ctrl to disable snapping. " +
+                "Shift: constrain movement / preserve proportions / snap rotation to 15°. Groups do not support transforms yet.";
             toolkitHeaderBindings.Add(() =>
             {
                 button.SetEnabled(GetSelectedLayer() is Layer layer && !layer.IsGroup);
@@ -123,11 +125,14 @@ namespace DCFApixels.SpriteEditor
             };
             private const int MoveHandle = 8;
             private const int RotateHandle = 9;
+            private const int PivotHandle = 10;
+            private const float PivotSnapDistance = 10f;
             private readonly TextureCompositorWindow owner;
             private Layer layer;
             private TextureTransform original;
             private Vector2 size;
             private Vector2 pointerStart;
+            private Vector2 lastPointerPosition;
             private int pointerId = -1;
             private int handle;
             private int undoGroup = -1;
@@ -143,6 +148,8 @@ namespace DCFApixels.SpriteEditor
                 target.RegisterCallback<PointerMoveEvent>(OnMove);
                 target.RegisterCallback<PointerUpEvent>(OnUp);
                 target.RegisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
+                target.RegisterCallback<KeyDownEvent>(OnModifierDown);
+                target.RegisterCallback<KeyUpEvent>(OnModifierUp);
                 target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
             }
 
@@ -153,6 +160,8 @@ namespace DCFApixels.SpriteEditor
                 target.UnregisterCallback<PointerMoveEvent>(OnMove);
                 target.UnregisterCallback<PointerUpEvent>(OnUp);
                 target.UnregisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
+                target.UnregisterCallback<KeyDownEvent>(OnModifierDown);
+                target.UnregisterCallback<KeyUpEvent>(OnModifierUp);
                 target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
             }
 
@@ -199,6 +208,9 @@ namespace DCFApixels.SpriteEditor
 
             private static int HitTest(Vector2 point, TextureTransform transform, Rect imageRect, Vector2 dimensions)
             {
+                Vector2 pivot = ToPreview(Vector2.Scale(transform.pivot, dimensions) + transform.position, imageRect, dimensions);
+                if ((point - pivot).sqrMagnitude <= 81f)
+                    return CanMovePivot(transform) ? PivotHandle : -1;
                 if ((point - RotationHandle(transform, imageRect, dimensions)).sqrMagnitude <= 81f)
                     return RotateHandle;
                 int nearest = -1;
@@ -241,6 +253,7 @@ namespace DCFApixels.SpriteEditor
                 handle = hit;
                 gestureImageRect = rect;
                 pointerStart = ToDocument(evt.localPosition, rect, size);
+                lastPointerPosition = evt.localPosition;
                 pointerId = evt.pointerId;
                 undoGroup = -1;
                 target.CapturePointer(pointerId);
@@ -251,30 +264,86 @@ namespace DCFApixels.SpriteEditor
             {
                 if (!IsDragging || evt.pointerId != pointerId)
                     return;
-                UpdateTransform(evt.localPosition, evt.shiftKey);
+                UpdateTransform(evt.localPosition, evt.shiftKey, evt.ctrlKey);
                 evt.StopImmediatePropagation();
             }
 
             private static float SafeScale(float value) => value < 0f ? Mathf.Min(value, -0.00001f) : Mathf.Max(value, 0.00001f);
 
-            private void UpdateTransform(Vector2 point, bool constrain)
+            private static bool CanMovePivot(TextureTransform transform) =>
+                Mathf.Abs(transform.scale.x) >= 0.00001f && Mathf.Abs(transform.scale.y) >= 0.00001f;
+
+            private void OnModifierDown(KeyDownEvent evt)
+            {
+                if (RefreshPivotModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
+                    evt.StopPropagation();
+            }
+
+            private void OnModifierUp(KeyUpEvent evt)
+            {
+                if (RefreshPivotModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
+                    evt.StopPropagation();
+            }
+
+            private bool RefreshPivotModifiers(KeyCode key, bool shift, bool control)
+            {
+                if (!IsDragging || handle != PivotHandle ||
+                    (key != KeyCode.LeftControl && key != KeyCode.RightControl &&
+                     key != KeyCode.LeftShift && key != KeyCode.RightShift))
+                    return false;
+                UpdateTransform(lastPointerPosition, shift, control);
+                return true;
+            }
+
+            private Vector2 SnapPivot(Vector2 pivot, Vector2 documentPosition)
+            {
+                Vector2 previewPosition = ToPreview(documentPosition, gestureImageRect, size);
+                float nearestDistance = PivotSnapDistance * PivotSnapDistance;
+                Vector2 result = pivot;
+                for (int i = 0; i <= Handles.Length; i++)
+                {
+                    Vector2 anchor = i < Handles.Length ? Handles[i] : new Vector2(0.5f, 0.5f);
+                    Vector2 anchorPosition = ToPreview(TransformPoint(anchor, original, size), gestureImageRect, size);
+                    float distance = (anchorPosition - previewPosition).sqrMagnitude;
+                    if (distance <= nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        result = anchor;
+                    }
+                }
+                return result;
+            }
+
+            private void UpdateTransform(Vector2 point, bool constrain, bool disablePivotSnap)
             {
                 ValidateSelection();
                 if (!IsDragging)
                     return;
+                lastPointerPosition = point;
                 Vector2 current = ToDocument(point, gestureImageRect, size);
                 Vector2 delta = current - pointerStart;
                 if (undoGroup < 0 && delta.sqrMagnitude < 0.000001f)
                     return;
                 TextureTransform next = original;
-                if (handle == MoveHandle)
+                if (handle == MoveHandle || handle == PivotHandle)
                 {
                     if (constrain)
                     {
                         if (Mathf.Abs(delta.x) >= Mathf.Abs(delta.y)) delta.y = 0f;
                         else delta.x = 0f;
                     }
-                    next.position += delta;
+                    if (handle == PivotHandle)
+                    {
+                        Vector2 localDelta = Rotate(delta, -original.rotation);
+                        Vector2 pivotDelta = new Vector2(localDelta.x / original.scale.x, localDelta.y / original.scale.y);
+                        next.pivot += new Vector2(pivotDelta.x / size.x, pivotDelta.y / size.y);
+                        if (!disablePivotSnap)
+                            next.pivot = SnapPivot(next.pivot, Vector2.Scale(original.pivot, size) + original.position + delta);
+                        Vector2 actualPivotDelta = Vector2.Scale(next.pivot - original.pivot, size);
+                        next.position += Rotate(Vector2.Scale(actualPivotDelta, original.scale), original.rotation) - actualPivotDelta;
+                    }
+                    else
+                        next.position += delta;
                 }
                 else if (handle == RotateHandle)
                 {
@@ -309,25 +378,29 @@ namespace DCFApixels.SpriteEditor
                     next.position = fixedPoint - pivot - Rotate(
                         Vector2.Scale(Vector2.Scale(anchor, size) - pivot, next.scale), original.rotation);
                 }
-                if (next.position == layer.transform.position && next.scale == layer.transform.scale &&
+                if (next.pivot == layer.transform.pivot && next.position == layer.transform.position && next.scale == layer.transform.scale &&
                     Mathf.Approximately(next.rotation, layer.transform.rotation))
                     return;
                 if (undoGroup < 0)
                 {
                     Undo.IncrementCurrentGroup();
                     undoGroup = Undo.GetCurrentGroup();
-                    Undo.SetCurrentGroupName("Transform Layer");
-                    Undo.RegisterCompleteObjectUndo(owner.compositor, "Transform Layer");
+                    string undoName = handle == PivotHandle ? "Move Layer Pivot" : "Transform Layer";
+                    Undo.SetCurrentGroupName(undoName);
+                    Undo.RegisterCompleteObjectUndo(owner.compositor, undoName);
                 }
                 layer.transform = next;
-                owner.RequestTransformPreview();
+                if (handle == PivotHandle)
+                    owner.previewTransformOverlay.MarkDirtyRepaint();
+                else
+                    owner.RequestTransformPreview();
             }
 
             private void OnUp(PointerUpEvent evt)
             {
                 if (!IsDragging || evt.pointerId != pointerId || evt.button != 0)
                     return;
-                UpdateTransform(evt.localPosition, evt.shiftKey);
+                UpdateTransform(evt.localPosition, evt.shiftKey, evt.ctrlKey);
                 End(false, true);
                 evt.StopImmediatePropagation();
             }
@@ -412,13 +485,21 @@ namespace DCFApixels.SpriteEditor
                 painter.Fill();
                 painter.Stroke();
                 Vector2 center = ToPreview(Vector2.Scale(transform.pivot, dimensions) + transform.position, rect, dimensions);
-                painter.strokeColor = Color.white;
-                painter.BeginPath();
-                painter.MoveTo(center - new Vector2(4f, 0f));
-                painter.LineTo(center + new Vector2(4f, 0f));
-                painter.MoveTo(center - new Vector2(0f, 4f));
-                painter.LineTo(center + new Vector2(0f, 4f));
-                painter.Stroke();
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    painter.lineWidth = pass == 0 ? 3f : 1f;
+                    painter.strokeColor = pass == 0 ? Color.black :
+                        CanMovePivot(transform) ? new Color(1f, 0.78f, 0.2f) : Color.gray;
+                    painter.BeginPath();
+                    painter.Arc(center, 6f, Angle.Degrees(0f), Angle.Degrees(360f), ArcDirection.Clockwise);
+                    painter.Stroke();
+                    painter.BeginPath();
+                    painter.MoveTo(center - new Vector2(8f, 0f));
+                    painter.LineTo(center + new Vector2(8f, 0f));
+                    painter.MoveTo(center - new Vector2(0f, 8f));
+                    painter.LineTo(center + new Vector2(0f, 8f));
+                    painter.Stroke();
+                }
             }
         }
     }

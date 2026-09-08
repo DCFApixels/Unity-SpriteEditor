@@ -19,48 +19,55 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            OutlineLayer layer = (OutlineLayer)source;
-            AddEffectTarget(root, layer);
+            BuildFields(root, (OutlineLayer)source, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+        }
+
+        internal static void BuildFields(
+            VisualElement root, OutlineLayer layer,
+            Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
+            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+        {
+            addEffectTarget(root, layer);
             SpriteEditorUI.AddTextureTransform(
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange,
-                SettingsBindings);
+                applyChange,
+                bindings);
 
             EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
-            SettingsBindings.Track(metric, () => (Enum)layer.metric);
-            metric.RegisterValueChangedCallback(evt => ApplyLayerChange(
+            bindings.Track(metric, () => (Enum)layer.metric);
+            metric.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Algorithm",
                 () => layer.metric = (DistanceMetric)evt.newValue));
             root.Add(metric);
 
             ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
             color.SetValueWithoutNotify(layer.outlineColor);
-            SettingsBindings.Track(color, () => layer.outlineColor);
+            bindings.Track(color, () => layer.outlineColor);
             color.RegisterValueChangedCallback(evt =>
-                ApplyLayerChange("Change Outline Color", () => layer.outlineColor = evt.newValue));
+                applyChange("Change Outline Color", () => layer.outlineColor = evt.newValue));
             root.Add(color);
 
             FloatField width = SpriteEditorUI.ConfigureField(new FloatField("Width (px)"));
             width.SetValueWithoutNotify(layer.outlineWidth);
-            SettingsBindings.Track(width, () => layer.outlineWidth);
-            width.RegisterValueChangedCallback(evt => ApplyLayerChange(
+            bindings.Track(width, () => layer.outlineWidth);
+            width.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Width",
                 () => layer.outlineWidth = Mathf.Max(0f, evt.newValue)));
             root.Add(width);
 
             FloatField softness = SpriteEditorUI.ConfigureField(new FloatField("Softness (px)"));
             softness.SetValueWithoutNotify(layer.outlineSoftness);
-            SettingsBindings.Track(softness, () => layer.outlineSoftness);
-            softness.RegisterValueChangedCallback(evt => ApplyLayerChange(
+            bindings.Track(softness, () => layer.outlineSoftness);
+            softness.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Softness",
                 () => layer.outlineSoftness = Mathf.Max(0f, evt.newValue)));
             root.Add(softness);
 
             EnumField position = SpriteEditorUI.ConfigureField(new EnumField("Position", layer.outlinePosition));
-            SettingsBindings.Track(position, () => (Enum)layer.outlinePosition);
-            position.RegisterValueChangedCallback(evt => ApplyLayerChange(
+            bindings.Track(position, () => (Enum)layer.outlinePosition);
+            position.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Position",
                 () => layer.outlinePosition = (OutlineLayer.OutlinePosition)evt.newValue));
             root.Add(position);

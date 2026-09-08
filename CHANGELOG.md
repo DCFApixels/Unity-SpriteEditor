@@ -6,6 +6,20 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Added
 
+- Split the right pane into a retained selected-layer inspector above the layer list, with a
+  draggable horizontal divider, remembered inspector height, and independent vertical scrolling.
+  Reuse type-specific Edit controls and Outline/SDF target selection without rebuilding on value edits.
+
+- Export menu with PNG, JPEG (white background), TGA, linear EXR, and native Texture2D assets.
+  Texture assets are distinct from layer documents, with guarded replacement preserving references.
+
+- Snap the Preview pivot to nine frame anchors within 10 UI pixels, independent of canvas
+  resolution. Holding Ctrl disables snapping immediately, including while the mouse is stationary.
+
+- Drag the gold pivot handle in Preview Transform mode without moving the image: compensate
+  Position for the current rotation and nonuniform/negative scale. Supports Shift axis lock,
+  Escape cancellation, and a single Undo step; pointer movement repaints only the overlay.
+
 - Convert any layer to Drawing through its context menu: keep the editable Transform or bake
   it (including tiling) into full-resolution pixels and reset it. Preserve layer identity,
   blend/opacity/FX, and existing Drawing brush settings; group conversion warns about isolation
@@ -22,6 +36,19 @@ All notable changes to Sprite Editor are documented in this file.
   consecutive Shift-clicks, with the existing brush spacing, symmetry, repeat clipping, and Undo.
 
 ### Changed
+
+- Synchronize pane offsets when divider thickness changes during a stylesheet reload, avoiding
+  stale gaps that expose the window background beside the drag handle.
+
+- Style both pane dividers as 5-pixel drag handles with a dark center, lighter 1-pixel edges,
+  centered grips, resize cursors, and hover/pressed border highlights. Support light/dark themes
+  while retaining the native split-view resizer.
+
+- Remove duplicate inline controls from the embedded inspector; put Transform controls in a
+  retained foldout, collapsed by default, shared with standalone Edit windows.
+
+- Move the document field, New, and Save As into a full-width header above both panes, with
+  Export immediately after Save As; remove the old Export PNG button from the settings panel.
 
 - Move implementation files and the editor assembly definition into `src/`, preserving all
   existing Unity asset GUIDs. Keep package metadata and documentation at the repository root.

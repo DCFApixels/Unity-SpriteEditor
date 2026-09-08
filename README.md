@@ -4,8 +4,16 @@ Editor-only layered texture compositor for Unity. The editor interface is built 
 including its resizable Preview, recursive layer tree, inspectors, and auxiliary editor windows.
 
 Open it from **Window > Sprite Editor**. A composition can stay temporary, be saved as a
-`TextureCompositor` asset, previewed in the editor, and exported to PNG. PNG files exported
-inside `Assets` are imported as single Sprite assets automatically.
+`TextureCompositor` asset, previewed in the editor, and exported through the **Export** menu.
+The document field, **New**, **Save As**, and **Export** share a full-window header above both panes.
+
+The right pane has a selected-layer inspector above the layer list. Drag their horizontal divider
+to set the inspector height; it stays fixed when selecting layers and is remembered by the window.
+Both sections scroll independently when their contents do not fit. Type-specific settings and
+Transform controls share their implementation with **Edit** windows; ordinary changes refresh
+values without rebuilding focused fields. Drawing brush controls remain in the Preview header.
+Inline name, visibility, opacity, blend mode, and FX controls are not duplicated in the inspector.
+**Transform** is a foldout, collapsed by default in the inspector and **Edit** windows.
 
 Saved compositions can be reopened by double-clicking their `TextureCompositor` asset in the
 Project window, or by selecting the asset and pressing **Open in Sprite Editor** in the Inspector.
@@ -34,11 +42,30 @@ Alternatively, add the package directly to `Packages/manifest.json`:
 
 To track a specific published release, append its tag to the URL, for example `#v0.3.2`.
 
+## Export formats
+
+**Export**, immediately to the right of **Save As**, saves the full-resolution flattened result:
+
+- **PNG** and **TGA** preserve transparency.
+- **JPEG** uses quality 95 and flattens transparency onto white.
+- **OpenEXR** saves linear RGB and alpha as 16-bit floating point with ZIP compression.
+  The compositor currently renders in 8-bit RGBA: EXR does not add HDR range or recover lost precision.
+- **Unity Texture2D (.asset)** saves a readable native texture inside `Assets`, not a layer document.
+  Replacing an existing standalone Texture2D requires confirmation and preserves its references.
+  Other asset types and files with sub-assets are protected from replacement.
+
+PNG/JPEG/TGA exported inside `Assets` are imported as single Sprite assets. EXR is imported as a
+linear texture. **Save As** remains the way to save the editable composition with all its layers.
+
 ## Preview transform tool
 
 Select a non-group layer and enable **Transform** in the Preview header (shortcut **T**).
 Drag inside the frame to move, drag its eight handles to resize, or drag the round handle
-to rotate around the layer pivot. **Shift** constrains movement to an axis, preserves resize
+to rotate around the layer pivot. Drag the **gold cross** to reposition the pivot; Position is
+compensated so the image and frame stay in place. The pivot may be placed outside the frame.
+Within 10 UI pixels it snaps to the nearest corner, edge midpoint, or center (nine anchors).
+Hold **Ctrl** to disable pivot snapping; pressing/releasing Ctrl updates it without moving the mouse.
+Its handle is disabled for zero/near-zero scale on either axis. **Shift** constrains movement to an axis, preserves resize
 proportions, or snaps rotation to 15°. **Escape** cancels the current drag; **T** or **Enter**
 exits the tool. Each drag is one Undo action. Drawing is suspended while this tool is active.
 The frame represents the layer's full source canvas, including transparent pixels, and edits

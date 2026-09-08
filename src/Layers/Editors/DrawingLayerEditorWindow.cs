@@ -16,13 +16,19 @@ namespace DCFApixels.SpriteEditor
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            DrawingLayer layer = (DrawingLayer)source;
+            BuildFields(root, (DrawingLayer)source, ApplyLayerChange, SettingsBindings);
+        }
+
+        internal static void BuildFields(
+            VisualElement root, DrawingLayer layer,
+            Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
+        {
             SpriteEditorUI.AddTextureTransform(
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange,
-                SettingsBindings);
+                applyChange,
+                bindings);
             SpriteEditorUI.AddHelpBox(root,
                 "Select this layer in Sprite Editor to paint. Brush, symmetry, and repeat settings are in the Preview header.",
                 HelpBoxMessageType.Info);
