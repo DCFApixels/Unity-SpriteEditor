@@ -849,8 +849,12 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             RequestPreview();
-            if (!applyingToolkitChange && rootVisualElement != null)
+            if (!applyingToolkitChange &&
+                rootVisualElement != null &&
+                !IsToolkitValueInteractionActive())
+            {
                 rootVisualElement.schedule.Execute(RebuildToolkitInterface);
+            }
         }
 
         private void OnUndoRedo()

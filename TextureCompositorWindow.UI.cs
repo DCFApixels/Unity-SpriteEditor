@@ -1229,6 +1229,17 @@ namespace DCFApixels.SpriteEditor
             return false;
         }
 
+        private bool IsToolkitValueInteractionActive()
+        {
+            VisualElement focused = rootVisualElement?.focusController?.focusedElement as VisualElement;
+            if (IsTextInputTarget(focused))
+                return true;
+
+            IPanel panel = rootVisualElement?.panel;
+            return panel != null &&
+                   PointerCaptureHelper.GetCapturingElement(panel, PointerId.mousePointerId) != null;
+        }
+
         private sealed class SpritePreviewElement : VisualElement
         {
             private readonly VisualElement checker;

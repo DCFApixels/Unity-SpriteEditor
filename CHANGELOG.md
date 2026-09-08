@@ -21,6 +21,8 @@ All notable changes to Sprite Editor are documented in this file.
 ### Fixed
 
 - Numeric label scrubbing no longer loses pointer capture after its first value change.
+- Text and numeric field editing is no longer interrupted by a delayed external refresh while the
+  active UI Toolkit field has keyboard focus.
 - Drawing symmetry and repetition guides are hidden immediately after selecting a non-Drawing layer,
   preventing stale guide geometry from appearing offset after the Preview layout changes.
 
