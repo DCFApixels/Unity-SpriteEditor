@@ -1,0 +1,20 @@
+{
+  "apiVersion": 1,
+  "assetPath": "Assets/Art/AgentDrawing.asset",
+  "create": true,
+  "width": 512,
+  "height": 512,
+  "save": true,
+  "operations": [
+    {"op": "add", "type": "drawing", "as": "ink", "settings": {"name": "Radial marks"}},
+    {
+      "op": "stroke", "layer": "@ink", "space": "canvasPixels",
+      "brush": {
+        "color": [0.1, 0.6, 1, 1], "size": 12, "hardness": 0.8, "spacing": 0.16,
+        "mirrorX": false, "mirrorY": false, "center": [0.5, 0.5],
+        "repeat": "Radial", "repeatCount": 8, "elements": "AlternateMirror", "boundary": "Clip"
+      },
+      "points": [[300, 230], [350, 215], [390, 210]]
+    }
+  ]
+}

@@ -4,6 +4,28 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-09-08
+
+### Added
+
+- Per-Drawing-layer Radial start angle slider (0–360°), shared by mirrored repeats, Clip and preview guides;
+  expose the angle through the agent API and align guides with pixel-space sectors on non-square canvases.
+- Versioned agent JSON API and optional Unity Pipeline CLI commands: inspect, image import,
+  validated edit batches, transforms, groups, Outline/SDF targets, Drawing strokes and PNG previews.
+- Stable layer IDs and local batch aliases, mandatory revision checks for edits, dry-run validation,
+  whole-batch Undo and explicit partial-save recovery. Never overwrite existing compositor/image assets.
+- Repository agent instructions, API reference, JSON recipes and opt-in CLI smoke tests.
+
+### Changed
+
+- Unify Mirror and Repeat into mutually exclusive drawing pattern modes; prevent extra X/Y reflections
+  in Radial and other repeats. Migrate legacy mirror-only settings without changing stored pixels.
+- Move per-Drawing-layer symmetry and repeat controls to layer settings and Properties.
+- Keep Live Quality always visible on the left of the Preview footer; leave brush controls in the header.
+- Brighter pane headers and an 80% default Live Quality.
+- Refresh drawing surfaces on Undo/Redo even without a Sprite Editor window open.
+- Declare Unity's Newtonsoft Json dependency for strict JSON request parsing.
+
 ## [0.5.4] - 2026-09-08
 
 ### Added

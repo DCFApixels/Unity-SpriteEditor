@@ -1,4 +1,5 @@
 using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -21,9 +22,15 @@ namespace DCFApixels.SpriteEditor
         {
             VisualElement footer = new VisualElement();
             footer.AddToClassList("sprite-editor-preview-footer");
+            footer.Add(BuildPreviewQualityControl());
+            footer.RegisterCallback<GeometryChangedEvent>(evt =>
+                footer.EnableInClassList("sprite-editor-preview-footer--compact", evt.newRect.width < 290f));
             toolkitPreviewFooter = new Label();
             toolkitPreviewFooter.AddToClassList("sprite-editor-preview-status");
             footer.Add(toolkitPreviewFooter);
+            VisualElement channels = new VisualElement();
+            channels.AddToClassList("sprite-editor-preview-channels");
+            footer.Add(channels);
             channelButtons = new Button[4];
             string[] labels = { "R", "G", "B", "A" };
             for (int i = 0; i < labels.Length; i++)
@@ -39,10 +46,37 @@ namespace DCFApixels.SpriteEditor
                 if (i < 3)
                     button.AddToClassList("sprite-editor-channel-button--" + labels[i].ToLowerInvariant());
                 channelButtons[i] = button;
-                footer.Add(button);
+                channels.Add(button);
             }
             RefreshChannelButtons();
             return footer;
+        }
+
+        private VisualElement BuildPreviewQualityControl()
+        {
+            VisualElement control = new VisualElement { tooltip = LivePreviewQualityContent.tooltip };
+            control.AddToClassList("sprite-editor-preview-quality");
+            Label label = new Label("Live Quality");
+            label.AddToClassList("sprite-editor-preview-quality-label");
+            control.Add(label);
+            Slider quality = new Slider(
+                MinimumPaintingPreviewScale * 100f, MaximumPaintingPreviewScale * 100f)
+            {
+                value = paintingPreviewScale * 100f,
+                tooltip = LivePreviewQualityContent.tooltip
+            };
+            quality.AddToClassList("sprite-editor-preview-quality-slider");
+            Label value = new Label($"{paintingPreviewScale * 100f:0.#}%");
+            value.AddToClassList("sprite-editor-preview-quality-value");
+            quality.RegisterValueChangedCallback(evt =>
+            {
+                paintingPreviewScale = ClampPaintingPreviewScale(evt.newValue * 0.01f);
+                EditorPrefs.SetFloat(PaintingPreviewScalePrefKey, paintingPreviewScale);
+                value.text = $"{paintingPreviewScale * 100f:0.#}%";
+            });
+            control.Add(quality);
+            control.Add(value);
+            return control;
         }
 
         private void TogglePreviewChannel(int bit)

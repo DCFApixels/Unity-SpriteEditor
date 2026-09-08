@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
@@ -21,15 +23,103 @@ namespace DCFApixels.SpriteEditor
             VisualElement root, DrawingLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
+            SpriteEditorUI.ApplyWindowStyles(root);
             SpriteEditorUI.AddTextureTransform(
                 root,
                 layer,
                 compositor,
                 applyChange,
                 bindings);
-            SpriteEditorUI.AddHelpBox(root,
-                "Select this layer in Sprite Editor to paint. Brush, symmetry, and repeat settings are in the Preview header.",
-                HelpBoxMessageType.Info);
+            root.Add(SpriteEditorUI.CreateHeading("Symmetry & Repeat"));
+
+            PopupField<PaintRepeatMode> mode = SpriteEditorUI.ConfigureField(new PopupField<PaintRepeatMode>(
+                "Mode", new List<PaintRepeatMode>
+                {
+                    PaintRepeatMode.None, PaintRepeatMode.Mirror, PaintRepeatMode.Horizontal,
+                    PaintRepeatMode.Vertical, PaintRepeatMode.Grid, PaintRepeatMode.Radial
+                }, layer.repeatMode));
+            bindings.Track(mode, () => layer.repeatMode);
+            mode.RegisterValueChangedCallback(evt => applyChange("Change Drawing Pattern Mode", () =>
+            {
+                layer.repeatMode = evt.newValue;
+                if (layer.UsesMirrorPattern && !layer.mirrorAcrossVerticalAxis && !layer.mirrorAcrossHorizontalAxis)
+                    layer.mirrorAcrossVerticalAxis = true;
+            }));
+            root.Add(mode);
+
+            Toggle mirrorX = SpriteEditorUI.ConfigureField(new Toggle("Mirror X"));
+            mirrorX.tooltip = "Reflect each brush stroke across the vertical axis through Center.";
+            bindings.Track(mirrorX, () => layer.mirrorAcrossVerticalAxis);
+            mirrorX.RegisterValueChangedCallback(evt => applyChange(
+                "Change Drawing Symmetry", () => layer.mirrorAcrossVerticalAxis = evt.newValue));
+            root.Add(mirrorX);
+
+            Toggle mirrorY = SpriteEditorUI.ConfigureField(new Toggle("Mirror Y"));
+            mirrorY.tooltip = "Reflect each brush stroke across the horizontal axis through Center.";
+            bindings.Track(mirrorY, () => layer.mirrorAcrossHorizontalAxis);
+            mirrorY.RegisterValueChangedCallback(evt => applyChange(
+                "Change Drawing Symmetry", () => layer.mirrorAcrossHorizontalAxis = evt.newValue));
+            root.Add(mirrorY);
+
+            Vector2Field center = SpriteEditorUI.ConfigureField(new Vector2Field("Center"));
+            center.tooltip = "Center of symmetry and repetition in layer coordinates (0–1).";
+            bindings.Track(center, () => layer.patternCenter);
+            center.RegisterValueChangedCallback(evt => applyChange(
+                "Change Pattern Center", () => layer.patternCenter = new Vector2(
+                    Mathf.Clamp01(evt.newValue.x), Mathf.Clamp01(evt.newValue.y))));
+            root.Add(center);
+
+            Slider startAngle = SpriteEditorUI.ConfigureField(new Slider("Start Angle (°)", 0f, 360f)
+            {
+                showInputField = true,
+                tooltip = "Rotate radial sector boundaries counterclockwise. 0° starts to the left and preserves the original layout."
+            });
+            bindings.Track(startAngle, () => layer.radialStartAngle);
+            startAngle.RegisterValueChangedCallback(evt => applyChange(
+                "Change Radial Start Angle", () => layer.radialStartAngle = Mathf.Clamp(evt.newValue, 0f, 360f)));
+            root.Add(startAngle);
+
+            IntegerField count = SpriteEditorUI.ConfigureField(new IntegerField("Count"));
+            bindings.Track(count, () => layer.repeatCount);
+            count.RegisterValueChangedCallback(evt => applyChange(
+                "Change Repeat Count", () => layer.repeatCount = Mathf.Clamp(evt.newValue, 2, 64)));
+            root.Add(count);
+
+            IntegerField countY = SpriteEditorUI.ConfigureField(new IntegerField("Count Y"));
+            bindings.Track(countY, () => layer.repeatSecondaryCount);
+            countY.RegisterValueChangedCallback(evt => applyChange(
+                "Change Repeat Count", () => layer.repeatSecondaryCount = Mathf.Clamp(evt.newValue, 2, 64)));
+            root.Add(countY);
+
+            EnumField elementMode = SpriteEditorUI.ConfigureField(new EnumField("Elements", layer.repeatElementMode));
+            bindings.Track(elementMode, () => (Enum)layer.repeatElementMode);
+            elementMode.RegisterValueChangedCallback(evt => applyChange(
+                "Change Repeat Element Mode", () => layer.repeatElementMode = (PaintRepeatElementMode)evt.newValue));
+            root.Add(elementMode);
+
+            EnumField boundary = SpriteEditorUI.ConfigureField(new EnumField("Edges", layer.repeatBoundaryMode));
+            boundary.tooltip = "Continue lets a stroke cross repeated shape boundaries. " +
+                "Clip keeps the whole stroke inside the cell or sector where it started.";
+            bindings.Track(boundary, () => (Enum)layer.repeatBoundaryMode);
+            boundary.RegisterValueChangedCallback(evt => applyChange(
+                "Change Repeat Boundary", () => layer.repeatBoundaryMode = (PaintRepeatBoundaryMode)evt.newValue));
+            root.Add(boundary);
+
+            bindings.Add(() =>
+            {
+                bool repeating = layer.UsesRepeatedPattern;
+                bool grid = layer.repeatMode == PaintRepeatMode.Grid;
+                mirrorX.EnableInClassList("sprite-editor-pattern-field--hidden", !layer.UsesMirrorPattern);
+                mirrorY.EnableInClassList("sprite-editor-pattern-field--hidden", !layer.UsesMirrorPattern);
+                center.EnableInClassList("sprite-editor-pattern-field--hidden",
+                    !layer.UsesMirrorPattern && layer.repeatMode != PaintRepeatMode.Radial);
+                startAngle.EnableInClassList("sprite-editor-pattern-field--hidden", layer.repeatMode != PaintRepeatMode.Radial);
+                count.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating);
+                count.label = grid ? "Count X" : "Count";
+                countY.EnableInClassList("sprite-editor-pattern-field--hidden", !grid);
+                elementMode.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating);
+                boundary.EnableInClassList("sprite-editor-pattern-field--hidden", !repeating);
+            });
         }
     }
 }

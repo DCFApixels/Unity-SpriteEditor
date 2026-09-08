@@ -45,7 +45,7 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private void SaveWithOutput(string newAssetPath)
+        internal void SaveWithOutput(string newAssetPath)
         {
             bool createAsset = !string.IsNullOrEmpty(newAssetPath);
             string path = createAsset ? newAssetPath : AssetDatabase.GetAssetPath(this);

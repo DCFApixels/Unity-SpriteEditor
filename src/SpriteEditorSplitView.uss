@@ -421,6 +421,10 @@
     border-top-color: rgba(0, 0, 0, 0.3);
 }
 
+.sprite-editor-pattern-field--hidden {
+    display: none;
+}
+
 .sprite-editor-preview-footer {
     flex-direction: row;
     align-items: center;
@@ -438,6 +442,54 @@
     text-overflow: ellipsis;
     -unity-text-align: middle-center;
     font-size: 10px;
+}
+
+.sprite-editor-preview-quality {
+    flex-direction: row;
+    align-items: center;
+    width: 170px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-preview-quality-label {
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    font-size: 10px;
+}
+
+.sprite-editor-preview-quality-slider {
+    flex-grow: 1;
+    min-width: 40px;
+    margin: 0 4px;
+}
+
+.sprite-editor-preview-quality-value {
+    width: 34px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    font-size: 10px;
+    -unity-text-align: middle-right;
+}
+
+.sprite-editor-preview-channels {
+    flex-direction: row;
+    flex-shrink: 0;
+    margin-left: auto;
+    height: 22px;
+    align-items: center;
+}
+
+.sprite-editor-preview-footer--compact {
+    height: auto;
+    min-height: 22px;
+    flex-wrap: wrap;
+}
+
+.sprite-editor-preview-footer--compact .sprite-editor-preview-status {
+    display: none;
 }
 
 .unity-button.sprite-editor-channel-button {

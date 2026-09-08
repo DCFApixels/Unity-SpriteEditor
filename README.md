@@ -55,12 +55,13 @@ the editable composition alongside the exported result.
 - [Outline, SDF & blending](#effects)
 - [Export formats](#export)
 - [Shortcuts](#shortcuts)
+- [Agent API & CLI](#automation)
 - [Community & license](#community)
 
 <a id="installation"></a>
 ## Installation
 
-**Requires Unity 6 (`6000.0`) or newer.** Burst and Collections are declared package dependencies.
+**Requires Unity 6 (`6000.0`) or newer.** Burst, Collections and Newtonsoft Json are declared package dependencies.
 
 Open **Window → Package Management → Package Manager**, choose **Install package from git URL**,
 and paste:
@@ -239,21 +240,30 @@ layer stack, with blending and effects applied.
 - Two color swatches store foreground/background colors; `X` swaps them.
 - `Shift`-drag locks a stroke horizontally or vertically; `Shift`-click connects the previous
   painted endpoint to the new point.
-- **Live Quality** sets painting-time Preview resolution: **12.5–100%**, default **37.5%**.
+- **Live Quality**, always visible on the left of the Preview footer, sets painting-time
+  Preview resolution: **12.5–100%**, default **80%**.
   Lower values reduce preview work; exports and saved canvas dimensions are unchanged.
 
 ### Symmetry & repeated strokes
 
-Set a normalized **Center**, then combine the following:
+In the Drawing layer's settings, choose **Mode**: None, Mirror, Horizontal, Vertical, Grid or Radial.
+Mirror is a separate mode, not an extra reflection applied on top of Repeat.
+Symmetry and repetition settings are saved independently for each Drawing layer.
 
 | Setting | Behavior |
 | :--- | :--- |
-| Mirror X / Mirror Y | Reflect across the vertical / horizontal axis through Center. |
+| Mirror: X / Y | Reflect across the vertical / horizontal axis through Center; enable both for four-way symmetry. |
 | Horizontal / Vertical | Repeat in a row or column. |
 | Grid | Repeat with independent X/Y counts. |
 | Radial | Repeat around a circle with an adjustable sector count. |
 | Copy / Alternate Mirror | Repeat directly / reflect every second cell or sector. |
 | Continue / Clip | Let the stroke cross boundaries / constrain it to the cell or sector where the stroke began. |
+
+**Center** is available for Mirror and Radial. **Elements** and **Edges** apply only to repeating modes.
+Radial also has a **Start Angle (°)** slider with numeric input (0–360°). It rotates sector boundaries
+counterclockwise from the left, including Alternate Mirror and Clip; 0° preserves the original layout.
+To mirror radial sectors, use **Radial → Alternate Mirror**. Legacy mirror-only layers become Mirror;
+legacy combinations keep their Repeat mode without additional X/Y reflections. Existing pixels are unchanged.
 
 Painting from a mirrored cell keeps the active copy under the cursor.
 
@@ -441,6 +451,18 @@ On macOS, `Cmd` also works for saving, selection, and Undo/Redo.
 Unity Shortcut Manager commands are suspended **only while this window has focus**, so they do
 not consume drawing keys. Text/numeric fields keep normal input. Unity shortcuts are restored
 when the window loses focus or closes.
+
+<a id="automation"></a>
+## Agent API & CLI
+
+Create compositor assets, import generated images as File layers, adjust transforms, organize groups,
+target Outline/SDF and paint Drawing-layer strokes without operating the window.
+The versioned JSON API supports batch validation, stable layer IDs, revision checks, Undo and preview rendering.
+
+With Unity Pipeline installed, discover the optional `sprite_editor_*` commands through Unity CLI.
+The public C# API also works without Pipeline. Read the [agent guide](AGENTS.md),
+[API reference and workflows](Documentation~/AgentAPI.md), or start from the
+[JSON examples](Documentation~/Examples). Commands become available after the plugin is compiled.
 
 <a id="community"></a>
 ## Community & license

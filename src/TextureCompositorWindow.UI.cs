@@ -1077,99 +1077,6 @@ namespace DCFApixels.SpriteEditor
             });
             brushRow.Add(hardness);
             brushRow.Add(hardnessValue);
-            toolkitPreviewHeader.Add(brushRow);
-
-            VisualElement mirrorRow = SpriteEditorUI.CreateToolbar();
-            Toggle mirrorX = CompactField(new Toggle("Mirror X"), 82f);
-            mirrorX.tooltip = MirrorVerticalContent.tooltip;
-            mirrorX.SetValueWithoutNotify(layer.mirrorAcrossVerticalAxis);
-            toolkitHeaderBindings.Track(mirrorX, () => layer.mirrorAcrossVerticalAxis);
-            mirrorX.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Drawing Symmetry",
-                () => layer.mirrorAcrossVerticalAxis = evt.newValue));
-            mirrorRow.Add(mirrorX);
-            Toggle mirrorY = CompactField(new Toggle("Mirror Y"), 82f);
-            mirrorY.tooltip = MirrorHorizontalContent.tooltip;
-            mirrorY.SetValueWithoutNotify(layer.mirrorAcrossHorizontalAxis);
-            toolkitHeaderBindings.Track(mirrorY, () => layer.mirrorAcrossHorizontalAxis);
-            mirrorY.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Drawing Symmetry",
-                () => layer.mirrorAcrossHorizontalAxis = evt.newValue));
-            mirrorRow.Add(mirrorY);
-            Vector2Field center = new Vector2Field("Center");
-            center.style.flexGrow = 1f;
-            center.style.minWidth = 128f;
-            center.labelElement.style.width = 44f;
-            center.labelElement.style.minWidth = 44f;
-            center.SetValueWithoutNotify(layer.patternCenter);
-            toolkitHeaderBindings.Track(center, () => layer.patternCenter);
-            center.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Pattern Center",
-                () => layer.patternCenter = new Vector2(
-                    Mathf.Clamp01(evt.newValue.x),
-                    Mathf.Clamp01(evt.newValue.y))));
-            mirrorRow.Add(center);
-            toolkitPreviewHeader.Add(mirrorRow);
-
-            VisualElement repeatRow = SpriteEditorUI.CreateToolbar();
-            repeatRow.Add(CreateCompactLabel("Repeat", 44f));
-            EnumField repeat = CompactField(new EnumField(layer.repeatMode), 88f);
-            toolkitHeaderBindings.Track(repeat, () => (Enum)layer.repeatMode);
-            repeat.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Repeat Mode",
-                () => layer.repeatMode = (PaintRepeatMode)evt.newValue));
-            repeatRow.Add(repeat);
-            VisualElement counts = SpriteEditorUI.CreateRow();
-            Label countLabel = CreateCompactLabel("Count", 38f);
-            counts.Add(countLabel);
-            IntegerField countX = CompactField(new IntegerField(), 38f);
-            toolkitHeaderBindings.Track(countX, () => layer.repeatCount);
-            countX.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Repeat Count", () => layer.repeatCount = Mathf.Clamp(evt.newValue, 2, 64)));
-            counts.Add(countX);
-            VisualElement secondaryCount = SpriteEditorUI.CreateRow();
-            secondaryCount.Add(CreateCompactLabel("Y", 14f));
-            IntegerField countY = CompactField(new IntegerField(), 38f);
-            toolkitHeaderBindings.Track(countY, () => layer.repeatSecondaryCount);
-            countY.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Repeat Count", () => layer.repeatSecondaryCount = Mathf.Clamp(evt.newValue, 2, 64)));
-            secondaryCount.Add(countY);
-            counts.Add(secondaryCount);
-            repeatRow.Add(counts);
-            toolkitHeaderBindings.Add(() =>
-            {
-                counts.style.display = layer.repeatMode == PaintRepeatMode.None ? DisplayStyle.None : DisplayStyle.Flex;
-                secondaryCount.style.display = layer.repeatMode == PaintRepeatMode.Grid ? DisplayStyle.Flex : DisplayStyle.None;
-                countLabel.text = layer.repeatMode == PaintRepeatMode.Grid ? "X" : "Count";
-            });
-            VisualElement repeatSpacer = new VisualElement();
-            repeatSpacer.style.flexGrow = 1f;
-            repeatRow.Add(repeatSpacer);
-            EnumField elementMode = CompactField(new EnumField(layer.repeatElementMode), 116f);
-            elementMode.SetEnabled(layer.repeatMode != PaintRepeatMode.None);
-            toolkitHeaderBindings.Track(elementMode, () => (Enum)layer.repeatElementMode);
-            toolkitHeaderBindings.Add(() => elementMode.SetEnabled(layer.repeatMode != PaintRepeatMode.None));
-            elementMode.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Repeat Element Mode",
-                () => layer.repeatElementMode = (PaintRepeatElementMode)evt.newValue));
-            repeatRow.Add(elementMode);
-            toolkitPreviewHeader.Add(repeatRow);
-
-            VisualElement boundaryRow = SpriteEditorUI.CreateToolbar();
-            Label edgeLabel = CreateCompactLabel("Edges", 38f);
-            edgeLabel.tooltip = RepeatBoundaryContent.tooltip;
-            boundaryRow.Add(edgeLabel);
-            EnumField boundary = CompactField(new EnumField(layer.repeatBoundaryMode), 84f);
-            boundary.SetEnabled(layer.repeatMode != PaintRepeatMode.None);
-            toolkitHeaderBindings.Track(boundary, () => (Enum)layer.repeatBoundaryMode);
-            toolkitHeaderBindings.Add(() => boundary.SetEnabled(layer.repeatMode != PaintRepeatMode.None));
-            boundary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Repeat Boundary",
-                () => layer.repeatBoundaryMode = (PaintRepeatBoundaryMode)evt.newValue));
-            boundaryRow.Add(boundary);
-            VisualElement boundarySpacer = new VisualElement();
-            boundarySpacer.style.flexGrow = 1f;
-            boundaryRow.Add(boundarySpacer);
             FloatField spacing = CompactField(new FloatField("Step"), 72f);
             spacing.tooltip = BrushSpacingContent.tooltip;
             spacing.labelElement.style.width = 30f;
@@ -1187,31 +1094,9 @@ namespace DCFApixels.SpriteEditor
                     "Change Brush Step",
                     () => layer.brushSpacing = clampedPercent * 0.01f);
             });
-            boundaryRow.Add(spacing);
-            boundaryRow.Add(CreateCompactLabel("%", 14f));
-            toolkitPreviewHeader.Add(boundaryRow);
-
-            VisualElement qualityRow = SpriteEditorUI.CreateToolbar();
-            Label qualityLabel = CreateCompactLabel("Live Quality", 78f);
-            qualityLabel.tooltip = LivePreviewQualityContent.tooltip;
-            qualityRow.Add(qualityLabel);
-            Slider quality = new Slider(
-                MinimumPaintingPreviewScale * 100f,
-                MaximumPaintingPreviewScale * 100f)
-            {
-                value = paintingPreviewScale * 100f
-            };
-            quality.style.flexGrow = 1f;
-            Label qualityValue = CreateCompactLabel($"{paintingPreviewScale * 100f:0.#}%", 44f);
-            quality.RegisterValueChangedCallback(evt =>
-            {
-                paintingPreviewScale = ClampPaintingPreviewScale(evt.newValue * 0.01f);
-                EditorPrefs.SetFloat(PaintingPreviewScalePrefKey, paintingPreviewScale);
-                qualityValue.text = $"{paintingPreviewScale * 100f:0.#}%";
-            });
-            qualityRow.Add(quality);
-            qualityRow.Add(qualityValue);
-            toolkitPreviewHeader.Add(qualityRow);
+            brushRow.Add(spacing);
+            brushRow.Add(CreateCompactLabel("%", 14f));
+            toolkitPreviewHeader.Add(brushRow);
         }
 
         private static T CompactField<T>(T field, float width) where T : VisualElement
@@ -1733,12 +1618,12 @@ namespace DCFApixels.SpriteEditor
                 painter.lineWidth = 1f;
                 painter.strokeColor = guide;
 
-                if (drawingLayer.mirrorAcrossVerticalAxis)
+                if (drawingLayer.UsesMirrorPattern && drawingLayer.mirrorAcrossVerticalAxis)
                 {
                     float x = rect.width * drawingLayer.patternCenter.x;
                     StrokeLine(painter, new Vector2(x, 0f), new Vector2(x, rect.height));
                 }
-                if (drawingLayer.mirrorAcrossHorizontalAxis)
+                if (drawingLayer.UsesMirrorPattern && drawingLayer.mirrorAcrossHorizontalAxis)
                 {
                     float y = rect.height * (1f - drawingLayer.patternCenter.y);
                     StrokeLine(painter, new Vector2(0f, y), new Vector2(rect.width, y));
@@ -1774,10 +1659,10 @@ namespace DCFApixels.SpriteEditor
                     float length = Mathf.Sqrt(rect.width * rect.width + rect.height * rect.height);
                     for (int i = 0; i < count; i++)
                     {
-                        float angle = -Mathf.PI + i * Mathf.PI * 2f / count;
+                        float angle = drawingLayer.RadialStartAngleRadians + i * Mathf.PI * 2f / count;
                         Vector2 direction = new Vector2(
-                            Mathf.Cos(angle) * rect.width,
-                            -Mathf.Sin(angle) * rect.height).normalized;
+                            Mathf.Cos(angle) * rect.width / Mathf.Max(1, documentWidth),
+                            -Mathf.Sin(angle) * rect.height / Mathf.Max(1, documentHeight)).normalized;
                         StrokeLine(painter, center, center + direction * length);
                     }
                 }

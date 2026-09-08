@@ -62,7 +62,8 @@ namespace DCFApixels.SpriteEditor
         Horizontal = 1,
         Vertical = 2,
         Grid = 3,
-        Radial = 4
+        Radial = 4,
+        Mirror = 5
     }
 
     public enum PaintRepeatElementMode

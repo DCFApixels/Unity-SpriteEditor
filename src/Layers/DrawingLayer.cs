@@ -32,6 +32,8 @@ namespace DCFApixels.SpriteEditor
         public PaintRepeatBoundaryMode repeatBoundaryMode;
         public int repeatCount = 8;
         public int repeatSecondaryCount = 4;
+        [Range(0f, 360f)] public float radialStartAngle;
+        [SerializeField] private bool unifiedPatternMode;
 
         [NonSerialized] private RenderTexture paintSurface;
         [NonSerialized] private List<Vector2> symmetryPoints;
@@ -42,6 +44,9 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Vector2 strokeRepeatShapeAnchor;
 
         internal Texture2D StoredTexture => pixels;
+        internal bool UsesMirrorPattern => repeatMode == PaintRepeatMode.Mirror;
+        internal bool UsesRepeatedPattern => repeatMode != PaintRepeatMode.None && !UsesMirrorPattern;
+        internal float RadialStartAngleRadians => -Mathf.PI + Mathf.Repeat(radialStartAngle, 360f) * Mathf.Deg2Rad;
 
         internal static DrawingLayer FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform)
         {
@@ -113,6 +118,13 @@ namespace DCFApixels.SpriteEditor
 
         internal void NormalizeSettings()
         {
+            if (!unifiedPatternMode)
+            {
+                if (repeatMode == PaintRepeatMode.None &&
+                    (mirrorAcrossVerticalAxis || mirrorAcrossHorizontalAxis))
+                    repeatMode = PaintRepeatMode.Mirror;
+                unifiedPatternMode = true;
+            }
             brushSize = Mathf.Max(1f, brushSize);
             brushHardness = Mathf.Clamp01(brushHardness);
             if (brushSpacing <= 0f)
@@ -122,6 +134,7 @@ namespace DCFApixels.SpriteEditor
             patternCenter.y = Mathf.Clamp01(patternCenter.y);
             repeatCount = Mathf.Clamp(repeatCount, MinimumRepeatCount, MaximumRepeatCount);
             repeatSecondaryCount = Mathf.Clamp(repeatSecondaryCount, MinimumRepeatCount, MaximumRepeatCount);
+            radialStartAngle = Mathf.Clamp(radialStartAngle, 0f, 360f);
         }
 
         internal void InitializeCanvas(int width, int height)
@@ -146,7 +159,7 @@ namespace DCFApixels.SpriteEditor
             strokeRepeatShapeAnchor = sourceUv;
             clipStrokeToInitialShape =
                 repeatBoundaryMode == PaintRepeatBoundaryMode.Clip &&
-                repeatMode != PaintRepeatMode.None;
+                UsesRepeatedPattern;
         }
 
         internal void EndStroke()
@@ -474,11 +487,11 @@ namespace DCFApixels.SpriteEditor
             patternStampSet.Clear();
 
             AddSymmetryPoint(sourceUv);
-            if (mirrorAcrossVerticalAxis)
+            if (UsesMirrorPattern && mirrorAcrossVerticalAxis)
                 AddSymmetryPoint(new Vector2(patternCenter.x * 2f - sourceUv.x, sourceUv.y));
-            if (mirrorAcrossHorizontalAxis)
+            if (UsesMirrorPattern && mirrorAcrossHorizontalAxis)
                 AddSymmetryPoint(new Vector2(sourceUv.x, patternCenter.y * 2f - sourceUv.y));
-            if (mirrorAcrossVerticalAxis && mirrorAcrossHorizontalAxis)
+            if (UsesMirrorPattern && mirrorAcrossVerticalAxis && mirrorAcrossHorizontalAxis)
             {
                 AddSymmetryPoint(new Vector2(
                     patternCenter.x * 2f - sourceUv.x,
@@ -577,7 +590,7 @@ namespace DCFApixels.SpriteEditor
                     float radius = deltaPixels.magnitude;
                     float angle = Mathf.Atan2(deltaPixels.y, deltaPixels.x);
                     float sectorWidth = Mathf.PI * 2f / primaryCount;
-                    const float startAngle = -Mathf.PI;
+                    float startAngle = RadialStartAngleRadians;
                     float sourceSectorPosition = (angle - startAngle) / sectorWidth;
                     int sourceSector = PositiveModulo(
                         Mathf.FloorToInt(sourceSectorPosition),
@@ -675,7 +688,7 @@ namespace DCFApixels.SpriteEditor
             Vector2 deltaPixels = Vector2.Scale(pointUv - patternCenter, canvasSize);
             float angle = Mathf.Atan2(deltaPixels.y, deltaPixels.x);
             float sectorWidth = Mathf.PI * 2f / count;
-            const float startAngle = -Mathf.PI;
+            float startAngle = RadialStartAngleRadians;
             return PositiveModulo(Mathf.FloorToInt((angle - startAngle) / sectorWidth), count);
         }
 

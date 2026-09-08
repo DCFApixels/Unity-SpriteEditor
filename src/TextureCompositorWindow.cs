@@ -31,15 +31,6 @@ namespace DCFApixels.SpriteEditor
             "Drag a row by its handle. Drop on a line to reorder, or on a highlighted group to move inside.");
         private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
         private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
-        private static readonly GUIContent MirrorVerticalContent = new GUIContent(
-            "Mirror X",
-            "Reflect each brush stroke across the vertical axis through Center.");
-        private static readonly GUIContent MirrorHorizontalContent = new GUIContent(
-            "Mirror Y",
-            "Reflect each brush stroke across the horizontal axis through Center.");
-        private static readonly GUIContent RepeatBoundaryContent = new GUIContent(
-            "Edges",
-            "Continue lets a stroke cross repeated shape boundaries. Clip keeps the whole stroke inside the cell or sector where it started.");
         private static readonly GUIContent BrushSpacingContent = new GUIContent(
             "Step",
             "Distance between brush stamps as a percentage of brush size. Larger values are faster and produce a dotted stroke.");

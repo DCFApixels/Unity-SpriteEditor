@@ -1,0 +1,16 @@
+{
+  "apiVersion": 1,
+  "assetPath": "Assets/Art/AgentIcon/Icon.asset",
+  "create": true,
+  "width": 1024,
+  "height": 1024,
+  "save": true,
+  "operations": [
+    {"op": "add", "type": "group", "as": "art", "settings": {"name": "Artwork"}},
+    {
+      "op": "add", "type": "file", "as": "image", "parent": "@art",
+      "settings": {"source": "Assets/Art/AgentIcon/source.png", "filter": "Source"},
+      "transform": {"position": [20, -12], "rotation": 8, "tiling": "Clip"}
+    }
+  ]
+}

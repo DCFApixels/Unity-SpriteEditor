@@ -1,0 +1,93 @@
+using Newtonsoft.Json.Linq;
+using UnityEngine;
+using static DCFApixels.SpriteEditor.AgentJson;
+
+namespace DCFApixels.SpriteEditor
+{
+    public static partial class SpriteEditorApi
+    {
+        private static void SetBrush(DrawingLayer layer, JObject brush)
+        {
+            Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary");
+            layer.NormalizeSettings();
+            if (brush["color"] != null) layer.brushColor = Color(brush["color"]);
+            layer.brushSize = Number(brush, "size", layer.brushSize, 1f, 4096f);
+            layer.brushHardness = Number(brush, "hardness", layer.brushHardness, 0f, 1f);
+            layer.brushSpacing = Number(brush, "spacing", layer.brushSpacing, DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing);
+            layer.mirrorAcrossVerticalAxis = Bool(brush, "mirrorX", layer.mirrorAcrossVerticalAxis);
+            layer.mirrorAcrossHorizontalAxis = Bool(brush, "mirrorY", layer.mirrorAcrossHorizontalAxis);
+            if (brush["center"] != null)
+            {
+                Vector2 center = Vector(brush["center"], "center");
+                Require(center.x >= 0f && center.x <= 1f && center.y >= 0f && center.y <= 1f, "Pattern center must be inside 0..1.");
+                layer.patternCenter = center;
+            }
+            layer.repeatMode = Enum(brush, "repeat", layer.repeatMode);
+            layer.repeatCount = Int(brush, "repeatCount", layer.repeatCount, 2, 64);
+            layer.repeatSecondaryCount = Int(brush, "repeatSecondaryCount", layer.repeatSecondaryCount, 2, 64);
+            layer.radialStartAngle = Number(brush, "radialStartAngle", layer.radialStartAngle, 0f, 360f);
+            layer.repeatElementMode = Enum(brush, "elements", layer.repeatElementMode);
+            layer.repeatBoundaryMode = Enum(brush, "boundary", layer.repeatBoundaryMode);
+        }
+
+        private static void Paint(TextureCompositor document, DrawingLayer layer, JObject operation, bool execute)
+        {
+            if (operation["brush"] != null) SetBrush(layer, Obj(operation["brush"], "brush"));
+            Require(operation["points"] is JArray points && points.Count >= 1 && points.Count <= 4096, "A stroke needs 1..4096 [x,y] points.");
+            JArray values = (JArray)operation["points"];
+            string space = Text(operation, "space", "canvasPixels");
+            Require(space == "canvasPixels" || space == "layerUv", "space must be canvasPixels or layerUv.");
+            Require(space != "canvasPixels" || layer.transform.tiling == TransformTilingMode.Clip,
+                "canvasPixels painting requires Clip tiling. For repeating transforms, use layerUv to edit the source tile explicitly.");
+            bool erase = Bool(operation, "erase");
+            var uv = new Vector2[values.Count];
+            double stamps = 1d;
+            float spacing = Mathf.Max(1f, layer.brushSize * layer.brushSpacing);
+            for (int i = 0; i < values.Count; i++)
+            {
+                Vector2 point = Vector(values[i], "point");
+                uv[i] = space == "layerUv" ? point : CanvasToLayerUv(point, document, layer.transform);
+                Require(uv[i].x >= -4f && uv[i].x <= 5f && uv[i].y >= -4f && uv[i].y <= 5f, "Stroke points are too far outside the source canvas.", "resource_limit");
+                if (i > 0)
+                    stamps += System.Math.Ceiling(Vector2.Scale(uv[i] - uv[i - 1], new Vector2(document.width, document.height)).magnitude / spacing);
+            }
+            long copies = layer.UsesRepeatedPattern ? layer.repeatCount : 1;
+            if (layer.repeatMode == PaintRepeatMode.Grid) copies *= layer.repeatSecondaryCount;
+            if (layer.UsesMirrorPattern && layer.mirrorAcrossVerticalAxis) copies *= 2;
+            if (layer.UsesMirrorPattern && layer.mirrorAcrossHorizontalAxis) copies *= 2;
+            Require(stamps * copies <= 100000d, "Stroke exceeds the 100,000 stamp budget. Increase spacing or split/simplify the stroke.", "resource_limit");
+            double area = System.Math.Min(layer.brushSize, document.width) * System.Math.Min(layer.brushSize, document.height);
+            Require(stamps * copies * area <= 250000000d, "Stroke exceeds the brush coverage budget. Reduce repetitions, size or point count.", "resource_limit");
+            if (!execute || layer.brushColor.a <= 0f) return;
+            layer.PrepareStroke(document.width, document.height, UndoName);
+            layer.BeginStroke(uv[0]);
+            try
+            {
+                layer.PaintPoint(uv[0], document.width, document.height, erase);
+                for (int i = 1; i < uv.Length; i++)
+                {
+                    Vector2 end = uv[i];
+                    bool inside = layer.IsStrokePointInsideRepeatShape(end, document.width, document.height);
+                    if (!inside && !layer.TryClipStrokeSegmentToRepeatShape(uv[i - 1], end, document.width, document.height, out end)) break;
+                    layer.PaintSegment(uv[i - 1], end, document.width, document.height, false, erase);
+                    if (!inside) break;
+                }
+                layer.SyncSurfaceToTexture();
+            }
+            finally { layer.EndStroke(); }
+        }
+
+        private static Vector2 CanvasToLayerUv(Vector2 point, TextureCompositor document, TextureTransform transform)
+        {
+            Require(Mathf.Abs(transform.scale.x) >= 0.00001f && Mathf.Abs(transform.scale.y) >= 0.00001f, "Cannot paint through a zero-scale transform.");
+            Vector2 size = new Vector2(document.width, document.height);
+            Vector2 pivot = Vector2.Scale(transform.pivot, size);
+            Vector2 local = new Vector2(point.x, document.height - point.y) - pivot - transform.position;
+            float radians = -transform.rotation * Mathf.Deg2Rad;
+            float sine = Mathf.Sin(radians);
+            float cosine = Mathf.Cos(radians);
+            local = new Vector2(cosine * local.x - sine * local.y, sine * local.x + cosine * local.y);
+            return new Vector2((pivot.x + local.x / transform.scale.x) / size.x, (pivot.y + local.y / transform.scale.y) / size.y);
+        }
+    }
+}
