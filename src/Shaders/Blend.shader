@@ -28,7 +28,7 @@ Shader "Hidden/TextureCompositor/Blend"
             float _Mode;
             float _Opacity;
 
-            float3 ToPhotoshopBlendSpace(float3 color)
+            float3 ToSrgbBlendSpace(float3 color)
             {
                 color = saturate(color);
                 #if defined(UNITY_COLORSPACE_GAMMA)
@@ -40,7 +40,7 @@ Shader "Hidden/TextureCompositor/Blend"
                 #endif
             }
 
-            float3 FromPhotoshopBlendSpace(float3 color)
+            float3 FromSrgbBlendSpace(float3 color)
             {
                 color = saturate(color);
                 #if defined(UNITY_COLORSPACE_GAMMA)
@@ -151,8 +151,8 @@ Shader "Hidden/TextureCompositor/Blend"
                 float sourceAlpha = saturate(source.a * opacity);
                 float backdropAlpha = saturate(backdrop.a);
                 float outputAlpha = sourceAlpha + backdropAlpha * (1.0 - sourceAlpha);
-                float3 backdropColor = ToPhotoshopBlendSpace(backdrop.rgb);
-                float3 sourceColor = ToPhotoshopBlendSpace(source.rgb);
+                float3 backdropColor = ToSrgbBlendSpace(backdrop.rgb);
+                float3 sourceColor = ToSrgbBlendSpace(source.rgb);
                 float3 blendedColor = saturate(EvaluateBlend(backdropColor, sourceColor, _Mode));
 
                 // Adobe/PDF source-over blending. The blend function contributes only where
@@ -163,7 +163,7 @@ Shader "Hidden/TextureCompositor/Blend"
                 float3 outputColor = outputAlpha > 0.000001
                     ? premultiplied / outputAlpha
                     : float3(0.0, 0.0, 0.0);
-                return float4(FromPhotoshopBlendSpace(outputColor), outputAlpha);
+                return float4(FromSrgbBlendSpace(outputColor), outputAlpha);
             }
             ENDCG
         }

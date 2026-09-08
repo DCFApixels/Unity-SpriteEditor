@@ -73,6 +73,21 @@ namespace DCFApixels.SpriteEditor
                     FinishPaintingStroke();
                     ApplyToolkitChange(undoName, change);
                 }, toolkitHeaderBindings));
+            Button reset = SpriteEditorUI.CreateButton("Reset", () =>
+            {
+                Layer selected = GetSelectedLayer();
+                if (selected == null || selected.IsGroup)
+                    return;
+                FinishPreviewTransform();
+                FinishPaintingStroke();
+                TextureTransform value = selected.transform;
+                value.Reset();
+                if (!value.Equals(selected.transform))
+                    ApplyToolkitChange("Reset Layer Transform", () => selected.transform = value);
+            });
+            reset.tooltip = "Reset position, scale, rotation and pivot; restore Tiling to Clip. Keep Filter unchanged.";
+            toolkitHeaderBindings.Add(() => reset.SetEnabled(IsPreviewTransformEnabled));
+            row.Add(reset);
             toolkitPreviewHeader.Add(row);
         }
 
@@ -87,7 +102,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (tool == PreviewTool.Transform && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
                 return;
-            if (tool == PreviewTool.Brush && !(GetSelectedLayer() is DrawingLayer))
+            if ((tool == PreviewTool.Brush || tool == PreviewTool.Fill) && !(GetSelectedLayer() is DrawingLayer))
                 return;
             FinishPreviewTransform();
             FinishPaintingStroke();
@@ -105,6 +120,8 @@ namespace DCFApixels.SpriteEditor
                 TogglePreviewTransform();
             else if (evt.keyCode == KeyCode.B && GetSelectedLayer() is DrawingLayer)
                 SetPreviewTool(PreviewTool.Brush);
+            else if (evt.keyCode == KeyCode.G && GetSelectedLayer() is DrawingLayer)
+                SetPreviewTool(PreviewTool.Fill);
             else if (evt.keyCode == KeyCode.V)
                 SetPreviewTool(PreviewTool.None);
             else if (IsPreviewTransformEnabled && evt.keyCode == KeyCode.Escape)

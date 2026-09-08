@@ -1035,6 +1035,7 @@ namespace DCFApixels.SpriteEditor
             if (layer == null)
                 return;
 
+            AddFillSettings(layer);
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             toolkitHeaderBindings.Add(() => brushRow.EnableInClassList(
                 "sprite-editor-tool-options--hidden", !IsPreviewBrushEnabled));
@@ -1045,22 +1046,7 @@ namespace DCFApixels.SpriteEditor
                 () => layer.tool = (PaintToolMode)evt.newValue));
             brushRow.Add(tool);
 
-            ColorField primary = CompactField(new ColorField(), 54f);
-            primary.tooltip = PrimaryBrushColorContent.tooltip;
-            primary.SetValueWithoutNotify(layer.brushColor);
-            toolkitHeaderBindings.Track(primary, () => layer.brushColor);
-            primary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Foreground Brush Color",
-                () => layer.brushColor = evt.newValue));
-            brushRow.Add(primary);
-            ColorField secondary = CompactField(new ColorField(), 54f);
-            secondary.tooltip = SecondaryBrushColorContent.tooltip;
-            secondary.SetValueWithoutNotify(layer.secondaryBrushColor);
-            toolkitHeaderBindings.Track(secondary, () => layer.secondaryBrushColor);
-            secondary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Background Brush Color",
-                () => layer.secondaryBrushColor = evt.newValue));
-            brushRow.Add(secondary);
+            AddPaintColorFields(brushRow, layer);
 
             brushRow.Add(CreateCompactLabel("Size", 30f));
             FloatField size = CompactField(new FloatField(), 46f);
@@ -1169,6 +1155,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • gold cross pivot • Shift constrain • Esc cancel • T exit";
                 }
+                else if (IsPreviewFillEnabled)
+                {
+                    toolkitPreviewFooter.text = "LMB fill • G fill tool • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
+                }
                 else if (IsPreviewBrushEnabled)
                 {
                     toolkitPreviewFooter.text = previewTexture != null
@@ -1197,6 +1187,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerDown(PointerDownEvent evt)
         {
+            if (HandleFillPointerDown(evt)) return;
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
             if (!IsPreviewBrushEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
@@ -1428,7 +1419,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            if (!IsPreviewBrushEnabled || !(GetSelectedLayer() is DrawingLayer layer))
+            if ((!IsPreviewBrushEnabled && !IsPreviewFillEnabled) || !(GetSelectedLayer() is DrawingLayer layer))
                 return;
 
             bool swapColors = !actionModifier && !evt.altKey && evt.keyCode == KeyCode.X;
@@ -1440,6 +1431,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
+            if (!IsPreviewBrushEnabled) return;
             bool decrease = evt.keyCode == KeyCode.LeftBracket || evt.character == '[';
             bool increase = evt.keyCode == KeyCode.RightBracket || evt.character == ']';
             if (!decrease && !increase)

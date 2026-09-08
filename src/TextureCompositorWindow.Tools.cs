@@ -7,14 +7,16 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        private enum PreviewTool { None, Brush, Transform }
+        private enum PreviewTool { None, Brush, Transform, Fill }
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.Brush;
         [NonSerialized] private Button previewNoneButton;
         [NonSerialized] private Button previewBrushButton;
         [NonSerialized] private Button previewTransformButton;
+        [NonSerialized] private Button previewFillButton;
 
         private bool IsPreviewBrushEnabled => previewTool == PreviewTool.Brush && GetSelectedLayer() is DrawingLayer;
+        private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer;
 
         private VisualElement BuildPreviewToolToolbar()
         {
@@ -25,14 +27,17 @@ namespace DCFApixels.SpriteEditor
                 "No Tool (V). View the composition without painting, pattern guides or transform handles.");
             previewBrushButton = CreatePreviewToolButton("brushTool", PreviewTool.Brush,
                 "Brush (B). Paint on the selected Drawing layer. Choose Brush/Eraser in the header; RMB temporarily erases.");
+            previewFillButton = CreatePreviewToolButton("fillTool", PreviewTool.Fill,
+                "Fill (G). Fill similar pixels on the selected Drawing layer, sampling this layer or all visible layers. Contiguous limits the fill to the clicked region.");
             previewTransformButton = CreatePreviewToolButton("transformTool", PreviewTool.Transform,
                 "Transform (T). Drag inside to move, handles to scale, circle to rotate. " +
                 "Drag the gold cross to move the pivot without moving the image (requires nonzero scale). " +
                 "The pivot snaps to frame anchors; hold Ctrl to disable snapping. " +
                 "Shift: constrain movement / preserve proportions / snap rotation to 15°. Groups are not supported yet.");
             toolbar.Add(previewNoneButton);
-            toolbar.Add(previewBrushButton);
             toolbar.Add(previewTransformButton);
+            toolbar.Add(previewBrushButton);
+            toolbar.Add(previewFillButton);
             return toolbar;
         }
 
@@ -57,6 +62,11 @@ namespace DCFApixels.SpriteEditor
             {
                 previewTransformButton.SetEnabled(selected != null && !selected.IsGroup);
                 previewTransformButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Transform);
+            }
+            if (previewFillButton != null)
+            {
+                previewFillButton.SetEnabled(selected is DrawingLayer);
+                previewFillButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Fill);
             }
         }
 
@@ -86,6 +96,8 @@ namespace DCFApixels.SpriteEditor
                     DrawPointer(painter);
                 else if (tool == PreviewTool.Transform)
                     DrawHand(painter);
+                else if (tool == PreviewTool.Fill)
+                    DrawBucket(painter);
                 else
                     DrawBrush(painter);
             }
@@ -93,6 +105,34 @@ namespace DCFApixels.SpriteEditor
             private Vector2 P(float x, float y) => new Vector2(
                 contentRect.x + x * contentRect.width / 24f,
                 contentRect.y + y * contentRect.height / 24f);
+
+            private void DrawBucket(Painter2D painter)
+            {
+                Color ink = resolvedStyle.color;
+                painter.fillColor = new Color(ink.r, ink.g, ink.b, ink.a * 0.2f);
+                painter.BeginPath();
+                painter.MoveTo(P(4f, 11f));
+                painter.LineTo(P(11f, 4f));
+                painter.LineTo(P(18f, 11f));
+                painter.LineTo(P(11f, 18f));
+                painter.ClosePath();
+                painter.Fill();
+                painter.Stroke();
+                painter.BeginPath();
+                painter.MoveTo(P(4f, 11f));
+                painter.LineTo(P(18f, 11f));
+                painter.MoveTo(P(11f, 8f));
+                painter.LineTo(P(7.5f, 3f));
+                painter.BezierCurveTo(P(5f, 0f), P(2f, 3f), P(4f, 6f));
+                painter.Stroke();
+                painter.fillColor = ink;
+                painter.BeginPath();
+                painter.MoveTo(P(19f, 13f));
+                painter.BezierCurveTo(P(18f, 15f), P(16.5f, 17f), P(17f, 18.5f));
+                painter.BezierCurveTo(P(18f, 21f), P(22f, 19.5f), P(21f, 17.5f));
+                painter.ClosePath();
+                painter.Fill();
+            }
 
             private void DrawPointer(Painter2D painter)
             {

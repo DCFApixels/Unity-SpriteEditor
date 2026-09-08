@@ -127,10 +127,10 @@ Undo/Redo or changing external source textures. Project thumbnails use saved pix
 than recompositing layers. No layer rendering is needed at runtime to use the baked output.
 
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
-The narrow toolbar at the far left selects **No Tool** (cursor icon, `V`), **Brush** (brush icon, `B`)
-or **Transform** (hand icon, `T`). No Tool leaves the preview non-editing, without brush/pattern guides
+The narrow toolbar at the far left selects **No Tool** (cursor icon, `V`), **Transform** (hand icon, `T`),
+**Brush** (brush icon, `B`) or **Fill** (bucket icon, `G`). No Tool leaves the preview non-editing, without brush/pattern guides
 or transform handles, and remains active when switching layers.
-Eraser remains a Brush mode in the header; `RMB` temporarily erases. Brush requires a Drawing layer;
+Eraser remains a Brush mode in the header; `RMB` temporarily erases. Brush and Fill require a Drawing layer;
 Transform supports any non-group layer. The active tool is highlighted, and its options appear in the header.
 Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
 window. The right pane has its own horizontal divider and independently scrolling sections.
@@ -248,6 +248,32 @@ layer stack, with blending and effects applied.
 - **Live Quality**, always visible on the left of the Preview footer, sets painting-time
   Preview resolution: **12.5–100%**, default **80%**.
   Lower values reduce preview work; exports and saved canvas dimensions are unchanged.
+
+### Fill
+
+Select a **Drawing Layer**, choose the bucket icon or press `G`, then click the region to fill.
+Fill writes the foreground color into the active layer only; `X` swaps colors. Each click is one
+Undo/Redo step. The RGBA paint mask applies too: disabled RGB components are zero in the fill
+color; disabled A makes the operation a no-op.
+
+- **All Layers off** searches the layer's stored pixels, before its transform, opacity and FX.
+- **All Layers on** uses the visible composition, including blending and FX, at full canvas
+  resolution regardless of Live Quality. Useful for filling a blank layer beneath an outline.
+- **Tolerance** (`0–255`, default `32`) controls color/alpha similarity to the clicked pixel.
+  Hidden RGB in fully transparent pixels is ignored.
+- **Contiguous** (on by default) limits the fill to the four-connected region at the click.
+  Turn it off to fill all matching pixels, including disconnected areas. Works with either sampling
+  source; Tolerance, Antialias and Expand apply in both cases. Only the active Drawing layer is edited.
+- **Antialias** (on by default) softens the outer edge with partial coverage. Turn it off for pixel art.
+- **Expand (px)** (`0–32`, default `0`) grows the region under a contour using approximate distance
+  in source pixels. This is separate from Tolerance and can deliberately cross color boundaries.
+
+These controls appear in the header while Fill is active and are saved independently per Drawing
+layer. Fill edits the primary source frame; it does not repeat through Brush symmetry/repetition.
+For clicks on transformed tiled copies outside that frame, apply the transform first via
+**Convert to Drawing → Apply Transform**. All Layers is projected into the source pixel grid;
+use an untransformed canvas-sized Drawing layer for canvas-pixel-accurate boundaries.
+The current memory-safety limit is 16,777,216 pixels per source/reference image (e.g. 4096 × 4096).
 
 ### Symmetry & repeated strokes
 
@@ -449,6 +475,7 @@ Other asset types and sub-assets are protected.
 | `Shift`-drag / `Shift`-click | Axis-aligned stroke / line from the previous endpoint. |
 | `T` | Toggle Preview Transform. |
 | `B` | Select the Brush tool, retaining its Brush/Eraser mode. |
+| `G` | Select Fill on a Drawing layer. |
 | `V` | Select No Tool: preview without painting or transform handles. |
 | `Enter` / `Escape` | Exit Transform / cancel the current transform drag. |
 | `Ctrl` during pivot drag | Disable snapping. |

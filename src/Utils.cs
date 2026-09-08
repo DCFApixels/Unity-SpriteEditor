@@ -56,6 +56,12 @@ namespace DCFApixels.SpriteEditor
         Eraser = 1
     }
 
+    public enum FillSampleMode
+    {
+        CurrentLayer = 0,
+        AllLayers = 1
+    }
+
     public enum PaintRepeatMode
     {
         None = 0,

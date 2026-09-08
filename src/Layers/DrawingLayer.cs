@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using Unity.Collections;
 using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
@@ -22,6 +23,11 @@ namespace DCFApixels.SpriteEditor
         public float brushSize = 32f;
         [Range(0f, 1f)] public float brushHardness = 0.8f;
         [Range(MinimumBrushSpacing, MaximumBrushSpacing)] public float brushSpacing = DefaultBrushSpacing;
+        public FillSampleMode fillSampleMode = FillSampleMode.CurrentLayer;
+        public bool fillContiguous = true;
+        [Range(0, 255)] public int fillTolerance = 32;
+        public bool fillAntialias = true;
+        [Range(0, 32)] public int fillExpand;
 
         public bool mirrorAcrossVerticalAxis;
         public bool mirrorAcrossHorizontalAxis;
@@ -135,6 +141,29 @@ namespace DCFApixels.SpriteEditor
             repeatCount = Mathf.Clamp(repeatCount, MinimumRepeatCount, MaximumRepeatCount);
             repeatSecondaryCount = Mathf.Clamp(repeatSecondaryCount, MinimumRepeatCount, MaximumRepeatCount);
             radialStartAngle = Mathf.Clamp(radialStartAngle, 0f, 360f);
+            fillTolerance = Mathf.Clamp(fillTolerance, 0, 255);
+            fillExpand = Mathf.Clamp(fillExpand, 0, 32);
+        }
+
+        internal void ApplyFillPixels(NativeArray<Color32> output, int width, int height, string undoName)
+        {
+            if (pixels == null)
+            {
+                pixels = new Texture2D(width, height, TextureFormat.RGBA32, false)
+                {
+                    name = GetTextureName(), hideFlags = HideFlags.HideAndDontSave,
+                    filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp
+                };
+                Undo.RegisterCreatedObjectUndo(pixels, undoName);
+            }
+            else
+            {
+                Undo.RegisterCompleteObjectUndo(pixels, undoName);
+            }
+            pixels.SetPixelData(output, 0);
+            pixels.Apply(false, false);
+            EditorUtility.SetDirty(pixels);
+            InvalidatePaintSurface();
         }
 
         internal void InitializeCanvas(int width, int height)

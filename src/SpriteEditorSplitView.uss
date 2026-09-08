@@ -127,6 +127,46 @@
     display: none;
 }
 
+.sprite-editor-fill-settings {
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.sprite-editor-fill-settings > * {
+    flex-shrink: 0;
+    margin: 1px 3px;
+    height: 22px;
+}
+
+.sprite-editor-fill-settings > .unity-base-field {
+    align-items: center;
+}
+
+.sprite-editor-fill-tolerance {
+    width: 184px;
+}
+
+.sprite-editor-fill-expand {
+    width: 156px;
+}
+
+.sprite-editor-fill-settings > .unity-base-field > .unity-base-field__label {
+    min-width: 0;
+    width: auto;
+    flex-grow: 0;
+    flex-shrink: 0;
+    align-self: stretch;
+    margin: 0 6px 0 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+}
+
+.sprite-editor-fill-settings > .unity-toggle > .unity-base-field__input {
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin: 0;
+}
+
 .sprite-editor-saved-output-preview {
     height: 160px;
     flex-shrink: 0;

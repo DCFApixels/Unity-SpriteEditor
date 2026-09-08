@@ -4,6 +4,26 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-09-09
+
+### Added
+
+- Fill tool (bucket icon, G) for Drawing layers: sample the current layer's stored pixels or the
+  full-resolution visible composition, writing only to the active Drawing layer with one Undo step.
+- Per-layer fill settings in the preview header: color tolerance (0–255), antialiasing and edge
+  expansion (0–32 source pixels). Share foreground/background colors, X swap and the RGBA paint mask.
+- Contiguous toggle (enabled by default): disable to fill all matching pixels, including disconnected
+  regions, with either sample source. Preserve per-layer settings and skip the flood queue in global mode.
+- Burst/native-buffer connected-region search and approximate distance-based edge coverage;
+  opt-in flood-fill regression checks in `Tests~/FloodFillSmoke.cs`.
+- Reset button next to Original Aspect in the Transform header, with Undo/Redo support.
+
+### Changed
+
+- Order preview tools as No Tool, Transform, Brush and Fill.
+- Use an All Layers checkbox for fill sampling; default it off and Contiguous on for new Drawing layers.
+- Align fill option labels consistently and leave enough room for the full Expand label.
+
 ## [0.5.6] - 2026-09-08
 
 ### Added
@@ -309,9 +329,9 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Changed
 
-- Standard blend modes now use Photoshop/PDF-style source-over alpha composition, so their blend
+- Standard blend modes now use source-over alpha composition, so their blend
   function affects only overlapping coverage and non-overlapping pixels remain visible.
-- RGB blend functions run in an sRGB Photoshop-style blend space even when the Unity project uses
+- RGB blend functions run in an sRGB blend space even when the Unity project uses
   Linear color space.
 - Existing serialized Normal, Multiply, and Overwrite mode values remain compatible.
 
@@ -355,7 +375,7 @@ All notable changes to Sprite Editor are documented in this file.
 ### Added
 
 - RMB temporarily erases a Drawing layer without changing the selected Brush/Eraser tool.
-- Photoshop-style foreground/background brush colors with an `X` swap shortcut.
+- Foreground/background brush colors with an `X` swap shortcut.
 
 ## [0.2.3] - 2026-09-07
 
@@ -406,7 +426,7 @@ All notable changes to Sprite Editor are documented in this file.
 ### Added
 
 - Layered texture composition with file, color fill, gradient, outline, and SDF layers.
-- Photoshop-style nested, non-isolated groups with drag-and-drop reordering.
+- Nested, non-isolated groups with drag-and-drop reordering.
 - Outline and SDF inputs targeting either the previous item or a selected layer/group.
 - Exact Euclidean, approximate Euclidean, Manhattan, and Chebyshev distance algorithms.
 - Normal, Multiply, and true RGBA Overwrite blend modes.
