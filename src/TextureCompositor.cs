@@ -6,7 +6,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [CreateAssetMenu(fileName = "TextureCompositor", menuName = "Sprite Editor/Texture Compositor")]
-    public sealed class TextureCompositor : ScriptableObject
+    public sealed partial class TextureCompositor : ScriptableObject
     {
         private const int MinimumOutputSize = 1;
         private const int MaximumOutputSize = 16384;
@@ -193,14 +193,14 @@ namespace DCFApixels.SpriteEditor
             VisitDrawingLayers(layers, drawing => drawing.CloneStoredTexture());
         }
 
-        internal void PersistDrawingLayerTextures()
+        internal void PersistDrawingLayerTextures(bool reimport = true)
         {
             if (!AssetDatabase.Contains(this))
                 return;
 
             bool addedTexture = false;
             VisitDrawingLayers(layers, drawing => addedTexture |= drawing.MakeTexturePersistent(this));
-            if (!addedTexture)
+            if (!addedTexture || !reimport)
                 return;
 
             string assetPath = AssetDatabase.GetAssetPath(this);

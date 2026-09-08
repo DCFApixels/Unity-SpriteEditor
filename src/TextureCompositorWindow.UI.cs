@@ -267,18 +267,20 @@ namespace DCFApixels.SpriteEditor
 
             toolkitDocumentField = new ObjectField
             {
-                objectType = typeof(TextureCompositor),
+                objectType = typeof(UnityEngine.Object),
                 allowSceneObjects = false
             };
             toolkitDocumentField.style.flexGrow = 1f;
             toolkitDocumentField.style.minWidth = 140f;
-            toolkitDocumentField.SetValueWithoutNotify(compositor);
+            toolkitDocumentField.tooltip = "A Sprite Editor document or its generated texture/sprite. Double-click the saved asset in Project to edit its layers.";
+            toolkitSettingsBindings.Track(toolkitDocumentField,
+                () => compositor.OutputTexture != null ? (UnityEngine.Object)compositor.OutputTexture : compositor);
             toolkitDocumentField.RegisterValueChangedCallback(evt =>
             {
-                TextureCompositor selected = evt.newValue as TextureCompositor;
+                TextureCompositor selected = TextureCompositor.FindDocument(evt.newValue);
                 if (selected == null || selected == compositor)
                 {
-                    toolkitDocumentField.SetValueWithoutNotify(compositor);
+                    toolkitDocumentField.SetValueWithoutNotify(compositor.OutputTexture != null ? (UnityEngine.Object)compositor.OutputTexture : compositor);
                     return;
                 }
 
@@ -288,12 +290,12 @@ namespace DCFApixels.SpriteEditor
                 }
                 else
                 {
-                    toolkitDocumentField.SetValueWithoutNotify(compositor);
+                    toolkitDocumentField.SetValueWithoutNotify(compositor.OutputTexture != null ? (UnityEngine.Object)compositor.OutputTexture : compositor);
                 }
             });
             toolbar.Add(toolkitDocumentField);
             Button save = SpriteEditorUI.CreateToolbarButton("Save", SaveAsset, 46f);
-            save.tooltip = "Save this document to its existing asset (Ctrl+S).";
+            save.tooltip = "Save layers and update the embedded full-resolution texture and sprite (Ctrl+S).";
             save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor));
             toolkitSettingsBindings.Add(() => save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor)));
             toolbar.Add(save);

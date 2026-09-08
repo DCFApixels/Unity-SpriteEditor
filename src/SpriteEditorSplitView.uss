@@ -45,6 +45,17 @@
     flex-shrink: 0;
 }
 
+.sprite-editor-saved-output-preview {
+    height: 160px;
+    flex-shrink: 0;
+    margin-top: 4px;
+    margin-bottom: 6px;
+}
+
+.sprite-editor-saved-output-preview--empty {
+    display: none;
+}
+
 .sprite-editor-transform-settings {
     flex-wrap: wrap;
     flex-shrink: 0;

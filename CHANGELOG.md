@@ -4,6 +4,28 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-08
+
+### Fixed
+
+- Draw saved compositor output in the small root-asset icon in Project list/tree layouts,
+  including one-column mode. Keep native grid previews and sub-asset icons unchanged;
+  cache document lookups and invalidate them on saves/project changes without composing layers.
+
+### Added
+
+- Save / Save As now stores a full-resolution Texture2D and an Output Sprite inside the
+  layer document. Promote the texture to the main asset for texture-field assignment and
+  native Project thumbnails without a separate export. Output Sprite uses a centered pivot,
+  full-rectangle geometry, and 100 pixels per unit.
+- Preserve embedded output object identities on subsequent saves and canvas resizing;
+  create independent outputs for Save As and recover output references after Undo.
+- Resolve documents from their generated textures/sprites for double-click opening, the
+  document field, and Assets/Open in Sprite Editor. Keep the layer-document Inspector button,
+  add Save & Update Output, and render its preview from saved pixels without recompositing.
+- Upgrade existing documents on explicit Sprite Editor Save only. Outputs reflect the last
+  save; source texture changes and Undo/Redo require another save to update the baked result.
+
 ## [0.5.0] - 2026-09-08
 
 ### Added

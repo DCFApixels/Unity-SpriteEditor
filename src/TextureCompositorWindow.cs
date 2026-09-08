@@ -936,10 +936,8 @@ namespace DCFApixels.SpriteEditor
             if (compositor == null || !AssetDatabase.Contains(compositor))
                 return;
 
-            compositor.SyncDrawingLayerTextures();
-            compositor.PersistDrawingLayerTextures();
-            EditorUtility.SetDirty(compositor);
-            AssetDatabase.SaveAssetIfDirty(compositor);
+            if (!compositor.TrySaveWithOutput())
+                return;
             RefreshToolkitInterface();
         }
 
@@ -966,12 +964,15 @@ namespace DCFApixels.SpriteEditor
             copy.name = Path.GetFileNameWithoutExtension(path);
             copy.hideFlags = HideFlags.None;
             path = AssetDatabase.GenerateUniqueAssetPath(path);
-            AssetDatabase.CreateAsset(copy, path);
-            copy.PersistDrawingLayerTextures();
-            AssetDatabase.SaveAssetIfDirty(copy);
+            if (!copy.TrySaveWithOutput(path))
+            {
+                if (!AssetDatabase.Contains(copy))
+                    DestroyImmediate(copy);
+                return false;
+            }
             SetCompositor(copy);
-            Selection.activeObject = copy;
-            EditorGUIUtility.PingObject(copy);
+            Selection.activeObject = copy.OutputTexture;
+            EditorGUIUtility.PingObject(copy.OutputTexture);
             return true;
         }
 

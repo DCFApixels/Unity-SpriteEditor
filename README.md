@@ -91,12 +91,13 @@ The URL above follows the default branch. To pin a release, append an existing t
 2. Set **Canvas → W / H** above the Preview.
 3. Use the **+** button at the bottom of Layers to add a **Drawing Layer**.
 4. Select the layer and paint in the Preview. Adjust the brush in its header.
-5. Press `Ctrl+S` to save the editable composition.
-6. Choose **Export** when you need a flattened texture.
+5. Press `Ctrl+S` to save the layers and embedded output texture.
+6. Drag the saved asset into a texture field, or expand it in Project and use **Output Sprite**.
+   Use **Export** only when you need a separate image file.
 
 > [!TIP]
-> Reopen a saved document by double-clicking its asset in Project, or use
-> **Open in Sprite Editor** in its Inspector.
+> Reopen a saved document by double-clicking its texture, sprite, or layer document in Project.
+> **Assets → Open in Sprite Editor** also works; the nested layer document retains its Inspector button.
 
 <a id="workspace"></a>
 ## Workspace & saving
@@ -109,6 +110,20 @@ The document header is shared by the entire window:
 - **Save As** creates a separate editable document.
 - `Ctrl+S` saves an existing asset, or opens Save As for a temporary document.
 - **Export** writes the flattened image, not the editable layer tree.
+
+**Use the document without exporting.** Save / Save As writes a full-resolution Texture2D
+and an **Output Sprite** inside the same `.asset` as the editable layers. The texture is the
+main asset, with a normal image thumbnail in Project, and can be assigned to materials,
+RawImage, and Texture2D fields. Expand the asset to assign Output Sprite to SpriteRenderer
+or UI Image; it uses a centered pivot, a full-rectangle mesh, and 100 pixels per unit.
+
+Subsequent saves update the existing output objects, including when the canvas size changes,
+to preserve references. Save As creates independent outputs. Existing documents gain this
+feature on their next Save in Sprite Editor; no bulk conversion is performed.
+The nested layer document's Inspector also has **Save & Update Output** and a saved preview.
+Output reflects the last explicit Sprite Editor save, not unfinished edits: save again after
+Undo/Redo or changing external source textures. Project thumbnails use saved pixels rather
+than recompositing layers. No layer rendering is needed at runtime to use the baked output.
 
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
 Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
