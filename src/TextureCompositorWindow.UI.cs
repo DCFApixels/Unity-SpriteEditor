@@ -366,6 +366,7 @@ namespace DCFApixels.SpriteEditor
                 "Change Sprite Canvas Height",
                 () => compositor.height = Mathf.Max(1, evt.newValue)));
             toolkitCanvasToolbar.Add(height);
+            AddTiledPreviewControl();
 
             toolkitPreviewActions = new VisualElement();
             toolkitPreviewActions.AddToClassList("sprite-editor-preview-actions");
@@ -1143,6 +1144,7 @@ namespace DCFApixels.SpriteEditor
             RefreshPreviewToolToolbar();
             RefreshPreviewTransformTool();
             bool transforming = IsPreviewTransformEnabled;
+            toolkitPreviewCanvas.SetTiled(tiledPreview);
             toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,
                 compositor.width, compositor.height,
                 IsPreviewBrushEnabled ? drawing : null, transforming,
@@ -1186,7 +1188,7 @@ namespace DCFApixels.SpriteEditor
                 else
                 {
                     toolkitPreviewFooter.text = previewTexture != null
-                        ? "Transparent canvas • auto refresh"
+                        ? (tiledPreview ? "Tiled canvas • seamless brush and eraser • auto refresh" : "Transparent canvas • auto refresh")
                         : "Rendering preview…";
                 }
             }
@@ -1210,7 +1212,7 @@ namespace DCFApixels.SpriteEditor
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
             if (!IsPreviewBrushEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
-            if (!toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) ||
+            if (!PreviewContainsPaintPoint(evt.localPosition) ||
                 !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv))
             {
                 return;
@@ -1238,7 +1240,10 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.CapturePointer(evt.pointerId);
             Undo.RecordObject(compositor, "Paint Stroke");
             layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
-            layer.BeginStroke(originUv);
+            if (tiledPreview)
+                layer.BeginTiledStroke(originUv, compositor.width, compositor.height);
+            else
+                layer.BeginStroke(originUv);
             RememberPaintingPoint(originUv);
             if (connect && originUv != startUv)
                 PaintTowardsLayerPoint(startUv);
@@ -1378,9 +1383,7 @@ namespace DCFApixels.SpriteEditor
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
             bool visible = previewTool == PreviewTool.Brush &&
                            !alt &&
-                           toolkitPreviewCanvas != null &&
-                           toolkitPreviewCanvas.contentRect.Contains(localPosition) &&
-                           toolkitPreviewCanvas.ImageRect.Contains(localPosition);
+                           PreviewContainsPaintPoint(localPosition);
             toolkitPreviewCanvas?.SetCursor(
                 visible,
                 localPosition,
@@ -1498,6 +1501,7 @@ namespace DCFApixels.SpriteEditor
             private readonly VisualElement checker;
             private Texture2D checkerTexture;
             private readonly Image image;
+            private readonly VisualElement tiledImage;
             private readonly VisualElement overlay;
             private Texture texture;
             private DrawingLayer drawingLayer;
@@ -1508,6 +1512,8 @@ namespace DCFApixels.SpriteEditor
             private bool cursorErase;
             private bool transformMode;
             private Vector2 cursorPosition;
+            private bool tiled;
+            private Rect presentationRect;
 
             public Rect ImageRect { get; private set; }
             public float PixelScale => ImageRect.width / Mathf.Max(1, documentWidth);
@@ -1541,6 +1547,11 @@ namespace DCFApixels.SpriteEditor
                 image.style.position = Position.Absolute;
                 Add(image);
 
+                tiledImage = new VisualElement { pickingMode = PickingMode.Ignore };
+                tiledImage.AddToClassList("sprite-editor-tiled-image");
+                tiledImage.generateVisualContent += DrawTiledImage;
+                Add(tiledImage);
+
                 overlay = new VisualElement { pickingMode = PickingMode.Ignore };
                 overlay.style.position = Position.Absolute;
                 overlay.generateVisualContent += DrawOverlay;
@@ -1549,10 +1560,20 @@ namespace DCFApixels.SpriteEditor
                 RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
             }
 
+            public void SetTiled(bool enabled)
+            {
+                if (tiled == enabled) return;
+                tiled = enabled;
+                image.EnableInClassList("sprite-editor-preview-image--hidden", tiled);
+                tiledImage.EnableInClassList("sprite-editor-preview-image--visible", tiled);
+                UpdateImageLayout(true);
+            }
+
             public void SetDocument(Texture nextTexture, int width, int height, DrawingLayer layer, bool transforming = false, PaintToolSettings brush = null)
             {
                 transformMode = transforming;
                 texture = nextTexture;
+                if (texture is RenderTexture) texture.wrapMode = tiled ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
                 documentWidth = Mathf.Max(1, width);
                 documentHeight = Mathf.Max(1, height);
                 drawingLayer = layer;
@@ -1564,6 +1585,7 @@ namespace DCFApixels.SpriteEditor
                     : DisplayStyle.Flex;
                 image.image = texture;
                 image.MarkDirtyRepaint();
+                tiledImage.MarkDirtyRepaint();
                 UpdateImageLayout();
                 overlay.MarkDirtyRepaint();
             }
@@ -1572,6 +1594,7 @@ namespace DCFApixels.SpriteEditor
             {
                 texture = null;
                 image.image = null;
+                tiledImage.MarkDirtyRepaint();
             }
 
             public void SetCursor(bool visible, Vector2 position, bool erase)
@@ -1602,14 +1625,23 @@ namespace DCFApixels.SpriteEditor
 
             public void UpdateImageLayout()
             {
+                UpdateImageLayout(false);
+            }
+
+            private void UpdateImageLayout(bool force)
+            {
                 Rect nextRect = viewport.ImageRect(contentRect, new Vector2(documentWidth, documentHeight));
-                if (nextRect == ImageRect)
+                Rect nextPresentation = tiled ? contentRect : nextRect;
+                if (!force && nextRect == ImageRect && nextPresentation == presentationRect)
                     return;
                 ImageRect = nextRect;
-                PositionElement(checker, ImageRect);
+                presentationRect = nextPresentation;
+                PositionElement(checker, presentationRect);
                 PositionElement(image, ImageRect);
-                PositionElement(overlay, ImageRect);
+                PositionElement(tiledImage, contentRect);
+                PositionElement(overlay, presentationRect);
                 checker.MarkDirtyRepaint();
+                tiledImage.MarkDirtyRepaint();
                 overlay.MarkDirtyRepaint();
                 ViewChanged?.Invoke();
             }
@@ -1675,12 +1707,35 @@ namespace DCFApixels.SpriteEditor
 #endif
             }
 
+            private void DrawTiledImage(MeshGenerationContext context)
+            {
+                Rect rect = tiledImage.contentRect;
+                if (!tiled || texture == null || rect.width <= 0f || rect.height <= 0f ||
+                    ImageRect.width <= 0f || ImageRect.height <= 0f) return;
+                float left = Mathf.Repeat((contentRect.xMin - ImageRect.xMin) / ImageRect.width, 1f);
+                float top = Mathf.Repeat(1f - (contentRect.yMin - ImageRect.yMin) / ImageRect.height, 1f);
+                float right = left + rect.width / ImageRect.width;
+                float bottom = top - rect.height / ImageRect.height;
+                context.AllocateTempMesh(4, 6, out var vertices, out var indices);
+                vertices[0] = new Vertex { position = new Vector3(rect.xMin, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(left, top) };
+                vertices[1] = new Vertex { position = new Vector3(rect.xMax, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(right, top) };
+                vertices[2] = new Vertex { position = new Vector3(rect.xMax, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(right, bottom) };
+                vertices[3] = new Vertex { position = new Vector3(rect.xMin, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(left, bottom) };
+                indices[0] = 0; indices[1] = 1; indices[2] = 2;
+                indices[3] = 0; indices[4] = 2; indices[5] = 3;
+#if UNITY_6000_3_OR_NEWER
+                context.DrawMesh(vertices, indices, texture, TextureOptions.SkipDynamicAtlas);
+#else
+                context.DrawMesh(vertices, indices, texture);
+#endif
+            }
+
             private void DrawOverlay(MeshGenerationContext context)
             {
                 if (brushSettings == null)
                     return;
 
-                Rect rect = overlay.contentRect;
+                Rect rect = new Rect(ImageRect.position - presentationRect.position, ImageRect.size);
                 Painter2D painter = context.painter2D;
                 Color guide = new Color(0.20f, 0.70f, 1f, 0.55f);
                 painter.lineWidth = 1f;
@@ -1691,8 +1746,8 @@ namespace DCFApixels.SpriteEditor
 
                 if (!cursorVisible)
                     return;
-                Vector2 localCursor = cursorPosition - ImageRect.position;
-                float pixelScale = rect.width / Mathf.Max(1f, documentWidth);
+                Vector2 localCursor = cursorPosition - presentationRect.position;
+                float pixelScale = PixelScale;
                 float transformScale = drawingLayer == null ? 1f :
                     (Mathf.Abs(drawingLayer.transform.scale.x) + Mathf.Abs(drawingLayer.transform.scale.y)) * 0.5f;
                 float radius = Mathf.Max(
@@ -1721,7 +1776,7 @@ namespace DCFApixels.SpriteEditor
                     for (int i = 1; i < count; i++)
                     {
                         float x = rect.width * i / count;
-                        StrokeLine(painter, new Vector2(x, 0f), new Vector2(x, rect.height));
+                        StrokeLine(painter, rect.position + new Vector2(x, 0f), rect.position + new Vector2(x, rect.height));
                     }
                 }
                 if (drawingLayer.repeatMode == PaintRepeatMode.Vertical ||
@@ -1733,12 +1788,12 @@ namespace DCFApixels.SpriteEditor
                     for (int i = 1; i < verticalCount; i++)
                     {
                         float y = rect.height * i / verticalCount;
-                        StrokeLine(painter, new Vector2(0f, y), new Vector2(rect.width, y));
+                        StrokeLine(painter, rect.position + new Vector2(0f, y), rect.position + new Vector2(rect.width, y));
                     }
                 }
                 if (drawingLayer.repeatMode == PaintRepeatMode.Radial)
                 {
-                    Vector2 center = new Vector2(
+                    Vector2 center = rect.position + new Vector2(
                         rect.width * drawingLayer.patternCenter.x,
                         rect.height * (1f - drawingLayer.patternCenter.y));
                     float length = Mathf.Sqrt(rect.width * rect.width + rect.height * rect.height);
@@ -1755,7 +1810,7 @@ namespace DCFApixels.SpriteEditor
 
             private void DrawMirrorGuide(Painter2D painter, Rect rect, bool vertical)
             {
-                Vector2 center = new Vector2(rect.width * drawingLayer.patternCenter.x,
+                Vector2 center = rect.position + new Vector2(rect.width * drawingLayer.patternCenter.x,
                     rect.height * (1f - drawingLayer.patternCenter.y));
                 Vector2 axis = drawingLayer.GetMirrorAxisDirection(vertical);
                 Vector2 direction = new Vector2(axis.x * rect.width / Mathf.Max(1, documentWidth),
@@ -1763,13 +1818,13 @@ namespace DCFApixels.SpriteEditor
                 float forward = float.PositiveInfinity, backward = float.PositiveInfinity;
                 if (Mathf.Abs(direction.x) > 0.000001f)
                 {
-                    forward = (direction.x > 0f ? rect.width - center.x : -center.x) / direction.x;
-                    backward = (direction.x > 0f ? center.x : center.x - rect.width) / direction.x;
+                    forward = (direction.x > 0f ? rect.xMax - center.x : rect.xMin - center.x) / direction.x;
+                    backward = (direction.x > 0f ? center.x - rect.xMin : center.x - rect.xMax) / direction.x;
                 }
                 if (Mathf.Abs(direction.y) > 0.000001f)
                 {
-                    forward = Mathf.Min(forward, (direction.y > 0f ? rect.height - center.y : -center.y) / direction.y);
-                    backward = Mathf.Min(backward, (direction.y > 0f ? center.y : center.y - rect.height) / direction.y);
+                    forward = Mathf.Min(forward, (direction.y > 0f ? rect.yMax - center.y : rect.yMin - center.y) / direction.y);
+                    backward = Mathf.Min(backward, (direction.y > 0f ? center.y - rect.yMin : center.y - rect.yMax) / direction.y);
                 }
                 if (!float.IsInfinity(forward) && !float.IsInfinity(backward))
                     StrokeLine(painter, center - direction * backward, center + direction * forward);

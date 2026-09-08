@@ -135,6 +135,7 @@ namespace DCFApixels.SpriteEditor
             layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
             paintingPreviewScale = DefaultPaintingPreviewScale;
             previewChannels = AllPreviewChannels;
+            tiledPreview = false;
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
             groupExpansion?.Clear();
@@ -539,6 +540,13 @@ namespace DCFApixels.SpriteEditor
             Vector2 documentUv = new Vector2(
                 (mousePosition.x - imageRect.x) / imageRect.width,
                 1f - (mousePosition.y - imageRect.y) / imageRect.height);
+            if (tiledPreview)
+            {
+                if (!TiledCanvasUtility.IsInvertible(layer.transform)) return false;
+                sourceUv = TiledCanvasUtility.ToSource(documentUv, layer.transform, compositor.width, compositor.height);
+                return !float.IsNaN(sourceUv.x) && !float.IsNaN(sourceUv.y) &&
+                       !float.IsInfinity(sourceUv.x) && !float.IsInfinity(sourceUv.y);
+            }
             return TryMapDocumentToLayerUv(documentUv, layer, out sourceUv);
         }
 

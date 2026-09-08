@@ -45,6 +45,31 @@
     flex-shrink: 0;
 }
 
+.sprite-editor-preview-tiling {
+    flex-shrink: 0;
+    margin-left: 8px;
+    margin-right: 4px;
+}
+
+.sprite-editor-preview-tiling > .unity-toggle__label {
+    min-width: 0;
+    width: auto;
+    margin-right: 4px;
+}
+
+.sprite-editor-tiled-image {
+    position: absolute;
+    display: none;
+}
+
+.sprite-editor-preview-image--visible {
+    display: flex;
+}
+
+.sprite-editor-preview-image--hidden {
+    display: none;
+}
+
 .sprite-editor-workspace {
     flex-direction: row;
     flex-grow: 1;

@@ -53,7 +53,8 @@ namespace DCFApixels.SpriteEditor
 
         private PaintStrokeParameters GetPaintingParameters()
         {
-            return paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
+            PaintStrokeParameters parameters = paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
+            return tiledPreview ? parameters.WithCanvasWrap() : parameters;
         }
 
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)
@@ -61,8 +62,7 @@ namespace DCFApixels.SpriteEditor
             bool painting = previewTool == PreviewTool.Brush && (evt.button == 0 || evt.button == 1);
             bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
             if ((!painting && !filling) || evt.altKey || compositor == null ||
-                !toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) ||
-                !toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
+                !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
                 return false;
 
             evt.PreventDefault();

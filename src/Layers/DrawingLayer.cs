@@ -50,6 +50,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private List<PaintStamp> segmentStamps;
         [NonSerialized] private bool clipStrokeToInitialShape;
         [NonSerialized] private Vector2 strokeRepeatShapeAnchor;
+        [NonSerialized] private bool strokeWrapCanvas;
 
         internal Texture2D StoredTexture => pixels;
         internal bool UsesMirrorPattern => repeatMode == PaintRepeatMode.Mirror;
@@ -190,15 +191,27 @@ namespace DCFApixels.SpriteEditor
 
         internal void BeginStroke(Vector2 sourceUv)
         {
+            strokeWrapCanvas = false;
             strokeRepeatShapeAnchor = sourceUv;
             clipStrokeToInitialShape =
                 repeatBoundaryMode == PaintRepeatBoundaryMode.Clip &&
                 (UsesRepeatedPattern || UsesMirrorPattern && (mirrorAcrossVerticalAxis || mirrorAcrossHorizontalAxis));
         }
 
+        internal void BeginTiledStroke(Vector2 sourceUv, int width, int height)
+        {
+            BeginStroke(TiledCanvasUtility.CanonicalSource(sourceUv, transform, width, height));
+            strokeWrapCanvas = true;
+        }
+
+        private Vector2 StrokeShapePoint(Vector2 sourceUv, int width, int height) => strokeWrapCanvas
+            ? TiledCanvasUtility.CanonicalSource(sourceUv, transform, width, height)
+            : sourceUv;
+
         internal void EndStroke()
         {
             clipStrokeToInitialShape = false;
+            strokeWrapCanvas = false;
         }
 
         internal bool IsStrokePointInsideRepeatShape(
@@ -209,7 +222,7 @@ namespace DCFApixels.SpriteEditor
             return !clipStrokeToInitialShape ||
                    IsInSameRepeatShape(
                        strokeRepeatShapeAnchor,
-                       sourceUv,
+                       StrokeShapePoint(sourceUv, outputWidth, outputHeight),
                        outputWidth,
                        outputHeight);
         }
@@ -225,7 +238,7 @@ namespace DCFApixels.SpriteEditor
             if (!clipStrokeToInitialShape ||
                 !IsInSameRepeatShape(
                     strokeRepeatShapeAnchor,
-                    fromSourceUv,
+                    StrokeShapePoint(fromSourceUv, outputWidth, outputHeight),
                     outputWidth,
                     outputHeight))
             {
@@ -234,7 +247,7 @@ namespace DCFApixels.SpriteEditor
 
             if (IsInSameRepeatShape(
                     strokeRepeatShapeAnchor,
-                    toSourceUv,
+                    StrokeShapePoint(toSourceUv, outputWidth, outputHeight),
                     outputWidth,
                     outputHeight))
             {
@@ -249,7 +262,7 @@ namespace DCFApixels.SpriteEditor
                 Vector2 candidate = Vector2.Lerp(fromSourceUv, toSourceUv, midpoint);
                 if (IsInSameRepeatShape(
                         strokeRepeatShapeAnchor,
-                        candidate,
+                        StrokeShapePoint(candidate, outputWidth, outputHeight),
                         outputWidth,
                         outputHeight))
                 {
@@ -294,6 +307,8 @@ namespace DCFApixels.SpriteEditor
             Color color = parameters.Color;
             if (color.a <= 0f)
                 return;
+            if (parameters.WrapCanvas && !TiledCanvasUtility.IsInvertible(transform))
+                return;
             RenderTexture surface = EnsurePaintSurface(outputWidth, outputHeight);
             if (surface == null)
                 return;
@@ -307,6 +322,16 @@ namespace DCFApixels.SpriteEditor
             float distance = pixelDelta.magnitude;
             int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / parameters.SpacingPixels)) : 0;
             int firstStep = includeStart ? 0 : 1;
+            if (parameters.WrapCanvas && steps > 0)
+            {
+                int copies = UsesRepeatedPattern ? repeatCount : 1;
+                if (repeatMode == PaintRepeatMode.Grid) copies *= repeatSecondaryCount;
+                if (UsesMirrorPattern && mirrorAcrossVerticalAxis) copies *= 2;
+                if (UsesMirrorPattern && mirrorAcrossHorizontalAxis) copies *= 2;
+                double coverage = Math.Max(1d, copies * (double)Mathf.Min(parameters.Size, outputWidth) * Mathf.Min(parameters.Size, outputHeight));
+                int sampleBudget = Mathf.Clamp((int)Math.Min(8192d, 64000000d / coverage), 1, 8192);
+                steps = Mathf.Min(steps, sampleBudget);
+            }
 
             segmentStamps ??= new List<PaintStamp>(256);
             segmentStamps.Clear();
@@ -314,6 +339,8 @@ namespace DCFApixels.SpriteEditor
             {
                 float t = steps <= 0 ? 0f : (float)step / steps;
                 Vector2 point = Vector2.Lerp(fromSourceUv, toSourceUv, t);
+                if (parameters.WrapCanvas)
+                    point = TiledCanvasUtility.CanonicalSource(point, transform, outputWidth, outputHeight);
                 BuildPatternStamps(point, outputWidth, outputHeight);
                 segmentStamps.AddRange(patternStamps);
             }
@@ -327,7 +354,9 @@ namespace DCFApixels.SpriteEditor
                 parameters.Erase,
                 outputWidth,
                 outputHeight,
-                patternCenter);
+                patternCenter,
+                parameters.WrapCanvas,
+                transform);
         }
 
         internal void ClearSurface(int width, int height)
@@ -880,7 +909,9 @@ namespace DCFApixels.SpriteEditor
                 bool erase,
                 int outputWidth,
                 int outputHeight,
-                Vector2 patternCenter)
+                Vector2 patternCenter,
+                bool wrapCanvas,
+                TextureTransform transform)
             {
                 if (target == null || stamps == null || stamps.Count == 0)
                     return;
@@ -895,6 +926,18 @@ namespace DCFApixels.SpriteEditor
                 material.SetFloat(HardnessId, Mathf.Clamp01(hardness));
                 material.SetVector(CanvasSizeId, new Vector4(outputWidth, outputHeight, 0f, 0f));
                 material.SetVector(PatternCenterId, new Vector4(patternCenter.x, patternCenter.y, 0f, 0f));
+                if (wrapCanvas)
+                {
+                    TiledCanvasUtility.GetPeriodBasis(transform, outputWidth, outputHeight, out Vector2 u, out Vector2 v);
+                    material.SetVector("_WrapBasisU", new Vector4(u.x, u.y, 0f, 0f));
+                    material.SetVector("_WrapBasisV", new Vector4(v.x, v.y, 0f, 0f));
+                    Vector2 origin = TiledCanvasUtility.ToDocument(Vector2.zero, transform, outputWidth, outputHeight);
+                    Vector2 dx = TiledCanvasUtility.ToDocument(Vector2.right, transform, outputWidth, outputHeight) - origin;
+                    Vector2 dy = TiledCanvasUtility.ToDocument(Vector2.up, transform, outputWidth, outputHeight) - origin;
+                    material.SetVector("_SourceToDocumentX", new Vector4(dx.x, dy.x, origin.x, 0f));
+                    material.SetVector("_SourceToDocumentY", new Vector4(dx.y, dy.y, origin.y, 0f));
+                    material.SetFloat("_BrushSize", sizePixels);
+                }
                 material.SetFloat(
                     SourceBlendId,
                     erase
@@ -921,6 +964,11 @@ namespace DCFApixels.SpriteEditor
                             for (int i = 0; i < stamps.Count; i++)
                             {
                                 PaintStamp stamp = stamps[i];
+                                if (wrapCanvas)
+                                {
+                                    DrawWrappedStamp(stamp, radiusX, radiusY, transform, outputWidth, outputHeight);
+                                    continue;
+                                }
                                 Rect brushRect = new Rect(
                                     stamp.center.x - radiusX,
                                     stamp.center.y - radiusY,
@@ -954,7 +1002,44 @@ namespace DCFApixels.SpriteEditor
                 }
             }
 
-            private static void DrawVertex(float x, float y, float brushU, float brushV, PaintStamp stamp)
+            private static void DrawWrappedStamp(PaintStamp stamp, float radiusX, float radiusY,
+                TextureTransform transform, int width, int height)
+            {
+                Vector2 origin = TiledCanvasUtility.ToDocument(stamp.center, transform, width, height);
+                Vector2 center = TiledCanvasUtility.Wrap(origin);
+                Vector2 dx = TiledCanvasUtility.ToDocument(stamp.center + new Vector2(radiusX, 0f), transform, width, height) - origin;
+                Vector2 dy = TiledCanvasUtility.ToDocument(stamp.center + new Vector2(0f, radiusY), transform, width, height) - origin;
+                float extentX = Mathf.Abs(dx.x) + Mathf.Abs(dy.x);
+                float extentY = Mathf.Abs(dx.y) + Mathf.Abs(dy.y);
+                float firstX = Mathf.Ceil(-center.x - extentX), lastX = Mathf.Floor(1f - center.x + extentX);
+                float firstY = Mathf.Ceil(-center.y - extentY), lastY = Mathf.Floor(1f - center.y + extentY);
+                // A large footprint uses one quad; select its nearest periodic copy in the
+                // shader instead of emitting an unbounded number of overlapping quads.
+                double copyCount = ((double)lastX - firstX + 1d) * ((double)lastY - firstY + 1d);
+                if (!(copyCount <= 16d))
+                {
+                    DrawVertex(0f, 0f, 0f, 0f, stamp, 2);
+                    DrawVertex(0f, 1f, 0f, 1f, stamp, 2);
+                    DrawVertex(1f, 1f, 1f, 1f, stamp, 2);
+                    DrawVertex(1f, 0f, 1f, 0f, stamp, 2);
+                    return;
+                }
+                int minX = (int)firstX, maxX = (int)lastX;
+                int minY = (int)firstY, maxY = (int)lastY;
+                for (int y = minY; y <= maxY; y++)
+                for (int x = minX; x <= maxX; x++)
+                {
+                    Vector2 copy = TiledCanvasUtility.ToSource(center + new Vector2(x, y), transform, width, height);
+                    Rect rect = new Rect(copy.x - radiusX, copy.y - radiusY, radiusX * 2f, radiusY * 2f);
+                    if (rect.xMax <= 0f || rect.yMax <= 0f || rect.xMin >= 1f || rect.yMin >= 1f) continue;
+                    DrawVertex(rect.xMin, rect.yMin, 0f, 0f, stamp, 1);
+                    DrawVertex(rect.xMin, rect.yMax, 0f, 1f, stamp, 1);
+                    DrawVertex(rect.xMax, rect.yMax, 1f, 1f, stamp, 1);
+                    DrawVertex(rect.xMax, rect.yMin, 1f, 0f, stamp, 1);
+                }
+            }
+
+            private static void DrawVertex(float x, float y, float brushU, float brushV, PaintStamp stamp, int tileMode = 0)
             {
                 GL.MultiTexCoord2(0, brushU, brushV);
                 GL.MultiTexCoord2(1, stamp.clipRect.x, stamp.clipRect.y);
@@ -964,6 +1049,7 @@ namespace DCFApixels.SpriteEditor
                     stamp.clipMode,
                     stamp.clipAngleCenter,
                     stamp.clipAngleHalfWidth);
+                GL.MultiTexCoord3(4, stamp.center.x, stamp.center.y, tileMode);
                 GL.Vertex3(x, y, 0f);
             }
         }

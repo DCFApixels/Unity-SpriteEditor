@@ -41,6 +41,7 @@ namespace DCFApixels.SpriteEditor
                     ? "Alpha: off ignores transparency in Preview and gives the brush A=0 (no paint). " +
                       "Enable only A to view alpha in grayscale. Eraser is unaffected."
                     : labels[i] + " channel: show in Preview and use the brush value; off paints this component as 0. " +
+                      "A single RGB channel is shown in grayscale; A controls its transparency. " +
                       "Existing pixels are not changed by toggling. Eraser is unaffected.";
                 button.AddToClassList("sprite-editor-channel-button");
                 if (i < 3)

@@ -76,7 +76,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (!IsPreviewFillEnabled || evt.button != 0 || evt.altKey || compositor == null)
                 return false;
-            if (!toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition)) return false;
+            if (!PreviewContainsPaintPoint(evt.localPosition)) return false;
             evt.PreventDefault();
             evt.StopImmediatePropagation();
             Focus();
@@ -87,6 +87,15 @@ namespace DCFApixels.SpriteEditor
             {
                 ShowNotification(new GUIContent("Fill inside the layer's source frame, or apply its transform first."));
                 return true;
+            }
+            if (tiledPreview)
+            {
+                uv = TiledCanvasUtility.CanonicalSource(uv, layer.transform, compositor.width, compositor.height);
+                if (uv.x < 0f || uv.x > 1f || uv.y < 0f || uv.y > 1f)
+                {
+                    ShowNotification(new GUIContent("Fill inside a visible copy of the layer's source frame."));
+                    return true;
+                }
             }
             Vector4 channels = PreviewChannelMask;
             Color foreground = paintSettings.brushColor;
