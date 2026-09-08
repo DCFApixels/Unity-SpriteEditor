@@ -16,6 +16,11 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Layer layer;
         [NonSerialized] private ListView modifiersList;
         [NonSerialized] private bool applyingChange;
+        [NonSerialized] private bool interfaceBuilt;
+        [NonSerialized] private bool refreshRequested;
+        [NonSerialized] private TextureCompositor boundCompositor;
+        [NonSerialized] private string boundLayerId;
+        private readonly List<Material> displayedModifiers = new List<Material>();
 
         public static void Open(Layer layer, TextureCompositor compositor)
         {
@@ -24,27 +29,50 @@ namespace DCFApixels.SpriteEditor
             window.layer = layer;
             window.layerId = layer?.Id;
             window.minSize = new Vector2(320f, 260f);
-            window.RebuildInterface();
+            window.RefreshInterface();
             window.Show();
         }
 
         private void OnEnable()
         {
             TextureCompositor.Changed += OnCompositorChanged;
+            Undo.undoRedoPerformed += OnUndoRedo;
         }
 
         private void OnDisable()
         {
             TextureCompositor.Changed -= OnCompositorChanged;
+            Undo.undoRedoPerformed -= OnUndoRedo;
         }
 
         public void CreateGUI()
         {
-            RebuildInterface();
+            interfaceBuilt = false;
+            RefreshInterface();
         }
 
-        private void RebuildInterface()
+        private void Update()
         {
+            if (refreshRequested && (modifiersList == null || !SpriteEditorUI.HasPointerCaptureWithin(modifiersList)))
+                RefreshInterface();
+        }
+
+        private void RefreshInterface()
+        {
+            refreshRequested = false;
+            bool valid = ResolveLayer();
+            if (interfaceBuilt && boundCompositor == compositor && boundLayerId == layerId &&
+                valid == (modifiersList != null))
+            {
+                if (valid)
+                    RefreshModifierItems();
+                return;
+            }
+            interfaceBuilt = true;
+            boundCompositor = compositor;
+            boundLayerId = layerId;
+            modifiersList = null;
+            displayedModifiers.Clear();
             VisualElement root = rootVisualElement;
             root.Clear();
             root.style.paddingLeft = 8f;
@@ -52,7 +80,7 @@ namespace DCFApixels.SpriteEditor
             root.style.paddingTop = 8f;
             root.style.paddingBottom = 8f;
 
-            if (!ResolveLayer())
+            if (!valid)
             {
                 SpriteEditorUI.AddHelpBox(
                     root,
@@ -96,8 +124,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     applyingChange = false;
                 }
+                RememberModifierItems();
             };
             root.Add(modifiersList);
+            RememberModifierItems();
 
             VisualElement buttons = SpriteEditorUI.CreateRow();
             buttons.style.justifyContent = Justify.FlexEnd;
@@ -127,6 +157,7 @@ namespace DCFApixels.SpriteEditor
                 }
 
                 ApplyChange("Edit Layer Modifier", () => layer.modifiers[index] = evt.newValue as Material);
+                RememberModifierItems();
             });
             return field;
         }
@@ -145,7 +176,7 @@ namespace DCFApixels.SpriteEditor
             if (!ResolveLayer())
                 return;
             ApplyChange("Add Layer Modifier", () => layer.modifiers.Add(null));
-            modifiersList?.RefreshItems();
+            RefreshModifierItems();
             modifiersList?.SetSelection(layer.modifiers.Count - 1);
         }
 
@@ -167,7 +198,28 @@ namespace DCFApixels.SpriteEditor
                         layer.modifiers.RemoveAt(index);
                 }
             });
-            modifiersList.RefreshItems();
+            RefreshModifierItems();
+        }
+
+        private void RememberModifierItems()
+        {
+            displayedModifiers.Clear();
+            displayedModifiers.AddRange(layer.modifiers);
+        }
+
+        private void RefreshModifierItems()
+        {
+            if (modifiersList == null)
+                return;
+            bool changed = displayedModifiers.Count != layer.modifiers.Count;
+            for (int i = 0; !changed && i < displayedModifiers.Count; i++)
+                changed = displayedModifiers[i] != layer.modifiers[i];
+
+            if (!ReferenceEquals(modifiersList.itemsSource, layer.modifiers))
+                modifiersList.itemsSource = layer.modifiers;
+            else if (changed)
+                modifiersList.RefreshItems();
+            RememberModifierItems();
         }
 
         private void ApplyChange(string undoName, Action change)
@@ -195,7 +247,10 @@ namespace DCFApixels.SpriteEditor
 
             Layer resolved = compositor.FindLayer(layerId);
             if (resolved == null)
+            {
+                layer = null;
                 return false;
+            }
             layer = resolved;
             layer.modifiers ??= new List<Material>();
             return true;
@@ -205,7 +260,12 @@ namespace DCFApixels.SpriteEditor
         {
             if (changedCompositor != compositor || applyingChange)
                 return;
-            RebuildInterface();
+            refreshRequested = true;
+        }
+
+        private void OnUndoRedo()
+        {
+            RefreshInterface();
         }
     }
 }

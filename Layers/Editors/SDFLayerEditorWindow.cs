@@ -26,9 +26,11 @@ namespace DCFApixels.SpriteEditor
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange);
+                ApplyLayerChange,
+                SettingsBindings);
 
             EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
+            SettingsBindings.Track(metric, () => (Enum)layer.metric);
             metric.RegisterValueChangedCallback(evt => ApplyLayerChange(
                 "Change SDF Algorithm",
                 () => layer.metric = (DistanceMetric)evt.newValue));
@@ -36,6 +38,7 @@ namespace DCFApixels.SpriteEditor
 
             EnumField sourceChannel = SpriteEditorUI.ConfigureField(
                 new EnumField("Source Channel", layer.sourceChannel));
+            SettingsBindings.Track(sourceChannel, () => (Enum)layer.sourceChannel);
             sourceChannel.RegisterValueChangedCallback(evt => ApplyLayerChange(
                 "Change SDF Source Channel",
                 () => layer.sourceChannel = (SDFLayer.SourceChannel)evt.newValue));
@@ -45,6 +48,7 @@ namespace DCFApixels.SpriteEditor
             SpriteEditorUI.ConfigureField(threshold);
             threshold.showInputField = true;
             threshold.SetValueWithoutNotify(layer.threshold);
+            SettingsBindings.Track(threshold, () => (int)layer.threshold);
             threshold.RegisterValueChangedCallback(evt => ApplyLayerChange(
                 "Change SDF Threshold",
                 () => layer.threshold = (byte)Mathf.Clamp(evt.newValue, 0, 255)));
@@ -53,6 +57,7 @@ namespace DCFApixels.SpriteEditor
             FloatField maxDistance = SpriteEditorUI.ConfigureField(
                 new FloatField("Max Distance (px, 0 = auto)"));
             maxDistance.SetValueWithoutNotify(layer.maxDistanceNormalization);
+            SettingsBindings.Track(maxDistance, () => layer.maxDistanceNormalization);
             maxDistance.RegisterValueChangedCallback(evt => ApplyLayerChange(
                 "Change SDF Max Distance",
                 () => layer.maxDistanceNormalization = Mathf.Max(0f, evt.newValue)));
@@ -60,6 +65,7 @@ namespace DCFApixels.SpriteEditor
 
             EnumField distancePosition = SpriteEditorUI.ConfigureField(
                 new EnumField("Position", layer.distancePosition));
+            SettingsBindings.Track(distancePosition, () => (Enum)layer.distancePosition);
             distancePosition.RegisterValueChangedCallback(evt => ApplyLayerChange(
                 "Change SDF Position",
                 () => layer.distancePosition = (SDFLayer.DistancePosition)evt.newValue));
@@ -67,12 +73,14 @@ namespace DCFApixels.SpriteEditor
 
             Toggle inverted = SpriteEditorUI.ConfigureField(new Toggle("Inverted"));
             inverted.SetValueWithoutNotify(layer.inverted);
+            SettingsBindings.Track(inverted, () => layer.inverted);
             inverted.RegisterValueChangedCallback(evt =>
                 ApplyLayerChange("Invert SDF", () => layer.inverted = evt.newValue));
             root.Add(inverted);
 
             GradientField gradient = SpriteEditorUI.ConfigureField(new GradientField("Gradient"));
             gradient.SetValueWithoutNotify(layer.gradient);
+            SettingsBindings.Track(gradient, () => layer.gradient);
             gradient.RegisterValueChangedCallback(evt =>
                 ApplyLayerChange("Change SDF Gradient", () => layer.gradient = GradientUtility.Create(evt.newValue)));
             root.Add(gradient);

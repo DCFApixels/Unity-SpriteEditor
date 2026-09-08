@@ -286,6 +286,11 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Image previewImage;
         [NonSerialized] private Label previewPlaceholder;
         [NonSerialized] private bool applyingChange;
+        [NonSerialized] private bool interfaceBuilt;
+        [NonSerialized] private bool interfaceRefreshRequested;
+        [NonSerialized] private Layer boundLayer;
+        [NonSerialized] private TextureCompositor boundCompositor;
+        internal readonly SpriteEditorUI.ValueBindings SettingsBindings = new SpriteEditorUI.ValueBindings();
 
         protected Layer CurrentLayer => currentLayer;
         protected TextureCompositor Compositor => compositor;
@@ -300,24 +305,28 @@ namespace DCFApixels.SpriteEditor
             minSize = new Vector2(320f, 430f);
             InvalidateEffectTargetOptions();
             if (rootVisualElement != null && rootVisualElement.panel != null)
-                RebuildInterface();
+                RefreshInterface();
             RequestPreview(true);
         }
 
         protected virtual void OnEnable()
         {
             TextureCompositor.Changed += OnCompositorChanged;
+            Undo.undoRedoPerformed += OnUndoRedo;
             RequestPreview(true);
         }
 
         protected virtual void OnDisable()
         {
             TextureCompositor.Changed -= OnCompositorChanged;
+            Undo.undoRedoPerformed -= OnUndoRedo;
             ReleasePreview();
         }
 
         protected virtual void Update()
         {
+            if (interfaceRefreshRequested)
+                RefreshInterface();
             if (!previewRequested || EditorApplication.timeSinceStartup < previewAt)
                 return;
 
@@ -327,7 +336,8 @@ namespace DCFApixels.SpriteEditor
 
         public void CreateGUI()
         {
-            RebuildInterface();
+            interfaceBuilt = false;
+            RefreshInterface();
         }
 
         protected abstract void BuildSettings(VisualElement root, Layer layer);
@@ -349,28 +359,19 @@ namespace DCFApixels.SpriteEditor
             {
                 applyingChange = false;
             }
+            SettingsBindings.Refresh();
             RequestPreview();
         }
 
         protected void AddEffectTarget(VisualElement root, TargetedLayerEffect effect)
         {
             EnumField input = SpriteEditorUI.ConfigureField(new EnumField("Input", effect.inputMode));
+            SettingsBindings.Track(input, () => (Enum)effect.inputMode);
             input.RegisterValueChangedCallback(evt =>
             {
                 ApplyLayerChange("Change Effect Input", () => effect.inputMode = (EffectInputMode)evt.newValue);
-                InvalidateEffectTargetOptions();
-                RebuildInterface();
             });
             root.Add(input);
-
-            if (effect.inputMode == EffectInputMode.Previous)
-            {
-                SpriteEditorUI.AddHelpBox(
-                    root,
-                    "Uses the item directly below this effect. A group is read as the combined alpha of all visible descendants.",
-                    HelpBoxMessageType.Info);
-                return;
-            }
 
             EnsureEffectTargetOptions(effect);
             int selectedIndex = FindEffectTargetIndex(effect.TargetLayerId);
@@ -381,33 +382,47 @@ namespace DCFApixels.SpriteEditor
                 int nextIndex = Array.IndexOf(effectTargetLabels, evt.newValue);
                 if (nextIndex < 0 || nextIndex >= effectTargetIds.Length)
                     return;
-                ApplyLayerChange("Change Effect Target", () => effect.TargetLayerId = effectTargetIds[nextIndex]);
-                InvalidateEffectTargetOptions();
-                RebuildInterface();
+                ApplyLayerChange("Change Effect Target", () =>
+                {
+                    effect.TargetLayerId = effectTargetIds[nextIndex];
+                    InvalidateEffectTargetOptions();
+                });
             });
             root.Add(target);
-
-            if (string.IsNullOrEmpty(effect.TargetLayerId))
+            HelpBox status = SpriteEditorUI.AddHelpBox(root, string.Empty, HelpBoxMessageType.Info);
+            SettingsBindings.Add(() =>
             {
-                SpriteEditorUI.AddHelpBox(
-                    root,
-                    "Select a source layer or group for this effect.",
-                    HelpBoxMessageType.Warning);
-            }
-            else if (!compositor.IsUsableEffectTarget(effect, effect.TargetLayerId))
+                EnsureEffectTargetOptions(effect);
+                bool choicesChanged = target.choices.Count != effectTargetLabels.Length;
+                for (int i = 0; !choicesChanged && i < effectTargetLabels.Length; i++)
+                    choicesChanged = target.choices[i] != effectTargetLabels[i];
+                if (choicesChanged)
+                    target.choices = new List<string>(effectTargetLabels);
+                target.style.display = effect.inputMode == EffectInputMode.Specific ? DisplayStyle.Flex : DisplayStyle.None;
+                status.style.display = DisplayStyle.Flex;
+                status.messageType = HelpBoxMessageType.Info;
+                if (effect.inputMode == EffectInputMode.Previous)
+                    status.text = "Uses the item directly below this effect. A group is read as the combined alpha of all visible descendants.";
+                else if (string.IsNullOrEmpty(effect.TargetLayerId))
+                {
+                    status.text = "Select a source layer or group for this effect.";
+                    status.messageType = HelpBoxMessageType.Warning;
+                }
+                else if (!compositor.IsUsableEffectTarget(effect, effect.TargetLayerId))
+                {
+                    status.text = "The selected target is missing or would create a cyclic effect dependency.";
+                    status.messageType = HelpBoxMessageType.Error;
+                }
+                else if (compositor.FindLayer(effect.TargetLayerId) is GroupLayer)
+                    status.text = "The selected group is read as the combined alpha of all visible descendant layers.";
+                else
+                    status.style.display = DisplayStyle.None;
+            });
+            SettingsBindings.Track(target, () =>
             {
-                SpriteEditorUI.AddHelpBox(
-                    root,
-                    "The selected target is missing or would create a cyclic effect dependency.",
-                    HelpBoxMessageType.Error);
-            }
-            else if (compositor.FindLayer(effect.TargetLayerId) is GroupLayer)
-            {
-                SpriteEditorUI.AddHelpBox(
-                    root,
-                    "The selected group is read as the combined alpha of all visible descendant layers.",
-                    HelpBoxMessageType.Info);
-            }
+                EnsureEffectTargetOptions(effect);
+                return effectTargetLabels[FindEffectTargetIndex(effect.TargetLayerId)];
+            });
         }
 
         protected void RequestPreview(bool immediate = false)
@@ -416,8 +431,23 @@ namespace DCFApixels.SpriteEditor
             previewAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
         }
 
-        protected void RebuildInterface()
+        protected void RefreshInterface(bool forceValues = false)
         {
+            interfaceRefreshRequested = false;
+            bool valid = ResolveLayer();
+            Layer nextLayer = valid ? currentLayer : null;
+            if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && boundCompositor == compositor)
+            {
+                SettingsBindings.Refresh(forceValues);
+                return;
+            }
+            interfaceBuilt = true;
+            boundLayer = nextLayer;
+            boundCompositor = compositor;
+            SettingsBindings.Clear();
+            previewImage = null;
+            previewPlaceholder = null;
+            InvalidateEffectTargetOptions();
             VisualElement root = rootVisualElement;
             root.Clear();
             root.style.paddingLeft = 8f;
@@ -425,7 +455,7 @@ namespace DCFApixels.SpriteEditor
             root.style.paddingTop = 8f;
             root.style.paddingBottom = 8f;
 
-            if (!ResolveLayer())
+            if (!valid)
             {
                 SpriteEditorUI.AddHelpBox(
                     root,
@@ -438,6 +468,7 @@ namespace DCFApixels.SpriteEditor
             ScrollView scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = 1f;
             BuildSettings(scroll, currentLayer);
+            SettingsBindings.Refresh(forceValues);
             scroll.Add(SpriteEditorUI.CreateHeading(PreviewTitle));
 
             VisualElement preview = new VisualElement();
@@ -488,8 +519,7 @@ namespace DCFApixels.SpriteEditor
             if (compositor == null || string.IsNullOrEmpty(layerId))
                 return false;
 
-            if (currentLayer == null || currentLayer.Id != layerId)
-                currentLayer = compositor.FindLayer(layerId);
+            currentLayer = compositor.FindLayer(layerId);
 
             return currentLayer != null && EditedLayerType.IsInstanceOfType(currentLayer);
         }
@@ -564,10 +594,16 @@ namespace DCFApixels.SpriteEditor
         {
             if (changedCompositor != compositor || applyingChange)
                 return;
-            currentLayer = null;
             InvalidateEffectTargetOptions();
-            RebuildInterface();
+            interfaceRefreshRequested = true;
             RequestPreview();
+        }
+
+        private void OnUndoRedo()
+        {
+            InvalidateEffectTargetOptions();
+            RefreshInterface(forceValues: true);
+            RequestPreview(true);
         }
 
         private void UpdatePreview()

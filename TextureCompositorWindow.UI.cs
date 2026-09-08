@@ -23,12 +23,42 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private ObjectField toolkitDocumentField;
         [NonSerialized] private VisualElement toolkitLayerHierarchyRoot;
         [NonSerialized] private VisualElement activeDropElement;
-        [NonSerialized] private string layerDragPointerCandidateId;
-        [NonSerialized] private Vector2 layerDragPointerStart;
-        [NonSerialized] private int layerDragPointerId = -1;
+        [NonSerialized] private StyleLength activeDropMarginLeft;
+        [NonSerialized] private LayerDragManipulator activeLayerDrag;
         [NonSerialized] private int paintingPointerId = -1;
         [NonSerialized] private bool applyingToolkitChange;
         [NonSerialized] private bool rebuildingToolkit;
+        [NonSerialized] private bool toolkitRefreshRequested;
+        [NonSerialized] private TextureCompositor toolkitBoundDocument;
+        [NonSerialized] private DrawingLayer toolkitHeaderLayer;
+        [NonSerialized] private bool toolkitHeaderBuilt;
+        [NonSerialized] private HelpBox toolkitDocumentStatus;
+        [NonSerialized] private HelpBox toolkitPreviewError;
+        private readonly SpriteEditorUI.ValueBindings toolkitSettingsBindings = new SpriteEditorUI.ValueBindings();
+        private readonly SpriteEditorUI.ValueBindings toolkitHeaderBindings = new SpriteEditorUI.ValueBindings();
+        private readonly SpriteEditorUI.ValueBindings toolkitLayerBindings = new SpriteEditorUI.ValueBindings();
+        private readonly List<LayerTreeEntry> toolkitLayerTree = new List<LayerTreeEntry>();
+        private readonly List<LayerTreeEntry> toolkitNextLayerTree = new List<LayerTreeEntry>();
+
+        private readonly struct LayerTreeEntry : IEquatable<LayerTreeEntry>
+        {
+            public readonly List<Layer> Container;
+            public readonly Layer Layer;
+            public readonly int Index;
+            public readonly int Depth;
+
+            public LayerTreeEntry(List<Layer> container, Layer layer, int index, int depth)
+            {
+                Container = container;
+                Layer = layer;
+                Index = index;
+                Depth = depth;
+            }
+
+            public bool Equals(LayerTreeEntry other) =>
+                ReferenceEquals(Container, other.Container) && ReferenceEquals(Layer, other.Layer) &&
+                Index == other.Index && Depth == other.Depth;
+        }
 
         public void CreateGUI()
         {
@@ -36,16 +66,22 @@ namespace DCFApixels.SpriteEditor
                 SetCompositor(CreateTemporaryCompositor());
 
             VisualElement root = rootVisualElement;
+            root.UnregisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
+            root.UnregisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
+            root.UnregisterCallback<DragExitedEvent>(OnToolkitDragExited);
             root.Clear();
+            toolkitBoundDocument = null;
+            toolkitHeaderBuilt = false;
+            toolkitSettingsBindings.Clear();
+            toolkitHeaderBindings.Clear();
+            toolkitLayerBindings.Clear();
+            toolkitLayerTree.Clear();
             root.focusable = true;
             root.style.flexGrow = 1f;
             root.style.backgroundColor = SpriteEditorUI.PanelColor;
             root.RegisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
-            root.RegisterCallback<DragExitedEvent>(_ =>
-            {
-                ClearToolkitDropIndicator();
-                ClearLayerDragData();
-            });
+            root.RegisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
+            root.RegisterCallback<DragExitedEvent>(OnToolkitDragExited);
 
             TwoPaneSplitView split = new TwoPaneSplitView(
                 0,
@@ -80,7 +116,13 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.style.paddingBottom = 8f;
             settingsPane.Add(toolkitSettingsScroll);
 
-            RebuildToolkitInterface();
+            RefreshToolkitInterface();
+        }
+
+        private void OnToolkitDragExited(DragExitedEvent evt)
+        {
+            ClearToolkitDropIndicator();
+            ClearLayerDragData();
         }
 
         private VisualElement BuildToolkitPreviewPane()
@@ -98,6 +140,8 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewErrorRoot.style.paddingLeft = PanePadding;
             toolkitPreviewErrorRoot.style.paddingRight = PanePadding;
             pane.Add(toolkitPreviewErrorRoot);
+            toolkitPreviewError = SpriteEditorUI.AddHelpBox(toolkitPreviewErrorRoot, string.Empty, HelpBoxMessageType.Error);
+            toolkitPreviewError.style.display = DisplayStyle.None;
 
             toolkitPreviewCanvas = new SpritePreviewElement();
             toolkitPreviewCanvas.style.flexGrow = 1f;
@@ -122,7 +166,7 @@ namespace DCFApixels.SpriteEditor
             return pane;
         }
 
-        private void RebuildToolkitInterface()
+        private void RefreshToolkitInterface(bool forceValues = false)
         {
             if (rootVisualElement == null || toolkitDocumentRoot == null || rebuildingToolkit)
                 return;
@@ -130,10 +174,20 @@ namespace DCFApixels.SpriteEditor
             rebuildingToolkit = true;
             try
             {
-                Vector2 previousScroll = toolkitSettingsScroll?.scrollOffset ?? scrollPosition;
-                BuildToolkitDocumentArea();
-                BuildToolkitSettings(previousScroll);
-                BuildToolkitPreviewHeader();
+                toolkitRefreshRequested = false;
+                if (toolkitBoundDocument != compositor)
+                {
+                    toolkitBoundDocument = compositor;
+                    toolkitSettingsBindings.Clear();
+                    toolkitLayerBindings.Clear();
+                    toolkitLayerTree.Clear();
+                    toolkitHeaderBuilt = false;
+                    BuildToolkitDocumentArea();
+                    BuildToolkitSettings();
+                }
+                toolkitSettingsBindings.Refresh(forceValues);
+                RefreshToolkitLayerHierarchy(forceValues);
+                RefreshToolkitPreviewHeader(forceValues);
                 UpdateToolkitPreviewPresentation();
             }
             finally
@@ -167,7 +221,6 @@ namespace DCFApixels.SpriteEditor
                 if (ResolveUnsavedTemporaryDocument())
                 {
                     SetCompositor(selected);
-                    RebuildToolkitInterface();
                 }
                 else
                 {
@@ -180,56 +233,54 @@ namespace DCFApixels.SpriteEditor
                 if (!ResolveUnsavedTemporaryDocument())
                     return;
                 SetCompositor(CreateTemporaryCompositor());
-                RebuildToolkitInterface();
             }, 46f));
             toolbar.Add(SpriteEditorUI.CreateToolbarButton("Save As", () =>
             {
-                if (SaveAsAsset())
-                    RebuildToolkitInterface();
+                SaveAsAsset();
             }, 64f));
             toolkitDocumentRoot.Add(toolbar);
 
-            if (!AssetDatabase.Contains(compositor))
+            toolkitDocumentStatus = SpriteEditorUI.AddHelpBox(toolkitDocumentRoot, string.Empty, HelpBoxMessageType.Info);
+            toolkitSettingsBindings.Add(() =>
             {
-                SpriteEditorUI.AddHelpBox(
-                    toolkitDocumentRoot,
-                    temporaryDocumentDirty
-                        ? "Unsaved compositor. Use Save As to keep this layer tree."
-                        : "Temporary compositor. It can be exported directly or saved as an asset.",
-                    temporaryDocumentDirty ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info);
-            }
+                toolkitDocumentStatus.style.display = AssetDatabase.Contains(compositor) ? DisplayStyle.None : DisplayStyle.Flex;
+                toolkitDocumentStatus.text = temporaryDocumentDirty
+                    ? "Unsaved compositor. Use Save As to keep this layer tree."
+                    : "Temporary compositor. It can be exported directly or saved as an asset.";
+                toolkitDocumentStatus.messageType = temporaryDocumentDirty ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info;
+            });
         }
 
-        private void BuildToolkitSettings(Vector2 previousScroll)
+        private void BuildToolkitSettings()
         {
             toolkitSettingsScroll.Clear();
             toolkitSettingsScroll.Add(SpriteEditorUI.CreateHeading("Output"));
 
             VisualElement output = SpriteEditorUI.CreateRow();
-            IntegerField width = new IntegerField("W");
-            width.tooltip = "Output width in pixels.";
+            IntegerField width = new IntegerField("W") { isDelayed = true };
+            width.tooltip = "Output width in pixels. Press Enter or leave the field to apply.";
             width.style.flexGrow = 1f;
             width.labelElement.style.width = 22f;
             width.labelElement.style.minWidth = 22f;
             width.labelElement.style.flexShrink = 0f;
             width.SetValueWithoutNotify(compositor.width);
+            toolkitSettingsBindings.Track(width, () => compositor.width);
             width.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Sprite Output Width",
-                () => compositor.width = Mathf.Max(1, evt.newValue),
-                rebuildHeader: true));
+                () => compositor.width = Mathf.Max(1, evt.newValue)));
             output.Add(width);
 
-            IntegerField height = new IntegerField("H");
-            height.tooltip = "Output height in pixels.";
+            IntegerField height = new IntegerField("H") { isDelayed = true };
+            height.tooltip = "Output height in pixels. Press Enter or leave the field to apply.";
             height.style.flexGrow = 1f;
             height.labelElement.style.width = 22f;
             height.labelElement.style.minWidth = 22f;
             height.labelElement.style.flexShrink = 0f;
             height.SetValueWithoutNotify(compositor.height);
+            toolkitSettingsBindings.Track(height, () => compositor.height);
             height.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Sprite Output Height",
-                () => compositor.height = Mathf.Max(1, evt.newValue),
-                rebuildHeader: true));
+                () => compositor.height = Mathf.Max(1, evt.newValue)));
             output.Add(height);
             toolkitSettingsScroll.Add(output);
 
@@ -247,32 +298,42 @@ namespace DCFApixels.SpriteEditor
             layerHeader.Add(SpriteEditorUI.CreateButton("Add", ShowAddMenuForSelection, 54f));
             Button group = SpriteEditorUI.CreateButton("Group", GroupSelectedLayer, 54f);
             group.SetEnabled(GetSelectedLayer() != null);
+            toolkitSettingsBindings.Add(() => group.SetEnabled(GetSelectedLayer() != null));
             layerHeader.Add(group);
             toolkitSettingsScroll.Add(layerHeader);
 
             toolkitLayerHierarchyRoot = new VisualElement();
             toolkitLayerHierarchyRoot.style.flexShrink = 0f;
             toolkitSettingsScroll.Add(toolkitLayerHierarchyRoot);
-            RebuildToolkitLayerHierarchy();
 
             Button export = SpriteEditorUI.CreateButton("Export PNG", ExportTexture);
             export.style.marginTop = 10f;
             export.style.height = 24f;
             toolkitSettingsScroll.Add(export);
 
-            scrollPosition = previousScroll;
-            toolkitSettingsScroll.schedule.Execute(() =>
-            {
-                if (toolkitSettingsScroll != null)
-                    toolkitSettingsScroll.scrollOffset = scrollPosition;
-            });
+            toolkitSettingsScroll.scrollOffset = scrollPosition;
         }
 
-        private void RebuildToolkitLayerHierarchy()
+        private void RefreshToolkitLayerHierarchy(bool forceValues = false)
         {
             if (toolkitLayerHierarchyRoot == null)
                 return;
 
+            toolkitNextLayerTree.Clear();
+            CollectToolkitLayerTree(compositor?.layers, 0);
+            bool structureChanged = toolkitLayerTree.Count != toolkitNextLayerTree.Count || toolkitLayerHierarchyRoot.childCount == 0;
+            for (int i = 0; !structureChanged && i < toolkitLayerTree.Count; i++)
+                structureChanged = !toolkitLayerTree[i].Equals(toolkitNextLayerTree[i]);
+            if (!structureChanged)
+            {
+                toolkitLayerBindings.Refresh(forceValues);
+                return;
+            }
+
+            ClearToolkitDropIndicator();
+            toolkitLayerBindings.Clear();
+            toolkitLayerTree.Clear();
+            toolkitLayerTree.AddRange(toolkitNextLayerTree);
             toolkitLayerHierarchyRoot.Clear();
             if (compositor == null || compositor.layers.Count == 0)
             {
@@ -284,6 +345,21 @@ namespace DCFApixels.SpriteEditor
             }
 
             AddToolkitLayerRows(compositor.layers, 0, toolkitLayerHierarchyRoot);
+            toolkitLayerBindings.Refresh(forceValues);
+        }
+
+        private void CollectToolkitLayerTree(List<Layer> layers, int depth)
+        {
+            if (layers == null)
+                return;
+            for (int i = 0; i < layers.Count; i++)
+            {
+                Layer layer = layers[i];
+                toolkitNextLayerTree.Add(new LayerTreeEntry(layers, layer, i, depth));
+                if (layer is GroupLayer group && GetGroupExpanded(group))
+                    CollectToolkitLayerTree(group.layers, depth + 1);
+            }
+            toolkitNextLayerTree.Add(new LayerTreeEntry(layers, null, -1, depth));
         }
 
         private void AddToolkitLayerRows(List<Layer> layers, int depth, VisualElement root)
@@ -328,14 +404,18 @@ namespace DCFApixels.SpriteEditor
             row.style.borderTopRightRadius = 2f;
             row.style.borderBottomLeftRadius = 2f;
             row.style.borderBottomRightRadius = 2f;
+            toolkitLayerBindings.Add(() =>
+            {
+                if (row != activeDropElement)
+                    row.style.backgroundColor = layer.Id == selectedLayerId
+                        ? SpriteEditorUI.SelectedColor : SpriteEditorUI.RowColor;
+            });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
                 if (evt.button != 0 || selectedLayerId == layer.Id)
                     return;
                 selectedLayerId = layer.Id;
-                RebuildToolkitLayerHierarchy();
-                BuildToolkitPreviewHeader();
-                UpdateToolkitPreviewPresentation();
+                RefreshToolkitInterface();
             });
             return row;
         }
@@ -353,6 +433,7 @@ namespace DCFApixels.SpriteEditor
             enabled.tooltip = "Enable or disable this group and all of its descendants.";
             enabled.style.width = 20f;
             enabled.SetValueWithoutNotify(group.enabled);
+            toolkitLayerBindings.Track(enabled, () => group.enabled);
             enabled.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Toggle Sprite Group",
                 () => group.enabled = evt.newValue));
@@ -361,7 +442,7 @@ namespace DCFApixels.SpriteEditor
             Button foldout = SpriteEditorUI.CreateButton(GetGroupExpanded(group) ? "▼" : "▶", () =>
             {
                 groupExpansion[group.Id] = !GetGroupExpanded(group);
-                RebuildToolkitLayerHierarchy();
+                RefreshToolkitLayerHierarchy();
             }, 22f);
             foldout.tooltip = "Expand or collapse this group.";
             row.Add(foldout);
@@ -369,12 +450,14 @@ namespace DCFApixels.SpriteEditor
             TextField name = new TextField();
             name.style.flexGrow = 1f;
             name.SetValueWithoutNotify(group.layerName);
+            toolkitLayerBindings.Track(name, () => group.layerName);
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Rename Sprite Group",
                 () => group.layerName = evt.newValue));
             row.Add(name);
 
             Label count = new Label($"{group.layers.Count} items");
+            toolkitLayerBindings.Add(() => count.text = $"{group.layers.Count} items");
             count.style.width = 52f;
             count.style.fontSize = 10f;
             row.Add(count);
@@ -397,6 +480,7 @@ namespace DCFApixels.SpriteEditor
             enabled.tooltip = "Enable or disable this layer.";
             enabled.style.width = 20f;
             enabled.SetValueWithoutNotify(layer.enabled);
+            toolkitLayerBindings.Track(enabled, () => layer.enabled);
             enabled.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Toggle Sprite Layer",
                 () => layer.enabled = evt.newValue));
@@ -413,11 +497,13 @@ namespace DCFApixels.SpriteEditor
             thumbnail.style.marginRight = 3f;
             thumbnail.style.backgroundColor = new Color(0.28f, 0.28f, 0.28f, 1f);
             row.Add(thumbnail);
+            toolkitLayerBindings.Add(() => thumbnail.image = layer.GetPreviewTexture(18));
 
             TextField name = new TextField();
             name.style.flexGrow = 1f;
             name.style.minWidth = 72f;
             name.SetValueWithoutNotify(layer.layerName);
+            toolkitLayerBindings.Track(name, () => layer.layerName);
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Rename Sprite Layer",
                 () => layer.layerName = evt.newValue));
@@ -427,20 +513,21 @@ namespace DCFApixels.SpriteEditor
             opacity.tooltip = "Layer opacity from 0 to 1.";
             opacity.style.width = 48f;
             opacity.SetValueWithoutNotify(layer.opacity);
+            toolkitLayerBindings.Track(opacity, () => layer.opacity);
             opacity.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Layer Opacity",
                 () => layer.opacity = Mathf.Clamp01(evt.newValue)));
             row.Add(opacity);
 
             EnumField blend = new EnumField(layer.blendMode);
+            toolkitLayerBindings.Track(blend, () => (Enum)layer.blendMode);
             blend.style.width = 126f;
             blend.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Layer Blend Mode",
                 () => layer.blendMode = (BlendMode)evt.newValue));
             row.Add(blend);
 
-            if (layer is TargetedLayerEffect effect &&
-                !compositor.HasUsableEffectInput(effect, container, index))
+            if (layer is TargetedLayerEffect effect)
             {
                 Label warning = new Label("!");
                 warning.tooltip = effect.inputMode == EffectInputMode.Specific
@@ -450,6 +537,14 @@ namespace DCFApixels.SpriteEditor
                 warning.style.unityFontStyleAndWeight = FontStyle.Bold;
                 warning.style.width = 12f;
                 row.Add(warning);
+                toolkitLayerBindings.Add(() =>
+                {
+                    warning.style.display = compositor.HasUsableEffectInput(effect, container, index)
+                        ? DisplayStyle.None : DisplayStyle.Flex;
+                    warning.tooltip = effect.inputMode == EffectInputMode.Specific
+                        ? "Select an existing non-cyclic target layer or group in the effect settings."
+                        : "This effect needs a layer or group directly below it.";
+                });
             }
 
             string editLabel = layer is DrawingLayer ? "Paint" : "Edit";
@@ -458,9 +553,7 @@ namespace DCFApixels.SpriteEditor
                 if (layer is DrawingLayer)
                 {
                     selectedLayerId = layer.Id;
-                    RebuildToolkitLayerHierarchy();
-                    BuildToolkitPreviewHeader();
-                    UpdateToolkitPreviewPresentation();
+                    RefreshToolkitInterface();
                     toolkitPreviewCanvas?.Focus();
                 }
                 else
@@ -495,50 +588,97 @@ namespace DCFApixels.SpriteEditor
             handle.style.width = 18f;
             handle.style.unityTextAlign = TextAnchor.MiddleCenter;
             handle.style.fontSize = 15f;
-            handle.RegisterCallback<PointerDownEvent>(evt =>
+            handle.AddManipulator(new LayerDragManipulator(this, layer));
+            return handle;
+        }
+
+        private sealed class LayerDragManipulator : PointerManipulator
+        {
+            private readonly TextureCompositorWindow owner;
+            private readonly Layer layer;
+            private Vector2 start;
+            private int pointerId = -1;
+
+            public LayerDragManipulator(TextureCompositorWindow owner, Layer layer)
             {
-                if (evt.button != 0)
+                this.owner = owner;
+                this.layer = layer;
+            }
+
+            protected override void RegisterCallbacksOnTarget()
+            {
+                target.RegisterCallback<PointerDownEvent>(OnPointerDown);
+                target.RegisterCallback<PointerMoveEvent>(OnPointerMove);
+                target.RegisterCallback<PointerUpEvent>(OnPointerUp);
+                target.RegisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
+                target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
+            }
+
+            protected override void UnregisterCallbacksFromTarget()
+            {
+                Release();
+                target.UnregisterCallback<PointerDownEvent>(OnPointerDown);
+                target.UnregisterCallback<PointerMoveEvent>(OnPointerMove);
+                target.UnregisterCallback<PointerUpEvent>(OnPointerUp);
+                target.UnregisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
+                target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
+            }
+
+            private void OnPointerDown(PointerDownEvent evt)
+            {
+                if (evt.button != 0 || pointerId >= 0)
                     return;
-                selectedLayerId = layer.Id;
-                layerDragPointerCandidateId = layer.Id;
-                layerDragPointerStart = evt.position;
-                layerDragPointerId = evt.pointerId;
-                handle.CapturePointer(evt.pointerId);
+                owner.selectedLayerId = layer.Id;
+                owner.RefreshToolkitInterface();
+                owner.activeLayerDrag?.Cancel();
+                owner.activeLayerDrag = this;
+                start = evt.position;
+                pointerId = evt.pointerId;
+                target.CapturePointer(pointerId);
                 evt.StopImmediatePropagation();
-            });
-            handle.RegisterCallback<PointerMoveEvent>(evt =>
+            }
+
+            private void OnPointerMove(PointerMoveEvent evt)
             {
-                if (layerDragPointerCandidateId != layer.Id ||
-                    layerDragPointerId != evt.pointerId ||
-                    Vector2.Distance(layerDragPointerStart, evt.position) < 4f)
-                {
+                if (pointerId != evt.pointerId || Vector2.Distance(start, evt.position) < 4f)
                     return;
-                }
 
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.objectReferences = Array.Empty<UnityEngine.Object>();
                 DragAndDrop.SetGenericData(DraggedLayerIdKey, layer.Id);
-                DragAndDrop.SetGenericData(DraggedCompositorIdKey, compositor);
+                DragAndDrop.SetGenericData(DraggedCompositorIdKey, owner.compositor);
                 DragAndDrop.StartDrag(string.IsNullOrEmpty(layer.layerName) ? "Layer" : layer.layerName);
-                if (handle.HasPointerCapture(evt.pointerId))
-                    handle.ReleasePointer(evt.pointerId);
-                layerDragPointerCandidateId = null;
-                layerDragPointerId = -1;
+                Release();
                 evt.StopImmediatePropagation();
-            });
-            handle.RegisterCallback<PointerUpEvent>(evt =>
+            }
+
+            private void OnPointerUp(PointerUpEvent evt)
             {
-                if (layerDragPointerId != evt.pointerId)
+                if (pointerId != evt.pointerId || evt.button != 0)
                     return;
-                if (handle.HasPointerCapture(evt.pointerId))
-                    handle.ReleasePointer(evt.pointerId);
-                layerDragPointerCandidateId = null;
-                layerDragPointerId = -1;
-                RebuildToolkitLayerHierarchy();
-                BuildToolkitPreviewHeader();
+                Release();
                 evt.StopImmediatePropagation();
-            });
-            return handle;
+            }
+
+            private void OnCaptureOut(PointerCaptureOutEvent evt)
+            {
+                if (pointerId == evt.pointerId)
+                    Release();
+            }
+
+            private void OnDetach(DetachFromPanelEvent evt) => Release();
+
+            public void Cancel() => Release();
+
+            private void Release()
+            {
+                int previousPointer = pointerId;
+                pointerId = -1;
+                if (owner.activeLayerDrag == this)
+                    owner.activeLayerDrag = null;
+                if (previousPointer >= 0 && target.HasPointerCapture(previousPointer))
+                    target.ReleasePointer(previousPointer);
+            }
         }
 
         private void RegisterToolkitLayerDrop(
@@ -675,7 +815,10 @@ namespace DCFApixels.SpriteEditor
             int depth)
         {
             if (activeDropElement != element)
+            {
                 ClearToolkitDropIndicator();
+                activeDropMarginLeft = element.style.marginLeft;
+            }
             activeDropElement = element;
 
             if (insideGroup)
@@ -708,6 +851,7 @@ namespace DCFApixels.SpriteEditor
             activeDropElement.style.borderRightWidth = 0f;
             activeDropElement.style.borderBottomWidth = 0f;
             activeDropElement.style.borderLeftWidth = 0f;
+            activeDropElement.style.marginLeft = activeDropMarginLeft;
             if (activeDropElement.userData is string layerId)
             {
                 activeDropElement.style.backgroundColor = layerId == selectedLayerId
@@ -729,13 +873,28 @@ namespace DCFApixels.SpriteEditor
             element.style.borderLeftColor = color;
         }
 
-        private void BuildToolkitPreviewHeader()
+        private void RefreshToolkitPreviewHeader(bool forceValues = false)
         {
             if (toolkitPreviewHeader == null || compositor == null)
                 return;
 
-            toolkitPreviewHeader.Clear();
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
+            if (toolkitHeaderBuilt && ReferenceEquals(toolkitHeaderLayer, layer))
+            {
+                toolkitHeaderBindings.Refresh(forceValues);
+                return;
+            }
+
+            toolkitHeaderBuilt = true;
+            toolkitHeaderLayer = layer;
+            toolkitHeaderBindings.Clear();
+            toolkitPreviewHeader.Clear();
+            BuildToolkitPreviewHeader(layer);
+            toolkitHeaderBindings.Refresh(forceValues);
+        }
+
+        private void BuildToolkitPreviewHeader(DrawingLayer layer)
+        {
             if (layer == null)
             {
                 VisualElement header = SpriteEditorUI.CreateToolbar();
@@ -743,6 +902,7 @@ namespace DCFApixels.SpriteEditor
                 title.style.unityFontStyleAndWeight = FontStyle.Bold;
                 header.Add(title);
                 Label dimensions = new Label($"{Mathf.Max(1, compositor.width)} × {Mathf.Max(1, compositor.height)}");
+                toolkitHeaderBindings.Add(() => dimensions.text = $"{compositor.width} × {compositor.height}");
                 dimensions.style.flexGrow = 1f;
                 dimensions.style.unityTextAlign = TextAnchor.MiddleCenter;
                 header.Add(dimensions);
@@ -762,15 +922,16 @@ namespace DCFApixels.SpriteEditor
 
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             EnumField tool = CompactField(new EnumField(layer.tool), 72f);
+            toolkitHeaderBindings.Track(tool, () => (Enum)layer.tool);
             tool.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Drawing Tool",
-                () => layer.tool = (PaintToolMode)evt.newValue,
-                rebuildHeader: true));
+                () => layer.tool = (PaintToolMode)evt.newValue));
             brushRow.Add(tool);
 
             ColorField primary = CompactField(new ColorField(), 54f);
             primary.tooltip = PrimaryBrushColorContent.tooltip;
             primary.SetValueWithoutNotify(layer.brushColor);
+            toolkitHeaderBindings.Track(primary, () => layer.brushColor);
             primary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Foreground Brush Color",
                 () => layer.brushColor = evt.newValue));
@@ -778,6 +939,7 @@ namespace DCFApixels.SpriteEditor
             ColorField secondary = CompactField(new ColorField(), 54f);
             secondary.tooltip = SecondaryBrushColorContent.tooltip;
             secondary.SetValueWithoutNotify(layer.secondaryBrushColor);
+            toolkitHeaderBindings.Track(secondary, () => layer.secondaryBrushColor);
             secondary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Background Brush Color",
                 () => layer.secondaryBrushColor = evt.newValue));
@@ -786,6 +948,7 @@ namespace DCFApixels.SpriteEditor
             brushRow.Add(CreateCompactLabel("Size", 30f));
             FloatField size = CompactField(new FloatField(), 46f);
             size.SetValueWithoutNotify(layer.brushSize);
+            toolkitHeaderBindings.Track(size, () => layer.brushSize);
             size.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Brush Size",
                 () => layer.brushSize = Mathf.Max(1f, evt.newValue)));
@@ -795,6 +958,8 @@ namespace DCFApixels.SpriteEditor
             hardness.style.flexGrow = 1f;
             hardness.style.minWidth = 42f;
             Label hardnessValue = CreateCompactLabel($"{layer.brushHardness * 100f:0}%", 38f);
+            toolkitHeaderBindings.Track(hardness, () => layer.brushHardness);
+            toolkitHeaderBindings.Add(() => hardnessValue.text = $"{layer.brushHardness * 100f:0}%");
             hardness.RegisterValueChangedCallback(evt =>
             {
                 hardnessValue.text = $"{evt.newValue * 100f:0}%";
@@ -808,6 +973,7 @@ namespace DCFApixels.SpriteEditor
             Toggle mirrorX = CompactField(new Toggle("Mirror X"), 82f);
             mirrorX.tooltip = MirrorVerticalContent.tooltip;
             mirrorX.SetValueWithoutNotify(layer.mirrorAcrossVerticalAxis);
+            toolkitHeaderBindings.Track(mirrorX, () => layer.mirrorAcrossVerticalAxis);
             mirrorX.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Drawing Symmetry",
                 () => layer.mirrorAcrossVerticalAxis = evt.newValue));
@@ -815,6 +981,7 @@ namespace DCFApixels.SpriteEditor
             Toggle mirrorY = CompactField(new Toggle("Mirror Y"), 82f);
             mirrorY.tooltip = MirrorHorizontalContent.tooltip;
             mirrorY.SetValueWithoutNotify(layer.mirrorAcrossHorizontalAxis);
+            toolkitHeaderBindings.Track(mirrorY, () => layer.mirrorAcrossHorizontalAxis);
             mirrorY.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Drawing Symmetry",
                 () => layer.mirrorAcrossHorizontalAxis = evt.newValue));
@@ -825,6 +992,7 @@ namespace DCFApixels.SpriteEditor
             center.labelElement.style.width = 44f;
             center.labelElement.style.minWidth = 44f;
             center.SetValueWithoutNotify(layer.patternCenter);
+            toolkitHeaderBindings.Track(center, () => layer.patternCenter);
             center.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Pattern Center",
                 () => layer.patternCenter = new Vector2(
@@ -836,43 +1004,41 @@ namespace DCFApixels.SpriteEditor
             VisualElement repeatRow = SpriteEditorUI.CreateToolbar();
             repeatRow.Add(CreateCompactLabel("Repeat", 44f));
             EnumField repeat = CompactField(new EnumField(layer.repeatMode), 88f);
+            toolkitHeaderBindings.Track(repeat, () => (Enum)layer.repeatMode);
             repeat.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Repeat Mode",
-                () => layer.repeatMode = (PaintRepeatMode)evt.newValue,
-                rebuildHeader: true));
+                () => layer.repeatMode = (PaintRepeatMode)evt.newValue));
             repeatRow.Add(repeat);
-            if (layer.repeatMode == PaintRepeatMode.Grid)
+            VisualElement counts = SpriteEditorUI.CreateRow();
+            Label countLabel = CreateCompactLabel("Count", 38f);
+            counts.Add(countLabel);
+            IntegerField countX = CompactField(new IntegerField(), 38f);
+            toolkitHeaderBindings.Track(countX, () => layer.repeatCount);
+            countX.RegisterValueChangedCallback(evt => ApplyToolkitChange(
+                "Change Repeat Count", () => layer.repeatCount = Mathf.Clamp(evt.newValue, 2, 64)));
+            counts.Add(countX);
+            VisualElement secondaryCount = SpriteEditorUI.CreateRow();
+            secondaryCount.Add(CreateCompactLabel("Y", 14f));
+            IntegerField countY = CompactField(new IntegerField(), 38f);
+            toolkitHeaderBindings.Track(countY, () => layer.repeatSecondaryCount);
+            countY.RegisterValueChangedCallback(evt => ApplyToolkitChange(
+                "Change Repeat Count", () => layer.repeatSecondaryCount = Mathf.Clamp(evt.newValue, 2, 64)));
+            secondaryCount.Add(countY);
+            counts.Add(secondaryCount);
+            repeatRow.Add(counts);
+            toolkitHeaderBindings.Add(() =>
             {
-                repeatRow.Add(CreateCompactLabel("X", 14f));
-                IntegerField countX = CompactField(new IntegerField(), 38f);
-                countX.SetValueWithoutNotify(layer.repeatCount);
-                countX.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                    "Change Repeat Count",
-                    () => layer.repeatCount = Mathf.Clamp(evt.newValue, 2, 64)));
-                repeatRow.Add(countX);
-                repeatRow.Add(CreateCompactLabel("Y", 14f));
-                IntegerField countY = CompactField(new IntegerField(), 38f);
-                countY.SetValueWithoutNotify(layer.repeatSecondaryCount);
-                countY.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                    "Change Repeat Count",
-                    () => layer.repeatSecondaryCount = Mathf.Clamp(evt.newValue, 2, 64)));
-                repeatRow.Add(countY);
-            }
-            else if (layer.repeatMode != PaintRepeatMode.None)
-            {
-                repeatRow.Add(CreateCompactLabel("Count", 38f));
-                IntegerField count = CompactField(new IntegerField(), 42f);
-                count.SetValueWithoutNotify(layer.repeatCount);
-                count.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                    "Change Repeat Count",
-                    () => layer.repeatCount = Mathf.Clamp(evt.newValue, 2, 64)));
-                repeatRow.Add(count);
-            }
+                counts.style.display = layer.repeatMode == PaintRepeatMode.None ? DisplayStyle.None : DisplayStyle.Flex;
+                secondaryCount.style.display = layer.repeatMode == PaintRepeatMode.Grid ? DisplayStyle.Flex : DisplayStyle.None;
+                countLabel.text = layer.repeatMode == PaintRepeatMode.Grid ? "X" : "Count";
+            });
             VisualElement repeatSpacer = new VisualElement();
             repeatSpacer.style.flexGrow = 1f;
             repeatRow.Add(repeatSpacer);
             EnumField elementMode = CompactField(new EnumField(layer.repeatElementMode), 116f);
             elementMode.SetEnabled(layer.repeatMode != PaintRepeatMode.None);
+            toolkitHeaderBindings.Track(elementMode, () => (Enum)layer.repeatElementMode);
+            toolkitHeaderBindings.Add(() => elementMode.SetEnabled(layer.repeatMode != PaintRepeatMode.None));
             elementMode.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Repeat Element Mode",
                 () => layer.repeatElementMode = (PaintRepeatElementMode)evt.newValue));
@@ -885,6 +1051,8 @@ namespace DCFApixels.SpriteEditor
             boundaryRow.Add(edgeLabel);
             EnumField boundary = CompactField(new EnumField(layer.repeatBoundaryMode), 84f);
             boundary.SetEnabled(layer.repeatMode != PaintRepeatMode.None);
+            toolkitHeaderBindings.Track(boundary, () => (Enum)layer.repeatBoundaryMode);
+            toolkitHeaderBindings.Add(() => boundary.SetEnabled(layer.repeatMode != PaintRepeatMode.None));
             boundary.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Change Repeat Boundary",
                 () => layer.repeatBoundaryMode = (PaintRepeatBoundaryMode)evt.newValue));
@@ -898,13 +1066,13 @@ namespace DCFApixels.SpriteEditor
             spacing.labelElement.style.minWidth = 30f;
             spacing.labelElement.style.flexShrink = 0f;
             spacing.SetValueWithoutNotify(layer.brushSpacing * 100f);
+            toolkitHeaderBindings.Track(spacing, () => layer.brushSpacing * 100f);
             spacing.RegisterValueChangedCallback(evt =>
             {
                 float clampedPercent = Mathf.Clamp(
                     evt.newValue,
                     DrawingLayer.MinimumBrushSpacing * 100f,
                     DrawingLayer.MaximumBrushSpacing * 100f);
-                spacing.SetValueWithoutNotify(clampedPercent);
                 ApplyToolkitChange(
                     "Change Brush Step",
                     () => layer.brushSpacing = clampedPercent * 0.01f);
@@ -955,9 +1123,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ApplyToolkitChange(
             string undoName,
-            Action change,
-            bool rebuildLayers = false,
-            bool rebuildHeader = false)
+            Action change)
         {
             if (compositor == null || change == null)
                 return;
@@ -974,11 +1140,7 @@ namespace DCFApixels.SpriteEditor
                 applyingToolkitChange = false;
             }
 
-            if (rebuildLayers)
-                RebuildToolkitLayerHierarchy();
-            if (rebuildHeader)
-                BuildToolkitPreviewHeader();
-            UpdateToolkitPreviewPresentation();
+            RefreshToolkitInterface();
         }
 
         private void UpdateToolkitPreviewPresentation()
@@ -988,13 +1150,10 @@ namespace DCFApixels.SpriteEditor
 
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
             toolkitPreviewCanvas.SetDocument(previewTexture, compositor.width, compositor.height, drawing);
-            toolkitPreviewErrorRoot?.Clear();
-            if (!string.IsNullOrEmpty(previewError) && toolkitPreviewErrorRoot != null)
+            if (toolkitPreviewError != null)
             {
-                SpriteEditorUI.AddHelpBox(
-                    toolkitPreviewErrorRoot,
-                    previewError,
-                    HelpBoxMessageType.Error);
+                toolkitPreviewError.text = previewError ?? string.Empty;
+                toolkitPreviewError.style.display = string.IsNullOrEmpty(previewError) ? DisplayStyle.None : DisplayStyle.Flex;
             }
 
             if (toolkitPreviewFooter != null)
@@ -1002,7 +1161,7 @@ namespace DCFApixels.SpriteEditor
                 if (drawing != null)
                 {
                     toolkitPreviewFooter.text = previewTexture != null
-                        ? $"LMB paint • RMB erase • X colors • [ ] size • {drawing.brushSize:0.#} px"
+                        ? $"LMB paint • RMB erase • Shift lines • X colors • [ ] size • {drawing.brushSize:0.#} px"
                         : "Rendering painting preview…";
                 }
                 else
@@ -1028,7 +1187,7 @@ namespace DCFApixels.SpriteEditor
         private void OnPreviewPointerDown(PointerDownEvent evt)
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            if (layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
+            if (paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
             if (!toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) ||
                 !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv))
@@ -1042,13 +1201,23 @@ namespace DCFApixels.SpriteEditor
             paintingMouseButton = evt.button;
             paintingPointerId = evt.pointerId;
             paintingErase = evt.button == 1 || layer.tool == PaintToolMode.Eraser;
-            lastPaintingUv = startUv;
+            paintingPointerMoved = false;
+            bool connect = evt.shiftKey && ReferenceEquals(lineAnchorLayer, layer) &&
+                           lineAnchorCanvasSize == new Vector2Int(compositor.width, compositor.height);
+            Vector2 originUv = connect ? lineAnchorUv : startUv;
+            lastPaintingUv = originUv;
             hasLastPaintingUv = true;
             toolkitPreviewCanvas.CapturePointer(evt.pointerId);
             Undo.RecordObject(compositor, "Paint Stroke");
             layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
-            layer.BeginStroke(startUv);
-            layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase);
+            layer.BeginStroke(originUv);
+            RememberPaintingPoint(originUv);
+            if (connect && originUv != startUv)
+                PaintTowardsLayerPoint(startUv);
+            else
+                layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase);
+            paintingShiftHeld = false;
+            SetPaintingShift(evt.shiftKey);
             RefreshPreviewDuringPainting();
             UpdatePreviewCursor(evt.localPosition, false);
             evt.PreventDefault();
@@ -1057,64 +1226,23 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerMove(PointerMoveEvent evt)
         {
-            UpdatePreviewCursor(evt.localPosition, evt.altKey);
             if (paintingLayer == null || paintingPointerId != evt.pointerId)
+            {
+                UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 return;
+            }
+
+            Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
+            paintingPointerMoved |= evt.deltaPosition.sqrMagnitude > 0f;
+            UpdatePreviewCursor(paintPosition, evt.altKey);
 
             if (TryMapPreviewToLayerUv(
-                    evt.localPosition,
+                    paintPosition,
                     toolkitPreviewCanvas.ImageRect,
                     paintingLayer,
                     out Vector2 dragUv))
             {
-                bool insideRepeatShape = paintingLayer.IsStrokePointInsideRepeatShape(
-                    dragUv,
-                    compositor.width,
-                    compositor.height);
-                if (!insideRepeatShape)
-                {
-                    if (hasLastPaintingUv &&
-                        paintingLayer.TryClipStrokeSegmentToRepeatShape(
-                            lastPaintingUv,
-                            dragUv,
-                            compositor.width,
-                            compositor.height,
-                            out Vector2 clippedUv))
-                    {
-                        paintingLayer.PaintSegment(
-                            lastPaintingUv,
-                            clippedUv,
-                            compositor.width,
-                            compositor.height,
-                            false,
-                            paintingErase);
-                        RefreshPreviewDuringPainting();
-                    }
-                    hasLastPaintingUv = false;
-                }
-                else if (hasLastPaintingUv)
-                {
-                    paintingLayer.PaintSegment(
-                        lastPaintingUv,
-                        dragUv,
-                        compositor.width,
-                        compositor.height,
-                        false,
-                        paintingErase);
-                    lastPaintingUv = dragUv;
-                    RefreshPreviewDuringPainting();
-                }
-                else
-                {
-                    paintingLayer.PaintPoint(
-                        dragUv,
-                        compositor.width,
-                        compositor.height,
-                        paintingErase);
-                    lastPaintingUv = dragUv;
-                    hasLastPaintingUv = true;
-                    RefreshPreviewDuringPainting();
-                }
+                PaintTowardsLayerPoint(dragUv);
             }
             else
             {
@@ -1123,6 +1251,65 @@ namespace DCFApixels.SpriteEditor
 
             evt.PreventDefault();
             evt.StopImmediatePropagation();
+        }
+
+        private void PaintTowardsLayerPoint(Vector2 pointUv)
+        {
+            if (!paintingLayer.IsStrokePointInsideRepeatShape(pointUv, compositor.width, compositor.height))
+            {
+                if (hasLastPaintingUv && paintingLayer.TryClipStrokeSegmentToRepeatShape(
+                        lastPaintingUv, pointUv, compositor.width, compositor.height, out Vector2 clippedUv))
+                {
+                    paintingLayer.PaintSegment(lastPaintingUv, clippedUv, compositor.width, compositor.height, false, paintingErase);
+                    RememberPaintingPoint(clippedUv);
+                    RefreshPreviewDuringPainting();
+                }
+                hasLastPaintingUv = false;
+                return;
+            }
+
+            if (hasLastPaintingUv)
+            {
+                if (lastPaintingUv == pointUv)
+                    return;
+                paintingLayer.PaintSegment(lastPaintingUv, pointUv, compositor.width, compositor.height, false, paintingErase);
+            }
+            else
+            {
+                paintingLayer.PaintPoint(pointUv, compositor.width, compositor.height, paintingErase);
+            }
+            RememberPaintingPoint(pointUv);
+            hasLastPaintingUv = true;
+            RefreshPreviewDuringPainting();
+        }
+
+        private void SetPaintingShift(bool held)
+        {
+            if (paintingShiftHeld == held)
+                return;
+            paintingShiftHeld = held;
+            paintingLockedAxis = 0;
+            paintingAxisAnchor = lastPaintingDocumentUv;
+        }
+
+        private Vector2 ConstrainPaintingPosition(Vector2 position, bool shift)
+        {
+            SetPaintingShift(shift);
+            if (!shift)
+                return position;
+
+            Rect rect = toolkitPreviewCanvas.ImageRect;
+            Vector2 anchor = new Vector2(
+                rect.x + paintingAxisAnchor.x * rect.width,
+                rect.y + (1f - paintingAxisAnchor.y) * rect.height);
+            Vector2 delta = position - anchor;
+            if (paintingLockedAxis == 0)
+            {
+                if (delta.sqrMagnitude < 4f)
+                    return anchor;
+                paintingLockedAxis = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y) ? 1 : 2;
+            }
+            return paintingLockedAxis == 1 ? new Vector2(position.x, anchor.y) : new Vector2(anchor.x, position.y);
         }
 
         private void OnPreviewPointerUp(PointerUpEvent evt)
@@ -1134,9 +1321,14 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
+            Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
+            if (paintingPointerMoved &&
+                TryMapPreviewToLayerUv(paintPosition, toolkitPreviewCanvas.ImageRect, paintingLayer, out Vector2 endUv))
+                PaintTowardsLayerPoint(endUv);
+
+            paintingPointerId = -1;
             if (toolkitPreviewCanvas.HasPointerCapture(evt.pointerId))
                 toolkitPreviewCanvas.ReleasePointer(evt.pointerId);
-            paintingPointerId = -1;
             FinishPaintingStroke();
             UpdatePreviewCursor(evt.localPosition, evt.altKey);
             evt.PreventDefault();
@@ -1169,6 +1361,13 @@ namespace DCFApixels.SpriteEditor
             if (IsTextInputTarget(evt.target as VisualElement))
                 return;
 
+            if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
+            {
+                SetPaintingShift(true);
+                evt.StopImmediatePropagation();
+                return;
+            }
+
             bool actionModifier = evt.ctrlKey || evt.commandKey;
             bool undo = actionModifier && !evt.altKey && evt.keyCode == KeyCode.Z && !evt.shiftKey;
             bool redo = actionModifier && !evt.altKey &&
@@ -1192,7 +1391,7 @@ namespace DCFApixels.SpriteEditor
             bool swapColors = !actionModifier && !evt.altKey && evt.keyCode == KeyCode.X;
             if (swapColors)
             {
-                ApplyToolkitChange("Swap Brush Colors", layer.SwapBrushColors, rebuildHeader: true);
+                ApplyToolkitChange("Swap Brush Colors", layer.SwapBrushColors);
                 evt.PreventDefault();
                 evt.StopImmediatePropagation();
                 return;
@@ -1208,9 +1407,18 @@ namespace DCFApixels.SpriteEditor
                 : Mathf.Max(1f, Mathf.Round(layer.brushSize * 1.2f));
             if (Mathf.Approximately(nextSize, layer.brushSize))
                 nextSize = Mathf.Max(1f, layer.brushSize + (increase ? 1f : -1f));
-            ApplyToolkitChange("Change Brush Size", () => layer.brushSize = nextSize, rebuildHeader: true);
+            ApplyToolkitChange("Change Brush Size", () => layer.brushSize = nextSize);
             evt.PreventDefault();
             evt.StopImmediatePropagation();
+        }
+
+        private void OnToolkitKeyUp(KeyUpEvent evt)
+        {
+            if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
+            {
+                SetPaintingShift(evt.shiftKey);
+                evt.StopImmediatePropagation();
+            }
         }
 
         private static bool IsTextInputTarget(VisualElement element)
@@ -1227,17 +1435,6 @@ namespace DCFApixels.SpriteEditor
                 }
             }
             return false;
-        }
-
-        private bool IsToolkitValueInteractionActive()
-        {
-            VisualElement focused = rootVisualElement?.focusController?.focusedElement as VisualElement;
-            if (IsTextInputTarget(focused))
-                return true;
-
-            IPanel panel = rootVisualElement?.panel;
-            return panel != null &&
-                   PointerCaptureHelper.GetCapturingElement(panel, PointerId.mousePointerId) != null;
         }
 
         private sealed class SpritePreviewElement : VisualElement

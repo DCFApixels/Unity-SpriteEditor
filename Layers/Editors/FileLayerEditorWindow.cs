@@ -24,12 +24,14 @@ namespace DCFApixels.SpriteEditor
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange);
+                ApplyLayerChange,
+                SettingsBindings);
 
             ObjectField texture = SpriteEditorUI.ConfigureField(new ObjectField("Source Texture")) as ObjectField;
             texture.objectType = typeof(Texture2D);
             texture.allowSceneObjects = false;
             texture.SetValueWithoutNotify(layer.sourceTexture);
+            SettingsBindings.Track(texture, () => (UnityEngine.Object)layer.sourceTexture);
             texture.RegisterValueChangedCallback(evt =>
                 ApplyLayerChange("Change Source Texture", () => layer.sourceTexture = evt.newValue as Texture2D));
             root.Add(texture);
@@ -54,10 +56,12 @@ namespace DCFApixels.SpriteEditor
                 root,
                 () => layer.transform,
                 value => layer.transform = value,
-                ApplyLayerChange);
+                ApplyLayerChange,
+                SettingsBindings);
 
             ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
             color.SetValueWithoutNotify(layer.color);
+            SettingsBindings.Track(color, () => layer.color);
             color.RegisterValueChangedCallback(evt =>
                 ApplyLayerChange("Change Fill Color", () => layer.color = evt.newValue));
             root.Add(color);

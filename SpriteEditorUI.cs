@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -8,6 +9,73 @@ namespace DCFApixels.SpriteEditor
 {
     internal static class SpriteEditorUI
     {
+        internal sealed class ValueBindings
+        {
+            private readonly List<Action<bool>> updates = new List<Action<bool>>();
+
+            public void Clear() => updates.Clear();
+
+            public void Add(Action update) => updates.Add(_ => update());
+
+            public void Track<T>(BaseField<T> field, Func<T> read)
+            {
+                void Refresh(bool force)
+                {
+                    T value = read();
+                    if (!EqualityComparer<T>.Default.Equals(field.value, value) &&
+                        (force || !IsInteracting(field)))
+                        field.SetValueWithoutNotify(value);
+                }
+
+                bool queued = false;
+                void QueueRefresh()
+                {
+                    if (queued || field.panel == null)
+                        return;
+                    queued = true;
+                    field.schedule.Execute(() =>
+                    {
+                        queued = false;
+                        Refresh(false);
+                    });
+                }
+
+                field.RegisterCallback<FocusOutEvent>(_ => QueueRefresh(), TrickleDown.TrickleDown);
+                field.RegisterCallback<PointerUpEvent>(_ => QueueRefresh(), TrickleDown.TrickleDown);
+                field.RegisterCallback<PointerCaptureOutEvent>(_ => QueueRefresh(), TrickleDown.TrickleDown);
+                updates.Add(Refresh);
+                Refresh(true);
+            }
+
+            public void Refresh(bool force = false)
+            {
+                for (int i = 0; i < updates.Count; i++)
+                    updates[i](force);
+            }
+        }
+
+        internal static bool IsInteracting(VisualElement element)
+        {
+            VisualElement focused = element.focusController?.focusedElement as VisualElement;
+            if (focused != null && (focused == element || element.Contains(focused)))
+                return true;
+
+            return HasPointerCaptureWithin(element);
+        }
+
+        internal static bool HasPointerCaptureWithin(VisualElement element)
+        {
+            if (element.panel == null)
+                return false;
+            for (int pointer = 0; pointer < PointerId.maxPointers; pointer++)
+            {
+                VisualElement captured = PointerCaptureHelper.GetCapturingElement(element.panel, pointer) as VisualElement;
+                if (captured != null && (captured == element || element.Contains(captured)))
+                    return true;
+            }
+            return false;
+        }
+
         public const float StandardLabelWidth = 132f;
         public static readonly Color PanelDark = new Color(0.105f, 0.105f, 0.105f, 1f);
         public static readonly Color PanelLight = new Color(0.65f, 0.65f, 0.65f, 1f);
@@ -130,7 +198,8 @@ namespace DCFApixels.SpriteEditor
             VisualElement parent,
             Func<TextureTransform> read,
             Action<TextureTransform> write,
-            Action<string, Action> applyChange)
+            Action<string, Action> applyChange,
+            ValueBindings bindings)
         {
             VisualElement card = CreateCard();
             VisualElement header = CreateRow();
@@ -149,14 +218,10 @@ namespace DCFApixels.SpriteEditor
             FloatField rotation = ConfigureField(new FloatField("Rotation"));
             rotation.tooltip = "Clockwise visual rotation in degrees.";
 
-            void RefreshFields()
-            {
-                TextureTransform value = read();
-                pivot.SetValueWithoutNotify(value.pivot);
-                position.SetValueWithoutNotify(value.position);
-                scale.SetValueWithoutNotify(value.scale);
-                rotation.SetValueWithoutNotify(value.rotation);
-            }
+            bindings.Track(pivot, () => read().pivot);
+            bindings.Track(position, () => read().position);
+            bindings.Track(scale, () => read().scale);
+            bindings.Track(rotation, () => read().rotation);
 
             Button reset = CreateButton("Reset", () =>
             {
@@ -166,7 +231,7 @@ namespace DCFApixels.SpriteEditor
                     value.Reset();
                     write(value);
                 });
-                RefreshFields();
+                bindings.Refresh(true);
             }, 54f);
             header.Add(reset);
 
@@ -207,7 +272,6 @@ namespace DCFApixels.SpriteEditor
                 });
             });
 
-            RefreshFields();
             card.Add(pivot);
             card.Add(position);
             card.Add(scale);

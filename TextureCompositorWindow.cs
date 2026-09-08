@@ -77,6 +77,14 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private DrawingLayer paintingLayer;
         [NonSerialized] private Vector2 lastPaintingUv;
         [NonSerialized] private bool hasLastPaintingUv;
+        [NonSerialized] private DrawingLayer lineAnchorLayer;
+        [NonSerialized] private Vector2 lineAnchorUv;
+        [NonSerialized] private Vector2Int lineAnchorCanvasSize;
+        [NonSerialized] private Vector2 lastPaintingDocumentUv;
+        [NonSerialized] private Vector2 paintingAxisAnchor;
+        [NonSerialized] private bool paintingShiftHeld;
+        [NonSerialized] private int paintingLockedAxis;
+        [NonSerialized] private bool paintingPointerMoved;
         [NonSerialized] private bool paintingErase;
         [NonSerialized] private int paintingMouseButton = -1;
         [NonSerialized] private double nextPaintingPreviewAt;
@@ -105,7 +113,7 @@ namespace DCFApixels.SpriteEditor
             {
                 target.NormalizeModel();
                 window.RequestPreview(true);
-                window.RebuildToolkitInterface();
+                window.RefreshToolkitInterface();
             }
 
             window.Show();
@@ -226,6 +234,10 @@ namespace DCFApixels.SpriteEditor
 
         private void Update()
         {
+            if (toolkitRefreshRequested)
+                RefreshToolkitInterface();
+            if (toolkitSettingsScroll != null)
+                scrollPosition = toolkitSettingsScroll.scrollOffset;
             if (!previewRequested || EditorApplication.timeSinceStartup < previewAt)
                 return;
 
@@ -338,8 +350,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ClearLayerDragData()
         {
-            layerDragPointerCandidateId = null;
-            layerDragPointerId = -1;
+            activeLayerDrag?.Cancel();
             DragAndDrop.SetGenericData(DraggedLayerIdKey, null);
             DragAndDrop.SetGenericData(DraggedCompositorIdKey, null);
         }
@@ -348,6 +359,8 @@ namespace DCFApixels.SpriteEditor
         {
             if (layer == null || compositor == null)
                 return;
+            if (lineAnchorLayer == layer)
+                lineAnchorLayer = null;
             Undo.RecordObject(compositor, "Clear Drawing Layer");
             layer.PrepareStroke(compositor.width, compositor.height, "Clear Drawing Layer");
             layer.ClearSurface(compositor.width, compositor.height);
@@ -374,6 +387,9 @@ namespace DCFApixels.SpriteEditor
             paintingMouseButton = -1;
             paintingPointerId = -1;
             hasLastPaintingUv = false;
+            paintingShiftHeld = false;
+            paintingLockedAxis = 0;
+            paintingPointerMoved = false;
 
             if (finishedLayer == null)
                 return;
@@ -401,6 +417,11 @@ namespace DCFApixels.SpriteEditor
             Vector2 documentUv = new Vector2(
                 (mousePosition.x - imageRect.x) / imageRect.width,
                 1f - (mousePosition.y - imageRect.y) / imageRect.height);
+            return TryMapDocumentToLayerUv(documentUv, layer, out sourceUv);
+        }
+
+        private bool TryMapDocumentToLayerUv(Vector2 documentUv, DrawingLayer layer, out Vector2 sourceUv)
+        {
             Vector2 outputSize = new Vector2(Mathf.Max(1, compositor.width), Mathf.Max(1, compositor.height));
             Vector2 pivotPixels = Vector2.Scale(layer.transform.pivot, outputSize);
             Vector2 local = Vector2.Scale(documentUv, outputSize) - pivotPixels - layer.transform.position;
@@ -419,6 +440,28 @@ namespace DCFApixels.SpriteEditor
             Vector2 sourcePixels = pivotPixels + new Vector2(local.x / scaleX, local.y / scaleY);
             sourceUv = new Vector2(sourcePixels.x / outputSize.x, sourcePixels.y / outputSize.y);
             return sourceUv.x >= 0f && sourceUv.x <= 1f && sourceUv.y >= 0f && sourceUv.y <= 1f;
+        }
+
+        private Vector2 MapLayerToDocumentUv(Vector2 sourceUv, DrawingLayer layer)
+        {
+            Vector2 outputSize = new Vector2(Mathf.Max(1, compositor.width), Mathf.Max(1, compositor.height));
+            Vector2 pivot = Vector2.Scale(layer.transform.pivot, outputSize);
+            Vector2 local = Vector2.Scale(Vector2.Scale(sourceUv, outputSize) - pivot, layer.transform.scale);
+            float radians = layer.transform.rotation * Mathf.Deg2Rad;
+            float sine = Mathf.Sin(radians);
+            float cosine = Mathf.Cos(radians);
+            Vector2 pixels = new Vector2(cosine * local.x - sine * local.y, sine * local.x + cosine * local.y)
+                             + pivot + layer.transform.position;
+            return new Vector2(pixels.x / outputSize.x, pixels.y / outputSize.y);
+        }
+
+        private void RememberPaintingPoint(Vector2 sourceUv)
+        {
+            lastPaintingUv = sourceUv;
+            lastPaintingDocumentUv = MapLayerToDocumentUv(sourceUv, paintingLayer);
+            lineAnchorLayer = paintingLayer;
+            lineAnchorUv = sourceUv;
+            lineAnchorCanvasSize = new Vector2Int(compositor.width, compositor.height);
         }
 
         private void ShowAddMenuForSelection()
@@ -649,7 +692,7 @@ namespace DCFApixels.SpriteEditor
             {
                 applyingToolkitChange = false;
             }
-            RebuildToolkitInterface();
+            RefreshToolkitInterface();
         }
 
         private void CommitModelChange()
@@ -734,6 +777,7 @@ namespace DCFApixels.SpriteEditor
 
             FinishPaintingStroke();
             ClearLayerDragData();
+            lineAnchorLayer = null;
             TextureCompositor previous = compositor;
             compositor = next;
             compositor.NormalizeModel();
@@ -741,7 +785,7 @@ namespace DCFApixels.SpriteEditor
             temporaryDocumentDirty = false;
             groupExpansion?.Clear();
             RequestPreview(true);
-            RebuildToolkitInterface();
+            RefreshToolkitInterface();
 
             if (previous != null && !AssetDatabase.Contains(previous))
                 DestroyImmediate(previous);
@@ -849,12 +893,8 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             RequestPreview();
-            if (!applyingToolkitChange &&
-                rootVisualElement != null &&
-                !IsToolkitValueInteractionActive())
-            {
-                rootVisualElement.schedule.Execute(RebuildToolkitInterface);
-            }
+            if (!applyingToolkitChange)
+                toolkitRefreshRequested = true;
         }
 
         private void OnUndoRedo()
@@ -864,13 +904,16 @@ namespace DCFApixels.SpriteEditor
             paintingLayer?.EndStroke();
             paintingLayer = null;
             hasLastPaintingUv = false;
+            lineAnchorLayer = null;
+            paintingShiftHeld = false;
+            paintingLockedAxis = 0;
             paintingPointerId = -1;
             compositor.NormalizeModel();
             compositor.InvalidateDrawingLayerSurfaces();
             selectedLayerId = compositor.FindLayer(selectedLayerId)?.Id;
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
             RequestPreview(true);
-            RebuildToolkitInterface();
+            RefreshToolkitInterface(forceValues: true);
         }
     }
 }

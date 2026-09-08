@@ -63,6 +63,14 @@ selected layer while the displayed result still respects the complete layer orde
 opacity, blend modes, modifiers, and effects. LMB uses the selected Brush/Eraser tool; RMB temporarily
 erases without changing that selection. The foreground and background color swatches can both be
 edited, and `X` swaps them. Use `[` and `]` to decrease or increase brush size.
+Hold Shift during a stroke to lock it horizontally or vertically, chosen by the first movement
+and held until Shift is released. The axes follow the canvas, including on transformed layers.
+Shift-click connects the last painted endpoint to the clicked point; repeated Shift-clicks draw
+connected straight segments. To start an independent axis-aligned line, click its start without
+Shift, then hold Shift while dragging. These modes also work with the eraser, brush spacing,
+mirroring, and repetition. Clip still limits a connection to the repeat shape containing its
+starting endpoint. Undo/Redo, clearing that layer, and changing documents reset the connection anchor;
+connections never carry over from another drawing layer or a different canvas size.
 `Step` controls the distance between consecutive brush stamps as a percentage of brush diameter:
 lower values produce a smoother stroke, while higher values are faster and can produce dotted lines.
 
@@ -125,3 +133,26 @@ Normal, Multiply, and Overwrite retain their existing serialized values, so comp
 with earlier package versions keep the same modes after upgrading.
 
 Layer modifiers are materials applied in list order after that layer's transform.
+
+## UI maintenance
+
+Create controls when their document or layer is bound. Register model readers in
+`SpriteEditorUI.ValueBindings` and update through `Refresh`, which uses
+`SetValueWithoutNotify` only when values differ. An active field owns its unfinished input;
+normal model refreshes reconcile it after focus/capture release. Explicit Undo/Redo can force
+model values into the existing controls. Bind every new editable field, including fields whose
+values can change through hotkeys or another window.
+
+Value callbacks must not clear or recreate parent containers. Toggle conditional controls with
+visibility/enabled state. `RefreshToolkitLayerHierarchy` compares the visible tree's layer and
+container references, order, and depth before rebuilding rows; selection only updates their
+presentation. Layer-setting windows rebuild when their bound layer instance changes, including
+managed-reference replacement during Undo. Modifier list refreshes compare the list and contents.
+Keep external model notifications coalesced and pending until processed rather than dropping
+notifications during input. None of these UI refresh paths should emit model-change events.
+
+After changing these paths, check in Unity: type multi-digit W/H and fractional Step values;
+scrub Step and both components of Center/Transform; edit an unselected layer's name/opacity;
+switch Repeat/Gradient/Input modes; change a layer in another window while an input is focused;
+then exercise Undo/Redo, group collapse/reordering, and cancelled drag-and-drop. Verify that
+focus, caret, pointer capture, and scroll survive ordinary value updates.

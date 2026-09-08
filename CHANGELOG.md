@@ -2,6 +2,36 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Hold Shift during a brush/eraser stroke to lock its direction horizontally or vertically on
+  the canvas. Shift-click connects the previous painted endpoint to the clicked point, including
+  consecutive Shift-clicks, with the existing brush spacing, symmetry, repeat clipping, and Undo.
+
+### Changed
+
+- Keep output fields, layer rows, and drawing controls alive during value changes and selection.
+  Rebuild only the affected subtree when the document, visible layer structure, or bound layer
+  instance changes. Repeat modes, gradient modes, and effect inputs toggle existing controls.
+- Synchronize fields through shared value bindings: update only changed values without emitting
+  change events, preserve active text/caret and pointer interactions, and reconcile on focus or
+  capture release. External notifications are coalesced instead of scheduling full UI rebuilds.
+- Refresh modifier items only when their source list or contents change, and handle layer dragging
+  with a pointer manipulator that cleans up capture on cancellation and detachment.
+
+### Fixed
+
+- Output width and height commit typed values on Enter or focus loss, so temporarily clearing
+  a dimension while typing does not shrink the document and preview to a one-pixel strip.
+- Selecting an unselected layer while editing its name or opacity no longer detaches the field.
+- Brush Step no longer rewrites and clamps its text during typing; the model remains clamped and
+  the field is reconciled when editing ends.
+- External changes no longer discard UI refreshes while a field is focused. Effect and modifier
+  windows also synchronize directly after Undo/Redo.
+- Preview errors reuse one HelpBox, and cancelled layer drops restore the row's original margin.
+
 ## [0.4.0] - 2026-09-08
 
 ### Changed
