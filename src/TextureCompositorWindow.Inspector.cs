@@ -53,6 +53,20 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
+            Label title = new Label(layer.layerName)
+            {
+                name = "selectedLayerTitle",
+                enableRichText = false,
+                pickingMode = PickingMode.Ignore
+            };
+            title.AddToClassList("sprite-editor-layer-title");
+            root.Add(title);
+            toolkitInspectorBindings.Add(() =>
+            {
+                if (title.text != layer.layerName)
+                    title.text = layer.layerName;
+            });
+
             if (layer is GroupLayer)
             {
                 SpriteEditorUI.AddHelpBox(root,

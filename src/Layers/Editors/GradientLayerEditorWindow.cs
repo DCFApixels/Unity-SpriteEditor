@@ -12,9 +12,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(GradientLayer layer, TextureCompositor compositor)
         {
-            GradientLayerEditorWindow window = GetWindow<GradientLayerEditorWindow>(true, "Gradient Settings");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<GradientLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)

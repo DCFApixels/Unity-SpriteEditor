@@ -304,6 +304,15 @@ namespace DCFApixels.SpriteEditor
         protected virtual string PreviewTitle => "Preview";
         protected abstract Type EditedLayerType { get; }
 
+        protected static void OpenPropertiesWindow<T>(Layer layer, TextureCompositor owner)
+            where T : LayerEditorWindowBase
+        {
+            T window = CreateInstance<T>();
+            window.titleContent = new GUIContent($"Properties — {layer.layerName}");
+            window.Initialize(layer, owner);
+            window.ShowUtility();
+        }
+
         protected void Initialize(Layer layer, TextureCompositor owner)
         {
             currentLayer = layer;
@@ -386,6 +395,12 @@ namespace DCFApixels.SpriteEditor
         {
             interfaceRefreshRequested = false;
             bool valid = ResolveLayer();
+            if (valid)
+            {
+                string title = $"Properties — {currentLayer.layerName}";
+                if (titleContent.text != title)
+                    titleContent = new GUIContent(title);
+            }
             Layer nextLayer = valid ? currentLayer : null;
             if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && boundCompositor == compositor)
             {

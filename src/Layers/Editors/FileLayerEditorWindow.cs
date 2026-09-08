@@ -12,9 +12,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(FileLayer layer, TextureCompositor compositor)
         {
-            FileLayerEditorWindow window = GetWindow<FileLayerEditorWindow>(true, "File Layer");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<FileLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
@@ -50,9 +48,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(ColorFillLayer layer, TextureCompositor compositor)
         {
-            ColorFillLayerEditorWindow window = GetWindow<ColorFillLayerEditorWindow>(true, "Color Fill Layer");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<ColorFillLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)

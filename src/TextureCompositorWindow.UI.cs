@@ -17,6 +17,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private VisualElement toolkitPreviewHeader;
         [NonSerialized] private VisualElement toolkitDocumentRoot;
         [NonSerialized] private ScrollView toolkitSettingsScroll;
+        [NonSerialized] private VisualElement toolkitLayerFooter;
         [NonSerialized] private SpritePreviewElement toolkitPreviewCanvas;
         [NonSerialized] private Label toolkitPreviewFooter;
         [NonSerialized] private VisualElement toolkitPreviewErrorRoot;
@@ -71,6 +72,7 @@ namespace DCFApixels.SpriteEditor
             root.UnregisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.UnregisterCallback<DragExitedEvent>(OnToolkitDragExited);
             root.Clear();
+            SpriteEditorUI.ApplyWindowStyles(root);
             toolkitBoundDocument = null;
             toolkitHeaderBuilt = false;
             toolkitSettingsBindings.Clear();
@@ -111,9 +113,8 @@ namespace DCFApixels.SpriteEditor
             settingsPane.style.minWidth = SettingsPaneMinWidth;
             settingsPane.style.flexGrow = 1f;
             settingsPane.style.minHeight = 0f;
-            settingsPane.style.backgroundColor = EditorGUIUtility.isProSkin
-                ? new Color(0.13f, 0.13f, 0.13f, 1f)
-                : new Color(0.76f, 0.76f, 0.76f, 1f);
+            settingsPane.AddToClassList("sprite-editor-settings-pane");
+            settingsPane.EnableInClassList("sprite-editor-settings-pane--light", !EditorGUIUtility.isProSkin);
             split.Add(settingsPane);
 
             TwoPaneSplitView settingsSplit = new TwoPaneSplitView(
@@ -137,14 +138,23 @@ namespace DCFApixels.SpriteEditor
             });
             settingsSplit.Add(toolkitLayerSettingsScroll);
 
+            VisualElement layersPane = new VisualElement();
+            layersPane.AddToClassList("sprite-editor-layers-pane");
+            settingsSplit.Add(layersPane);
+
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitSettingsScroll.name = "layer-list";
-            toolkitSettingsScroll.style.minHeight = 100f;
+            toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
             toolkitSettingsScroll.style.paddingLeft = 8f;
             toolkitSettingsScroll.style.paddingRight = 8f;
             toolkitSettingsScroll.style.paddingBottom = 8f;
-            settingsSplit.Add(toolkitSettingsScroll);
+            layersPane.Add(toolkitSettingsScroll);
+
+            toolkitLayerFooter = new VisualElement { name = "layersFooter" };
+            toolkitLayerFooter.AddToClassList("sprite-editor-layers-footer");
+            toolkitLayerFooter.EnableInClassList("sprite-editor-layers-footer--light", !EditorGUIUtility.isProSkin);
+            layersPane.Add(toolkitLayerFooter);
 
             RefreshToolkitInterface();
         }
@@ -232,6 +242,10 @@ namespace DCFApixels.SpriteEditor
         {
             toolkitDocumentRoot.Clear();
             VisualElement toolbar = SpriteEditorUI.CreateToolbar();
+            toolbar.style.backgroundColor = StyleKeyword.Null;
+            toolbar.style.borderBottomWidth = StyleKeyword.Null;
+            toolbar.AddToClassList("sprite-editor-document-header");
+            toolbar.EnableInClassList("sprite-editor-document-header--light", !EditorGUIUtility.isProSkin);
 
             toolkitDocumentField = new ObjectField
             {
@@ -284,6 +298,15 @@ namespace DCFApixels.SpriteEditor
                     : "Temporary compositor. It can be exported directly or saved as an asset.";
                 toolkitDocumentStatus.messageType = temporaryDocumentDirty ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info;
             });
+
+            VisualElement separator = new VisualElement
+            {
+                name = "documentHeaderSeparator",
+                pickingMode = PickingMode.Ignore
+            };
+            separator.AddToClassList("sprite-editor-document-separator");
+            separator.EnableInClassList("sprite-editor-document-separator--light", !EditorGUIUtility.isProSkin);
+            toolkitDocumentRoot.Add(separator);
         }
 
         private void BuildToolkitSettings()
@@ -321,20 +344,10 @@ namespace DCFApixels.SpriteEditor
 
             VisualElement layerHeader = SpriteEditorUI.CreateRow();
             layerHeader.style.marginTop = 8f;
-            Label title = SpriteEditorUI.CreateHeading("Layers (top to bottom)");
+            Label title = SpriteEditorUI.CreateHeading("Layers");
             title.style.flexGrow = 1f;
             title.style.marginTop = 0f;
             layerHeader.Add(title);
-            Label dragHint = new Label("≡ drag");
-            dragHint.tooltip = LayerDragHintContent.tooltip;
-            dragHint.style.fontSize = 10f;
-            dragHint.style.marginRight = 4f;
-            layerHeader.Add(dragHint);
-            layerHeader.Add(SpriteEditorUI.CreateButton("Add", ShowAddMenuForSelection, 54f));
-            Button group = SpriteEditorUI.CreateButton("Group", GroupSelectedLayer, 54f);
-            group.SetEnabled(GetSelectedLayer() != null);
-            toolkitSettingsBindings.Add(() => group.SetEnabled(GetSelectedLayer() != null));
-            layerHeader.Add(group);
             toolkitSettingsScroll.Add(layerHeader);
 
             toolkitLayerHierarchyRoot = new VisualElement();
@@ -342,6 +355,43 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.Add(toolkitLayerHierarchyRoot);
 
             toolkitSettingsScroll.scrollOffset = scrollPosition;
+            BuildToolkitLayerFooter();
+        }
+
+        private void BuildToolkitLayerFooter()
+        {
+            toolkitLayerFooter.Clear();
+            toolkitLayerFooter.Add(CreateLayerActionButton(
+                LayerActionIcon.Kind.Add, "Add layer", ShowAddMenuForSelection));
+            Button group = CreateLayerActionButton(
+                LayerActionIcon.Kind.Group, "Group selected layer", GroupSelectedLayer);
+            Button delete = CreateLayerActionButton(
+                LayerActionIcon.Kind.Delete, "Delete selected layer", DeleteSelectedLayer);
+            group.AddToClassList("sprite-editor-layer-action--separated");
+            delete.AddToClassList("sprite-editor-layer-action--separated");
+            toolkitLayerFooter.Add(group);
+            toolkitLayerFooter.Add(delete);
+            toolkitSettingsBindings.Add(() =>
+            {
+                bool hasSelection = GetSelectedLayer() != null;
+                group.SetEnabled(hasSelection);
+                delete.SetEnabled(hasSelection);
+            });
+        }
+
+        private static Button CreateLayerActionButton(LayerActionIcon.Kind icon, string tooltip, Action clicked)
+        {
+            Button button = new Button(clicked) { tooltip = tooltip };
+            button.AddToClassList("sprite-editor-layer-action");
+            button.Add(new LayerActionIcon(icon));
+            return button;
+        }
+
+        private void DeleteSelectedLayer()
+        {
+            Layer layer = GetSelectedLayer();
+            if (layer != null && compositor.TryFindLayer(layer, out List<Layer> container, out _))
+                DeleteLayer(container, layer);
         }
 
         private void RefreshToolkitLayerHierarchy(bool forceValues = false)
@@ -492,7 +542,7 @@ namespace DCFApixels.SpriteEditor
             count.style.fontSize = 10f;
             row.Add(count);
             row.Add(SpriteEditorUI.CreateButton("+", () => ShowAddMenu(group.layers, 0), 24f));
-            row.Add(SpriteEditorUI.CreateButton("…", () => ShowLayerContextMenu(group, container, index), 30f));
+            row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(group, container, index)));
             RegisterToolkitLayerDrop(row, group, container, index, depth);
             return row;
         }
@@ -577,11 +627,23 @@ namespace DCFApixels.SpriteEditor
                 });
             }
 
-            row.Add(SpriteEditorUI.CreateButton("Edit", () => OpenLayerEditor(layer), 42f));
-            row.Add(SpriteEditorUI.CreateButton("FX", () => ModifierEditorWindow.Open(layer, compositor), 30f));
-            row.Add(SpriteEditorUI.CreateButton("…", () => ShowLayerContextMenu(layer, container, index), 30f));
+            row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(layer, container, index)));
             RegisterToolkitLayerDrop(row, layer, container, index, depth);
             return row;
+        }
+
+        private static Button CreateLayerMenuButton(Action clicked)
+        {
+            Button button = new Button(clicked) { tooltip = "Layer menu" };
+            button.AddToClassList("sprite-editor-layer-menu-button");
+            button.EnableInClassList("sprite-editor-layer-menu-button--light", !EditorGUIUtility.isProSkin);
+            for (int i = 0; i < 3; i++)
+            {
+                VisualElement dot = new VisualElement { pickingMode = PickingMode.Ignore };
+                dot.AddToClassList("sprite-editor-layer-menu-dot");
+                button.Add(dot);
+            }
+            return button;
         }
 
         private VisualElement BuildMissingLayerRow(List<Layer> container, int index, int depth)

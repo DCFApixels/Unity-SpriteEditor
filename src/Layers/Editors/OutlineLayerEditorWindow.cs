@@ -12,9 +12,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(OutlineLayer layer, TextureCompositor compositor)
         {
-            OutlineLayerEditorWindow window = GetWindow<OutlineLayerEditorWindow>(true, "Outline Settings");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<OutlineLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)

@@ -594,6 +594,12 @@ namespace DCFApixels.SpriteEditor
                 () => ConvertLayerToDrawing(layer, true));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
+            if (!(layer is GroupLayer))
+            {
+                menu.AddSeparator(string.Empty);
+                menu.AddItem(new GUIContent("FX"), false, () => ModifierEditorWindow.Open(layer, compositor));
+                menu.AddItem(new GUIContent("Properties"), false, () => OpenLayerEditor(layer));
+            }
             menu.ShowAsContext();
         }
 

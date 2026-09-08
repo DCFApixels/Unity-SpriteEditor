@@ -9,9 +9,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(DrawingLayer layer, TextureCompositor compositor)
         {
-            DrawingLayerEditorWindow window = GetWindow<DrawingLayerEditorWindow>(true, "Drawing Layer");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<DrawingLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)

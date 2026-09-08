@@ -13,9 +13,7 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(SDFLayer layer, TextureCompositor compositor)
         {
-            SDFLayerEditorWindow window = GetWindow<SDFLayerEditorWindow>(true, "SDF Settings");
-            window.Initialize(layer, compositor);
-            window.Show();
+            OpenPropertiesWindow<SDFLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)

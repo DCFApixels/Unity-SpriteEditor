@@ -37,12 +37,27 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Changed
 
+- Restyle the Layers footer as a compact 26-pixel toolbar with contiguous flat icon buttons,
+  hover/pressed feedback, and a thin top border.
+
+- Use narrow, borderless vertical-ellipsis layer menus with hover highlighting. Move FX and
+  Properties (formerly Edit) into the menu, with Properties last; each invocation creates a new window.
+
+- Simplify the Layers heading and move Add/Group into a pinned footer with square plus/folder
+  icon buttons and a selected-layer delete button. Footer actions remain visible while scrolling.
+
+- Remove divider direction tooltips, show the selected layer name as a retained inspector
+  heading, and add a noninteractive 3-pixel divider beneath the document header.
+
+- Extend each divider's invisible hit area by 1 pixel on both sides without changing its
+  3-pixel appearance or pane spacing.
+
 - Synchronize pane offsets when divider thickness changes during a stylesheet reload, avoiding
   stale gaps that expose the window background beside the drag handle.
 
-- Style both pane dividers as 5-pixel drag handles with a dark center, lighter 1-pixel edges,
-  centered grips, resize cursors, and hover/pressed border highlights. Support light/dark themes
-  while retaining the native split-view resizer.
+- Use the #383838 window background for the right pane in the dark theme and simple 3-pixel
+  dark dividers without light outlines. Retain centered grips, blue hover highlights on the full divider,
+  resize cursors, light-theme support, and the native split-view resizer.
 
 - Remove duplicate inline controls from the embedded inspector; put Transform controls in a
   retained foldout, collapsed by default, shared with standalone Edit windows.

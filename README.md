@@ -10,10 +10,12 @@ The document field, **New**, **Save As**, and **Export** share a full-window hea
 The right pane has a selected-layer inspector above the layer list. Drag their horizontal divider
 to set the inspector height; it stays fixed when selecting layers and is remembered by the window.
 Both sections scroll independently when their contents do not fit. Type-specific settings and
-Transform controls share their implementation with **Edit** windows; ordinary changes refresh
+Transform controls share their implementation with **Properties** windows; ordinary changes refresh
 values without rebuilding focused fields. Drawing brush controls remain in the Preview header.
-Inline name, visibility, opacity, blend mode, and FX controls are not duplicated in the inspector.
-**Transform** is a foldout, collapsed by default in the inspector and **Edit** windows.
+Inline name, visibility, opacity, and blend mode controls are not duplicated in the inspector.
+**Transform** is a foldout, collapsed by default in the inspector and **Properties** windows.
+The narrow vertical-ellipsis menu in each non-group layer row contains **FX** and, as its last item,
+**Properties**. Each Properties invocation opens a separate window, including for the same layer.
 
 Saved compositions can be reopened by double-clicking their `TextureCompositor` asset in the
 Project window, or by selecting the asset and pressing **Open in Sprite Editor** in the Inspector.

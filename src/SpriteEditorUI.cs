@@ -11,12 +11,22 @@ namespace DCFApixels.SpriteEditor
     {
         private static StyleSheet splitViewStyles;
 
-        internal static void StyleSplitView(TwoPaneSplitView split)
+        internal static bool ApplyWindowStyles(VisualElement root)
         {
             if (splitViewStyles == null)
                 splitViewStyles = AssetDatabase.LoadAssetAtPath<StyleSheet>(
                     AssetDatabase.GUIDToAssetPath("933b61aeef77442fb4567dbf6f21ce96"));
             if (splitViewStyles == null)
+                return false;
+
+            if (!root.styleSheets.Contains(splitViewStyles))
+                root.styleSheets.Add(splitViewStyles);
+            return true;
+        }
+
+        internal static void StyleSplitView(TwoPaneSplitView split)
+        {
+            if (!ApplyWindowStyles(split))
                 return;
 
             VisualElement anchor = split.Q<VisualElement>("unity-dragline-anchor");
@@ -24,7 +34,6 @@ namespace DCFApixels.SpriteEditor
             if (line == null)
                 return;
 
-            split.styleSheets.Add(splitViewStyles);
             bool columns = split.orientation == TwoPaneSplitViewOrientation.Horizontal;
             anchor.RegisterCallback<GeometryChangedEvent>(evt =>
             {
@@ -49,7 +58,6 @@ namespace DCFApixels.SpriteEditor
             anchor.AddToClassList("sprite-editor-split-handle");
             anchor.AddToClassList(columns ? "sprite-editor-split-handle--columns" : "sprite-editor-split-handle--rows");
             anchor.EnableInClassList("sprite-editor-split-handle--light", !EditorGUIUtility.isProSkin);
-            anchor.tooltip = columns ? "Drag left or right to resize panes" : "Drag up or down to resize panes";
             line.AddToClassList("sprite-editor-split-line");
             line.pickingMode = PickingMode.Ignore;
             for (int i = 0; i < 3; i++)
@@ -58,6 +66,13 @@ namespace DCFApixels.SpriteEditor
                 dot.AddToClassList("sprite-editor-split-grip");
                 line.Add(dot);
             }
+            VisualElement hitArea = new VisualElement
+            {
+                name = "splitHitArea",
+                pickingMode = PickingMode.Position
+            };
+            hitArea.AddToClassList("sprite-editor-split-hit-area");
+            anchor.Add(hitArea);
         }
 
         internal sealed class ValueBindings
