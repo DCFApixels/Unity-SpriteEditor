@@ -7,12 +7,11 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        [NonSerialized] private bool previewTransformActive;
         [NonSerialized] private double nextTransformPreviewAt;
         private VisualElement previewTransformOverlay;
         private PreviewTransformManipulator previewTransformManipulator;
 
-        private bool IsPreviewTransformEnabled => previewTransformActive &&
+        private bool IsPreviewTransformEnabled => previewTool == PreviewTool.Transform &&
             GetSelectedLayer() is Layer layer && !layer.IsGroup;
 
         private void BuildPreviewTransformTool()
@@ -79,16 +78,20 @@ namespace DCFApixels.SpriteEditor
 
         private void TogglePreviewTransform()
         {
-            SetPreviewTool(!previewTransformActive);
+            SetPreviewTool(previewTool == PreviewTool.Transform
+                ? GetSelectedLayer() is DrawingLayer ? PreviewTool.Brush : PreviewTool.None
+                : PreviewTool.Transform);
         }
 
-        private void SetPreviewTool(bool transform)
+        private void SetPreviewTool(PreviewTool tool)
         {
-            if (transform && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
+            if (tool == PreviewTool.Transform && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
+                return;
+            if (tool == PreviewTool.Brush && !(GetSelectedLayer() is DrawingLayer))
                 return;
             FinishPreviewTransform();
             FinishPaintingStroke();
-            previewTransformActive = transform;
+            previewTool = tool;
             lineAnchorLayer = null;
             RefreshToolkitInterface();
             toolkitPreviewCanvas?.Focus();
@@ -101,7 +104,9 @@ namespace DCFApixels.SpriteEditor
             if (evt.keyCode == KeyCode.T)
                 TogglePreviewTransform();
             else if (evt.keyCode == KeyCode.B && GetSelectedLayer() is DrawingLayer)
-                SetPreviewTool(false);
+                SetPreviewTool(PreviewTool.Brush);
+            else if (evt.keyCode == KeyCode.V)
+                SetPreviewTool(PreviewTool.None);
             else if (IsPreviewTransformEnabled && evt.keyCode == KeyCode.Escape)
             {
                 if (previewTransformManipulator != null && previewTransformManipulator.IsDragging)

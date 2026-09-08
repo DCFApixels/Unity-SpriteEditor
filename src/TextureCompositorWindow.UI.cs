@@ -1037,7 +1037,7 @@ namespace DCFApixels.SpriteEditor
 
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             toolkitHeaderBindings.Add(() => brushRow.EnableInClassList(
-                "sprite-editor-tool-options--hidden", IsPreviewTransformEnabled));
+                "sprite-editor-tool-options--hidden", !IsPreviewBrushEnabled));
             EnumField tool = CompactField(new EnumField(layer.tool), 72f);
             toolkitHeaderBindings.Track(tool, () => (Enum)layer.tool);
             tool.RegisterValueChangedCallback(evt => ApplyToolkitChange(
@@ -1156,7 +1156,7 @@ namespace DCFApixels.SpriteEditor
             bool transforming = IsPreviewTransformEnabled;
             toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,
                 compositor.width, compositor.height,
-                transforming ? null : drawing, transforming);
+                IsPreviewBrushEnabled ? drawing : null, transforming);
             if (toolkitPreviewError != null)
             {
                 toolkitPreviewError.text = previewError ?? string.Empty;
@@ -1169,7 +1169,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     toolkitPreviewFooter.text = "Drag move • handles scale • circle rotate • gold cross pivot • Shift constrain • Esc cancel • T exit";
                 }
-                else if (drawing != null)
+                else if (IsPreviewBrushEnabled)
                 {
                     toolkitPreviewFooter.text = previewTexture != null
                         ? $"LMB paint • RMB erase • Shift lines • X colors • [ ] size • {drawing.brushSize:0.#} px"
@@ -1198,7 +1198,7 @@ namespace DCFApixels.SpriteEditor
         private void OnPreviewPointerDown(PointerDownEvent evt)
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            if (IsPreviewTransformEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
+            if (!IsPreviewBrushEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
             if (!toolkitPreviewCanvas.ImageRect.Contains(evt.localPosition) ||
                 !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv))
@@ -1366,7 +1366,7 @@ namespace DCFApixels.SpriteEditor
         private void UpdatePreviewCursor(Vector2 localPosition, bool alt)
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            bool visible = !IsPreviewTransformEnabled && layer != null &&
+            bool visible = IsPreviewBrushEnabled && layer != null &&
                            !alt &&
                            toolkitPreviewCanvas != null &&
                            toolkitPreviewCanvas.ImageRect.Contains(localPosition);
@@ -1428,7 +1428,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            if (!(GetSelectedLayer() is DrawingLayer layer))
+            if (!IsPreviewBrushEnabled || !(GetSelectedLayer() is DrawingLayer layer))
                 return;
 
             bool swapColors = !actionModifier && !evt.altKey && evt.keyCode == KeyCode.X;

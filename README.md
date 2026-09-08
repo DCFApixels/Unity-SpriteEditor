@@ -127,7 +127,9 @@ Undo/Redo or changing external source textures. Project thumbnails use saved pix
 than recompositing layers. No layer rendering is needed at runtime to use the baked output.
 
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
-The narrow toolbar at the far left selects **Brush** (brush icon, `B`) or **Transform** (hand icon, `T`).
+The narrow toolbar at the far left selects **No Tool** (cursor icon, `V`), **Brush** (brush icon, `B`)
+or **Transform** (hand icon, `T`). No Tool leaves the preview non-editing, without brush/pattern guides
+or transform handles, and remains active when switching layers.
 Eraser remains a Brush mode in the header; `RMB` temporarily erases. Brush requires a Drawing layer;
 Transform supports any non-group layer. The active tool is highlighted, and its options appear in the header.
 Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
@@ -447,6 +449,7 @@ Other asset types and sub-assets are protected.
 | `Shift`-drag / `Shift`-click | Axis-aligned stroke / line from the previous endpoint. |
 | `T` | Toggle Preview Transform. |
 | `B` | Select the Brush tool, retaining its Brush/Eraser mode. |
+| `V` | Select No Tool: preview without painting or transform handles. |
 | `Enter` / `Escape` | Exit Transform / cancel the current transform drag. |
 | `Ctrl` during pivot drag | Disable snapping. |
 

@@ -133,7 +133,7 @@ namespace DCFApixels.SpriteEditor
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
             groupExpansion?.Clear();
-            previewTransformActive = false;
+            previewTool = PreviewTool.Brush;
             lineAnchorLayer = null;
             hasLastPaintingUv = false;
             paintingShiftHeld = false;
@@ -920,7 +920,7 @@ namespace DCFApixels.SpriteEditor
                     null,
                     compositor.width,
                     compositor.height,
-                    IsPreviewTransformEnabled ? null : GetSelectedLayer() as DrawingLayer,
+                    IsPreviewBrushEnabled ? GetSelectedLayer() as DrawingLayer : null,
                     IsPreviewTransformEnabled);
             }
             if (!keepChannelBuffer)
