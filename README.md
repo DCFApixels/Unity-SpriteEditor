@@ -128,6 +128,8 @@ than recompositing layers. No layer rendering is needed at runtime to use the ba
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
 Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
 window. The right pane has its own horizontal divider and independently scrolling sections.
+Both right-hand sections have fixed headers with thin dividers. The upper header shows the
+active layer's name, or **Layer Settings** when nothing is selected; the lower header is **Layers**.
 
 Settings follow the active layer. **Transform** starts collapsed; brush settings appear when
 a Drawing layer is active. Each **⋮ → Properties** invocation opens a separate window.
@@ -175,8 +177,21 @@ Drawing pixels and embedded Shader FX are independent, while external assets sta
 Outline/SDF targets inside the copied set follow the copies. If a Previous input is no longer
 adjacent, the copied effect uses that input explicitly to preserve its result.
 
-Per-row menus and inline controls affect that row. New names use independent, document-local
-counters: `Layer 1…` and `Group 1…`. Deleted numbers are not reused.
+Per-row menus and inline controls affect that row. Each layer type has its own document-local
+name counter: `Layer 1…` for Drawing, `File 1…`, `Color Fill 1…`, `Gradient 1…`,
+`Outline 1…`, `SDF 1…`, and `Group 1…`. Existing names and counter progress are preserved.
+Duplicates keep the full source name and append ` Copy n`, using one separate counter for all
+copies in the document, including group descendants. Deleted numbers are not reused.
+
+Drop a layer/group handle onto **Target** in SDF or Outline settings to assign it and switch to
+**Specific**. A dragged selection uses its active layer, not the first row. The handle keeps the
+current selection while dragging, so the destination settings stay visible. Cross-document and
+cyclic targets are rejected. This also works in separate **Properties** windows and supports Undo.
+
+Use the number row or numpad to set the active layer's opacity: `5` → 50%, then `7` within
+0.6 seconds → 57%; after a pause, `7` → 70%. `0` sets 100%; quick `00` sets 0% and `05` sets 5%.
+A quick pair is one Undo step. Text/numeric inputs and modified shortcuts are not intercepted.
+This changes the active layer only, not brush opacity; pass-through groups have no opacity control.
 
 > [!IMPORTANT]
 > Groups currently have no group-level opacity, blend mode, Transform, or FX.

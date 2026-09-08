@@ -213,6 +213,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            ResetOpacityEntry();
             FinishPreviewTransform();
             RestoreUnityShortcuts();
         }
@@ -308,15 +309,24 @@ namespace DCFApixels.SpriteEditor
                 nextPaintingPreviewAt = EditorApplication.timeSinceStartup + PaintingPreviewInterval;
         }
 
-        private Layer GetDraggedLayer()
+        private Layer GetDraggedLayer() => GetDraggedLayerForDocument(compositor);
+
+        internal static Layer GetDraggedLayerForDocument(TextureCompositor document)
         {
             TextureCompositor draggedCompositor =
                 DragAndDrop.GetGenericData(DraggedCompositorIdKey) as TextureCompositor;
-            if (draggedCompositor == null || compositor == null || draggedCompositor != compositor)
+            if (draggedCompositor == null || document == null || draggedCompositor != document)
                 return null;
 
             string draggedLayerId = DragAndDrop.GetGenericData(DraggedLayerIdKey) as string;
-            return compositor.FindLayer(draggedLayerId);
+            return document.FindLayer(draggedLayerId);
+        }
+
+        internal static void ClearDraggedLayerReference()
+        {
+            DragAndDrop.SetGenericData(DraggedLayerIdKey, null);
+            DragAndDrop.SetGenericData(DraggedLayersKey, null);
+            DragAndDrop.SetGenericData(DraggedCompositorIdKey, null);
         }
 
         private bool CanDropLayer(Layer layer, List<Layer> destinationContainer, int destinationIndex)
@@ -422,9 +432,7 @@ namespace DCFApixels.SpriteEditor
         {
             ClearFooterDropIndicator();
             activeLayerDrag?.Cancel();
-            DragAndDrop.SetGenericData(DraggedLayerIdKey, null);
-            DragAndDrop.SetGenericData(DraggedLayersKey, null);
-            DragAndDrop.SetGenericData(DraggedCompositorIdKey, null);
+            ClearDraggedLayerReference();
         }
 
         private void ClearDrawingLayer(DrawingLayer layer)
@@ -562,12 +570,9 @@ namespace DCFApixels.SpriteEditor
 
         private void AddLayer(List<Layer> container, int insertionIndex, Layer layer)
         {
-            string automaticName = layer is GroupLayer
-                ? compositor.AllocateGroupName()
-                : compositor.AllocateLayerName();
             ExecuteModelChange("Add Sprite Layer", () =>
             {
-                layer.layerName = automaticName;
+                layer.layerName = compositor.AllocateLayerName(layer);
                 if (layer is DrawingLayer drawing)
                     drawing.InitializeCanvas(compositor.width, compositor.height);
                 insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
@@ -604,10 +609,9 @@ namespace DCFApixels.SpriteEditor
             while (index < container.Count && container[index] != selected[0] &&
                 !(container[index] is GroupLayer parentGroup && ContainerContainsLayer(parentGroup.layers, selected[0])))
                 index++;
-            string automaticName = compositor.AllocateGroupName();
             ExecuteModelChange("Group Sprite Layers", () =>
             {
-                GroupLayer group = new GroupLayer { layerName = automaticName };
+                GroupLayer group = new GroupLayer { layerName = compositor.AllocateGroupName() };
                 foreach (Layer layer in selected)
                     if (compositor.TryFindLayer(layer, out List<Layer> source, out _))
                         source.Remove(layer);
@@ -1085,11 +1089,15 @@ namespace DCFApixels.SpriteEditor
 
             RequestPreview();
             if (!applyingToolkitChange)
+            {
+                ResetOpacityEntry();
                 toolkitRefreshRequested = true;
+            }
         }
 
         private void OnUndoRedo()
         {
+            ResetOpacityEntry();
             previewTransformManipulator?.End(false, false);
             if (compositor == null)
                 return;

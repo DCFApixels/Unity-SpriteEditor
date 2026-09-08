@@ -164,14 +164,5 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private string AllocateDuplicateName(Layer source)
-        {
-            string prefix = source is GroupLayer ? "Group " : "Layer ";
-            if (string.IsNullOrEmpty(source.layerName) ||
-                source.layerName.StartsWith(prefix, StringComparison.Ordinal) &&
-                int.TryParse(source.layerName.Substring(prefix.Length), out _))
-                return source is GroupLayer ? AllocateGroupName() : AllocateLayerName();
-            return source.layerName + " Copy";
-        }
     }
 }

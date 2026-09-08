@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
@@ -45,10 +46,13 @@ namespace DCFApixels.SpriteEditor
                     return;
                 applyChange("Change Effect Target", () =>
                 {
+                    effect.inputMode = EffectInputMode.Specific;
                     effect.TargetLayerId = effectTargetIds[nextIndex];
                     Invalidate();
                 });
             });
+            target.tooltip = "Select a source, or drop a layer/group from this document. A multi-selection uses its active layer.";
+            target.AddManipulator(new TargetDropManipulator(this, effect));
             root.Add(target);
             HelpBox status = SpriteEditorUI.AddHelpBox(root, string.Empty, HelpBoxMessageType.Info);
             bindings.Add(() =>
@@ -59,7 +63,6 @@ namespace DCFApixels.SpriteEditor
                     choicesChanged = target.choices[i] != effectTargetLabels[i];
                 if (choicesChanged)
                     target.choices = new List<string>(effectTargetLabels);
-                target.style.display = effect.inputMode == EffectInputMode.Specific ? DisplayStyle.Flex : DisplayStyle.None;
                 status.style.display = DisplayStyle.Flex;
                 status.messageType = HelpBoxMessageType.Info;
                 if (effect.inputMode == EffectInputMode.Previous)
@@ -150,6 +153,81 @@ namespace DCFApixels.SpriteEditor
             effectTargetLabels = null;
             effectTargetOptionsForLayerId = null;
             effectTargetOptionsForTargetId = null;
+        }
+
+        private sealed class TargetDropManipulator : PointerManipulator
+        {
+            private readonly EffectTargetSettingsView owner;
+            private readonly TargetedLayerEffect effect;
+
+            internal TargetDropManipulator(EffectTargetSettingsView owner, TargetedLayerEffect effect)
+            {
+                this.owner = owner;
+                this.effect = effect;
+            }
+
+            protected override void RegisterCallbacksOnTarget()
+            {
+                target.RegisterCallback<DragUpdatedEvent>(OnUpdated);
+                target.RegisterCallback<DragPerformEvent>(OnPerform);
+                target.RegisterCallback<DragLeaveEvent>(OnLeave);
+                target.RegisterCallback<DragExitedEvent>(OnExited);
+                target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
+            }
+
+            protected override void UnregisterCallbacksFromTarget()
+            {
+                Clear();
+                target.UnregisterCallback<DragUpdatedEvent>(OnUpdated);
+                target.UnregisterCallback<DragPerformEvent>(OnPerform);
+                target.UnregisterCallback<DragLeaveEvent>(OnLeave);
+                target.UnregisterCallback<DragExitedEvent>(OnExited);
+                target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
+            }
+
+            private Layer GetSource()
+            {
+                Layer source = TextureCompositorWindow.GetDraggedLayerForDocument(owner.compositor);
+                return target.enabledInHierarchy && source != null &&
+                    owner.compositor.TryFindLayer(effect, out _, out _) &&
+                    owner.compositor.IsUsableEffectTarget(effect, source.Id) ? source : null;
+            }
+
+            private void OnUpdated(DragUpdatedEvent evt)
+            {
+                bool valid = GetSource() != null;
+                DragAndDrop.visualMode = valid ? DragAndDropVisualMode.Link : DragAndDropVisualMode.Rejected;
+                target.EnableInClassList("sprite-editor-effect-target--drop", valid);
+                evt.StopImmediatePropagation();
+            }
+
+            private void OnPerform(DragPerformEvent evt)
+            {
+                evt.StopImmediatePropagation();
+                Layer source = GetSource();
+                Clear();
+                if (source == null)
+                    return;
+                DragAndDrop.AcceptDrag();
+                try
+                {
+                    owner.applyChange("Change Effect Target", () =>
+                    {
+                        effect.inputMode = EffectInputMode.Specific;
+                        effect.TargetLayerId = source.Id;
+                        owner.Invalidate();
+                    });
+                }
+                finally
+                {
+                    TextureCompositorWindow.ClearDraggedLayerReference();
+                }
+            }
+
+            private void Clear() => target.RemoveFromClassList("sprite-editor-effect-target--drop");
+            private void OnLeave(DragLeaveEvent evt) => Clear();
+            private void OnExited(DragExitedEvent evt) => Clear();
+            private void OnDetach(DetachFromPanelEvent evt) => Clear();
         }
     }
 }

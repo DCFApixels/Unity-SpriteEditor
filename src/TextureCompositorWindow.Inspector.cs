@@ -7,6 +7,7 @@ namespace DCFApixels.SpriteEditor
     public sealed partial class TextureCompositorWindow
     {
         [NonSerialized] private ScrollView toolkitLayerSettingsScroll;
+        [NonSerialized] private Label toolkitLayerSettingsTitle;
         [NonSerialized] private Layer toolkitInspectorLayer;
         [NonSerialized] private TextureCompositor toolkitInspectorDocument;
         [NonSerialized] private bool toolkitInspectorBuilt;
@@ -30,6 +31,9 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             Layer selected = GetSelectedLayer();
+            string title = selected == null ? "Layer Settings" : selected.layerName;
+            if (toolkitLayerSettingsTitle != null && toolkitLayerSettingsTitle.text != title)
+                toolkitLayerSettingsTitle.text = title;
             // Rebind only when selection/document identity changes (including Undo replacement).
             // Normal value changes must preserve text editing, pointer capture and scroll position.
             if (!toolkitInspectorBuilt || !ReferenceEquals(toolkitInspectorLayer, selected) ||
@@ -55,20 +59,6 @@ namespace DCFApixels.SpriteEditor
                 SpriteEditorUI.AddHelpBox(root, "Select a layer below to edit its settings.", HelpBoxMessageType.Info);
                 return;
             }
-
-            Label title = new Label(layer.layerName)
-            {
-                name = "selectedLayerTitle",
-                enableRichText = false,
-                pickingMode = PickingMode.Ignore
-            };
-            title.AddToClassList("sprite-editor-layer-title");
-            root.Add(title);
-            toolkitInspectorBindings.Add(() =>
-            {
-                if (title.text != layer.layerName)
-                    title.text = layer.layerName;
-            });
 
             if (layer is GroupLayer)
             {

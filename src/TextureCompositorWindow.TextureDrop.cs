@@ -132,7 +132,8 @@ namespace DCFApixels.SpriteEditor
                         index = Mathf.Clamp(index, 0, container.Count);
                         foreach (Texture2D texture in textures)
                         {
-                            FileLayer layer = new FileLayer { layerName = owner.compositor.AllocateLayerName() };
+                            FileLayer layer = new FileLayer();
+                            layer.layerName = owner.compositor.AllocateLayerName(layer);
                             layer.AssignSourceTexture(texture, owner.compositor);
                             container.Insert(index++, layer);
                             owner.compositor.NormalizeModel();

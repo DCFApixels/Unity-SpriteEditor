@@ -73,6 +73,8 @@ namespace DCFApixels.SpriteEditor
             root.UnregisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
             root.UnregisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.UnregisterCallback<DragExitedEvent>(OnToolkitDragExited);
+            root.UnregisterCallback<PointerDownEvent>(OnOpacityPointerDown, TrickleDown.TrickleDown);
+            ResetOpacityEntry();
             root.Clear();
             SpriteEditorUI.ApplyWindowStyles(root);
             toolkitBoundDocument = null;
@@ -88,6 +90,7 @@ namespace DCFApixels.SpriteEditor
             root.RegisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
             root.RegisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.RegisterCallback<DragExitedEvent>(OnToolkitDragExited);
+            root.RegisterCallback<PointerDownEvent>(OnOpacityPointerDown, TrickleDown.TrickleDown);
 
             toolkitDocumentRoot = new VisualElement();
             toolkitDocumentRoot.style.flexShrink = 0f;
@@ -128,21 +131,27 @@ namespace DCFApixels.SpriteEditor
             settingsSplit.style.minHeight = 0f;
             settingsPane.Add(settingsSplit);
 
+            VisualElement layerSettingsPane = new VisualElement();
+            layerSettingsPane.AddToClassList("sprite-editor-layer-settings-pane");
+            toolkitLayerSettingsTitle = CreatePaneHeader("Layer Settings", "selectedLayerTitle");
+            layerSettingsPane.Add(toolkitLayerSettingsTitle);
+            settingsSplit.Add(layerSettingsPane);
+
             toolkitLayerSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitLayerSettingsScroll.name = "selected-layer-settings";
-            toolkitLayerSettingsScroll.style.minHeight = 100f;
             toolkitLayerSettingsScroll.style.paddingLeft = 8f;
             toolkitLayerSettingsScroll.style.paddingRight = 8f;
             toolkitLayerSettingsScroll.style.paddingBottom = 8f;
-            toolkitLayerSettingsScroll.RegisterCallback<GeometryChangedEvent>(evt =>
+            layerSettingsPane.RegisterCallback<GeometryChangedEvent>(evt =>
             {
                 if (evt.newRect.height >= 100f)
                     layerSettingsPaneHeight = evt.newRect.height;
             });
-            settingsSplit.Add(toolkitLayerSettingsScroll);
+            layerSettingsPane.Add(toolkitLayerSettingsScroll);
 
             VisualElement layersPane = new VisualElement();
             layersPane.AddToClassList("sprite-editor-layers-pane");
+            layersPane.Add(CreatePaneHeader("Layers", "layersTitle"));
             settingsSplit.Add(layersPane);
 
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
@@ -359,13 +368,6 @@ namespace DCFApixels.SpriteEditor
         private void BuildToolkitSettings()
         {
             toolkitSettingsScroll.Clear();
-            VisualElement layerHeader = SpriteEditorUI.CreateRow();
-            layerHeader.style.marginTop = 8f;
-            Label title = SpriteEditorUI.CreateHeading("Layers");
-            title.style.flexGrow = 1f;
-            title.style.marginTop = 0f;
-            layerHeader.Add(title);
-            toolkitSettingsScroll.Add(layerHeader);
 
             toolkitLayerHierarchyRoot = new VisualElement();
             toolkitLayerHierarchyRoot.style.flexShrink = 0f;
@@ -373,6 +375,14 @@ namespace DCFApixels.SpriteEditor
 
             toolkitSettingsScroll.scrollOffset = scrollPosition;
             BuildToolkitLayerFooter();
+        }
+
+        private static Label CreatePaneHeader(string text, string name)
+        {
+            Label header = new Label(text) { name = name, enableRichText = false };
+            header.AddToClassList("sprite-editor-pane-header");
+            header.EnableInClassList("sprite-editor-pane-header--light", !EditorGUIUtility.isProSkin);
+            return header;
         }
 
         private void BuildToolkitLayerFooter()
@@ -729,12 +739,14 @@ namespace DCFApixels.SpriteEditor
             {
                 if (evt.button != 0 || pointerId >= 0)
                     return;
-                owner.SelectLayerFromPointer(layer, evt, preserveSelection: true);
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
+                    owner.SelectLayerFromPointer(layer, evt, preserveSelection: true);
                     evt.StopImmediatePropagation();
                     return;
                 }
+                owner.FinishPreviewTransform();
+                owner.FinishPaintingStroke();
                 owner.activeLayerDrag?.Cancel();
                 owner.activeLayerDrag = this;
                 start = evt.position;
@@ -750,9 +762,10 @@ namespace DCFApixels.SpriteEditor
 
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.objectReferences = Array.Empty<UnityEngine.Object>();
-                DragAndDrop.SetGenericData(DraggedLayerIdKey, layer.Id);
+                bool selected = owner.IsLayerSelected(layer.Id);
+                DragAndDrop.SetGenericData(DraggedLayerIdKey, selected ? owner.selectedLayerId : layer.Id);
                 DragAndDrop.SetGenericData(DraggedCompositorIdKey, owner.compositor);
-                DragAndDrop.SetGenericData(DraggedLayersKey, owner.GetSelectedRoots());
+                DragAndDrop.SetGenericData(DraggedLayersKey, selected ? owner.GetSelectedRoots() : new List<Layer> { layer });
                 DragAndDrop.StartDrag(string.IsNullOrEmpty(layer.layerName) ? "Layer" : layer.layerName);
                 Release();
                 evt.StopImmediatePropagation();
@@ -763,6 +776,12 @@ namespace DCFApixels.SpriteEditor
                 if (pointerId != evt.pointerId || evt.button != 0)
                     return;
                 Release();
+                if (owner.IsLayerSelected(layer.Id))
+                    owner.ActivateSelectedLayer(layer.Id);
+                else
+                    owner.SelectOnlyLayer(layer.Id);
+                owner.selectionAnchorId = layer.Id;
+                owner.RefreshToolkitInterface();
                 evt.StopImmediatePropagation();
             }
 
@@ -1468,6 +1487,7 @@ namespace DCFApixels.SpriteEditor
         {
             if ((evt.ctrlKey || evt.commandKey) && !evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.S)
             {
+                ResetOpacityEntry();
                 evt.PreventDefault();
                 evt.StopImmediatePropagation();
                 if (compositor != null && AssetDatabase.Contains(compositor))
@@ -1478,7 +1498,14 @@ namespace DCFApixels.SpriteEditor
             }
 
             if (IsTextInputTarget(evt.target as VisualElement))
+            {
+                ResetOpacityEntry();
                 return;
+            }
+
+            if (HandleOpacityKey(evt))
+                return;
+            ResetOpacityEntry();
 
             if (HandlePreviewTransformKey(evt))
                 return;

@@ -16,6 +16,7 @@ namespace DCFApixels.SpriteEditor
 
         private void SelectOnlyLayer(string id)
         {
+            ResetOpacityEntry();
             selectedLayerIds.Clear();
             if (id != null)
                 selectedLayerIds.Add(id);
@@ -40,6 +41,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ActivateSelectedLayer(string id)
         {
+            ResetOpacityEntry();
             selectedLayerIds.Remove(id);
             selectedLayerIds.Add(id);
             selectedLayerId = id;

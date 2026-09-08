@@ -4,6 +4,31 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-09-08
+
+### Added
+
+- Number-row/numpad opacity shortcuts for the active non-group layer, with 0.6-second two-digit
+  input, 0 = 100%, 00 = 0%, and a single Undo step per quick pair. Leave text entry and modified
+  shortcuts alone; reset pending digits on focus/selection changes, clicks and other commands.
+- Assign SDF/Outline targets by dropping layer handles, using the active layer of a multi-selection.
+  Keep inspector selection stable during handle drags, automatically choose Specific input, and reject
+  cyclic or cross-document targets. Support both embedded and standalone settings with Undo.
+- Independent, persisted name counters for each layer type; preserve existing names and continue after
+  matching numbered names. Use Layer for Drawing, and File/Color Fill/Gradient/Outline/SDF/Group for
+  the other types, migrating longer name counters. Duplicates append `Copy n` to the full source name,
+  using one shared copy counter.
+- Fixed Layers and selected-layer settings headers with thin dividers; show Layer Settings when empty.
+
+### Changed
+
+- More saturated RGB channel buttons, matching neutral alpha styling, and recessed off states.
+
+### Fixed
+
+- Preserve pending opacity digits across UI Toolkit's additional character events, so quick
+  two-digit input combines correctly instead of replacing the first digit.
+
 ## [0.5.3] - 2026-09-08
 
 ### Added
