@@ -207,12 +207,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.RegisterCallback<PointerCaptureOutEvent>(OnPreviewPointerCaptureOut);
             pane.Add(toolkitPreviewCanvas);
 
-            toolkitPreviewFooter = new Label();
-            toolkitPreviewFooter.style.height = 22f;
-            toolkitPreviewFooter.style.flexShrink = 0f;
-            toolkitPreviewFooter.style.unityTextAlign = TextAnchor.MiddleCenter;
-            toolkitPreviewFooter.style.fontSize = 10f;
-            pane.Add(toolkitPreviewFooter);
+            pane.Add(BuildPreviewFooter());
             return pane;
         }
 
@@ -1247,7 +1242,8 @@ namespace DCFApixels.SpriteEditor
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
             RefreshPreviewTransformTool();
             bool transforming = IsPreviewTransformEnabled;
-            toolkitPreviewCanvas.SetDocument(previewTexture, compositor.width, compositor.height,
+            toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,
+                compositor.width, compositor.height,
                 transforming ? null : drawing, transforming);
             if (toolkitPreviewError != null)
             {
@@ -1300,10 +1296,17 @@ namespace DCFApixels.SpriteEditor
 
             Focus();
             toolkitPreviewCanvas.Focus();
+            bool erase = evt.button == 1 || layer.tool == PaintToolMode.Eraser;
+            if (!erase && (previewChannels & 8) == 0)
+            {
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                return;
+            }
             paintingLayer = layer;
             paintingMouseButton = evt.button;
             paintingPointerId = evt.pointerId;
-            paintingErase = evt.button == 1 || layer.tool == PaintToolMode.Eraser;
+            paintingErase = erase;
             paintingPointerMoved = false;
             bool connect = evt.shiftKey && ReferenceEquals(lineAnchorLayer, layer) &&
                            lineAnchorCanvasSize == new Vector2Int(compositor.width, compositor.height);
@@ -1318,7 +1321,7 @@ namespace DCFApixels.SpriteEditor
             if (connect && originUv != startUv)
                 PaintTowardsLayerPoint(startUv);
             else
-                layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase);
+                layer.PaintPoint(startUv, compositor.width, compositor.height, paintingErase, GetPaintingColor(layer));
             paintingShiftHeld = false;
             SetPaintingShift(evt.shiftKey);
             RefreshPreviewDuringPainting();
@@ -1363,7 +1366,8 @@ namespace DCFApixels.SpriteEditor
                 if (hasLastPaintingUv && paintingLayer.TryClipStrokeSegmentToRepeatShape(
                         lastPaintingUv, pointUv, compositor.width, compositor.height, out Vector2 clippedUv))
                 {
-                    paintingLayer.PaintSegment(lastPaintingUv, clippedUv, compositor.width, compositor.height, false, paintingErase);
+                    paintingLayer.PaintSegment(lastPaintingUv, clippedUv, compositor.width, compositor.height, false, paintingErase,
+                        GetPaintingColor(paintingLayer));
                     RememberPaintingPoint(clippedUv);
                     RefreshPreviewDuringPainting();
                 }
@@ -1375,11 +1379,12 @@ namespace DCFApixels.SpriteEditor
             {
                 if (lastPaintingUv == pointUv)
                     return;
-                paintingLayer.PaintSegment(lastPaintingUv, pointUv, compositor.width, compositor.height, false, paintingErase);
+                paintingLayer.PaintSegment(lastPaintingUv, pointUv, compositor.width, compositor.height, false, paintingErase,
+                    GetPaintingColor(paintingLayer));
             }
             else
             {
-                paintingLayer.PaintPoint(pointUv, compositor.width, compositor.height, paintingErase);
+                paintingLayer.PaintPoint(pointUv, compositor.width, compositor.height, paintingErase, GetPaintingColor(paintingLayer));
             }
             RememberPaintingPoint(pointUv);
             hasLastPaintingUv = true;
@@ -1560,7 +1565,7 @@ namespace DCFApixels.SpriteEditor
             private readonly VisualElement checker;
             private readonly Image image;
             private readonly VisualElement overlay;
-            private Texture2D texture;
+            private Texture texture;
             private DrawingLayer drawingLayer;
             private int documentWidth = 1;
             private int documentHeight = 1;
@@ -1603,7 +1608,7 @@ namespace DCFApixels.SpriteEditor
                 RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
             }
 
-            public void SetDocument(Texture2D nextTexture, int width, int height, DrawingLayer layer, bool transforming = false)
+            public void SetDocument(Texture nextTexture, int width, int height, DrawingLayer layer, bool transforming = false)
             {
                 transformMode = transforming;
                 texture = nextTexture;

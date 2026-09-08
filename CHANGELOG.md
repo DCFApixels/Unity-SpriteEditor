@@ -4,6 +4,17 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-09-08
+
+### Added
+
+- RGBA channel buttons in the Preview footer, with independent channel display and an associated
+  brush-color mask: disabled components paint as zero, A off makes painting a no-op, and erasing
+  remains unchanged. Inspect alpha alone in grayscale or RGB without transparency. Reuse a GPU
+  preview buffer without recomposing layers or CPU readback on toggles; leave Save/Export unfiltered.
+- Muted pastel red, green and blue active states for the corresponding channel buttons, with
+  subtle hover highlights and neutral off states. Keep the alpha button's existing appearance.
+
 ## [0.5.2] - 2026-09-08
 
 ### Fixed

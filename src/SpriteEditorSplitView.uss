@@ -391,3 +391,67 @@
     border-top-width: 1px;
     border-top-color: rgba(0, 0, 0, 0.3);
 }
+
+.sprite-editor-preview-footer {
+    flex-direction: row;
+    align-items: center;
+    height: 22px;
+    flex-shrink: 0;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.sprite-editor-preview-status {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -unity-text-align: middle-center;
+    font-size: 10px;
+}
+
+.unity-button.sprite-editor-channel-button {
+    --channel-fill: #315c85;
+    --channel-hover: #3b6997;
+    --channel-text: #e4f0ff;
+    --channel-border: #5688b8;
+    width: 24px;
+    height: 18px;
+    flex-shrink: 0;
+    margin: 0 0 0 2px;
+    padding: 0;
+    border-radius: 2px;
+    font-size: 10px;
+}
+
+.unity-button.sprite-editor-channel-button--enabled {
+    background-color: var(--channel-fill);
+    color: var(--channel-text);
+    border-color: var(--channel-border);
+}
+
+.unity-button.sprite-editor-channel-button--enabled:hover {
+    background-color: var(--channel-hover);
+}
+
+.unity-button.sprite-editor-channel-button--r {
+    --channel-fill: #665052;
+    --channel-hover: #755f61;
+    --channel-text: #ead9d9;
+    --channel-border: #876e70;
+}
+
+.unity-button.sprite-editor-channel-button--g {
+    --channel-fill: #4c6053;
+    --channel-hover: #5b6f62;
+    --channel-text: #dce8df;
+    --channel-border: #6b8173;
+}
+
+.unity-button.sprite-editor-channel-button--b {
+    --channel-fill: #4d5b6c;
+    --channel-hover: #5c6a7b;
+    --channel-text: #dce3ed;
+    --channel-border: #6f8097;
+}

@@ -225,9 +225,9 @@ namespace DCFApixels.SpriteEditor
             secondaryBrushColor = previousPrimary;
         }
 
-        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase)
+        internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, bool erase, Color? colorOverride = null)
         {
-            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase);
+            PaintSegment(sourceUv, sourceUv, outputWidth, outputHeight, true, erase, colorOverride);
         }
 
         internal void PaintSegment(
@@ -236,8 +236,12 @@ namespace DCFApixels.SpriteEditor
             int outputWidth,
             int outputHeight,
             bool includeStart,
-            bool erase)
+            bool erase,
+            Color? colorOverride = null)
         {
+            Color color = colorOverride ?? brushColor;
+            if (color.a <= 0f)
+                return;
             RenderTexture surface = EnsurePaintSurface(outputWidth, outputHeight);
             if (surface == null)
                 return;
@@ -268,7 +272,7 @@ namespace DCFApixels.SpriteEditor
                 segmentStamps,
                 brushSize,
                 brushHardness,
-                brushColor,
+                color,
                 erase,
                 outputWidth,
                 outputHeight,

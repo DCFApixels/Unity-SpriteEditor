@@ -109,7 +109,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (!EditorUtility.DisplayDialog(
                 "Reset Sprite Editor Settings",
-                "Reset panel sizes, scrolling, selection, foldouts and preview tool state in all open " +
+                "Reset panel sizes, scrolling, selection, foldouts, RGBA channels and preview tool state in all open " +
                 "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
                 "Open documents (including unsaved work), layers, brush settings, textures and Shader FX " +
                 "will be preserved. Unity settings and window docking will not change. " +
@@ -138,6 +138,7 @@ namespace DCFApixels.SpriteEditor
             settingsPaneWidth = DefaultSettingsPaneWidth;
             layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
             paintingPreviewScale = DefaultPaintingPreviewScale;
+            previewChannels = AllPreviewChannels;
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
             groupExpansion?.Clear();
@@ -878,20 +879,25 @@ namespace DCFApixels.SpriteEditor
 
         private void UpdatePreview()
         {
-            ReleasePreview();
+            ReleasePreview(keepChannelBuffer: true);
             previewError = null;
             if (compositor == null)
+            {
+                ReleaseChannelPreview();
                 return;
+            }
 
             try
             {
                 int maxSize = paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
                 previewTexture = compositor.ComposePreview(maxSize);
+                UpdateChannelPreview();
             }
             catch (Exception exception)
             {
                 previewError = exception.Message;
                 Debug.LogException(exception);
+                ReleaseChannelPreview();
             }
             UpdateToolkitPreviewPresentation();
         }
@@ -911,7 +917,7 @@ namespace DCFApixels.SpriteEditor
             return Mathf.Clamp(value, MinimumPaintingPreviewScale, MaximumPaintingPreviewScale);
         }
 
-        private void ReleasePreview()
+        private void ReleasePreview(bool keepChannelBuffer = false)
         {
             if (toolkitPreviewCanvas != null && compositor != null)
             {
@@ -922,6 +928,8 @@ namespace DCFApixels.SpriteEditor
                     IsPreviewTransformEnabled ? null : GetSelectedLayer() as DrawingLayer,
                     IsPreviewTransformEnabled);
             }
+            if (!keepChannelBuffer)
+                ReleaseChannelPreview();
             if (previewTexture == null)
                 return;
             DestroyImmediate(previewTexture);

@@ -271,6 +271,7 @@ namespace DCFApixels.SpriteEditor
         private static Material transformMaterial;
         private static Material paintBrushMaterial;
         private static Material alphaConversionMaterial;
+        private static Material previewChannelsMaterial;
 
         static SpriteEditorMaterials()
         {
@@ -281,6 +282,7 @@ namespace DCFApixels.SpriteEditor
         public static Material Blend => GetOrCreate(ref blendMaterial, "Hidden/TextureCompositor/Blend");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
+        public static Material PreviewChannels => GetOrCreate(ref previewChannelsMaterial, "Hidden/TextureCompositor/PreviewChannels");
         public static Material AlphaConversion => GetOrCreate(
             ref alphaConversionMaterial,
             "Hidden/TextureCompositor/AlphaConversion");
@@ -314,10 +316,13 @@ namespace DCFApixels.SpriteEditor
                 UnityEngine.Object.DestroyImmediate(paintBrushMaterial);
             if (alphaConversionMaterial != null)
                 UnityEngine.Object.DestroyImmediate(alphaConversionMaterial);
+            if (previewChannelsMaterial != null)
+                UnityEngine.Object.DestroyImmediate(previewChannelsMaterial);
             blendMaterial = null;
             transformMaterial = null;
             paintBrushMaterial = null;
             alphaConversionMaterial = null;
+            previewChannelsMaterial = null;
         }
     }
 

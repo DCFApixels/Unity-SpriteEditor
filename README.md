@@ -209,6 +209,13 @@ converted layer itself remain valid. Conversion supports Undo/Redo, including pi
 <a id="painting"></a>
 ## Painting & repetition
 
+The **R / G / B / A** buttons in Preview's footer control both channel display and the brush color
+mask. Disabled RGB components are painted as `0`; disabling A makes brush strokes a no-op.
+The selected brush colors are unchanged, and the eraser ignores this mask. In Preview, A off
+ignores transparency; A alone shows alpha in grayscale; all channels off shows black.
+Switching channels does not edit existing pixels or affect Save/Export. New masked strokes
+are real pixel edits with normal Undo/Redo. All channels start enabled and are restored by Reset.
+
 Select a **Drawing Layer** and paint directly in the Preview. The image still shows the complete
 layer stack, with blending and effects applied.
 
