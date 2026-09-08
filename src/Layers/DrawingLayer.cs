@@ -429,16 +429,13 @@ namespace DCFApixels.SpriteEditor
             return true;
         }
 
-        internal void DestroyStoredTextureWithUndo(bool undoTransient = false)
+        internal void DestroyStoredTextureWithUndo()
         {
             ReleasePaintSurface();
             if (pixels == null)
                 return;
 
-            if (undoTransient || AssetDatabase.Contains(pixels))
-                Undo.DestroyObjectImmediate(pixels);
-            else
-                UnityEngine.Object.DestroyImmediate(pixels);
+            Undo.DestroyObjectImmediate(pixels);
             pixels = null;
         }
 

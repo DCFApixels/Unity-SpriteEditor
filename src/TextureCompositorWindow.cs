@@ -65,7 +65,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Texture2D previewTexture;
         [NonSerialized] private bool previewRequested;
         [NonSerialized] private double previewAt;
-        [NonSerialized] private bool temporaryDocumentDirty;
+        [SerializeField] private bool temporaryDocumentDirty;
         [NonSerialized] private string previewError;
         [NonSerialized] private Dictionary<string, bool> groupExpansion;
         [NonSerialized] private DrawingLayer paintingLayer;
@@ -189,6 +189,7 @@ namespace DCFApixels.SpriteEditor
                 SetCompositor(CreateTemporaryCompositor());
             else
                 compositor.NormalizeModel();
+            UpdateUnsavedChangesState();
             RequestPreview(true);
 
             if (focusedWindow == this)
@@ -211,6 +212,46 @@ namespace DCFApixels.SpriteEditor
         private void OnFocus()
         {
             SuppressUnityShortcuts();
+        }
+
+        private void OnDestroy()
+        {
+            if (compositor != null && !AssetDatabase.Contains(compositor))
+                DestroyImmediate(compositor);
+            compositor = null;
+        }
+
+        private void UpdateUnsavedChangesState()
+        {
+            hasUnsavedChanges = compositor != null && !AssetDatabase.Contains(compositor) &&
+                (temporaryDocumentDirty || paintingLayer != null ||
+                 previewTransformManipulator != null && previewTransformManipulator.IsDragging);
+            saveChangesMessage = "Save the unsaved Sprite Editor document before closing? Choose Save to select an asset path.";
+        }
+
+        public override void SaveChanges()
+        {
+            if (compositor != null)
+            {
+                if (AssetDatabase.Contains(compositor))
+                {
+                    PrepareDocumentSave();
+                    if (!compositor.TrySaveWithOutput())
+                        return;
+                }
+                else if (!SaveAsAsset())
+                    return;
+            }
+            temporaryDocumentDirty = false;
+            base.SaveChanges();
+        }
+
+        public override void DiscardChanges()
+        {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            temporaryDocumentDirty = false;
+            base.DiscardChanges();
         }
 
         private void OnLostFocus()
@@ -296,6 +337,7 @@ namespace DCFApixels.SpriteEditor
 
         private void Update()
         {
+            UpdateUnsavedChangesState();
             if (toolkitRefreshRequested)
                 RefreshToolkitInterface();
             if (toolkitSettingsScroll != null)
@@ -734,7 +776,7 @@ namespace DCFApixels.SpriteEditor
                 Undo.RegisterCreatedObjectUndo(texture, undoName);
                 registeredTexture = true;
                 container[index] = replacement;
-                compositor.DestroyLayerAssets(layer, undoTransient: true);
+                compositor.DestroyLayerAssets(layer);
                 layer.ReleaseTransientResources();
                 SelectOnlyLayer(replacement.Id);
                 lineAnchorLayer = null;
@@ -804,8 +846,11 @@ namespace DCFApixels.SpriteEditor
 
         private void DeleteLayer(List<Layer> container, Layer layer)
         {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
             ExecuteModelChange("Delete Sprite Layer", () =>
             {
+                Undo.RegisterCompleteObjectUndo(compositor, "Delete Sprite Layer");
                 compositor.DestroyLayerAssets(layer);
                 container.Remove(layer);
                 layer.ReleaseTransientResources();
@@ -976,12 +1021,15 @@ namespace DCFApixels.SpriteEditor
             RequestPreview(true);
             RefreshToolkitInterface();
 
+            UpdateUnsavedChangesState();
+
             if (previous != null && !AssetDatabase.Contains(previous))
                 DestroyImmediate(previous);
         }
 
         private bool ResolveUnsavedTemporaryDocument()
         {
+            PrepareDocumentSave();
             if (compositor == null || AssetDatabase.Contains(compositor) || !temporaryDocumentDirty)
                 return true;
 
@@ -1095,6 +1143,8 @@ namespace DCFApixels.SpriteEditor
             if (changedCompositor != compositor)
                 return;
 
+            temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+            UpdateUnsavedChangesState();
             RequestPreview();
             if (!applyingToolkitChange)
             {

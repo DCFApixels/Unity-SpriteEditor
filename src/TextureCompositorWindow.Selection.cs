@@ -175,6 +175,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             ExecuteModelChange("Delete Sprite Layers", () =>
             {
+                Undo.RegisterCompleteObjectUndo(compositor, "Delete Sprite Layers");
                 foreach (Layer layer in layers)
                 {
                     if (!compositor.TryFindLayer(layer, out List<Layer> container, out _))

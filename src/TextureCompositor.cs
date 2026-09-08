@@ -91,6 +91,29 @@ namespace DCFApixels.SpriteEditor
                     effect.PersistEmbedded(this);
         }
 
+        internal void RemoveUnusedEmbeddedShaderFX()
+        {
+            if (Undo.isProcessing)
+                return;
+
+            HashSet<ShaderFX> unused = null;
+            foreach (ShaderFX effect in embeddedShaderFX)
+                if (effect != null && effect.EmbeddedOwner == this && !ContainsShaderFX(layers, effect))
+                {
+                    unused ??= new HashSet<ShaderFX>();
+                    unused.Add(effect);
+                }
+            if (unused == null)
+                return;
+
+            Undo.FlushUndoRecordObjects();
+            Undo.RegisterCompleteObjectUndo(this, "Remove Unused Shader FX");
+            embeddedShaderFX.RemoveAll(effect => effect == null || unused.Contains(effect));
+            foreach (ShaderFX effect in unused)
+                effect.DestroyEmbeddedWithUndo(this);
+            EditorUtility.SetDirty(this);
+        }
+
         internal void CloneEmbeddedShaderFX()
         {
             embeddedShaderFX = new List<ShaderFX>();
@@ -244,6 +267,7 @@ namespace DCFApixels.SpriteEditor
         internal void MarkChanged()
         {
             NormalizeModel();
+            RemoveUnusedEmbeddedShaderFX();
             if (AssetDatabase.Contains(this))
             {
                 PersistEmbeddedShaderFX();
@@ -283,14 +307,14 @@ namespace DCFApixels.SpriteEditor
             VisitDrawingLayers(layers, drawing => drawing.InvalidatePaintSurface());
         }
 
-        internal void DestroyLayerAssets(Layer layer, bool undoTransient = false)
+        internal void DestroyLayerAssets(Layer layer)
         {
             if (layer is DrawingLayer drawing)
-                drawing.DestroyStoredTextureWithUndo(undoTransient);
+                drawing.DestroyStoredTextureWithUndo();
             if (!(layer is GroupLayer group) || group.layers == null)
                 return;
             for (int i = 0; i < group.layers.Count; i++)
-                DestroyLayerAssets(group.layers[i], undoTransient);
+                DestroyLayerAssets(group.layers[i]);
         }
 
         internal static Texture2D CopyToTexture2D(RenderTexture source)
@@ -338,15 +362,29 @@ namespace DCFApixels.SpriteEditor
 
         private RenderTexture RenderComposite(int outputWidth, int outputHeight, float scaleMultiplier)
         {
+            RenderTexture previous = RenderTexture.active;
             RenderTexture accumulator = GetClearRenderTexture(outputWidth, outputHeight);
-            CompositeLayers(
-                layers,
-                ref accumulator,
-                outputWidth,
-                outputHeight,
-                scaleMultiplier,
-                new HashSet<Layer>());
-            return accumulator;
+            try
+            {
+                CompositeLayers(
+                    layers,
+                    ref accumulator,
+                    outputWidth,
+                    outputHeight,
+                    scaleMultiplier,
+                    new HashSet<Layer>());
+                return accumulator;
+            }
+            catch
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(accumulator);
+                throw;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+            }
         }
 
         private void CompositeLayers(
@@ -532,19 +570,29 @@ namespace DCFApixels.SpriteEditor
             if (group == null || !group.enabled)
                 return null;
 
+            RenderTexture previous = RenderTexture.active;
             RenderTexture mask = GetClearRenderTexture(outputWidth, outputHeight);
-            bool hasContent = AccumulateGroupAlpha(
-                group.layers,
-                ref mask,
-                outputWidth,
-                outputHeight,
-                scaleMultiplier,
-                renderStack);
-            if (hasContent)
-                return mask;
-
-            RenderTexture.ReleaseTemporary(mask);
-            return null;
+            try
+            {
+                bool hasContent = AccumulateGroupAlpha(
+                    group.layers,
+                    ref mask,
+                    outputWidth,
+                    outputHeight,
+                    scaleMultiplier,
+                    renderStack);
+                if (!hasContent)
+                    return null;
+                RenderTexture result = mask;
+                mask = null;
+                return result;
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                if (mask != null)
+                    RenderTexture.ReleaseTemporary(mask);
+            }
         }
 
         private bool AccumulateGroupAlpha(
@@ -608,6 +656,7 @@ namespace DCFApixels.SpriteEditor
 
         private static void BlendInto(ref RenderTexture accumulator, RenderTexture layer, BlendMode mode, float opacity)
         {
+            RenderTexture previous = RenderTexture.active;
             Material material = SpriteEditorMaterials.Blend;
             RenderTexture result = RenderTexture.GetTemporary(
                 accumulator.width,
@@ -615,19 +664,27 @@ namespace DCFApixels.SpriteEditor
                 0,
                 RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Default);
-            result.filterMode = FilterMode.Bilinear;
-            result.wrapMode = TextureWrapMode.Clamp;
-
-            if (material == null)
+            try
             {
-                Graphics.Blit(layer, result);
+                result.filterMode = FilterMode.Bilinear;
+                result.wrapMode = TextureWrapMode.Clamp;
+                if (material == null)
+                {
+                    Graphics.Blit(layer, result);
+                }
+                else
+                {
+                    material.SetTexture("_Blend", layer);
+                    material.SetFloat("_Mode", (int)mode);
+                    material.SetFloat("_Opacity", Mathf.Clamp01(opacity));
+                    Graphics.Blit(accumulator, result, material);
+                }
             }
-            else
+            catch
             {
-                material.SetTexture("_Blend", layer);
-                material.SetFloat("_Mode", (int)mode);
-                material.SetFloat("_Opacity", Mathf.Clamp01(opacity));
-                Graphics.Blit(accumulator, result, material);
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(result);
+                throw;
             }
 
             RenderTexture.ReleaseTemporary(accumulator);
@@ -642,14 +699,19 @@ namespace DCFApixels.SpriteEditor
                 0,
                 RenderTextureFormat.ARGB32,
                 RenderTextureReadWrite.Default);
-            result.filterMode = FilterMode.Bilinear;
-            result.wrapMode = TextureWrapMode.Clamp;
-
             RenderTexture previous = RenderTexture.active;
             try
             {
+                result.filterMode = FilterMode.Bilinear;
+                result.wrapMode = TextureWrapMode.Clamp;
                 RenderTexture.active = result;
                 GL.Clear(true, true, Color.clear);
+            }
+            catch
+            {
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(result);
+                throw;
             }
             finally
             {

@@ -181,6 +181,20 @@ namespace DCFApixels.SpriteEditor
                 DestroyImmediate(compiledShader);
         }
 
+        internal void DestroyEmbeddedWithUndo(TextureCompositor owner)
+        {
+            if (embeddedOwner != owner)
+                return;
+            Shader shader = compiledShader;
+            string ownerPath = AssetDatabase.GetAssetPath(owner);
+            bool ownsShader = shader != null && (!AssetDatabase.Contains(shader) ||
+                !string.IsNullOrEmpty(ownerPath) && AssetDatabase.GetAssetPath(shader) == ownerPath);
+            Undo.RegisterCompleteObjectUndo(this, "Remove Shader FX");
+            if (ownsShader)
+                Undo.DestroyObjectImmediate(shader);
+            Undo.DestroyObjectImmediate(this);
+        }
+
         internal void NotifyValuesChanged()
         {
             MarkDraftChanged();

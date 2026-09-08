@@ -57,6 +57,7 @@ namespace DCFApixels.SpriteEditor
                 throw new InvalidOperationException("Save As requires a new document and an unused asset path.");
 
             Undo.FlushUndoRecordObjects();
+            RemoveUnusedEmbeddedShaderFX();
             SyncDrawingLayerTextures();
             Texture2D rendered = null;
             Sprite generatedSprite = null;
