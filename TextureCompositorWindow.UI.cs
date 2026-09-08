@@ -1274,9 +1274,15 @@ namespace DCFApixels.SpriteEditor
                 documentWidth = Mathf.Max(1, width);
                 documentHeight = Mathf.Max(1, height);
                 drawingLayer = layer;
+                if (drawingLayer == null)
+                    cursorVisible = false;
+                overlay.style.display = drawingLayer == null
+                    ? DisplayStyle.None
+                    : DisplayStyle.Flex;
                 image.image = texture;
                 UpdateImageLayout();
-                overlay.MarkDirtyRepaint();
+                if (drawingLayer != null)
+                    overlay.MarkDirtyRepaint();
             }
 
             public void SetCursor(bool visible, Vector2 position, bool erase)
