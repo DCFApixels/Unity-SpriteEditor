@@ -29,6 +29,10 @@
 изображения, рисуй на превью и добавляй процедурные эффекты. Редактируемая композиция и готовая
 текстура сохраняются в одном ассете — отдельное изображение можно экспортировать при необходимости.
 
+<p align="center">
+  <a href="Documentation~/Images/sprite-editor-heart.jpg"><img src="Documentation~/Images/sprite-editor-heart.jpg" alt="Sprite Editor с документом Heart в режиме тайлового рисования" width="720"></a>
+</p>
+
 > [!NOTE]
 > Sprite Editor — инструмент **только для Unity Editor**, построенный на UI Toolkit.
 > Сохранённые текстуры и спрайты можно использовать в игре без пересчёта слоёв.

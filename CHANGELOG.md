@@ -4,6 +4,29 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-09
+
+### Added
+
+- Tiled Preview fills the viewport with repeated copies of the composition. Brush and eraser
+  footprints wrap across canvas edges and corners while preserving editable layer transforms.
+- Rotatable Mirror symmetry with Continue/Clip edges, including agent API support.
+- Opt-in regression checks for tiled painting, channel previews, painting parity, and targeted UI refreshes.
+
+### Changed
+
+- Display a single RGB channel in grayscale, optionally retaining alpha; display alpha alone as opaque grayscale.
+- Keep editor previews on the GPU, reuse a tiled checkerboard texture, and avoid redundant effect-input uploads.
+- Share stroke parameter handling and scope preview-header refreshes to the affected controls.
+- Support dragging the brush Size label and exclude shared tool settings from Undo/Redo history.
+- Reorganize the English and Russian READMEs and add a compact editor screenshot.
+
+### Fixed
+
+- Improve Undo lifecycle, unsaved-document protection, and transient-resource cleanup.
+- Preserve the active render target when restoring Drawing surfaces.
+- Update agent API and drawing-pattern smoke tests for the current integration.
+
 ## [0.5.9] - 2026-09-09
 
 ### Added

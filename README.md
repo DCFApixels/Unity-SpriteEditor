@@ -29,6 +29,10 @@ Create sprites, icons, patterns, and layered textures without leaving Unity. Com
 paint on the Preview, and add procedural effects. Save the editable composition and its ready-to-use
 texture in one asset — export a separate image only when you need one.
 
+<p align="center">
+  <a href="Documentation~/Images/sprite-editor-heart.jpg"><img src="Documentation~/Images/sprite-editor-heart.jpg" alt="Sprite Editor with the Heart document in tiled painting mode" width="720"></a>
+</p>
+
 > [!NOTE]
 > Sprite Editor is an **Editor-only** tool built with UI Toolkit. Its saved textures and sprites
 > can be used at runtime without rendering the layer stack.
