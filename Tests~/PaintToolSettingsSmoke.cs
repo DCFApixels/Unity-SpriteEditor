@@ -34,6 +34,6 @@ Check(UnityEngine.JsonUtility.ToJson(first) == beforeFirst && UnityEngine.JsonUt
 Check(type.GetField("repeatMode") == null && type.GetField("transform") == null,
     "Shared settings do not own layer repetition or transforms");
 var field = windowType.GetField("paintSettings", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-Check(field.FieldType == type && System.Attribute.IsDefined(field, typeof(UnityEngine.SerializeField)),
-    "The window owns serialized shared settings");
+Check(field.FieldType == type && System.Attribute.IsDefined(field, typeof(System.NonSerializedAttribute)),
+    "Shared settings are excluded from window Undo snapshots");
 return "Paint tool settings checks passed: " + checks + ". No assets, windows or GPU resources created.";

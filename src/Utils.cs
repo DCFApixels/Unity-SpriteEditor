@@ -384,14 +384,12 @@ namespace DCFApixels.SpriteEditor
         protected virtual void OnEnable()
         {
             TextureCompositor.Changed += OnCompositorChanged;
-            Undo.undoRedoPerformed += OnUndoRedo;
             RequestPreview(true);
         }
 
         protected virtual void OnDisable()
         {
             TextureCompositor.Changed -= OnCompositorChanged;
-            Undo.undoRedoPerformed -= OnUndoRedo;
             ReleasePreview();
         }
 
@@ -555,6 +553,11 @@ namespace DCFApixels.SpriteEditor
         {
             if (changedCompositor != compositor || applyingChange)
                 return;
+            if (TextureCompositor.IsRefreshingUndo)
+            {
+                OnUndoRedo();
+                return;
+            }
             InvalidateEffectTargetOptions();
             interfaceRefreshRequested = true;
             RequestPreview();

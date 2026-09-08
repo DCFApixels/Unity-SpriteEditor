@@ -6,7 +6,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [CreateAssetMenu(fileName = "TextureCompositor", menuName = "Sprite Editor/Texture Compositor")]
-    public sealed partial class TextureCompositor : ScriptableObject
+    public sealed partial class TextureCompositor : ScriptableObject, ISerializationCallbackReceiver
     {
         private const int MinimumOutputSize = 1;
         private const int MaximumOutputSize = 16384;
@@ -45,6 +45,8 @@ namespace DCFApixels.SpriteEditor
         private void OnEnable()
         {
             NormalizeModel();
+            undoDeserialized = Undo.isProcessing;
+            CaptureNativeUndoVersions();
         }
 
         private void OnValidate()
@@ -272,6 +274,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void MarkChanged()
         {
+            undoDeserialized = false;
             NormalizeModel();
             RemoveUnusedEmbeddedShaderFX();
             if (AssetDatabase.Contains(this))
@@ -280,6 +283,7 @@ namespace DCFApixels.SpriteEditor
                 PersistDrawingLayerTextures();
                 EditorUtility.SetDirty(this);
             }
+            CaptureNativeUndoVersions();
             Changed?.Invoke(this);
         }
 

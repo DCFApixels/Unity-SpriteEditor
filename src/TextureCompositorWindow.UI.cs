@@ -1048,7 +1048,6 @@ namespace DCFApixels.SpriteEditor
             EnumField tool = CompactField(new EnumField(paintSettings.tool), 72f);
             toolkitHeaderBindings.Track(tool, () => (Enum)paintSettings.tool);
             tool.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Drawing Tool",
                 () => paintSettings.tool = (PaintToolMode)evt.newValue));
             brushRow.Add(tool);
 
@@ -1059,7 +1058,6 @@ namespace DCFApixels.SpriteEditor
             size.SetValueWithoutNotify(paintSettings.brushSize);
             toolkitHeaderBindings.Track(size, () => paintSettings.brushSize);
             size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Brush Size",
                 () => paintSettings.brushSize = Mathf.Max(1f, evt.newValue)));
             brushRow.Add(size);
             brushRow.Add(CreateCompactLabel("Hard", 32f));
@@ -1072,7 +1070,7 @@ namespace DCFApixels.SpriteEditor
             hardness.RegisterValueChangedCallback(evt =>
             {
                 hardnessValue.text = $"{evt.newValue * 100f:0}%";
-                ApplyPaintToolChange("Change Brush Hardness", () => paintSettings.brushHardness = Mathf.Clamp01(evt.newValue));
+                ApplyPaintToolChange(() => paintSettings.brushHardness = Mathf.Clamp01(evt.newValue));
             });
             brushRow.Add(hardness);
             brushRow.Add(hardnessValue);
@@ -1090,7 +1088,6 @@ namespace DCFApixels.SpriteEditor
                     DrawingLayer.MinimumBrushSpacing * 100f,
                     DrawingLayer.MaximumBrushSpacing * 100f);
                 ApplyPaintToolChange(
-                    "Change Brush Step",
                     () => paintSettings.brushSpacing = clampedPercent * 0.01f);
             });
             brushRow.Add(spacing);
@@ -1448,7 +1445,7 @@ namespace DCFApixels.SpriteEditor
             bool swapColors = !actionModifier && !evt.altKey && evt.keyCode == KeyCode.X;
             if (swapColors)
             {
-                ApplyPaintToolChange("Swap Brush Colors", paintSettings.SwapBrushColors);
+                ApplyPaintToolChange(paintSettings.SwapBrushColors);
                 evt.PreventDefault();
                 evt.StopImmediatePropagation();
                 return;
@@ -1465,7 +1462,7 @@ namespace DCFApixels.SpriteEditor
                 : Mathf.Max(1f, Mathf.Round(paintSettings.brushSize * 1.2f));
             if (Mathf.Approximately(nextSize, paintSettings.brushSize))
                 nextSize = Mathf.Max(1f, paintSettings.brushSize + (increase ? 1f : -1f));
-            ApplyPaintToolChange("Change Brush Size", () => paintSettings.brushSize = nextSize);
+            ApplyPaintToolChange(() => paintSettings.brushSize = nextSize);
             evt.PreventDefault();
             evt.StopImmediatePropagation();
         }

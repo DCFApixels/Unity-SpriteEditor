@@ -36,13 +36,11 @@ namespace DCFApixels.SpriteEditor
         private void OnEnable()
         {
             TextureCompositor.Changed += OnCompositorChanged;
-            Undo.undoRedoPerformed += OnUndoRedo;
         }
 
         private void OnDisable()
         {
             TextureCompositor.Changed -= OnCompositorChanged;
-            Undo.undoRedoPerformed -= OnUndoRedo;
         }
 
         public void CreateGUI()
@@ -290,6 +288,11 @@ namespace DCFApixels.SpriteEditor
         {
             if (changedCompositor != compositor || applyingChange)
                 return;
+            if (TextureCompositor.IsRefreshingUndo)
+            {
+                OnUndoRedo();
+                return;
+            }
             refreshRequested = true;
         }
 

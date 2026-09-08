@@ -11,10 +11,9 @@ namespace DCFApixels.SpriteEditor
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.None;
         [NonSerialized] private PreviewTool previewSettingsTool = PreviewTool.None;
-        [SerializeField] private PaintToolSettings paintSettings = new PaintToolSettings();
+        [NonSerialized] private PaintToolSettings paintSettings = new PaintToolSettings();
         private const string PaintToolSettingsPrefKey = "DCFApixels.SpriteEditor.PaintToolSettings";
         [NonSerialized] private bool conversionPromptOpen;
-        [NonSerialized] private string savedPaintToolSettingsJson;
         [NonSerialized] private Button previewNoneButton;
         [NonSerialized] private Button previewBrushButton;
         [NonSerialized] private Button previewTransformButton;
@@ -36,13 +35,11 @@ namespace DCFApixels.SpriteEditor
             {
                 paintSettings = new PaintToolSettings();
             }
-            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
         }
 
-        private void ApplyPaintToolChange(string undoName, Action change)
+        private void ApplyPaintToolChange(Action change)
         {
             FinishPaintingStroke();
-            Undo.RecordObject(this, undoName);
             change();
             SavePaintToolSettings();
             toolkitHeaderBindings.Refresh();
@@ -51,16 +48,7 @@ namespace DCFApixels.SpriteEditor
 
         private void SavePaintToolSettings()
         {
-            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
-            EditorPrefs.SetString(PaintToolSettingsPrefKey, savedPaintToolSettingsJson);
-        }
-
-        private bool RefreshPaintToolSettingsAfterUndo()
-        {
-            if (JsonUtility.ToJson(paintSettings) == savedPaintToolSettingsJson) return false;
-            SavePaintToolSettings();
-            RefreshToolkitInterface(forceValues: true);
-            return true;
+            EditorPrefs.SetString(PaintToolSettingsPrefKey, JsonUtility.ToJson(paintSettings));
         }
 
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)

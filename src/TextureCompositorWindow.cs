@@ -141,7 +141,6 @@ namespace DCFApixels.SpriteEditor
             previewTool = PreviewTool.None;
             previewSettingsTool = PreviewTool.None;
             paintSettings = new PaintToolSettings();
-            savedPaintToolSettingsJson = JsonUtility.ToJson(paintSettings);
             lineAnchorLayer = null;
             hasLastPaintingUv = false;
             paintingShiftHeld = false;
@@ -183,7 +182,6 @@ namespace DCFApixels.SpriteEditor
             paintingPreviewScale = ClampPaintingPreviewScale(
                 EditorPrefs.GetFloat(PaintingPreviewScalePrefKey, DefaultPaintingPreviewScale));
             TextureCompositor.Changed += OnCompositorChanged;
-            Undo.undoRedoPerformed += OnUndoRedo;
 
             if (compositor == null)
                 SetCompositor(CreateTemporaryCompositor());
@@ -203,7 +201,6 @@ namespace DCFApixels.SpriteEditor
             RestoreUnityShortcuts();
             FinishPaintingStroke();
             TextureCompositor.Changed -= OnCompositorChanged;
-            Undo.undoRedoPerformed -= OnUndoRedo;
             ClearLayerDragData();
             ReleasePreview();
             toolkitPreviewCanvas?.ReleaseCheckerTexture();
@@ -1135,6 +1132,12 @@ namespace DCFApixels.SpriteEditor
             if (changedCompositor != compositor)
                 return;
 
+            if (TextureCompositor.IsRefreshingUndo)
+            {
+                OnUndoRedo();
+                return;
+            }
+
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
             UpdateUnsavedChangesState();
             RequestPreview();
@@ -1147,7 +1150,6 @@ namespace DCFApixels.SpriteEditor
 
         private void OnUndoRedo()
         {
-            if (RefreshPaintToolSettingsAfterUndo()) return;
             ResetOpacityEntry();
             previewTransformManipulator?.End(false, false);
             if (compositor == null)
@@ -1159,8 +1161,6 @@ namespace DCFApixels.SpriteEditor
             paintingShiftHeld = false;
             paintingLockedAxis = 0;
             paintingPointerId = -1;
-            compositor.NormalizeModel();
-            compositor.InvalidateDrawingLayerSurfaces();
             selectedLayerId = compositor.FindLayer(selectedLayerId)?.Id;
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
             RequestPreview(true);

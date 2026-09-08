@@ -18,13 +18,13 @@ namespace DCFApixels.SpriteEditor
             primary.tooltip = PrimaryBrushColorContent.tooltip;
             toolkitHeaderBindings.Track(primary, () => paintSettings.brushColor);
             primary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Foreground Color", () => paintSettings.brushColor = evt.newValue));
+                () => paintSettings.brushColor = evt.newValue));
             row.Add(primary);
             ColorField secondary = CompactField(new ColorField(), 54f);
             secondary.tooltip = SecondaryBrushColorContent.tooltip;
             toolkitHeaderBindings.Track(secondary, () => paintSettings.secondaryBrushColor);
             secondary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Background Color", () => paintSettings.secondaryBrushColor = evt.newValue));
+                () => paintSettings.secondaryBrushColor = evt.newValue));
             row.Add(secondary);
         }
 
@@ -39,35 +39,35 @@ namespace DCFApixels.SpriteEditor
             allLayers.tooltip = "On: sample the full-resolution visible composition. Off: sample this layer's stored pixels. Both paint only this Drawing layer.";
             toolkitHeaderBindings.Track(allLayers, () => paintSettings.fillSampleMode == FillSampleMode.AllLayers);
             allLayers.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Fill Sample", () => paintSettings.fillSampleMode = evt.newValue ? FillSampleMode.AllLayers : FillSampleMode.CurrentLayer));
+                () => paintSettings.fillSampleMode = evt.newValue ? FillSampleMode.AllLayers : FillSampleMode.CurrentLayer));
             row.Add(allLayers);
             Toggle contiguous = new Toggle("Contiguous");
             contiguous.AddToClassList("sprite-editor-fill-contiguous");
             contiguous.tooltip = "On: fill only the connected area at the clicked pixel. Off: fill all similar pixels across the layer, even in separate areas. Uses the All Layers setting and Tolerance.";
             toolkitHeaderBindings.Track(contiguous, () => paintSettings.fillContiguous);
             contiguous.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Fill Contiguous", () => paintSettings.fillContiguous = evt.newValue));
+                () => paintSettings.fillContiguous = evt.newValue));
             row.Add(contiguous);
             Slider tolerance = new Slider("Tolerance", 0f, 255f) { showInputField = true };
             tolerance.AddToClassList("sprite-editor-fill-tolerance");
             tolerance.tooltip = "Color/alpha similarity to the clicked pixel (0–255). Low values stop at small differences; high values include more colors. Contiguous limits matching to the connected area.";
             toolkitHeaderBindings.Track(tolerance, () => (float)paintSettings.fillTolerance);
             tolerance.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Fill Tolerance", () => paintSettings.fillTolerance = Mathf.Clamp(Mathf.RoundToInt(evt.newValue), 0, 255)));
+                () => paintSettings.fillTolerance = Mathf.Clamp(Mathf.RoundToInt(evt.newValue), 0, 255)));
             row.Add(tolerance);
             Toggle antialias = new Toggle("Antialias");
             antialias.AddToClassList("sprite-editor-fill-antialias");
             antialias.tooltip = "Soften the fill edge with partial pixel coverage. Disable for hard pixel-art edges.";
             toolkitHeaderBindings.Track(antialias, () => paintSettings.fillAntialias);
             antialias.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Fill Antialias", () => paintSettings.fillAntialias = evt.newValue));
+                () => paintSettings.fillAntialias = evt.newValue));
             row.Add(antialias);
             IntegerField expand = new IntegerField("Expand (px)");
             expand.AddToClassList("sprite-editor-fill-expand");
             expand.tooltip = "Grow the detected area by 0–32 source pixels to overlap outlines. Unlike Tolerance, this does not change which colors are connected.";
             toolkitHeaderBindings.Track(expand, () => paintSettings.fillExpand);
             expand.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
-                "Change Fill Expansion", () => paintSettings.fillExpand = Mathf.Clamp(evt.newValue, 0, 32)));
+                () => paintSettings.fillExpand = Mathf.Clamp(evt.newValue, 0, 32)));
             row.Add(expand);
             toolkitPreviewHeader.Add(row);
         }

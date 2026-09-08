@@ -16,6 +16,7 @@ namespace DCFApixels.SpriteEditor
         internal const float MaximumBrushSpacing = 4f;
 
         [SerializeField] private Texture2D pixels;
+        [SerializeField, HideInInspector] private int pixelsRevision;
 
         public PaintToolMode tool = PaintToolMode.Brush;
         public Color brushColor = Color.white;
@@ -147,6 +148,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void ApplyFillPixels(NativeArray<Color32> output, int width, int height, string undoName)
         {
+            unchecked { pixelsRevision++; }
             if (pixels == null)
             {
                 pixels = new Texture2D(width, height, TextureFormat.RGBA32, false)
@@ -176,6 +178,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void PrepareStroke(int width, int height, string undoName)
         {
+            unchecked { pixelsRevision++; }
             EnsurePaintSurface(width, height);
             if (pixels == null)
                 SyncSurfaceToTexture();

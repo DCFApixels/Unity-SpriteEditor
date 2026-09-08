@@ -36,7 +36,7 @@ namespace DCFApixels.SpriteEditor
     }
 
     [CreateAssetMenu(fileName = "New Shader FX", menuName = "Sprite Editor/Shader FX")]
-    public sealed class ShaderFX : ScriptableObject
+    public sealed class ShaderFX : ScriptableObject, ISerializationCallbackReceiver
     {
         [SerializeField, TextArea(12, 40)] private string code =
             "// #include \"./MyLibrary.hlsl\"\n\n" +
@@ -53,6 +53,21 @@ namespace DCFApixels.SpriteEditor
         [SerializeField, HideInInspector] private bool shaderCreationRecorded;
         [NonSerialized] private Material material;
         [NonSerialized] private bool notificationQueued;
+        [NonSerialized] private volatile bool undoDeserialized;
+
+        void ISerializationCallbackReceiver.OnBeforeSerialize() { }
+        void ISerializationCallbackReceiver.OnAfterDeserialize() => undoDeserialized = true;
+
+        internal bool ConsumeUndoChanges()
+        {
+            if (!undoDeserialized)
+                return false;
+            undoDeserialized = false;
+            EditorApplication.delayCall -= SendNotification;
+            notificationQueued = false;
+            MarkDraftChanged();
+            return true;
+        }
 
         internal string Code => code;
         internal IReadOnlyList<ShaderFXParameter> Parameters => parameters;
@@ -158,14 +173,13 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
-            Undo.undoRedoPerformed += NotifyValuesChanged;
+            undoDeserialized = Undo.isProcessing;
             AssemblyReloadEvents.beforeAssemblyReload += ReleaseMaterial;
             EditorApplication.quitting += ReleaseMaterial;
         }
 
         private void OnDisable()
         {
-            Undo.undoRedoPerformed -= NotifyValuesChanged;
             AssemblyReloadEvents.beforeAssemblyReload -= ReleaseMaterial;
             EditorApplication.quitting -= ReleaseMaterial;
             EditorApplication.delayCall -= SendNotification;
@@ -197,6 +211,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void NotifyValuesChanged()
         {
+            undoDeserialized = false;
             MarkDraftChanged();
             if (notificationQueued)
                 return;
