@@ -96,6 +96,11 @@ namespace DCFApixels.SpriteEditor
             toolkitDocumentRoot.style.flexShrink = 0f;
             root.Add(toolkitDocumentRoot);
 
+            VisualElement workspace = new VisualElement { name = "spriteEditorWorkspace" };
+            workspace.AddToClassList("sprite-editor-workspace");
+            root.Add(workspace);
+            workspace.Add(BuildPreviewToolToolbar());
+
             if (settingsPaneWidth <= 0f)
                 settingsPaneWidth = DefaultSettingsPaneWidth;
             TwoPaneSplitView split = new TwoPaneSplitView(
@@ -103,9 +108,10 @@ namespace DCFApixels.SpriteEditor
                 Mathf.Max(SettingsPaneMinWidth, settingsPaneWidth),
                 TwoPaneSplitViewOrientation.Horizontal);
             SpriteEditorUI.StyleSplitView(split);
+            split.AddToClassList("sprite-editor-workspace-split");
             split.style.flexGrow = 1f;
             split.style.minHeight = 0f;
-            root.Add(split);
+            workspace.Add(split);
 
             toolkitPreviewPane = BuildToolkitPreviewPane();
             toolkitPreviewPane.style.minWidth = PreviewPaneMinWidth;
@@ -1021,7 +1027,6 @@ namespace DCFApixels.SpriteEditor
         private void BuildToolkitPreviewHeader(DrawingLayer layer)
         {
             toolkitPreviewActions.Clear();
-            AddPreviewTransformButton(toolkitPreviewActions);
             if (layer != null)
                 toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Clear", () => ClearDrawingLayer(layer), 46f));
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
@@ -1031,6 +1036,8 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
+            toolkitHeaderBindings.Add(() => brushRow.EnableInClassList(
+                "sprite-editor-tool-options--hidden", IsPreviewTransformEnabled));
             EnumField tool = CompactField(new EnumField(layer.tool), 72f);
             toolkitHeaderBindings.Track(tool, () => (Enum)layer.tool);
             tool.RegisterValueChangedCallback(evt => ApplyToolkitChange(
@@ -1144,6 +1151,7 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
+            RefreshPreviewToolToolbar();
             RefreshPreviewTransformTool();
             bool transforming = IsPreviewTransformEnabled;
             toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,

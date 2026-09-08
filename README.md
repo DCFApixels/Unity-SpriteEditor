@@ -127,6 +127,9 @@ Undo/Redo or changing external source textures. Project thumbnails use saved pix
 than recompositing layers. No layer rendering is needed at runtime to use the baked output.
 
 The **Preview is on the left**; selected-layer settings and the layer list are on the right.
+The narrow toolbar at the far left selects **Brush** (brush icon, `B`) or **Transform** (hand icon, `T`).
+Eraser remains a Brush mode in the header; `RMB` temporarily erases. Brush requires a Drawing layer;
+Transform supports any non-group layer. The active tool is highlighted, and its options appear in the header.
 Drag the vertical divider to adjust the right pane's width, which stays fixed when resizing the
 window. The right pane has its own horizontal divider and independently scrolling sections.
 Both right-hand sections have fixed headers with thin dividers. The upper header shows the
@@ -285,7 +288,7 @@ Drawing textures are stored as sub-assets of the document. They travel with the 
 <a id="transform"></a>
 ## Transform & pivot
 
-Select a non-group layer and enable **Transform** in the Preview header, or press `T`.
+Select a non-group layer and choose **Transform** (hand icon) in the left toolbar, or press `T`.
 
 - Drag inside the frame to move; use its eight handles to resize and the round handle to rotate.
 - Drag the **gold pivot cross** without moving the visible image.
@@ -443,6 +446,7 @@ Other asset types and sub-assets are protected.
 | `RMB` | Temporary eraser. |
 | `Shift`-drag / `Shift`-click | Axis-aligned stroke / line from the previous endpoint. |
 | `T` | Toggle Preview Transform. |
+| `B` | Select the Brush tool, retaining its Brush/Eraser mode. |
 | `Enter` / `Escape` | Exit Transform / cancel the current transform drag. |
 | `Ctrl` during pivot drag | Disable snapping. |
 

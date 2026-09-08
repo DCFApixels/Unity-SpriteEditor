@@ -45,6 +45,88 @@
     flex-shrink: 0;
 }
 
+.sprite-editor-workspace {
+    flex-direction: row;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+.sprite-editor-tools {
+    width: 36px;
+    flex-shrink: 0;
+    align-items: center;
+    padding-top: 4px;
+    background-color: #383838;
+    border-right-width: 1px;
+    border-right-color: #171717;
+}
+
+.sprite-editor-workspace-split {
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.sprite-editor-tools--light {
+    background-color: #c4c4c4;
+    border-right-color: #858585;
+}
+
+.unity-button.sprite-editor-tool-button {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    margin: 0 0 3px 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    background-image: none;
+    background-color: transparent;
+    border-width: 1px;
+    border-color: transparent;
+    border-radius: 3px;
+    color: #d2d2d2;
+}
+
+.sprite-editor-tools--light > .unity-button.sprite-editor-tool-button {
+    color: #333333;
+}
+
+.unity-button.sprite-editor-tool-button:hover {
+    background-color: rgba(128, 128, 128, 0.25);
+}
+
+.unity-button.sprite-editor-tool-button--selected,
+.unity-button.sprite-editor-tool-button--selected:hover {
+    background-color: #2e619e;
+    border-color: #578ac0;
+}
+
+.sprite-editor-tools > .unity-button.sprite-editor-tool-button--selected {
+    color: #eeeeee;
+}
+
+.unity-button.sprite-editor-tool-button:active {
+    background-color: #254e7e;
+}
+
+.unity-button.sprite-editor-tool-button:focus {
+    border-color: #578ac0;
+}
+
+.unity-button.sprite-editor-tool-button:disabled {
+    opacity: 0.4;
+}
+
+.sprite-editor-tool-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-tool-options--hidden {
+    display: none;
+}
+
 .sprite-editor-saved-output-preview {
     height: 160px;
     flex-shrink: 0;

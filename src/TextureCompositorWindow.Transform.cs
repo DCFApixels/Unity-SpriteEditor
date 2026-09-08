@@ -26,21 +26,6 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.RegisterCallback<GeometryChangedEvent>(_ => previewTransformOverlay.MarkDirtyRepaint());
         }
 
-        private void AddPreviewTransformButton(VisualElement row)
-        {
-            Button button = SpriteEditorUI.CreateToolbarButton("Transform", TogglePreviewTransform, 84f);
-            button.tooltip = "Transform selected layer (T). Drag inside to move, handles to scale, circle to rotate. " +
-                "Drag the gold cross to move the pivot without moving the image (requires nonzero scale). " +
-                "The pivot snaps to the nine frame anchors within 10 UI pixels; hold Ctrl to disable snapping. " +
-                "Shift: constrain movement / preserve proportions / snap rotation to 15°. Groups do not support transforms yet.";
-            toolkitHeaderBindings.Add(() =>
-            {
-                button.SetEnabled(GetSelectedLayer() is Layer layer && !layer.IsGroup);
-                button.text = IsPreviewTransformEnabled ? "✓ Transform" : "Transform";
-            });
-            row.Add(button);
-        }
-
         private void AddPreviewTransformSettings()
         {
             VisualElement row = SpriteEditorUI.CreateToolbar();
@@ -94,11 +79,16 @@ namespace DCFApixels.SpriteEditor
 
         private void TogglePreviewTransform()
         {
-            if (!IsPreviewTransformEnabled && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
+            SetPreviewTool(!previewTransformActive);
+        }
+
+        private void SetPreviewTool(bool transform)
+        {
+            if (transform && !(GetSelectedLayer() is Layer layer && !layer.IsGroup))
                 return;
             FinishPreviewTransform();
             FinishPaintingStroke();
-            previewTransformActive = !previewTransformActive;
+            previewTransformActive = transform;
             lineAnchorLayer = null;
             RefreshToolkitInterface();
             toolkitPreviewCanvas?.Focus();
@@ -110,6 +100,8 @@ namespace DCFApixels.SpriteEditor
                 return false;
             if (evt.keyCode == KeyCode.T)
                 TogglePreviewTransform();
+            else if (evt.keyCode == KeyCode.B && GetSelectedLayer() is DrawingLayer)
+                SetPreviewTool(false);
             else if (IsPreviewTransformEnabled && evt.keyCode == KeyCode.Escape)
             {
                 if (previewTransformManipulator != null && previewTransformManipulator.IsDragging)

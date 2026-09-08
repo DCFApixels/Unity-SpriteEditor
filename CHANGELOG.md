@@ -4,6 +4,12 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Compact left tool strip with vector brush/hand icons, active-tool highlighting and layer-aware availability.
+- Brush shortcut B; keep Brush/Eraser together and move Transform activation from the header to the tool strip.
+  Show brush or transform options in the header without rebuilding controls on tool changes.
+
 ## [0.5.5] - 2026-09-08
 
 ### Added
