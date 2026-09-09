@@ -73,7 +73,7 @@ namespace DCFApixels.SpriteEditor
                         ? Resolve(document, Text(operation, "target"), aliases).Id : null;
                     break;
                 case "stroke":
-                    Keys(operation, "op", "layer", "points", "space", "erase", "brush");
+                    Keys(operation, "op", "layer", "points", "space", "erase", "brush", "pencil");
                     Require(layer is DrawingLayer, "stroke requires a Drawing layer.");
                     Paint(document, (DrawingLayer)layer, operation, execute);
                     break;

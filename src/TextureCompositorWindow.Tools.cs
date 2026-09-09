@@ -7,21 +7,49 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        private enum PreviewTool { None, Brush, Transform, Fill, Zoom }
+        private enum PreviewTool { None, Brush, Transform, Fill, Zoom, Pencil }
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.None;
         [NonSerialized] private PreviewTool previewSettingsTool = PreviewTool.None;
+        [NonSerialized] private PreviewTool previewTransformReturnTool = PreviewTool.None;
         [NonSerialized] private PaintToolSettings paintSettings = new PaintToolSettings();
         private const string PaintToolSettingsPrefKey = "DCFApixels.SpriteEditor.PaintToolSettings";
+        private const string PreviewToolPrefKey = "DCFApixels.SpriteEditor.PreviewTool";
+        private const string PreviewTransformReturnToolPrefKey = "DCFApixels.SpriteEditor.PreviewTransformReturnTool";
         [NonSerialized] private bool conversionPromptOpen;
         [NonSerialized] private Button previewNoneButton;
         [NonSerialized] private Button previewBrushButton;
+        [NonSerialized] private Button previewPencilButton;
         [NonSerialized] private Button previewTransformButton;
         [NonSerialized] private Button previewFillButton;
         [NonSerialized] private Button previewZoomButton;
 
-        private bool IsPreviewBrushEnabled => previewTool == PreviewTool.Brush && GetSelectedLayer() is DrawingLayer;
+        private bool IsPreviewPaintTool => previewTool == PreviewTool.Brush || previewTool == PreviewTool.Pencil;
+        private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer;
         private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer;
+
+        private void ApplyPreviewTextureFilter()
+        {
+            FilterMode filter = previewTool == PreviewTool.Pencil ? FilterMode.Point : FilterMode.Bilinear;
+            if (previewTexture != null) previewTexture.filterMode = filter;
+            if (channelPreviewTexture != null) channelPreviewTexture.filterMode = filter;
+        }
+
+        private static PreviewTool ParsePreviewTool(string value)
+        {
+            return Enum.TryParse(value, out PreviewTool tool) && Enum.IsDefined(typeof(PreviewTool), tool)
+                ? tool : PreviewTool.None;
+        }
+
+        private void LoadPreviewToolSettings()
+        {
+            previewTool = ParsePreviewTool(EditorPrefs.GetString(PreviewToolPrefKey, string.Empty));
+            previewSettingsTool = previewTool;
+            previewTransformReturnTool = ParsePreviewTool(
+                EditorPrefs.GetString(PreviewTransformReturnToolPrefKey, string.Empty));
+            if (previewTransformReturnTool == PreviewTool.Transform)
+                previewTransformReturnTool = PreviewTool.None;
+        }
 
         private void LoadPaintToolSettings()
         {
@@ -53,13 +81,15 @@ namespace DCFApixels.SpriteEditor
 
         private PaintStrokeParameters GetPaintingParameters()
         {
-            PaintStrokeParameters parameters = paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
+            PaintStrokeParameters parameters = previewTool == PreviewTool.Pencil
+                ? paintSettings.GetPencilParameters(paintingErase, GetPaintingColor())
+                : paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
             return tiledPreview ? parameters.WithCanvasWrap() : parameters;
         }
 
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)
         {
-            bool painting = previewTool == PreviewTool.Brush && (evt.button == 0 || evt.button == 1);
+            bool painting = IsPreviewPaintTool && (evt.button == 0 || evt.button == 1);
             bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
             if ((!painting && !filling) || evt.altKey || compositor == null ||
                 !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
@@ -100,6 +130,7 @@ namespace DCFApixels.SpriteEditor
             switch (tool)
             {
                 case PreviewTool.Brush:
+                case PreviewTool.Pencil:
                 case PreviewTool.Fill: return layer is DrawingLayer;
                 case PreviewTool.Transform: return layer != null && !layer.IsGroup;
                 case PreviewTool.Zoom: return compositor != null;
@@ -127,6 +158,8 @@ namespace DCFApixels.SpriteEditor
                 "No Tool (V). View the composition without painting, pattern guides or transform handles.");
             previewBrushButton = CreatePreviewToolButton("brushTool", PreviewTool.Brush,
                 "Brush (B). Paint on the selected Drawing layer. Choose Brush/Eraser in the header; RMB temporarily erases.");
+            previewPencilButton = CreatePreviewToolButton("pencilTool", PreviewTool.Pencil,
+                "Pencil (P). Paint crisp pixels with a Circle, Square or Diamond tip. RMB temporarily erases; [ and ] change size.");
             previewFillButton = CreatePreviewToolButton("fillTool", PreviewTool.Fill,
                 "Fill (G). Fill similar pixels on the selected Drawing layer, sampling this layer or all visible layers. Contiguous limits the fill to the clicked region.");
             previewTransformButton = CreatePreviewToolButton("transformTool", PreviewTool.Transform,
@@ -137,6 +170,7 @@ namespace DCFApixels.SpriteEditor
             toolbar.Add(previewNoneButton);
             toolbar.Add(previewTransformButton);
             toolbar.Add(previewBrushButton);
+            toolbar.Add(previewPencilButton);
             toolbar.Add(previewFillButton);
             previewZoomButton = CreatePreviewToolButton("zoomTool", PreviewTool.Zoom,
                 "Zoom (Z). Click to zoom in, drag a rectangle to frame an area, or Alt-click to zoom out. MMB-drag pans the preview.");
@@ -162,6 +196,11 @@ namespace DCFApixels.SpriteEditor
             {
                 previewBrushButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
                 previewBrushButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Brush);
+            }
+            if (previewPencilButton != null)
+            {
+                previewPencilButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
+                previewPencilButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Pencil);
             }
             if (previewTransformButton != null)
             {
@@ -205,6 +244,8 @@ namespace DCFApixels.SpriteEditor
                     DrawBucket(painter);
                 else if (tool == PreviewTool.Zoom)
                     DrawMagnifier(painter);
+                else if (tool == PreviewTool.Pencil)
+                    DrawPencil(painter);
                 else
                     DrawBrush(painter);
             }
@@ -306,6 +347,41 @@ namespace DCFApixels.SpriteEditor
                 painter.BezierCurveTo(P(8f, 18.3f), P(7.2f, 16.6f), P(7.1f, 14.6f));
                 painter.ClosePath();
                 painter.Fill(FillRule.OddEven);
+            }
+
+            private void DrawPencil(Painter2D painter)
+            {
+                Color ink = resolvedStyle.color;
+                painter.fillColor = new Color(ink.r, ink.g, ink.b, ink.a * 0.25f);
+                painter.BeginPath();
+                painter.MoveTo(P(6f, 14f));
+                painter.LineTo(P(16f, 4f));
+                painter.LineTo(P(20f, 8f));
+                painter.LineTo(P(10f, 18f));
+                painter.ClosePath();
+                painter.Fill();
+                painter.Stroke();
+                painter.BeginPath();
+                painter.MoveTo(P(8f, 16f));
+                painter.LineTo(P(17f, 7f));
+                painter.MoveTo(P(6f, 14f));
+                painter.LineTo(P(3f, 21f));
+                painter.LineTo(P(10f, 18f));
+                painter.Stroke();
+                painter.fillColor = ink;
+                painter.BeginPath();
+                painter.MoveTo(P(3f, 21f));
+                painter.LineTo(P(4.5f, 17.5f));
+                painter.LineTo(P(6.5f, 19.5f));
+                painter.ClosePath();
+                painter.Fill();
+                painter.BeginPath();
+                painter.MoveTo(P(17.5f, 2.5f));
+                painter.LineTo(P(18.5f, 1.5f));
+                painter.LineTo(P(22.5f, 5.5f));
+                painter.LineTo(P(21.5f, 6.5f));
+                painter.ClosePath();
+                painter.Fill();
             }
 
             private void DrawHand(Painter2D painter)

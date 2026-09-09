@@ -2,6 +2,8 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
+    internal enum PencilShape { Circle, Square, Diamond }
+
     internal readonly struct PaintStrokeParameters
     {
         internal readonly Color Color;
@@ -10,6 +12,15 @@ namespace DCFApixels.SpriteEditor
         internal readonly float SpacingPixels;
         internal readonly bool Erase;
         internal readonly bool WrapCanvas;
+        internal readonly bool PixelPerfect;
+        internal readonly PencilShape Shape;
+
+        internal static Vector2 SnapPencilCenter(Vector2 uv, int width, int height, float size)
+        {
+            float offset = ((Mathf.RoundToInt(size) & 1) == 0) ? 0f : 0.5f;
+            return new Vector2((Mathf.Floor(uv.x * width + 0.5f - offset) + offset) / width,
+                (Mathf.Floor(uv.y * height + 0.5f - offset) + offset) / height);
+        }
 
         internal PaintStrokeParameters WithCanvasWrap() => new PaintStrokeParameters(this);
 
@@ -21,17 +32,22 @@ namespace DCFApixels.SpriteEditor
             SpacingPixels = source.SpacingPixels;
             Erase = source.Erase;
             WrapCanvas = true;
+            PixelPerfect = source.PixelPerfect;
+            Shape = source.Shape;
         }
 
-        internal PaintStrokeParameters(Color color, float size, float hardness, float spacing, bool erase)
+        internal PaintStrokeParameters(Color color, float size, float hardness, float spacing, bool erase,
+            bool pixelPerfect = false, PencilShape shape = PencilShape.Circle)
         {
             Color = color;
-            Size = Mathf.Max(1f, size);
-            Hardness = Mathf.Clamp01(hardness);
-            SpacingPixels = Mathf.Max(1f, Size * Mathf.Clamp(spacing,
+            Size = pixelPerfect ? Mathf.Clamp(Mathf.Round(size), 1f, 4096f) : Mathf.Max(1f, size);
+            Hardness = pixelPerfect ? 1f : Mathf.Clamp01(hardness);
+            SpacingPixels = pixelPerfect ? Mathf.Max(1f, Mathf.Floor(Size * 0.16f)) : Mathf.Max(1f, Size * Mathf.Clamp(spacing,
                 DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing));
             Erase = erase;
             WrapCanvas = false;
+            PixelPerfect = pixelPerfect;
+            Shape = shape;
         }
     }
 }

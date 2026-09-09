@@ -457,6 +457,28 @@
     flex-shrink: 1;
 }
 
+.sprite-editor-eyedropper-cursor {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 28px;
+    height: 28px;
+}
+
+.sprite-editor-eyedropper-cursor--hidden {
+    visibility: hidden;
+}
+
+.sprite-editor-pencil-cursor {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.sprite-editor-pencil-cursor--hidden {
+    visibility: hidden;
+}
+
 .sprite-editor-brush-size > .unity-base-field__label {
     width: 30px;
     min-width: 30px;
@@ -1002,5 +1024,14 @@
 .sprite-editor-preview-exposure > .unity-base-field__input {
     min-width: 0;
 }
+
+.sprite-editor-preview-exposure--adjusted > .unity-base-field__label {
+    color: rgb(231, 186, 111);
+}
+
+.sprite-editor-preview-exposure--adjusted > .unity-base-field__input {
+    background-color: rgb(78, 62, 39);
+}
+
 .unity-button.sprite-editor-channel-button.sprite-editor-channel-button--error { color: rgb(255, 125, 195); }
 .unity-button.sprite-editor-debug-button { align-items: center; justify-content: center; padding: 0; }

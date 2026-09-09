@@ -12,7 +12,9 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private RenderTexture channelPreviewTexture;
         [NonSerialized] private Button[] channelButtons;
         [SerializeField] private bool previewDebug;
-        [SerializeField] private float previewExposure;
+        [NonSerialized] private float previewExposure;
+        [NonSerialized] private Slider previewQualitySlider;
+        [NonSerialized] private Label previewQualityValue;
 
         private Vector4 PreviewChannelMask => new Vector4(
             (previewChannels & 1) != 0 ? 1f : 0f,
@@ -36,10 +38,12 @@ namespace DCFApixels.SpriteEditor
             channels.Add(SpriteEditorColorInputs.CreateToggleControl());
             var exposure = new FloatField("EV") { value = previewExposure, tooltip = "Preview exposure only, in stops. Does not affect painting, fill sampling or export." };
             exposure.AddToClassList("sprite-editor-preview-exposure");
+            exposure.EnableInClassList("sprite-editor-preview-exposure--adjusted", previewExposure != 0f);
             exposure.RegisterValueChangedCallback(evt =>
             {
                 previewExposure = float.IsNaN(evt.newValue) ? 0f : Mathf.Clamp(evt.newValue, -20f, 20f);
                 exposure.SetValueWithoutNotify(previewExposure);
+                exposure.EnableInClassList("sprite-editor-preview-exposure--adjusted", previewExposure != 0f);
                 UpdateChannelPreview(); UpdateToolkitPreviewPresentation();
             });
             channels.Add(exposure);
@@ -95,15 +99,34 @@ namespace DCFApixels.SpriteEditor
             quality.AddToClassList("sprite-editor-preview-quality-slider");
             Label value = new Label($"{paintingPreviewScale * 100f:0.#}%");
             value.AddToClassList("sprite-editor-preview-quality-value");
+            previewQualitySlider = quality;
+            previewQualityValue = value;
             quality.RegisterValueChangedCallback(evt =>
             {
+                if (previewTool == PreviewTool.Pencil) return;
                 paintingPreviewScale = ClampPaintingPreviewScale(evt.newValue * 0.01f);
                 EditorPrefs.SetFloat(PaintingPreviewScalePrefKey, paintingPreviewScale);
                 value.text = $"{paintingPreviewScale * 100f:0.#}%";
             });
             control.Add(quality);
             control.Add(value);
+            RefreshPreviewQualityControl();
             return control;
+        }
+
+        private void RefreshPreviewQualityControl()
+        {
+            if (previewQualitySlider == null || previewQualityValue == null) return;
+            bool pencil = previewTool == PreviewTool.Pencil;
+            float percent = pencil ? 100f : paintingPreviewScale * 100f;
+            previewQualitySlider.SetEnabled(!pencil);
+            if (!Mathf.Approximately(previewQualitySlider.value, percent))
+                previewQualitySlider.SetValueWithoutNotify(percent);
+            string text = $"{percent:0.#}%";
+            if (previewQualityValue.text != text) previewQualityValue.text = text;
+            previewQualitySlider.tooltip = pencil
+                ? "Pencil uses full canvas resolution. Your Live Quality preference is restored with other tools."
+                : LivePreviewQualityContent.tooltip;
         }
 
         private void TogglePreviewChannel(int bit)

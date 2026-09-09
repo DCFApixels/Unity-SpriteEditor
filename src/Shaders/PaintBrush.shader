@@ -48,6 +48,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             sampler2D _Backdrop;
             float _PrepareStandard;
             float _Hardness;
+            float _PencilShape;
             float2 _CanvasSize;
             float2 _PatternCenter;
             float2 _WrapBasisU;
@@ -55,6 +56,51 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             float3 _SourceToDocumentX;
             float3 _SourceToDocumentY;
             float _BrushSize;
+
+            float PencilDistance(float2 delta)
+            {
+                return _PencilShape > 2.5 ? abs(delta.x) + abs(delta.y) : max(abs(delta.x), abs(delta.y));
+            }
+
+            float2 NearestPolygonDelta(float2 delta, float row)
+            {
+                float2 best = 0.0;
+                float bestDistance = 3.4e38;
+                [unroll]
+                for (int i = -2; i <= 2; i++)
+                {
+                    float2 candidate = delta - (row + i) * _WrapBasisV;
+                    [unroll]
+                    for (int axis = 0; axis < 3; axis++)
+                    {
+                        float numerator = dot(candidate, _WrapBasisU);
+                        float denominator = dot(_WrapBasisU, _WrapBasisU);
+                        if (axis > 0)
+                        {
+                            if (_PencilShape > 2.5)
+                            {
+                                numerator = axis == 1 ? candidate.x : candidate.y;
+                                denominator = axis == 1 ? _WrapBasisU.x : _WrapBasisU.y;
+                            }
+                            else
+                            {
+                                numerator = axis == 1 ? candidate.x + candidate.y : candidate.x - candidate.y;
+                                denominator = axis == 1 ? _WrapBasisU.x + _WrapBasisU.y : _WrapBasisU.x - _WrapBasisU.y;
+                            }
+                        }
+                        if (abs(denominator) < 0.000001) continue;
+                        float column = floor(numerator / denominator);
+                        [unroll]
+                        for (int side = 0; side <= 1; side++)
+                        {
+                            float2 value = candidate - (column + side) * _WrapBasisU;
+                            float distance = PencilDistance(value);
+                            if (distance < bestDistance) { best = value; bestDistance = distance; }
+                        }
+                    }
+                }
+                return best;
+            }
 
             v2f vert(appdata input)
             {
@@ -73,6 +119,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             {
                 float cross = _WrapBasisU.x * _WrapBasisV.y - _WrapBasisU.y * _WrapBasisV.x;
                 float row = floor((_WrapBasisU.x * delta.y - _WrapBasisU.y * delta.x) / cross + 0.5);
+                if (_PencilShape > 1.5) return NearestPolygonDelta(delta, row);
                 float2 best = 0.0;
                 float bestDistance = 3.4e38;
                 [unroll]
@@ -138,10 +185,20 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 }
 
                 float radius = length(brushDelta);
-                if (radius > 1.0)
-                    discard;
-                float inner = min(saturate(_Hardness), 0.9999);
-                float coverage = 1.0 - smoothstep(inner, 1.0, radius);
+                float coverage;
+                if (_PencilShape > 0.5)
+                {
+                    if (_PencilShape > 2.5) radius = abs(brushDelta.x) + abs(brushDelta.y);
+                    else if (_PencilShape > 1.5) radius = max(abs(brushDelta.x), abs(brushDelta.y));
+                    if (radius > 1.00001) discard;
+                    coverage = 1.0;
+                }
+                else
+                {
+                    if (radius > 1.0) discard;
+                    float inner = min(saturate(_Hardness), 0.9999);
+                    coverage = 1.0 - smoothstep(inner, 1.0, radius);
+                }
                 float alpha = saturate(_Color.a * coverage);
                 if (alpha <= 0.0) discard;
                 if (_PrepareStandard > 0.5)

@@ -111,13 +111,20 @@ The left toolbar selects the editing tool:
 
 | Tool | Key | Use |
 | :--- | :---: | :--- |
-| No Tool | `V` | View the composition without editing handles or painting guides. Selected when the window opens. |
+| No Tool | `V` | View the composition without editing handles or painting guides. Used when no saved tool is available. |
 | Transform | `T` | Move, resize, and rotate a non-group layer. |
 | Brush | `B` | Paint or erase on a Drawing layer. |
+| Pencil | `P` | Draw crisp pixels with a Circle, Square or Diamond tip. |
 | Fill | `G` | Fill a region or matching colors on a Drawing layer. |
 | Zoom | `Z` | Click to zoom, or drag a rectangle to frame an area. |
 
 Tool options live above the Preview; the row stays in place with No Tool selected.
+Hold `Alt` (`Option` on macOS) with Brush, Pencil or Fill and click or drag to sample the
+primary color from all layers. Sampling uses full canvas resolution, works in Tiled view,
+and preserves HDR and alpha without exposure, channel filtering, checkerboard or Debug overlays.
+It does not paint, add Undo entries or change the selected tool. Standard color input still
+displays and paints the sampled color without HDR intensity.
+The last selected tool is restored when reopening the window or reloading scripts, even without a compatible layer selected. Leaving Transform returns to the previous tool.
 The footer always shows **Live Quality** on the left and **RGBA channels** on the right.
 
 ### Viewing controls
@@ -144,7 +151,7 @@ Brush/Eraser mode, colors, size, hardness, spacing, and Fill options are shared 
 switching layers or documents keeps them. **Changing tool settings does not add Undo steps.**
 Symmetry, repetition, and transforms belong to individual layers and remain undoable document edits.
 
-Brush and Fill can be selected and configured even without a Drawing layer; their icons are dimmed
+Brush, Pencil and Fill can be selected and configured even without a Drawing layer; their icons are dimmed
 when they cannot act. The brush cursor remains visible. Clicking a non-Drawing layer offers
 conversion with **Keep Transform**, **Apply Transform**, or **Cancel**.
 That click never paints or fills — click again after conversion.
@@ -253,7 +260,18 @@ removed descendants lose their targets. References to the converted group itself
 <a id="painting"></a>
 ## Painting & fill
 
-### Brush
+### Brush and Pencil
+
+**Pencil (`P`)** shares colors, paint/erase mode, `RMB` erasing, `X`, Shift lines, channel masks and
+layer symmetry with Brush. Its tips have no soft edge: choose **Circle** (default), **Square** or
+**Diamond**. Pencil size is independent of Brush and starts at **1 px**. For both tools, `[` / `]`
+change size by 1 px below 20 px, then by roughly 10% (rounded down). There is no pencil hardness
+or spacing control; strokes follow a continuous pixel grid.
+Pencil settings are shared across layers, saved with tool preferences and excluded from Undo.
+At close zoom, Circle and Diamond cursors follow the exact pixel boundary. Small on-screen pixels
+or outlines exceeding 512 segments use a simplified contour. Cursor movement reuses cached geometry.
+While Pencil is selected, Preview uses Point filtering and full canvas resolution. Live Quality is
+temporarily locked at 100%; switching tools restores your saved quality setting and normal filtering.
 
 Select a Drawing layer and choose Brush (`B`). Paint on the Preview while seeing the full stack,
 including blending and effects.
@@ -532,7 +550,7 @@ See [PSD export details and API](Documentation~/PsdExport.md).
 <a id="shortcuts"></a>
 ## Shortcuts
 
-Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `G` — Fill · `Z` — Zoom.
+Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `P` — Pencil · `G` — Fill · `Z` — Zoom.
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -542,6 +560,7 @@ Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `G` — Fill
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo. |
 | `[` / `]` | Decrease / increase brush size. |
 | `X` | Swap foreground/background colors. |
+| `Alt`-click / drag with Brush, Pencil or Fill | Temporarily sample the primary color from the composition. |
 | `RMB` | Temporarily erase with Brush. |
 | `Shift`-drag / `Shift`-click with Brush | Axis-aligned line / connection from the previous endpoint. |
 | `0`–`9` or numpad | Set active-layer opacity; quick pairs enter a percentage. |

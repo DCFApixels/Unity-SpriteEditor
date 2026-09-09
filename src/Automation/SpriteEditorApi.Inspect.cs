@@ -36,6 +36,7 @@ namespace DCFApixels.SpriteEditor
             result["repeatModes"] = new JArray(System.Enum.GetNames(typeof(PaintRepeatMode)));
             result["repeatElements"] = new JArray(System.Enum.GetNames(typeof(PaintRepeatElementMode)));
             result["repeatBoundaries"] = new JArray(System.Enum.GetNames(typeof(PaintRepeatBoundaryMode)));
+            result["pencilShapes"] = new JArray(System.Enum.GetNames(typeof(PencilShape)));
             result["coordinates"] = "Layer index 0 is topmost. Transform position uses canvas pixels, +X right, +Y up; rotation is counterclockwise degrees. Pivot is bottom-left UV. canvasPixels stroke points use top-left origin; layerUv uses bottom-left UV.";
             result["limits"] = new JObject { ["requestBytes"] = 4194304, ["operations"] = 256, ["canvasPixels"] = MaxCanvasPixels,
                 ["layers"] = 1024, ["drawingPixels"] = 67108864, ["strokePoints"] = 4096, ["strokeStamps"] = 100000, ["strokeCoveragePixels"] = 250000000 };

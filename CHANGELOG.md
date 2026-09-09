@@ -4,6 +4,23 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-09-09
+
+### Fixed
+
+- Reset preview exposure to 0 EV when opening the window or reloading scripts; exposure is no longer restored by window serialization or Undo.
+- Highlight nonzero preview exposure with an amber label and tinted input background.
+- Remember the selected preview tool across window reopening and script reloads, independently of Undo and layer availability. Leaving Transform restores the previous tool instead of forcing Brush or No Tool.
+
+### Added
+
+- Temporary eyedropper with Alt-click/drag in Brush, Pencil and Fill. Samples the full-resolution composition, including HDR and alpha, without preview display effects or changes to tool selection and Undo.
+- Pixel-aligned Pencil tool with Circle, Square and Diamond tips, shared paint/erase colors,
+  RMB erasing, straight lines, an independent integer size and the `P` shortcut.
+- Pencil strokes through the agent API, with the same HDR, symmetry and layer painting path.
+- Pencil preview uses Point filtering and full canvas resolution, temporarily bypassing Live Quality without changing its saved preference.
+- Cached pixel-boundary cursors for Circle and Diamond tips, with screen-size and complexity LOD; moving the cursor does not rebuild its outline.
+
 ## [0.6.2] - 2026-09-09
 
 ### Added

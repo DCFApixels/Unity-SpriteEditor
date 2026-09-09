@@ -113,6 +113,8 @@ namespace DCFApixels.SpriteEditor
             Undo.FlushUndoRecordObjects();
             EditorPrefs.DeleteKey(PaintingPreviewScalePrefKey);
             EditorPrefs.DeleteKey(PaintToolSettingsPrefKey);
+            EditorPrefs.DeleteKey(PreviewToolPrefKey);
+            EditorPrefs.DeleteKey(PreviewTransformReturnToolPrefKey);
             SpriteEditorColorInputs.Reset();
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
@@ -121,6 +123,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ResetEditorWindowSettings()
         {
+            CancelPreviewEyedropper();
             Undo.ClearUndo(this);
             CancelPreviewZoomGesture();
             previewViewport.Reset();
@@ -139,6 +142,7 @@ namespace DCFApixels.SpriteEditor
             groupExpansion?.Clear();
             previewTool = PreviewTool.None;
             previewSettingsTool = PreviewTool.None;
+            previewTransformReturnTool = PreviewTool.None;
             paintSettings = new PaintToolSettings();
             lineAnchorLayer = null;
             hasLastPaintingUv = false;
@@ -175,6 +179,8 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
+            previewExposure = 0f;
+            LoadPreviewToolSettings();
             LoadPaintToolSettings();
             minSize = new Vector2(640f, 420f);
             groupExpansion = new Dictionary<string, bool>();
@@ -195,6 +201,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             RestoreUnityShortcuts();
@@ -252,6 +259,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             ResetOpacityEntry();
             FinishPreviewTransform();
@@ -950,8 +958,11 @@ namespace DCFApixels.SpriteEditor
 
             try
             {
-                int maxSize = paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
+                int maxSize = previewTool == PreviewTool.Pencil
+                    ? Mathf.Max(compositor.width, compositor.height)
+                    : paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
                 previewTexture = compositor.RenderPreview(maxSize);
+                ApplyPreviewTextureFilter();
                 UpdateChannelPreview();
             }
             catch (Exception exception)
@@ -1004,6 +1015,7 @@ namespace DCFApixels.SpriteEditor
             if (next == null || next == compositor)
                 return;
 
+            CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             previewViewport.Reset();
             FinishPreviewTransform();
@@ -1141,6 +1153,7 @@ namespace DCFApixels.SpriteEditor
             if (changedCompositor != compositor)
                 return;
 
+            CancelPreviewEyedropper();
             if (TextureCompositor.IsRefreshingUndo)
             {
                 OnUndoRedo();

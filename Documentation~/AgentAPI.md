@@ -197,6 +197,16 @@ Each stroke has 1..4096 points: one point is a dab, multiple points form a polyl
 for straight segments; the brush interpolates stamps. Curves can be sampled as a polyline.
 The brush uses the same renderer and source-over alpha as manual painting. `erase:true` uses the eraser.
 No selection or RGBA Preview mask is inherited from the window: specify the desired RGBA explicitly.
+
+For pixel-aligned pencil strokes, add `"pencil":"Circle"`, `"Square"`, or `"Diamond"` to the
+`stroke` operation (not inside `brush`). Omit it for the regular soft brush. Pencil uses `brush.size`
+rounded to whole pixels (1–4096), a hard edge and contiguous pixel steps; hardness and spacing do not
+affect pencil strokes. Colors, HDR, `erase`, layer transforms, symmetry and repeat clipping still apply.
+The pencil choice is per operation and does not change the window's selected tool.
+
+```json
+{"op":"stroke","layer":"@ink","pencil":"Square","brush":{"size":3,"color":[1,0,0,1]},"points":[[8,8],[24,16]]}
+```
 Color alpha zero leaves no mark, including for the eraser; eraser strength otherwise follows alpha.
 
 - `space:"canvasPixels"` (default): top-left origin, X right, Y down. The API inverts the layer's

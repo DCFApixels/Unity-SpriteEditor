@@ -42,6 +42,9 @@ namespace DCFApixels.SpriteEditor
                 "canvasPixels painting requires Clip tiling. For repeating transforms, use layerUv to edit the source tile explicitly.");
             bool erase = Bool(operation, "erase");
             PaintStrokeParameters parameters = layer.GetStrokeParameters(erase);
+            if (operation["pencil"] != null)
+                parameters = new PaintStrokeParameters(parameters.Color, parameters.Size, 1f, 0f, erase,
+                    true, Enum(operation, "pencil", PencilShape.Circle));
             var uv = new Vector2[values.Count];
             double stamps = 1d;
             float spacing = parameters.SpacingPixels;

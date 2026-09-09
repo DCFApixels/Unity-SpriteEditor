@@ -64,6 +64,7 @@ namespace DCFApixels.SpriteEditor
 
         public void CreateGUI()
         {
+            CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             if (compositor == null)
@@ -213,6 +214,8 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.style.marginBottom = PanePadding;
             BuildPreviewZoomTool();
             BuildPreviewTransformTool();
+            previewEyedropper = new PreviewEyedropperManipulator(this);
+            toolkitPreviewCanvas.AddManipulator(previewEyedropper);
             toolkitPreviewCanvas.RegisterCallback<PointerDownEvent>(OnPreviewPointerDown);
             toolkitPreviewCanvas.RegisterCallback<PointerMoveEvent>(OnPreviewPointerMove);
             toolkitPreviewCanvas.RegisterCallback<PointerUpEvent>(OnPreviewPointerUp);
@@ -1188,6 +1191,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewHeader.Add(emptyRow);
 
             AddFillSettings();
+            AddPencilSettings();
             VisualElement brushRow = SpriteEditorUI.CreateToolbar();
             BindPreviewSettingsRow(brushRow, PreviewTool.Brush);
             EnumField tool = CompactField(new EnumField(paintSettings.tool), 72f);
@@ -1240,6 +1244,31 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewHeader.Add(brushRow);
         }
 
+        private void AddPencilSettings()
+        {
+            VisualElement row = SpriteEditorUI.CreateToolbar();
+            BindPreviewSettingsRow(row, PreviewTool.Pencil);
+            DropdownField mode = CompactField(new DropdownField(new List<string> { "Pencil", "Eraser" }, 0), 78f);
+            toolkitHeaderBindings.Track(mode, () => paintSettings.tool == PaintToolMode.Eraser ? "Eraser" : "Pencil");
+            mode.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                () => paintSettings.tool = evt.newValue == "Eraser" ? PaintToolMode.Eraser : PaintToolMode.Brush));
+            row.Add(mode);
+            AddPaintColorFields(row);
+            IntegerField size = CompactField(new IntegerField("Size"), 76f);
+            size.AddToClassList("sprite-editor-brush-size");
+            toolkitHeaderBindings.Track(size, () => paintSettings.pencilSize);
+            size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                () => paintSettings.pencilSize = Mathf.Clamp(evt.newValue, 1, 4096)));
+            row.Add(size);
+            row.Add(CreateCompactLabel("Shape", 42f));
+            EnumField shape = CompactField(new EnumField(paintSettings.pencilShape), 94f);
+            toolkitHeaderBindings.Track(shape, () => (Enum)paintSettings.pencilShape);
+            shape.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
+                () => paintSettings.pencilShape = (PencilShape)evt.newValue));
+            row.Add(shape);
+            toolkitPreviewHeader.Add(row);
+        }
+
         private static T CompactField<T>(T field, float width) where T : VisualElement
         {
             field.style.width = width;
@@ -1285,14 +1314,17 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
+            ApplyPreviewTextureFilter();
+            RefreshPreviewQualityControl();
             RefreshPreviewToolToolbar();
             RefreshPreviewTransformTool();
             bool transforming = IsPreviewTransformEnabled;
             toolkitPreviewCanvas.SetTiled(tiledPreview);
+            toolkitPreviewCanvas.SetPencilCursor(previewTool == PreviewTool.Pencil);
             toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,
                 compositor.width, compositor.height,
                 IsPreviewBrushEnabled ? drawing : null, transforming,
-                previewTool == PreviewTool.Brush ? paintSettings : null);
+                IsPreviewPaintTool ? paintSettings : null);
             if (toolkitPreviewError != null)
             {
                 toolkitPreviewError.text = previewError ?? string.Empty;
@@ -1311,15 +1343,15 @@ namespace DCFApixels.SpriteEditor
                 }
                 else if (IsPreviewFillEnabled)
                 {
-                    toolkitPreviewFooter.text = "LMB fill • G fill tool • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
+                    toolkitPreviewFooter.text = "LMB fill • Alt pick color • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
                 }
                 else if (IsPreviewBrushEnabled)
                 {
                     toolkitPreviewFooter.text = previewTexture != null
-                        ? $"LMB paint • RMB erase • Shift lines • X colors • [ ] size • {paintSettings.brushSize:0.#} px"
+                        ? $"LMB paint • RMB erase • Alt pick color • Shift lines • X colors • [ ] size • {(previewTool == PreviewTool.Pencil ? paintSettings.pencilSize : paintSettings.brushSize):0.#} px"
                         : "Rendering painting preview…";
                 }
-                else if (previewTool == PreviewTool.Brush || previewTool == PreviewTool.Fill)
+                else if (IsPreviewPaintTool || previewTool == PreviewTool.Fill)
                 {
                     toolkitPreviewFooter.text = GetSelectedLayer() == null
                         ? "Select a layer to paint or fill • Tool settings are shared"
@@ -1524,8 +1556,9 @@ namespace DCFApixels.SpriteEditor
 
         private void UpdatePreviewCursor(Vector2 localPosition, bool alt)
         {
+            previewEyedropper?.UpdateCursor(localPosition, alt);
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
-            bool visible = previewTool == PreviewTool.Brush &&
+            bool visible = IsPreviewPaintTool &&
                            !(previewZoomManipulator?.IsPanning ?? false) &&
                            !alt &&
                            PreviewContainsPaintPoint(localPosition);
@@ -1553,6 +1586,17 @@ namespace DCFApixels.SpriteEditor
             {
                 ResetOpacityEntry();
                 return;
+            }
+
+            if (evt.keyCode == KeyCode.LeftAlt || evt.keyCode == KeyCode.RightAlt)
+            {
+                previewEyedropper?.UpdateModifier(true);
+                if (CanUsePreviewEyedropper)
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                    return;
+                }
             }
 
             if (HandleOpacityKey(evt))
@@ -1602,7 +1646,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            if (previewTool != PreviewTool.Brush && previewTool != PreviewTool.Fill)
+            if (!IsPreviewPaintTool && previewTool != PreviewTool.Fill)
                 return;
 
             bool swapColors = !actionModifier && !evt.altKey && evt.keyCode == KeyCode.X;
@@ -1614,24 +1658,35 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            if (previewTool != PreviewTool.Brush) return;
+            if (!IsPreviewPaintTool) return;
             bool decrease = evt.keyCode == KeyCode.LeftBracket || evt.character == '[';
             bool increase = evt.keyCode == KeyCode.RightBracket || evt.character == ']';
             if (!decrease && !increase)
                 return;
 
-            float nextSize = decrease
-                ? Mathf.Max(1f, Mathf.Round(paintSettings.brushSize / 1.2f))
-                : Mathf.Max(1f, Mathf.Round(paintSettings.brushSize * 1.2f));
-            if (Mathf.Approximately(nextSize, paintSettings.brushSize))
-                nextSize = Mathf.Max(1f, paintSettings.brushSize + (increase ? 1f : -1f));
-            ApplyPaintToolChange(() => paintSettings.brushSize = nextSize);
+            float currentSize = previewTool == PreviewTool.Pencil ? paintSettings.pencilSize : paintSettings.brushSize;
+            float step = PaintToolSettings.GetSizeShortcutStep(currentSize);
+            float nextSize = Mathf.Max(1f, Mathf.Round(currentSize + (increase ? step : -step)));
+            if (previewTool == PreviewTool.Pencil)
+                ApplyPaintToolChange(() => paintSettings.pencilSize = Mathf.Clamp(Mathf.RoundToInt(nextSize), 1, 4096));
+            else
+                ApplyPaintToolChange(() => paintSettings.brushSize = nextSize);
             evt.PreventDefault();
             evt.StopImmediatePropagation();
         }
 
         private void OnToolkitKeyUp(KeyUpEvent evt)
         {
+            if (evt.keyCode == KeyCode.LeftAlt || evt.keyCode == KeyCode.RightAlt)
+            {
+                previewEyedropper?.UpdateModifier(evt.altKey);
+                if (CanUsePreviewEyedropper)
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                    return;
+                }
+            }
             if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
             {
                 SetPaintingShift(evt.shiftKey);
@@ -1663,9 +1718,11 @@ namespace DCFApixels.SpriteEditor
             private readonly Image image;
             private readonly VisualElement tiledImage;
             private readonly VisualElement overlay;
+            private readonly PencilCursorElement pencilCursorElement;
             private Texture texture;
             private DrawingLayer drawingLayer;
             private PaintToolSettings brushSettings;
+            private bool pencilCursor;
             private int documentWidth = 1;
             private int documentHeight = 1;
             private bool cursorVisible;
@@ -1716,6 +1773,8 @@ namespace DCFApixels.SpriteEditor
                 overlay.style.position = Position.Absolute;
                 overlay.generateVisualContent += DrawOverlay;
                 Add(overlay);
+                pencilCursorElement = new PencilCursorElement();
+                overlay.Add(pencilCursorElement);
 
                 RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
             }
@@ -1727,6 +1786,14 @@ namespace DCFApixels.SpriteEditor
                 image.EnableInClassList("sprite-editor-preview-image--hidden", tiled);
                 tiledImage.EnableInClassList("sprite-editor-preview-image--visible", tiled);
                 UpdateImageLayout(true);
+            }
+
+            public void SetPencilCursor(bool value)
+            {
+                if (pencilCursor == value) return;
+                pencilCursor = value;
+                if (!value) pencilCursorElement.SetVisible(false);
+                overlay.MarkDirtyRepaint();
             }
 
             public void SetDocument(Texture nextTexture, int width, int height, DrawingLayer layer, bool transforming = false, PaintToolSettings brush = null)
@@ -1747,6 +1814,7 @@ namespace DCFApixels.SpriteEditor
                 image.MarkDirtyRepaint();
                 tiledImage.MarkDirtyRepaint();
                 UpdateImageLayout();
+                UpdatePencilCursor();
                 overlay.MarkDirtyRepaint();
             }
 
@@ -1762,7 +1830,8 @@ namespace DCFApixels.SpriteEditor
                 cursorVisible = visible;
                 cursorPosition = position;
                 cursorErase = erase;
-                overlay.MarkDirtyRepaint();
+                if (pencilCursor) UpdatePencilCursor();
+                else overlay.MarkDirtyRepaint();
             }
 
             public void ZoomAt(Vector2 point, float scale)
@@ -1800,6 +1869,7 @@ namespace DCFApixels.SpriteEditor
                 PositionElement(image, ImageRect);
                 PositionElement(tiledImage, contentRect);
                 PositionElement(overlay, presentationRect);
+                UpdatePencilCursor();
                 checker.MarkDirtyRepaint();
                 tiledImage.MarkDirtyRepaint();
                 overlay.MarkDirtyRepaint();
@@ -1904,7 +1974,7 @@ namespace DCFApixels.SpriteEditor
                 if (drawingLayer != null)
                     DrawPatternGuides(painter, rect);
 
-                if (!cursorVisible)
+                if (!cursorVisible || pencilCursor)
                     return;
                 Vector2 localCursor = cursorPosition - presentationRect.position;
                 float pixelScale = PixelScale;
@@ -1920,6 +1990,39 @@ namespace DCFApixels.SpriteEditor
                     ? new Color(1f, 0.35f, 0.25f, 1f)
                     : new Color(1f, 1f, 1f, 0.95f);
                 StrokeCircle(painter, localCursor, radius);
+            }
+
+            private void UpdatePencilCursor()
+            {
+                if (pencilCursorElement == null) return;
+                bool visible = pencilCursor && cursorVisible && brushSettings != null;
+                TextureTransform transform = drawingLayer?.transform ?? TextureTransform.Default;
+                Rect rect = new Rect(ImageRect.position - presentationRect.position, ImageRect.size);
+                if (!visible || !TiledCanvasUtility.IsInvertible(transform) || rect.width <= 0f || rect.height <= 0f)
+                {
+                    pencilCursorElement.SetVisible(false);
+                    return;
+                }
+                Vector2 documentUv = new Vector2((cursorPosition.x - ImageRect.x) / ImageRect.width,
+                    1f - (cursorPosition.y - ImageRect.y) / ImageRect.height);
+                Vector2 source = TiledCanvasUtility.ToSource(documentUv, transform, documentWidth, documentHeight);
+                if (tiled) source = TiledCanvasUtility.CanonicalSource(source, transform, documentWidth, documentHeight);
+                Vector2 center = PaintStrokeParameters.SnapPencilCenter(source, documentWidth, documentHeight, brushSettings.pencilSize);
+                Vector2 tileOffset = Vector2.zero;
+                if (tiled)
+                {
+                    Vector2 documentCenter = TiledCanvasUtility.ToDocument(center, transform, documentWidth, documentHeight);
+                    tileOffset = new Vector2(Mathf.Round(documentUv.x - documentCenter.x), Mathf.Round(documentUv.y - documentCenter.y));
+                }
+                Vector2 uv = TiledCanvasUtility.ToDocument(center, transform, documentWidth, documentHeight) + tileOffset;
+                Vector2 screenCenter = rect.position + new Vector2(uv.x * rect.width, (1f - uv.y) * rect.height);
+                float angle = transform.rotation * Mathf.Deg2Rad;
+                float cos = Mathf.Cos(angle), sin = Mathf.Sin(angle);
+                float px = rect.width / documentWidth, py = rect.height / documentHeight;
+                Vector2 x = new Vector2(cos * px, -sin * py) * transform.scale.x;
+                Vector2 y = new Vector2(-sin * px, -cos * py) * transform.scale.y;
+                pencilCursorElement.SetState(brushSettings.pencilSize, brushSettings.pencilShape,
+                    screenCenter, x, y, cursorErase, EditorGUIUtility.pixelsPerPoint);
             }
 
             private void DrawPatternGuides(Painter2D painter, Rect rect)

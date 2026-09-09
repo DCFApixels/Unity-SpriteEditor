@@ -130,6 +130,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 if (owner.compositor == null || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
                     !target.contentRect.Contains(evt.localPosition)) return;
+                owner.CancelPreviewEyedropper();
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
                 owner.Focus();

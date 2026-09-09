@@ -331,7 +331,9 @@ namespace DCFApixels.SpriteEditor
 
             segmentStamps ??= new List<PaintStamp>(256);
             segmentStamps.Clear();
-            for (int step = firstStep; step <= steps; step++)
+            if (parameters.PixelPerfect)
+                BuildPencilSegment(fromSourceUv, toSourceUv, outputWidth, outputHeight, includeStart, parameters, steps);
+            else for (int step = firstStep; step <= steps; step++)
             {
                 float t = steps <= 0 ? 0f : (float)step / steps;
                 Vector2 point = Vector2.Lerp(fromSourceUv, toSourceUv, t);
@@ -346,6 +348,8 @@ namespace DCFApixels.SpriteEditor
                 segmentStamps,
                 parameters.Size,
                 parameters.Hardness,
+                parameters.PixelPerfect,
+                parameters.Shape,
                 color,
                 parameters.Erase,
                 outputWidth,
@@ -355,6 +359,51 @@ namespace DCFApixels.SpriteEditor
                 transform,
                 colorRange == LayerColorRange.Standard,
                 HdrUtility.IsHdr(pixels));
+        }
+
+        private void BuildPencilSegment(Vector2 from, Vector2 to, int width, int height,
+            bool includeStart, PaintStrokeParameters parameters, int maxSteps)
+        {
+            from = PaintStrokeParameters.SnapPencilCenter(from, width, height, parameters.Size);
+            to = PaintStrokeParameters.SnapPencilCenter(to, width, height, parameters.Size);
+            float offset = ((Mathf.RoundToInt(parameters.Size) & 1) == 0) ? 0f : 0.5f;
+            int x = Mathf.RoundToInt(from.x * width - offset), y = Mathf.RoundToInt(from.y * height - offset);
+            int endX = Mathf.RoundToInt(to.x * width - offset), endY = Mathf.RoundToInt(to.y * height - offset);
+            int dx = Mathf.Abs(endX - x), dy = Mathf.Abs(endY - y);
+            if (maxSteps > 0 && maxSteps < Mathf.Max(dx, dy))
+            {
+                for (int step = includeStart ? 0 : 1; step <= maxSteps; step++)
+                    AddPoint(Vector2.Lerp(from, to, (float)step / maxSteps));
+                return;
+            }
+            int sx = x < endX ? 1 : -1, sy = y < endY ? 1 : -1;
+            int error = dx - dy;
+            bool first = true;
+            while (true)
+            {
+                if (!first || includeStart)
+                    AddPoint(new Vector2((x + offset) / width, (y + offset) / height));
+                if (x == endX && y == endY) break;
+                int twice = error * 2;
+                if (twice > -dy) { error -= dy; x += sx; }
+                if (twice < dx) { error += dx; y += sy; }
+                first = false;
+            }
+
+            void AddPoint(Vector2 point)
+            {
+                if (parameters.WrapCanvas)
+                    point = TiledCanvasUtility.CanonicalSource(point, transform, width, height);
+                point = PaintStrokeParameters.SnapPencilCenter(point, width, height, parameters.Size);
+                BuildPatternStamps(point, width, height);
+                patternStampSet.Clear();
+                for (int i = 0; i < patternStamps.Count; i++)
+                {
+                    PaintStamp stamp = patternStamps[i];
+                    stamp.center = PaintStrokeParameters.SnapPencilCenter(stamp.center, width, height, parameters.Size);
+                    if (patternStampSet.Add(stamp)) segmentStamps.Add(stamp);
+                }
+            }
         }
 
         internal void ClearSurface(int width, int height)
@@ -904,6 +953,8 @@ namespace DCFApixels.SpriteEditor
                 List<PaintStamp> stamps,
                 float sizePixels,
                 float hardness,
+                bool pixelPerfect,
+                PencilShape shape,
                 Color color,
                 bool erase,
                 int outputWidth,
@@ -925,6 +976,7 @@ namespace DCFApixels.SpriteEditor
                 if (standard) color = HdrUtility.Saturate(color);
                 material.SetVector(ColorId, (Vector4)color);
                 material.SetFloat(HardnessId, Mathf.Clamp01(hardness));
+                material.SetFloat("_PencilShape", pixelPerfect ? (int)shape + 1f : 0f);
                 material.SetVector(CanvasSizeId, new Vector4(outputWidth, outputHeight, 0f, 0f));
                 material.SetVector(PatternCenterId, new Vector4(patternCenter.x, patternCenter.y, 0f, 0f));
                 if (wrapCanvas)

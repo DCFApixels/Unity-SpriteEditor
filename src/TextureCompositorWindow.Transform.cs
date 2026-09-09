@@ -96,19 +96,28 @@ namespace DCFApixels.SpriteEditor
         private void TogglePreviewTransform()
         {
             SetPreviewTool(previewTool == PreviewTool.Transform
-                ? GetSelectedLayer() is DrawingLayer ? PreviewTool.Brush : PreviewTool.None
+                ? previewTransformReturnTool
                 : PreviewTool.Transform);
         }
 
         private void SetPreviewTool(PreviewTool tool)
         {
+            CancelPreviewEyedropper();
+            bool changePixelPreview = (previewTool == PreviewTool.Pencil) != (tool == PreviewTool.Pencil);
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             FinishPaintingStroke();
+            if (tool == PreviewTool.Transform && previewTool != PreviewTool.Transform)
+            {
+                previewTransformReturnTool = previewTool;
+                EditorPrefs.SetString(PreviewTransformReturnToolPrefKey, previewTransformReturnTool.ToString());
+            }
             previewTool = tool;
+            EditorPrefs.SetString(PreviewToolPrefKey, tool.ToString());
             if (tool != PreviewTool.None)
                 previewSettingsTool = tool;
             lineAnchorLayer = null;
+            if (changePixelPreview) RequestPreview(immediate: true);
             RefreshToolkitInterface();
             toolkitPreviewCanvas?.Focus();
         }
@@ -121,6 +130,8 @@ namespace DCFApixels.SpriteEditor
                 TogglePreviewTransform();
             else if (evt.keyCode == KeyCode.B)
                 SetPreviewTool(PreviewTool.Brush);
+            else if (evt.keyCode == KeyCode.P)
+                SetPreviewTool(PreviewTool.Pencil);
             else if (evt.keyCode == KeyCode.G)
                 SetPreviewTool(PreviewTool.Fill);
             else if (evt.keyCode == KeyCode.Z)
