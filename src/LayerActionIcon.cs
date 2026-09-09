@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     internal sealed class LayerActionIcon : VisualElement
     {
-        internal enum Kind { Add, Group, Delete, Bug }
+        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha }
 
         private readonly Kind kind;
 
@@ -30,6 +30,13 @@ namespace DCFApixels.SpriteEditor
             painter.BeginPath();
             switch (kind)
             {
+                case Kind.Alpha:
+                    DrawAlpha(painter);
+                    return;
+                case Kind.Eye:
+                case Kind.EyeOff:
+                    DrawEye(painter, kind == Kind.EyeOff);
+                    return;
                 case Kind.Bug:
                     DrawBug(painter);
                     return;
@@ -65,6 +72,72 @@ namespace DCFApixels.SpriteEditor
                     painter.LineTo(new Vector2(9f, 11f));
                     break;
             }
+            painter.Stroke();
+        }
+
+        private static void DrawAlpha(Painter2D painter)
+        {
+            painter.lineWidth = 1f;
+            painter.BeginPath();
+            painter.MoveTo(new Vector2(2.5f, 2.5f));
+            painter.LineTo(new Vector2(13.5f, 2.5f));
+            painter.LineTo(new Vector2(13.5f, 13.5f));
+            painter.LineTo(new Vector2(2.5f, 13.5f));
+            painter.ClosePath();
+            painter.Stroke();
+            painter.fillColor = painter.strokeColor;
+            for (int i = 0; i < 2; i++)
+            {
+                float start = 3.5f + i * 4.5f;
+                float end = start + 4.5f;
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(start, start));
+                painter.LineTo(new Vector2(end, start));
+                painter.LineTo(new Vector2(end, end));
+                painter.LineTo(new Vector2(start, end));
+                painter.ClosePath();
+                painter.Fill();
+            }
+        }
+
+        private static void DrawEye(Painter2D painter, bool hidden)
+        {
+            painter.lineWidth = 1.25f;
+            painter.BeginPath();
+            if (hidden)
+            {
+                painter.MoveTo(new Vector2(6.2f, 4.1f));
+                painter.BezierCurveTo(new Vector2(9.8f, 3.1f), new Vector2(12.7f, 5.2f), new Vector2(14.5f, 8f));
+                painter.BezierCurveTo(new Vector2(13.6f, 9.2f), new Vector2(12.6f, 10.2f), new Vector2(11.4f, 10.9f));
+                painter.MoveTo(new Vector2(9.6f, 11.8f));
+                painter.BezierCurveTo(new Vector2(6.1f, 12.7f), new Vector2(3.2f, 10.4f), new Vector2(1.5f, 8f));
+                painter.BezierCurveTo(new Vector2(2.3f, 6.8f), new Vector2(3.2f, 5.8f), new Vector2(4.4f, 5.1f));
+                painter.MoveTo(new Vector2(2.2f, 2.2f));
+                painter.LineTo(new Vector2(13.8f, 13.8f));
+                painter.Stroke();
+            }
+            else
+            {
+                painter.MoveTo(new Vector2(1.5f, 8f));
+                painter.BezierCurveTo(new Vector2(5f, 2.7f), new Vector2(11f, 2.7f), new Vector2(14.5f, 8f));
+                painter.BezierCurveTo(new Vector2(11f, 13.3f), new Vector2(5f, 13.3f), new Vector2(1.5f, 8f));
+                painter.ClosePath();
+                painter.Stroke();
+            }
+            if (hidden)
+            {
+                painter.lineCap = LineCap.Butt;
+                painter.BeginPath();
+                painter.Arc(new Vector2(8f, 8f), 2f, 225f, 405f);
+                painter.Stroke();
+                painter.BeginPath();
+                painter.Arc(new Vector2(8f, 8f), 2f, 100f, 170f);
+                painter.Stroke();
+                return;
+            }
+            painter.BeginPath();
+            painter.Arc(new Vector2(8f, 8f), 2f, 0f, 360f);
+            painter.ClosePath();
             painter.Stroke();
         }
 

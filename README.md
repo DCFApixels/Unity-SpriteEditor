@@ -178,7 +178,10 @@ Click to select a layer, `Ctrl`-click to toggle one, `Shift`-click for a visible
 or `Ctrl+Shift`-click to add a range. The **last selected layer is active**, marked with a subtle
 brighter blue border. Painting, transforms, and Layer Settings operate on that layer.
 
-Drag a selected row's handle to move the selection together. Drop into a group to nest it,
+The layer table aligns visibility, Name, opacity, and Blend columns. Click the eye in its header
+to show every layer and group. Click a group's arrow to expand/collapse it, or drag the arrow to move it.
+
+Drag a selected row's background or thumbnail to move the selection together. Drop into a group to nest it,
 or use the footer:
 
 | Footer icon | Click | Drop selected layers |
@@ -390,7 +393,7 @@ Brush repetition is a separate feature.
 ### Outline & SDF
 
 Use the item directly below the effect in the same group (**Previous**), or choose a layer/group
-explicitly (**Specific**). Drop a layer handle onto **Target** to assign it; with a dragged selection,
+explicitly (**Specific**). Drag a layer onto **Target** to assign it; with a dragged selection,
 the active layer is used. This also works in separate Properties windows.
 Cross-document, self-referencing, and cyclic targets are rejected.
 

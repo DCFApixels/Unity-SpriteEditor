@@ -23,12 +23,6 @@ namespace DCFApixels.SpriteEditor
         private const string DraggedCompositorIdKey = "DCFApixels.SpriteEditor.DraggedCompositorId";
         private const string PaintingPreviewScalePrefKey = "DCFApixels.SpriteEditor.PaintingPreviewScale";
 
-        private static readonly GUIContent LayerDragHandleContent = new GUIContent(
-            "≡",
-            "Drag to reorder this layer or move it into a group.");
-        private static readonly GUIContent LayerDragHintContent = new GUIContent(
-            "≡ drag",
-            "Drag a row by its handle. Drop on a line to reorder, or on a highlighted group to move inside.");
         private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
         private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
         private static readonly GUIContent BrushSpacingContent = new GUIContent(

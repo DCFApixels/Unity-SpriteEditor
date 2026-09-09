@@ -165,8 +165,6 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
             toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
-            toolkitSettingsScroll.style.paddingLeft = 8f;
-            toolkitSettingsScroll.style.paddingRight = 8f;
             toolkitSettingsScroll.style.paddingBottom = 8f;
             layersPane.Add(toolkitSettingsScroll);
 
@@ -376,6 +374,7 @@ namespace DCFApixels.SpriteEditor
         private void BuildToolkitSettings()
         {
             toolkitSettingsScroll.Clear();
+            toolkitSettingsScroll.Add(BuildLayerTableHeader());
 
             toolkitLayerHierarchyRoot = new VisualElement();
             toolkitLayerHierarchyRoot.style.flexShrink = 0f;
@@ -383,6 +382,46 @@ namespace DCFApixels.SpriteEditor
 
             toolkitSettingsScroll.scrollOffset = scrollPosition;
             BuildToolkitLayerFooter();
+        }
+
+        private VisualElement BuildLayerTableHeader()
+        {
+            var header = new VisualElement();
+            header.AddToClassList("sprite-editor-layer-table-header");
+            var showAll = new Button(() =>
+            {
+                if (compositor == null) return;
+                FinishPreviewTransform();
+                FinishPaintingStroke();
+                ApplyToolkitChange("Show All Layers", () => ShowAllLayers(compositor.layers));
+            }) { tooltip = "Show all layers and groups" };
+            showAll.AddToClassList("sprite-editor-layer-enabled");
+            showAll.Add(new LayerActionIcon(LayerActionIcon.Kind.Eye));
+            header.Add(showAll);
+            var name = new Label("Name");
+            name.AddToClassList("sprite-editor-layer-name-cell");
+            header.Add(name);
+            var alpha = new VisualElement { tooltip = "Opacity" };
+            alpha.AddToClassList("sprite-editor-layer-opacity");
+            alpha.Add(new LayerActionIcon(LayerActionIcon.Kind.Alpha));
+            header.Add(alpha);
+            var blend = new Label("Blend");
+            blend.AddToClassList("sprite-editor-layer-blend");
+            header.Add(blend);
+            var menuSpace = new VisualElement { pickingMode = PickingMode.Ignore };
+            menuSpace.AddToClassList("sprite-editor-layer-menu-space");
+            header.Add(menuSpace);
+            return header;
+        }
+
+        private static void ShowAllLayers(List<Layer> layers)
+        {
+            foreach (Layer layer in layers)
+            {
+                if (layer == null) continue;
+                layer.enabled = true;
+                if (layer is GroupLayer group) ShowAllLayers(group.layers);
+            }
         }
 
         private static Label CreatePaneHeader(string text, string name)
@@ -509,7 +548,7 @@ namespace DCFApixels.SpriteEditor
             row.style.height = ToolkitLayerRowHeight;
             row.style.flexShrink = 0f;
             row.style.marginBottom = 1f;
-            row.style.paddingLeft = 3f + depth * ToolkitLayerIndent;
+            row.style.paddingLeft = 3f;
             row.style.paddingRight = 3f;
             ApplyLayerSelectionStyle(row, layer.Id);
             row.style.borderTopLeftRadius = 2f;
@@ -519,6 +558,9 @@ namespace DCFApixels.SpriteEditor
             VisualElement activeOutline = new VisualElement { pickingMode = PickingMode.Ignore };
             activeOutline.AddToClassList("sprite-editor-layer-active-outline");
             row.Add(activeOutline);
+            var dropMarker = new VisualElement { pickingMode = PickingMode.Ignore };
+            dropMarker.AddToClassList("sprite-editor-layer-drop-marker");
+            row.Add(dropMarker);
             toolkitLayerBindings.Add(() =>
             {
                 if (row != activeDropElement)
@@ -540,8 +582,7 @@ namespace DCFApixels.SpriteEditor
                     }
                     return;
                 }
-                if (evt.button != 0 || evt.target is VisualElement target &&
-                    target.ClassListContains("sprite-editor-layer-drag-handle"))
+                if (evt.button != 0 || IsLayerDragArea(row, evt.target as VisualElement))
                     return;
                 for (VisualElement field = evt.target as VisualElement; field != null && field != row; field = field.parent)
                 {
@@ -576,7 +617,34 @@ namespace DCFApixels.SpriteEditor
                 if (compositor != null && compositor.TryFindLayer(layer, out List<Layer> container, out int index))
                     ShowLayerContextMenu(layer, container, index);
             }, TrickleDown.TrickleDown);
+            row.AddManipulator(new LayerDragManipulator(this, layer));
             return row;
+        }
+
+        private static bool IsLayerDragArea(VisualElement row, VisualElement element)
+        {
+            for (; element != null && element != row; element = element.parent)
+            {
+                if (element.ClassListContains("sprite-editor-group-foldout")) return true;
+                if (element is Button || element.focusable || element.ClassListContains("unity-base-field"))
+                    return false;
+            }
+            return element == row;
+        }
+
+        private static VisualElement CreateLayerNameCell(VisualElement row, int depth)
+        {
+            var cell = new VisualElement();
+            cell.AddToClassList("sprite-editor-layer-name-cell");
+            cell.style.paddingLeft = depth * ToolkitLayerIndent;
+            row.Add(cell);
+            return cell;
+        }
+
+        private void ToggleLayerGroup(GroupLayer group)
+        {
+            groupExpansion[group.Id] = !GetGroupExpanded(group);
+            RefreshToolkitLayerHierarchy();
         }
 
         private VisualElement BuildToolkitGroupRow(
@@ -586,25 +654,21 @@ namespace DCFApixels.SpriteEditor
             int depth)
         {
             VisualElement row = CreateToolkitLayerRow(group, depth);
-            row.Add(CreateToolkitDragHandle(group));
 
-            Toggle enabled = new Toggle();
-            enabled.tooltip = "Enable or disable this group and all of its descendants.";
-            enabled.style.width = 20f;
-            enabled.SetValueWithoutNotify(group.enabled);
-            toolkitLayerBindings.Track(enabled, () => group.enabled);
-            enabled.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Toggle Sprite Group",
-                () => group.enabled = evt.newValue));
-            row.Add(enabled);
-
-            Button foldout = SpriteEditorUI.CreateButton(GetGroupExpanded(group) ? "▼" : "▶", () =>
+            row.Add(CreateLayerVisibilityButton(group));
+            VisualElement nameCell = CreateLayerNameCell(row, depth);
+            var foldout = new VisualElement { focusable = true, tooltip = "Expand or collapse group; drag to move" };
+            foldout.AddToClassList("sprite-editor-group-foldout");
+            foldout.EnableInClassList("sprite-editor-layer-menu-button--light", !EditorGUIUtility.isProSkin);
+            foldout.Add(new Label(GetGroupExpanded(group) ? "▼" : "▶") { pickingMode = PickingMode.Ignore });
+            foldout.RegisterCallback<KeyDownEvent>(evt =>
             {
-                groupExpansion[group.Id] = !GetGroupExpanded(group);
-                RefreshToolkitLayerHierarchy();
-            }, 22f);
-            foldout.tooltip = "Expand or collapse this group.";
-            row.Add(foldout);
+                if (evt.keyCode != KeyCode.Space && evt.keyCode != KeyCode.Return) return;
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                ToggleLayerGroup(group);
+            });
+            nameCell.Add(foldout);
 
             TextField name = new TextField();
             name.AddToClassList("sprite-editor-layer-name");
@@ -613,18 +677,18 @@ namespace DCFApixels.SpriteEditor
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Rename Sprite Group",
                 () => group.layerName = evt.newValue));
-            row.Add(name);
+            nameCell.Add(name);
 
             toolkitLayerBindings.Add(() => name.tooltip = $"{group.layers.Count} items");
             var opacity = new FloatField { tooltip = "Group opacity from 0 to 1." };
-            opacity.AddToClassList("sprite-editor-group-opacity");
+            opacity.AddToClassList("sprite-editor-layer-opacity");
             opacity.AddToClassList("sprite-editor-layer-multi-edit");
             toolkitLayerBindings.Track(opacity, () => group.opacity);
             opacity.RegisterValueChangedCallback(evt => ApplySelectedOpacity(group, evt.newValue));
             row.Add(opacity);
             var blend = LayerColorSettingsView.GroupBlend(group,
                 (mode, passThrough) => ApplySelectedBlend(group, mode, passThrough), toolkitLayerBindings);
-            blend.AddToClassList("sprite-editor-group-blend");
+            blend.AddToClassList("sprite-editor-layer-blend");
             blend.AddToClassList("sprite-editor-layer-multi-edit");
             row.Add(blend);
             row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(group, container, index)));
@@ -639,17 +703,9 @@ namespace DCFApixels.SpriteEditor
             int depth)
         {
             VisualElement row = CreateToolkitLayerRow(layer, depth);
-            row.Add(CreateToolkitDragHandle(layer));
 
-            Toggle enabled = new Toggle();
-            enabled.tooltip = "Enable or disable this layer.";
-            enabled.style.width = 20f;
-            enabled.SetValueWithoutNotify(layer.enabled);
-            toolkitLayerBindings.Track(enabled, () => layer.enabled);
-            enabled.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Toggle Sprite Layer",
-                () => layer.enabled = evt.newValue));
-            row.Add(enabled);
+            row.Add(CreateLayerVisibilityButton(layer));
+            VisualElement nameCell = CreateLayerNameCell(row, depth);
 
             Image thumbnail = new Image
             {
@@ -657,11 +713,8 @@ namespace DCFApixels.SpriteEditor
                 scaleMode = ScaleMode.ScaleToFit,
                 pickingMode = PickingMode.Ignore
             };
-            thumbnail.style.width = 20f;
-            thumbnail.style.height = 20f;
-            thumbnail.style.marginRight = 3f;
-            thumbnail.style.backgroundColor = new Color(0.28f, 0.28f, 0.28f, 1f);
-            row.Add(thumbnail);
+            thumbnail.AddToClassList("sprite-editor-layer-thumbnail");
+            nameCell.Add(thumbnail);
             toolkitLayerBindings.Add(() => thumbnail.image = layer.GetPreviewTexture(18));
 
             TextField name = new TextField();
@@ -671,12 +724,12 @@ namespace DCFApixels.SpriteEditor
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Rename Sprite Layer",
                 () => layer.layerName = evt.newValue));
-            row.Add(name);
+            nameCell.Add(name);
 
             FloatField opacity = new FloatField();
             opacity.AddToClassList("sprite-editor-layer-multi-edit");
             opacity.tooltip = "Layer opacity from 0 to 1.";
-            opacity.style.width = 48f;
+            opacity.AddToClassList("sprite-editor-layer-opacity");
             opacity.SetValueWithoutNotify(layer.opacity);
             toolkitLayerBindings.Track(opacity, () => layer.opacity);
             opacity.RegisterValueChangedCallback(evt => ApplySelectedOpacity(layer, evt.newValue));
@@ -685,7 +738,7 @@ namespace DCFApixels.SpriteEditor
             EnumField blend = new EnumField(layer.blendMode);
             blend.AddToClassList("sprite-editor-layer-multi-edit");
             toolkitLayerBindings.Track(blend, () => (Enum)layer.blendMode);
-            blend.style.width = 126f;
+            blend.AddToClassList("sprite-editor-layer-blend");
             blend.RegisterValueChangedCallback(evt => ApplySelectedBlend(layer, (BlendMode)evt.newValue));
             row.Add(blend);
 
@@ -698,7 +751,7 @@ namespace DCFApixels.SpriteEditor
                 warning.style.color = new Color(1f, 0.65f, 0.15f, 1f);
                 warning.style.unityFontStyleAndWeight = FontStyle.Bold;
                 warning.style.width = 12f;
-                row.Add(warning);
+                nameCell.Add(warning);
                 toolkitLayerBindings.Add(() =>
                 {
                     warning.style.display = compositor.HasUsableEffectInput(effect, container, index)
@@ -712,6 +765,30 @@ namespace DCFApixels.SpriteEditor
             row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(layer, container, index)));
             RegisterToolkitLayerDrop(row, layer, container, index, depth);
             return row;
+        }
+
+        private Button CreateLayerVisibilityButton(Layer layer)
+        {
+            var button = new Button(() => ApplyToolkitChange(
+                layer is GroupLayer ? "Toggle Sprite Group" : "Toggle Sprite Layer",
+                () => layer.enabled = !layer.enabled));
+            button.AddToClassList("sprite-editor-layer-enabled");
+            var eye = new LayerActionIcon(LayerActionIcon.Kind.Eye);
+            eye.AddToClassList("sprite-editor-layer-eye");
+            var eyeOff = new LayerActionIcon(LayerActionIcon.Kind.EyeOff);
+            eyeOff.AddToClassList("sprite-editor-layer-eye-off");
+            button.Add(eye);
+            button.Add(eyeOff);
+            void Refresh()
+            {
+                button.EnableInClassList("sprite-editor-layer-enabled--hidden", !layer.enabled);
+                button.tooltip = layer is GroupLayer
+                    ? (layer.enabled ? "Hide group and its descendants" : "Show group")
+                    : (layer.enabled ? "Hide layer" : "Show layer");
+            }
+            Refresh();
+            toolkitLayerBindings.Add(Refresh);
+            return button;
         }
 
         private static Button CreateLayerMenuButton(Action clicked)
@@ -742,24 +819,13 @@ namespace DCFApixels.SpriteEditor
             return row;
         }
 
-        private VisualElement CreateToolkitDragHandle(Layer layer)
-        {
-            Label handle = new Label("≡");
-            handle.AddToClassList("sprite-editor-layer-drag-handle");
-            handle.tooltip = LayerDragHandleContent.tooltip;
-            handle.style.width = 18f;
-            handle.style.unityTextAlign = TextAnchor.MiddleCenter;
-            handle.style.fontSize = 15f;
-            handle.AddManipulator(new LayerDragManipulator(this, layer));
-            return handle;
-        }
-
         private sealed class LayerDragManipulator : PointerManipulator
         {
             private readonly TextureCompositorWindow owner;
             private readonly Layer layer;
             private Vector2 start;
             private int pointerId = -1;
+            private VisualElement pressedFoldout;
 
             public LayerDragManipulator(TextureCompositorWindow owner, Layer layer)
             {
@@ -788,7 +854,7 @@ namespace DCFApixels.SpriteEditor
 
             private void OnPointerDown(PointerDownEvent evt)
             {
-                if (evt.button != 0 || pointerId >= 0)
+                if (evt.button != 0 || pointerId >= 0 || !IsLayerDragArea(target, evt.target as VisualElement))
                     return;
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
@@ -800,6 +866,13 @@ namespace DCFApixels.SpriteEditor
                 owner.FinishPaintingStroke();
                 owner.activeLayerDrag?.Cancel();
                 owner.activeLayerDrag = this;
+                for (var element = evt.target as VisualElement; element != null && element != target; element = element.parent)
+                    if (element.ClassListContains("sprite-editor-group-foldout"))
+                    {
+                        pressedFoldout = element;
+                        element.Focus();
+                        break;
+                    }
                 start = evt.position;
                 pointerId = evt.pointerId;
                 target.CapturePointer(pointerId);
@@ -808,7 +881,14 @@ namespace DCFApixels.SpriteEditor
 
             private void OnPointerMove(PointerMoveEvent evt)
             {
-                if (pointerId != evt.pointerId || Vector2.Distance(start, evt.position) < 4f)
+                if (pointerId != evt.pointerId)
+                    return;
+                if ((evt.pressedButtons & 1) == 0)
+                {
+                    Release();
+                    return;
+                }
+                if (Vector2.Distance(start, evt.position) < 4f)
                     return;
 
                 DragAndDrop.PrepareStartDrag();
@@ -826,7 +906,15 @@ namespace DCFApixels.SpriteEditor
             {
                 if (pointerId != evt.pointerId || evt.button != 0)
                     return;
+                VisualElement foldout = pressedFoldout;
                 Release();
+                if (foldout != null)
+                {
+                    evt.StopImmediatePropagation();
+                    if (layer is GroupLayer group && foldout.worldBound.Contains(evt.position))
+                        owner.ToggleLayerGroup(group);
+                    return;
+                }
                 if (owner.IsLayerSelected(layer.Id))
                     owner.ActivateSelectedLayer(layer.Id);
                 else
@@ -850,6 +938,7 @@ namespace DCFApixels.SpriteEditor
             {
                 int previousPointer = pointerId;
                 pointerId = -1;
+                pressedFoldout = null;
                 if (owner.activeLayerDrag == this)
                     owner.activeLayerDrag = null;
                 if (previousPointer >= 0 && target.HasPointerCapture(previousPointer))
@@ -998,6 +1087,14 @@ namespace DCFApixels.SpriteEditor
             }
             activeDropElement = element;
 
+            if (element.userData is string)
+            {
+                element.EnableInClassList("sprite-editor-layer-row--drop-inside", insideGroup);
+                element.EnableInClassList("sprite-editor-layer-row--drop-before", !insideGroup && insertBefore);
+                element.EnableInClassList("sprite-editor-layer-row--drop-after", !insideGroup && !insertBefore);
+                return;
+            }
+
             if (insideGroup)
             {
                 element.style.backgroundColor = GroupDropHighlightColor;
@@ -1023,6 +1120,10 @@ namespace DCFApixels.SpriteEditor
         {
             if (activeDropElement == null)
                 return;
+
+            activeDropElement.RemoveFromClassList("sprite-editor-layer-row--drop-inside");
+            activeDropElement.RemoveFromClassList("sprite-editor-layer-row--drop-before");
+            activeDropElement.RemoveFromClassList("sprite-editor-layer-row--drop-after");
 
             activeDropElement.style.borderTopWidth = 0f;
             activeDropElement.style.borderRightWidth = 0f;

@@ -4,6 +4,8 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-09
+
 ### Added
 
 - Multi-selection opacity and blend editing from inline fields without clearing the selection; numeric opacity shortcuts also affect selected layers and groups.
@@ -19,6 +21,10 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Changed
 
+- Align layer rows and column headers in a shared table layout, with a show-all visibility action and refined eye icons.
+- Allow layer dragging from non-input row areas, including group foldouts; keep column positions stable during drag feedback.
+- Compact the layer menu, polish header spacing and simplify the Layers panel padding.
+- Group Color Range and Blend Range controls in a compact foldout with a shared range selector.
 - `TextureCompositor.Compose()` returns linear RGBAHalf instead of RGBA32. Raw-pixel consumers must account for its format.
 - SDF and Outline keep their bounded mask thresholds while producing floating-point color output.
 
