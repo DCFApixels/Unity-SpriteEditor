@@ -4,6 +4,15 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Layered PSD export with nested pass-through groups, Unicode names, visibility, opacity,
+  blend-mode mapping and a merged RGBA image. Uses per-row RLE and bounded raster memory.
+- Editable solid fills with masks, compatible gradient fills and Outline stroke effects on target-alpha snapshots.
+  SDF, shader effects and incompatible procedural settings use raster fallbacks with conversion notes.
+- Editor-side `SpriteEditorPsdExporter.Export` API, cancellable export and atomic destination replacement.
+- Standalone PSD writer checks, an optional independent-reader check and opt-in Editor export smoke tests.
+
 ## [0.6.0] - 2026-09-09
 
 ### Added

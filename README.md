@@ -46,7 +46,7 @@ texture in one asset — export a separate image only when you need one.
 | Patterns | Rotatable mirror symmetry, rows, grids, and radial repetition with boundary clipping. |
 | Transforms | On-canvas handles, movable snapping pivot, source aspect ratio, tiling, and filtering. |
 | Effects | Outline, SDF, blend modes, and embedded Shader FX with editable HLSL. |
-| Output | Editable documents with Texture2D/Sprite output; PNG, JPEG, TGA, EXR, and Texture2D export. |
+| Output | Editable documents with Texture2D/Sprite output; layered PSD, PNG, JPEG, TGA, EXR, and Texture2D export. |
 | Automation | C# and JSON APIs, optional CLI commands, and an agent guide. |
 
 ## Guide
@@ -463,7 +463,7 @@ The document header provides **New · document field · Save · Save As · Expor
 | **Save** | Update the current document and output without a dialog. Disabled before the first save. |
 | **Save As** | Create an independent editable document and outputs. |
 | `Ctrl+S` | Save an existing document, or open Save As for a new one. |
-| **Export** | Write a separate flattened image, without editable layers. |
+| **Export** | Write a separate image or a layered PSD. |
 
 ### Use the saved asset directly
 
@@ -487,6 +487,7 @@ including after canvas resizing. Output Sprite uses a centered pivot, full-recta
 | **PNG / TGA** | Transparency preserved. |
 | **JPEG** | White background, quality 95. |
 | **EXR** | Linear RGB + alpha, half-float with ZIP compression. |
+| **PSD** | Nested groups, raster layers, editable fills/gradients and compatible Outline strokes; includes a merged image. |
 | **Texture2D (.asset)** | Readable standalone Unity texture, separate from the editable document. |
 
 PNG/JPEG/TGA exported into `Assets` are imported as single Sprite assets; EXR as a linear texture.
@@ -494,6 +495,13 @@ Replacing a standalone Texture2D asks for confirmation and preserves references.
 Other asset types and sub-assets are protected.
 
 The compositor renders in **8-bit RGBA**. EXR export does not add HDR range or recover precision.
+
+**Layered PSD** prioritizes structure and editability. It preserves layer names, order, visibility,
+opacity and supported blend modes. SDF, Shader FX and incompatible procedural settings are rasterized;
+unsupported blends are approximated. Outline can remain a stroke effect on a snapshot of its target alpha.
+The export summary links these compromises to individual layers through Console notes.
+Keep the native document as the source: PSD does not retain live effect-target links or shader code.
+See [PSD export details and API](Documentation~/PsdExport.md).
 
 <a id="shortcuts"></a>
 ## Shortcuts

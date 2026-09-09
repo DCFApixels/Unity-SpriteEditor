@@ -16,9 +16,45 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("JPEG (.jpg, white background)"), false, () => ExportTexture(TextureExportFormat.Jpeg));
             menu.AddItem(new GUIContent("TGA (.tga)"), false, () => ExportTexture(TextureExportFormat.Tga));
             menu.AddItem(new GUIContent("OpenEXR (.exr)"), false, () => ExportTexture(TextureExportFormat.Exr));
+            menu.AddItem(new GUIContent("Layered PSD (.psd)"), false, ExportPsd);
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Unity Texture2D (.asset)"), false, () => ExportTexture(TextureExportFormat.Asset));
             menu.ShowAsContext();
+        }
+
+        private void ExportPsd()
+        {
+            if (compositor == null) return;
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            string path = EditorUtility.SaveFilePanel("Export layered PSD", Application.dataPath, "sprite", "psd");
+            if (string.IsNullOrEmpty(path)) return;
+            try
+            {
+                PsdExportReport report = SpriteEditorPsdExporter.Export(compositor, path, overwrite: true,
+                    progress: (label, amount) =>
+                    {
+                        if (EditorUtility.DisplayCancelableProgressBar("Export layered PSD", label, amount))
+                            throw new OperationCanceledException();
+                    });
+                EditorUtility.ClearProgressBar();
+                ImportExportedTextureIfNeeded(path, true);
+                string summary = $"Exported {report.layerCount} layers and {report.groupCount} groups.\n" +
+                    $"Editable fills: {report.editableFillCount}. Editable outlines: {report.editableOutlineCount}.";
+                if (report.notes.Count > 0)
+                {
+                    Debug.Log("PSD export: " + path + "\n" + summary + "\n" + string.Join("\n", report.notes));
+                    summary += "\n\nSome settings were rasterized or approximated. Details are in the Console.";
+                }
+                EditorUtility.DisplayDialog("PSD exported", summary, "OK");
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("PSD export failed", exception.Message, "OK");
+            }
+            finally { EditorUtility.ClearProgressBar(); }
         }
 
         private void ExportTexture(TextureExportFormat format)
