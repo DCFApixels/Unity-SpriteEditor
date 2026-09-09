@@ -4,6 +4,8 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-09
+
 ### Added
 
 - Layered PSD export with nested pass-through groups, Unicode names, visibility, opacity,
