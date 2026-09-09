@@ -26,7 +26,7 @@ Swizzle remaps straight linear RGBA after FX and before Color Range. The four se
 `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`; inversion means literal `1 - channel`
 in linear space. Alpha is clamped to 0–1 after remapping. Identity is serialized as zero, so old
 documents keep `R G B A`. A nonidentity group Swizzle forces isolation; a Pass Through group
-temporarily uses Normal blending and resumes Pass Through when Swizzle returns to identity.
+temporarily uses Normal blending and resumes Pass Through when Swizzle returns to identity and clipping is inactive.
 Source pixels are not rewritten. Conversion keeps a regular layer's Swizzle as an editable setting,
 while group conversion and merging bake it once. PSD group baking retains original children in a hidden folder.
 
@@ -96,6 +96,13 @@ Nested groups follow the same rules. Group transforms and FX remain unsupported.
 
 Outline/SDF group targets use only the group's own content against transparency, including nested
 opacity and alpha-replacing modes. They never include the external backdrop.
+
+Clipping chains preserve their base's alpha; clipped members blend colors without accumulating
+opacity into that alpha. The base's opacity and blend are applied to the complete chain once.
+Groups participating in clipping (as base or clipped member) are isolated even when configured
+as Pass Through, using Normal in that case. Their ranges become active while isolated.
+Swizzle and clipping are independent reasons for isolation: Pass Through resumes only after
+both restrictions are removed. Clipped Overwrite replaces source-covered RGB, not base alpha.
 
 ## Preview and numeric diagnostics
 

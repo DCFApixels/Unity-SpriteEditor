@@ -25,7 +25,7 @@ namespace DCFApixels.SpriteEditor
         }
 
         internal static void Build(VisualElement root, Layer layer, Action<string, Action> apply,
-            SpriteEditorUI.ValueBindings bindings, bool expanded, Action<bool> expansionChanged)
+            SpriteEditorUI.ValueBindings bindings, bool expanded, Action<bool> expansionChanged, TextureCompositor owner = null)
         {
             SpriteEditorUI.ApplyWindowStyles(root);
             var container = new VisualElement();
@@ -58,7 +58,7 @@ namespace DCFApixels.SpriteEditor
                 transform.parent.Insert(transform.parent.IndexOf(transform) + 1, container);
             else
                 root.Insert(0, container);
-            var swizzle = BuildSwizzle(layer, apply, bindings);
+            var swizzle = BuildSwizzle(layer, apply, bindings, owner);
             container.parent.Insert(container.parent.IndexOf(container) + 1, swizzle);
             var color = SpriteEditorUI.ConfigureField(new EnumField("Color Range", layer.colorRange));
             color.tooltip = "Standard clamps this layer after its FX and Swizzle. HDR keeps signed linear values beyond 0–1.";
@@ -73,7 +73,8 @@ namespace DCFApixels.SpriteEditor
             card.Add(blend);
             bindings.Add(() =>
             {
-                bool active = !(layer is GroupLayer group) || !group.IsPassThrough;
+                bool active = !(layer is GroupLayer group) || !group.IsPassThrough ||
+                    (owner != null && owner.IsGroupIsolatedByClipping(group));
                 color.SetEnabled(active); blend.SetEnabled(active); preset.SetEnabled(active);
             });
             if (layer is DrawingLayer pixels)
@@ -95,7 +96,7 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private static VisualElement BuildSwizzle(Layer layer, Action<string, Action> apply, SpriteEditorUI.ValueBindings bindings)
+        private static VisualElement BuildSwizzle(Layer layer, Action<string, Action> apply, SpriteEditorUI.ValueBindings bindings, TextureCompositor owner)
         {
             var container = new VisualElement();
             container.AddToClassList("sprite-editor-swizzle");
@@ -126,9 +127,16 @@ namespace DCFApixels.SpriteEditor
             container.Add(row);
             if (layer is GroupLayer group)
             {
-                var hint = new HelpBox("Swizzle isolates this group using Normal blending. Restore R G B A to resume Pass Through.", HelpBoxMessageType.Info);
-                bindings.Add(() => hint.EnableInClassList("sprite-editor-swizzle-hint--hidden",
-                    group.compositing != GroupCompositing.PassThrough || group.swizzle.IsIdentity));
+                var hint = new HelpBox("", HelpBoxMessageType.Info);
+                bindings.Add(() =>
+                {
+                    bool clipping = owner != null && owner.IsGroupIsolatedByClipping(group);
+                    hint.text = clipping
+                        ? "Clipping isolates this group using Normal blending. Pass Through resumes when clipping is removed and Swizzle is R G B A."
+                        : "Swizzle isolates this group using Normal blending. Restore R G B A to resume Pass Through.";
+                    hint.EnableInClassList("sprite-editor-swizzle-hint--hidden",
+                        group.compositing != GroupCompositing.PassThrough || (group.swizzle.IsIdentity && !clipping));
+                });
                 container.Add(hint);
             }
             return container;

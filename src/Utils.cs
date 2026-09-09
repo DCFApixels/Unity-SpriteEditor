@@ -494,7 +494,7 @@ namespace DCFApixels.SpriteEditor
             scroll.style.flexGrow = 1f;
             BuildSettings(scroll, currentLayer);
             LayerColorSettingsView.Build(scroll, currentLayer, ApplyLayerChange, SettingsBindings,
-                colorSettingsExpanded, value => colorSettingsExpanded = value);
+                colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
             SettingsBindings.Refresh(forceValues);
             scroll.Add(SpriteEditorUI.CreateHeading(PreviewTitle));
 

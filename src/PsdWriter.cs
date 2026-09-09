@@ -22,6 +22,7 @@ namespace DCFApixels.SpriteEditor
             public uint id;
             public byte opacity = 255;
             public bool visible = true;
+            public bool clipping;
             public int section;
             public bool mask;
             public bool adjustment;
@@ -105,7 +106,7 @@ namespace DCFApixels.SpriteEditor
                         }
                         channelOffsets.Add(offsets);
                         w.Code("8BIM"); w.Code(layer.blend);
-                        w.Byte(layer.opacity); w.Byte(0);
+                        w.Byte(layer.opacity); w.Byte(layer.clipping ? 1 : 0);
                         w.Byte(8 | (layer.visible ? 0 : 2) | (folder || layer.adjustment ? 16 : 0)); w.Byte(0);
                         w.Section(() =>
                         {

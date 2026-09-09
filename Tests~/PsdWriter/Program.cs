@@ -35,13 +35,13 @@ static class Program
             new PsdWriter.LayerRecord { name = "</Group>", section = 3 },
             new PsdWriter.LayerRecord { name = "Hidden", visible = false, openPixels = () => new Pixels() },
             new PsdWriter.LayerRecord { name = "Nested", section = 1, blend = "mul ", sectionBlend = "mul ", opacity = 153 },
-            new PsdWriter.LayerRecord { name = "Группа 💗", section = 1 },
+            new PsdWriter.LayerRecord { name = "Группа 💗", section = 1, clipping = true },
         };
         var fill = new PsdWriter.LayerRecord { name = "Fill", adjustment = true, mask = true, openPixels = () => new Pixels() };
         fill.descriptors.Add(new KeyValuePair<string, PsdWriter.Descriptor>("SoCo", new PsdWriter.Descriptor()
             .Object("Clr ", new PsdWriter.Descriptor("RGBC").Number("Rd  ", 255).Number("Grn ", 64).Number("Bl  ", 32))));
         layers.Add(fill);
-        var outline = new PsdWriter.LayerRecord { name = "Stroke", fillOpacity = 0, openPixels = () => new Pixels() };
+        var outline = new PsdWriter.LayerRecord { name = "Stroke", clipping = true, fillOpacity = 0, openPixels = () => new Pixels() };
         outline.descriptors.Add(new KeyValuePair<string, PsdWriter.Descriptor>("lfx2", new PsdWriter.Descriptor()
             .Bool("masterFXSwitch", true).Unit("Scl ", "#Prc", 100).Object("FrFX", new PsdWriter.Descriptor("FrFX")
                 .Bool("enab", true).Enum("Styl", "FStl", "OutF").Enum("PntT", "FrFl", "SClr")
@@ -78,6 +78,14 @@ static class Program
             int layerInfoEnd = cursor + 8 + (int)Read32(bytes, cursor + 4);
             int layerCursor = cursor + 8;
             Check(unchecked((short)Read16(bytes, layerCursor)) == -9, "Merged alpha indicated by negative layer count");
+            int recordCursor = layerCursor + 2;
+            for (int recordIndex = 0; recordIndex < layers.Count; recordIndex++)
+            {
+                int channelCount = Read16(bytes, recordCursor + 16);
+                int blendStart = recordCursor + 18 + channelCount * 6;
+                Check(bytes[blendStart + 9] == (layers[recordIndex].clipping ? 1 : 0), "Native clipping flag");
+                recordCursor = blendStart + 16 + (int)Read32(bytes, blendStart + 12);
+            }
             Check(layerInfoEnd + 4 == layerEnd, "Global mask and layer section lengths");
             Check(Read16(bytes, layerEnd) == 1, "Merged image RLE");
             int scanline = layerEnd + 2 + 4 * 2 * 2;

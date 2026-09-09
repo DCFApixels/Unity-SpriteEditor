@@ -42,6 +42,7 @@ namespace DCFApixels.SpriteEditor
 
         public string layerName = "New Layer";
         public bool enabled = true;
+        public bool clippingMask;
         [Range(0f, 1f)] public float opacity = 1f;
         public BlendMode blendMode = BlendMode.Normal;
         public LayerColorRange colorRange;
@@ -107,6 +108,7 @@ namespace DCFApixels.SpriteEditor
             id = source.id;
             layerName = source.layerName;
             enabled = source.enabled;
+            clippingMask = source.clippingMask;
             opacity = source.opacity;
             blendMode = source.blendMode;
             colorRange = source.colorRange;

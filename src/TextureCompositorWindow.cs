@@ -725,6 +725,13 @@ namespace DCFApixels.SpriteEditor
                 menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
 
             menu.AddItem(new GUIContent("Group Selected"), false, () => GroupLayers(roots));
+            bool allClipped = targets.TrueForAll(target => target.clippingMask);
+            menu.AddItem(new GUIContent("Clipping Mask"), allClipped, () =>
+                ExecuteContextChange("Change Clipping Mask", () =>
+                {
+                    foreach (Layer target in targets)
+                        if (compositor.TryFindLayer(target, out _, out _)) target.clippingMask = !allClipped;
+                }));
             if (targets.Exists(target => target is GroupLayer))
             {
                 menu.AddSeparator(string.Empty);
@@ -800,7 +807,8 @@ namespace DCFApixels.SpriteEditor
                         throw new InvalidOperationException("The selected layer is no longer in the document.");
                     Texture2D texture = compositor.RasterizeLayer(layer, applyTransform);
                     textures.Add(texture);
-                    replacements.Add(DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform));
+                    replacements.Add(DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform,
+                        layer is GroupLayer group && compositor.IsGroupIsolatedByClipping(group)));
                 }
                 string undoName = applyTransform ? "Convert to Drawing (Apply Transform)" : "Convert to Drawing (Keep Transform)";
                 Undo.IncrementCurrentGroup();

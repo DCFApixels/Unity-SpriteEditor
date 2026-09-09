@@ -57,7 +57,7 @@ namespace DCFApixels.SpriteEditor
                     }
                     else
                         rendered = RenderStandalone(container, index, width, height, 1f, stack,
-                            applyTransform: true, applyModifiers: true, includeDisabled: true);
+                            applyTransform: true, applyModifiers: true, includeDisabled: true, applyClipping: false);
                 }
                 return rendered == null ? null : CopyToTexture2D(rendered, uploadToGpu: false);
             }

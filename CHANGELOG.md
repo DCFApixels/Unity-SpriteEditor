@@ -4,6 +4,14 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-09-09
+
+### Added
+
+- Non-destructive clipping masks for all layer types and groups, with shared-base chains that preserve soft alpha and base opacity.
+- Selection-wide Clipping Mask command, row markers and Alt-click toggling at sibling boundaries; participating groups are automatically isolated.
+- Clipping support in effect inputs, Drawing conversion, merging, native PSD records and the agent API, with documentation and opt-in regression checks.
+
 ## [0.6.4] - 2026-09-09
 
 ### Fixed

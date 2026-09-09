@@ -148,7 +148,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 
 | Applies to | Supported keys |
 |---|---|
-| All | `name` (string), `enabled` (boolean), `opacity` (0..1), `blend`, `colorRange` / `blendRange` (`Standard`, `HDR`), `swizzle` (four channel names in output RGBA order) |
+| All | `name` (string), `enabled` / `clippingMask` (boolean), `opacity` (0..1), `blend`, `colorRange` / `blendRange` (`Standard`, `HDR`), `swizzle` (four channel names in output RGBA order) |
 | Non-group | `filter` (`Source`, `Point`, `Bilinear`, `Trilinear`) |
 | Group | `compositing` (`PassThrough`, `Isolated`); ranges are active only when isolated |
 | File | `source` (already imported Texture2D path in Assets or Packages) |
@@ -167,9 +167,22 @@ For example, `"swizzle":["B","G","R","A"]` exchanges red and blue;
 It runs after FX in linear working space and before Color Range and layer blending. Output alpha
 remains bounded to 0..1. Source pixels and brush settings are unchanged.
 A nonidentity group swizzle forces isolated rendering. A saved Pass Through group uses Normal
-blending while swizzled, then resumes Pass Through when restored to identity. Explicitly isolated
+blending while swizzled, then resumes Pass Through when restored to identity and not participating in clipping. Explicitly isolated
 groups retain their chosen blend mode. `Describe` lists `swizzleChannels`; `Inspect` includes each
 layer's swizzle, including groups.
+
+`clippingMask` defaults to `false`. Set it to `true` on any layer or group to clip it to the
+first non-clipping sibling below; consecutive clipped siblings share that base. The relationship
+is positional, never crosses a parent group, and updates after moves. A hidden, transparent or
+missing base hides the chain. The base's alpha is preserved and its opacity is applied once.
+Participating groups are isolated temporarily (configured PassThrough uses Normal).
+`Inspect` reports `settings.clippingMask`, resolved `clippingBaseId` (null without a base), and
+`isolatedByClipping` on groups. Toggling clipping does not edit source pixels or drawing strokes.
+
+For an existing layer, use `{"op":"set","layer":"<id>","settings":{"clippingMask":true}}`
+in a batch with the current `expectedRevision`. Place its base first when constructing a new
+document, then add clipping layers above it. Clipped Overwrite replaces source-covered color
+without erasing base alpha; outside clipping it retains full RGBA overwrite behavior.
 
 Setting Drawing `colorRange:"HDR"` promotes storage. Standard does not downgrade it. The explicit operation
 `{"op":"compact","layer":"@drawing"}` clamps/quantizes to 8-bit and switches to Standard, with native Undo.

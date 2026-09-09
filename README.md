@@ -223,6 +223,25 @@ Groups default to **Pass Through**: children blend directly into the surrounding
 Choose another blend mode to isolate a group. Opacity applies to the whole group, including nested groups.
 Outline/SDF can use a group's own content as input. Group transforms and FX are not supported.
 
+### Clipping masks
+
+Enable **Clipping Mask** in a layer's context menu, or `Alt`-click the boundary above its base.
+The menu applies to all selected layers; the boundary gesture toggles just the upper sibling.
+A `↳` marker identifies clipped layers. Several consecutive clipped layers share the first
+non-clipped sibling below them, within the same group. Reordering changes that base.
+
+The chain keeps the base's alpha, including soft edges, and its opacity applies once to the
+whole result. Upper layers keep their colors, blend modes, opacity, transforms, FX and Swizzle;
+they cannot expand the base's coverage. Clipped **Overwrite** replaces color within its source
+coverage without erasing base alpha. A hidden, transparent or missing base hides the chain.
+Groups participating as a base or clipped layer are temporarily isolated; a configured
+Pass Through group uses Normal until it leaves the chain.
+
+Clipping is non-destructive and supports Undo/Redo, copies, conversion to Drawing, agent API,
+and native PSD clipping flags. Outline/SDF targets see clipped coverage. Merging bakes clipping;
+when the base is not selected, it supplies only the mask, not its color, so blend-dependent
+results can change as with other partial merges.
+
 <details>
 <summary>Layer names, opacity, and duplication details</summary>
 
@@ -544,8 +563,8 @@ Other asset types and sub-assets are protected.
 Each dropdown offers `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0` and `1`.
 The default `R G B A` leaves pixels unchanged. Remapping happens after FX in linear space,
 before Color Range and blending, and does not modify source pixels.
-A changed group swizzle isolates its children; restoring `R G B A` restores Pass Through
-if that was the group's selected mode. PSD export bakes swizzled pixels; for groups it also
+A changed group swizzle isolates its children. Restoring `R G B A` restores the selected Pass Through
+mode when no clipping chain requires isolation. PSD export bakes swizzled pixels; for groups it also
 preserves the original children in a hidden folder.
 
 The compositor uses **linear HDR** working pixels. Layer **Color Range** and **Blend Range** independently

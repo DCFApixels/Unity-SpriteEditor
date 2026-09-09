@@ -121,13 +121,13 @@ namespace DCFApixels.SpriteEditor
 
         private static void SetLayer(TextureCompositor document, Layer layer, JObject settings)
         {
-            Keys(settings, "name", "enabled", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
+            Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
                 "distancePosition", "inverted", "maxDistance", "gradient");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
-                bool valid = key == "name" || key == "enabled" || key == "opacity" || key == "blend" ||
+                bool valid = key == "name" || key == "enabled" || key == "clippingMask" || key == "opacity" || key == "blend" ||
                     key == "colorRange" || key == "blendRange" || key == "swizzle" || key == "compositing" && layer is GroupLayer || !layer.IsGroup &&
                     (key == "opacity" || key == "blend" || key == "filter" ||
                     key == "source" && layer is FileLayer || key == "brush" && layer is DrawingLayer ||
@@ -140,6 +140,7 @@ namespace DCFApixels.SpriteEditor
             }
             layer.layerName = Text(settings, "name", layer.layerName);
             layer.enabled = Bool(settings, "enabled", layer.enabled);
+            layer.clippingMask = Bool(settings, "clippingMask", layer.clippingMask);
             layer.opacity = Number(settings, "opacity", layer.opacity, 0f, 1f);
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
             layer.colorRange = Enum(settings, "colorRange", layer.colorRange);

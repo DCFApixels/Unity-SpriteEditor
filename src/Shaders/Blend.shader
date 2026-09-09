@@ -29,6 +29,7 @@ Shader "Hidden/TextureCompositor/Blend"
             float _Mode;
             float _Opacity;
             float _HdrBlend;
+            float _PreserveAlpha;
             float3 bound(float3 c) { return _HdrBlend > 0.5 ? c : saturate(c); }
 
             float3 ToSrgbBlendSpace(float3 c)
@@ -129,7 +130,10 @@ Shader "Hidden/TextureCompositor/Blend"
                 float4 source = tex2D(_Blend, input.uv);
                 float opacity = saturate(_Opacity);
 
-                // Alpha-only union used when a non-isolated group is an effect target.
+                if (_Mode == 102.0)
+                    return float4(backdrop.rgb, saturate(backdrop.a) * saturate(source.a) * opacity);
+
+                // Alpha-only union used when a group is an effect target.
                 if (_Mode == 100.0)
                 {
                     float alpha = 1.0 - (1.0 - saturate(backdrop.a)) * (1.0 - saturate(source.a * opacity));
@@ -145,9 +149,21 @@ Shader "Hidden/TextureCompositor/Blend"
                 }
 
                 if (opacity <= 0.0) return backdrop;
-                // True overwrite replaces RGBA. Opacity interpolates the complete pixel,
-                // so an opaque overwrite can also erase the backdrop with transparent pixels.
+                if (_PreserveAlpha > 0.5)
+                {
+                    // All members share the base alpha. Mixing their coverage by
+                    // source-over would incorrectly make soft base edges opaque.
+                    if (_Mode == 3 || backdrop.a <= 0.0 || source.a <= 0.0) return backdrop;
+                    bool hdr = _HdrBlend > 0.5;
+                    float3 b = hdr ? backdrop.rgb : ToSrgbBlendSpace(backdrop.rgb);
+                    float3 s = hdr ? source.rgb : ToSrgbBlendSpace(source.rgb);
+                    float3 color = bound(EvaluateBlend(bound(b), bound(s), _Mode));
+                    color = lerp(b, color, saturate(source.a * opacity));
+                    return float4(hdr ? color : FromSrgbBlendSpace(color), backdrop.a);
+                }
+
                 if (_Mode == 2)
+                    // Outside a clipping chain, overwrite replaces the complete RGBA pixel.
                     return lerp(backdrop, source, opacity);
 
                 // DMBlend.None is a true no-op for both color and alpha.

@@ -57,7 +57,8 @@ namespace DCFApixels.SpriteEditor
         internal bool UsesRepeatedPattern => repeatMode != PaintRepeatMode.None && !UsesMirrorPattern;
         internal float RadialStartAngleRadians => -Mathf.PI + Mathf.Repeat(radialStartAngle, 360f) * Mathf.Deg2Rad;
 
-        internal static DrawingLayer FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform)
+        internal static DrawingLayer FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform,
+            bool preserveGroupBlend = false)
         {
             DrawingLayer result = source is DrawingLayer drawing
                 ? JsonUtility.FromJson<DrawingLayer>(JsonUtility.ToJson(drawing))
@@ -67,8 +68,8 @@ namespace DCFApixels.SpriteEditor
             if (source.IsGroup)
             {
                 result.transform = TextureTransform.Default;
-                result.opacity = 1f;
-                result.blendMode = BlendMode.Normal;
+                result.opacity = preserveGroupBlend ? source.opacity : 1f;
+                result.blendMode = preserveGroupBlend ? ((GroupLayer)source).EffectiveBlendMode : BlendMode.Normal;
                 if (((GroupLayer)source).IsPassThrough)
                     result.colorRange = LayerColorRange.HDR;
                 result.swizzle = default;

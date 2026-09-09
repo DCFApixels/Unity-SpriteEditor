@@ -64,7 +64,7 @@ namespace DCFApixels.SpriteEditor
             if (layer is GroupLayer)
             {
                 LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
-                    colorSettingsExpanded, value => colorSettingsExpanded = value);
+                    colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
                 SpriteEditorUI.AddHelpBox(root,
                     "Pass Through lets children blend with the backdrop. Other blend modes isolate the group. " +
                     "Opacity applies to the whole group. Transform and modifiers remain per-child settings.",
@@ -96,7 +96,7 @@ namespace DCFApixels.SpriteEditor
                     break;
             }
             LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
-                colorSettingsExpanded, value => colorSettingsExpanded = value);
+                colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
             toolkitInspectorShaderFX = new LayerShaderFXView(layer, compositor, ApplyToolkitChange);
             root.Add(toolkitInspectorShaderFX);
         }

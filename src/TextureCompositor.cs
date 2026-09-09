@@ -198,13 +198,18 @@ namespace DCFApixels.SpriteEditor
             {
                 if (layer is GroupLayer group)
                 {
-                    rendered = GetClearRenderTexture(width, height);
-                    CompositeGroup(group, ref rendered, width, height, 1f, new HashSet<Layer>());
+                    if (IsGroupIsolatedByClipping(group))
+                        rendered = RenderClippingSource(container, index, width, height, 1f, new HashSet<Layer>());
+                    else
+                    {
+                        rendered = GetClearRenderTexture(width, height);
+                        CompositeGroup(group, ref rendered, width, height, 1f, new HashSet<Layer>());
+                    }
                 }
                 else
                 {
                     rendered = RenderStandalone(container, index, width, height, 1f, new HashSet<Layer>(),
-                        applyTransform: applyTransform, applyModifiers: false, includeDisabled: true);
+                        applyTransform: applyTransform, applyModifiers: false, includeDisabled: true, applyClipping: false);
                     if (rendered == null)
                         rendered = GetClearRenderTexture(width, height);
                 }
@@ -429,6 +434,18 @@ namespace DCFApixels.SpriteEditor
             for (int i = sourceLayers.Count - 1; i >= 0; i--)
             {
                 Layer layer = sourceLayers[i];
+                // A chain is resolved before selection/visibility filtering: a hidden base
+                // still owns (and hides) its clipping layers. Orphans never render freely.
+                if (layer == null || layer.clippingMask) continue;
+                int top = i;
+                while (top > 0 && sourceLayers[top - 1] != null && sourceLayers[top - 1].clippingMask) top--;
+                if (top < i)
+                {
+                    CompositeClippingChain(sourceLayers, i, top, ref accumulator,
+                        outputWidth, outputHeight, scaleMultiplier, renderStack, included);
+                    i = top;
+                    continue;
+                }
                 if (included != null && !included.Contains(layer))
                     continue;
                 if (layer == null || !layer.enabled || layer.opacity <= 0f ||
@@ -493,7 +510,8 @@ namespace DCFApixels.SpriteEditor
             HashSet<Layer> renderStack,
             bool applyTransform = true,
             bool applyModifiers = true,
-            bool includeDisabled = false)
+            bool includeDisabled = false,
+            bool applyClipping = true)
         {
             if (container == null || index < 0 || index >= container.Count)
                 return null;
@@ -532,7 +550,13 @@ namespace DCFApixels.SpriteEditor
                     applyTransform,
                     applyModifiers);
                 RenderTexture raw = layer.Render(context);
-                try { return FinishStage(raw, layer.colorRange == LayerColorRange.Standard, applyModifiers ? layer.swizzle : default); }
+                try
+                {
+                    raw = FinishStage(raw, layer.colorRange == LayerColorRange.Standard, applyModifiers ? layer.swizzle : default);
+                    if (applyClipping && raw != null && layer.clippingMask)
+                        ApplyClippingCoverage(ref raw, container, index, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                    return raw;
+                }
                 catch { if (raw != null) RenderTexture.ReleaseTemporary(raw); throw; }
             }
             finally
@@ -617,8 +641,12 @@ namespace DCFApixels.SpriteEditor
             if (group == null || !group.enabled)
                 return null;
 
+            renderStack ??= new HashSet<Layer>();
+            if (!renderStack.Add(group)) return null;
+
             RenderTexture previous = RenderTexture.active;
             RenderTexture mask = GetClearRenderTexture(outputWidth, outputHeight);
+            RenderTexture scaled = null;
             try
             {
                 // Render only the group's own content against transparency, never its external backdrop.
@@ -626,22 +654,27 @@ namespace DCFApixels.SpriteEditor
                 CompositeLayers(group.layers, ref mask, outputWidth, outputHeight, scaleMultiplier, renderStack);
                 if (!group.swizzle.IsIdentity)
                     mask = FinishStage(mask, group.colorRange == LayerColorRange.Standard, group.swizzle);
-                var scaled = GetClearRenderTexture(outputWidth, outputHeight);
+                if (group.clippingMask && TryFindLayer(group, out var container, out int index))
+                    ApplyClippingCoverage(ref mask, container, index, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                scaled = GetClearRenderTexture(outputWidth, outputHeight);
                 BlendInto(ref scaled, mask, (BlendMode)AlphaUnionMode, group.opacity);
-                RenderTexture.ReleaseTemporary(mask);
                 RenderTexture result = scaled;
-                mask = null;
+                scaled = null;
                 return result;
             }
             finally
             {
+                renderStack.Remove(group);
                 RenderTexture.active = previous;
                 if (mask != null)
                     RenderTexture.ReleaseTemporary(mask);
+                if (scaled != null)
+                    RenderTexture.ReleaseTemporary(scaled);
             }
         }
 
-        private void BlendInto(ref RenderTexture accumulator, RenderTexture layer, BlendMode mode, float opacity, LayerBlendRange blendRange = LayerBlendRange.Standard)
+        private void BlendInto(ref RenderTexture accumulator, RenderTexture layer, BlendMode mode, float opacity,
+            LayerBlendRange blendRange = LayerBlendRange.Standard, bool preserveAlpha = false)
         {
             RenderTexture previous = RenderTexture.active;
             Material material = SpriteEditorMaterials.Blend;
@@ -665,6 +698,7 @@ namespace DCFApixels.SpriteEditor
                     material.SetFloat("_Mode", (int)mode);
                     material.SetFloat("_HdrBlend", blendRange == LayerBlendRange.HDR ? 1f : 0f);
                     material.SetFloat("_Opacity", Mathf.Clamp01(opacity));
+                    material.SetFloat("_PreserveAlpha", preserveAlpha ? 1f : 0f);
                     Graphics.Blit(accumulator, result, material);
                 }
                 result = FinishStage(result);
@@ -765,6 +799,9 @@ namespace DCFApixels.SpriteEditor
                 return true;
             if (!visited.Add(candidate))
                 return false;
+
+            if (candidate.clippingMask && LayerDependsOn(GetClippingBase(candidate), soughtLayer, visited))
+                return true;
 
             if (candidate is GroupLayer group)
             {

@@ -80,6 +80,8 @@ namespace DCFApixels.SpriteEditor
                 Layer layer = layers[i];
                 if (layer == null) continue;
                 if (!visited.Add(layer)) throw new InvalidOperationException("The layer tree contains a cycle or shared layer instance.");
+                bool orphanClipping = layer.clippingMask && document.GetClippingBase(layer) == null;
+                if (orphanClipping) report.Note(layer, "Clipping has no base in this group; exported hidden to preserve its invisible result.");
                 if (layer is GroupLayer group)
                 {
                     report.groupCount++;
@@ -97,11 +99,11 @@ namespace DCFApixels.SpriteEditor
                             openPixels = () => new Pixels(document.RenderPsdGroupContent(group), document.width, document.height) });
                         report.Note(group, "Group Swizzle is baked into a child layer. Original children are preserved in the hidden Source Layers folder.");
                     }
-                    bool isolated = !group.IsPassThrough;
+                    bool isolated = !group.IsPassThrough || document.IsGroupIsolatedByClipping(group);
                     string groupBlend = isolated ? BlendKey(group.EffectiveBlendMode, out _) : "pass";
                     records.Add(new PsdWriter.LayerRecord { name = group.layerName, id = LayerId(group, ids), section = 1,
-                        visible = group.enabled && (!isolated || group.EffectiveBlendMode != BlendMode.None), opacity = ToByte(group.opacity),
-                        blend = isolated ? groupBlend : "norm", sectionBlend = groupBlend });
+                        visible = group.enabled && !orphanClipping && (!isolated || group.EffectiveBlendMode != BlendMode.None), opacity = ToByte(group.opacity),
+                        blend = isolated ? groupBlend : "norm", sectionBlend = groupBlend, clipping = group.clippingMask });
                     if (isolated && group.blendRange == LayerBlendRange.HDR)
                         report.Note(group, "HDR group blending is approximated in the 8-bit layer stack; merged pixels are clamped.");
                     continue;
@@ -114,7 +116,8 @@ namespace DCFApixels.SpriteEditor
                     name = layer.layerName,
                     id = LayerId(layer, ids),
                     opacity = ToByte(layer.opacity),
-                    visible = layer.enabled && layer.blendMode != BlendMode.None,
+                    clipping = layer.clippingMask,
+                    visible = layer.enabled && !orphanClipping && layer.blendMode != BlendMode.None,
                     blend = BlendKey(layer.blendMode, out bool approximate),
                     openPixels = () => new Pixels(document.RenderPsdPixels(layer), document.width, document.height)
                 };

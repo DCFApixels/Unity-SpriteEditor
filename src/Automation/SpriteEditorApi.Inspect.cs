@@ -28,6 +28,7 @@ namespace DCFApixels.SpriteEditor
             result["colorRanges"] = new JArray(System.Enum.GetNames(typeof(LayerColorRange)));
             result["blendRanges"] = new JArray(System.Enum.GetNames(typeof(LayerBlendRange)));
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
+            result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
             result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf");
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
@@ -87,6 +88,10 @@ namespace DCFApixels.SpriteEditor
                     JObject settings = new JObject { ["name"] = layer.layerName, ["enabled"] = layer.enabled };
                     var entry = new JObject { ["id"] = layer.Id, ["type"] = TypeName(layer), ["parent"] = parent, ["index"] = i, ["settings"] = settings };
                     settings["opacity"] = layer.opacity;
+                    settings["clippingMask"] = layer.clippingMask;
+                    entry["clippingBaseId"] = document.GetClippingBase(layer)?.Id;
+                    if (layer is GroupLayer clippingGroup)
+                        entry["isolatedByClipping"] = document.IsGroupIsolatedByClipping(clippingGroup);
                     settings["blend"] = layer.blendMode.ToString();
                     settings["colorRange"] = layer.colorRange.ToString();
                     settings["blendRange"] = layer.blendRange.ToString();

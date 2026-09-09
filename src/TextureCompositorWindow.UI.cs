@@ -583,6 +583,12 @@ namespace DCFApixels.SpriteEditor
             });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
+                if (evt.button == 0 && evt.altKey && TryToggleClippingAtBoundary(row, layer, evt.position))
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                    return;
+                }
                 if (evt.button == 1)
                 {
                     evt.PreventDefault();
@@ -647,13 +653,41 @@ namespace DCFApixels.SpriteEditor
             return element == row;
         }
 
-        private static VisualElement CreateLayerNameCell(VisualElement row, int depth)
+        private VisualElement CreateLayerNameCell(VisualElement row, int depth, Layer layer)
         {
             var cell = new VisualElement();
             cell.AddToClassList("sprite-editor-layer-name-cell");
             cell.style.paddingLeft = depth * ToolkitLayerIndent;
+            var clipping = new Label("↳") { pickingMode = PickingMode.Ignore };
+            clipping.style.width = 12f;
+            clipping.style.flexShrink = 0f;
+            clipping.style.unityTextAlign = TextAnchor.MiddleCenter;
+            cell.Add(clipping);
+            toolkitLayerBindings.Add(() =>
+            {
+                clipping.style.display = layer.clippingMask ? DisplayStyle.Flex : DisplayStyle.None;
+                Layer basis = compositor.GetClippingBase(layer);
+                cell.tooltip = !layer.clippingMask ? string.Empty : basis == null
+                    ? "Clipping Mask: no base below this layer" : "Clipping Mask → " + basis.layerName;
+            });
             row.Add(cell);
             return cell;
+        }
+
+        private bool TryToggleClippingAtBoundary(VisualElement row, Layer layer, Vector3 position)
+        {
+            if (compositor == null || !compositor.TryFindLayer(layer, out var container, out int index)) return false;
+            float y = row.WorldToLocal(position).y;
+            if (y >= row.layout.height - 3f && layer is GroupLayer expanded &&
+                GetGroupExpanded(expanded) && expanded.layers.Count > 0) return false;
+            // Both sides of the boundary target its upper sibling. Group children
+            // are separate containers, so a boundary never clips across a folder.
+            int targetIndex = y <= 3f ? index - 1 : y >= row.layout.height - 3f ? index : -1;
+            if (targetIndex < 0 || targetIndex + 1 >= container.Count) return false;
+            Layer target = container[targetIndex];
+            if (target == null) return false;
+            ExecuteContextChange("Change Clipping Mask", () => target.clippingMask = !target.clippingMask);
+            return true;
         }
 
         private void ToggleLayerGroup(GroupLayer group)
@@ -671,7 +705,7 @@ namespace DCFApixels.SpriteEditor
             VisualElement row = CreateToolkitLayerRow(group, depth);
 
             row.Add(CreateLayerVisibilityButton(group));
-            VisualElement nameCell = CreateLayerNameCell(row, depth);
+            VisualElement nameCell = CreateLayerNameCell(row, depth, group);
             var foldout = new VisualElement { focusable = true, tooltip = "Expand or collapse group; drag to move" };
             foldout.AddToClassList("sprite-editor-group-foldout");
             foldout.EnableInClassList("sprite-editor-layer-menu-button--light", !EditorGUIUtility.isProSkin);
@@ -720,7 +754,7 @@ namespace DCFApixels.SpriteEditor
             VisualElement row = CreateToolkitLayerRow(layer, depth);
 
             row.Add(CreateLayerVisibilityButton(layer));
-            VisualElement nameCell = CreateLayerNameCell(row, depth);
+            VisualElement nameCell = CreateLayerNameCell(row, depth, layer);
 
             Image thumbnail = new Image
             {
