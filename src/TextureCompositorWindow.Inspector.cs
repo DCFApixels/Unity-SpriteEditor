@@ -94,6 +94,10 @@ namespace DCFApixels.SpriteEditor
                     SDFLayerEditorWindow.BuildFields(root, sdf, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
+                case NormalMapLayer normalMap:
+                    NormalMapLayerEditorWindow.BuildFields(root, normalMap, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                        AddToolkitInspectorEffectTarget);
+                    break;
             }
             LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
                 colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);

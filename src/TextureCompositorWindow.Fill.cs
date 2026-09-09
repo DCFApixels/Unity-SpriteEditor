@@ -140,8 +140,10 @@ namespace DCFApixels.SpriteEditor
                 }
                 int seed = Mathf.Clamp(Mathf.FloorToInt(uv.y * height), 0, height - 1) * width +
                     Mathf.Clamp(Mathf.FloorToInt(uv.x * width), 0, width - 1);
+                LimitFillToArea(layer, valid, width, height);
                 if (!HdrFloodFillUtility.Fill(source, reference, valid, output, width, height, seed, color,
                     paintSettings.fillTolerance, paintSettings.fillExpand, paintSettings.fillAntialias, paintSettings.fillContiguous, layer.colorRange == LayerColorRange.Standard)) return true;
+                MaskFillToArea(layer, source, output, width, height);
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName("Fill Drawing Layer");

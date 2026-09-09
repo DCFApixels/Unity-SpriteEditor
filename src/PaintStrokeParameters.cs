@@ -14,6 +14,7 @@ namespace DCFApixels.SpriteEditor
         internal readonly bool WrapCanvas;
         internal readonly bool PixelPerfect;
         internal readonly PencilShape Shape;
+        internal readonly Texture SelectionMask;
 
         internal static Vector2 SnapPencilCenter(Vector2 uv, int width, int height, float size)
         {
@@ -22,7 +23,8 @@ namespace DCFApixels.SpriteEditor
                 (Mathf.Floor(uv.y * height + 0.5f - offset) + offset) / height);
         }
 
-        internal PaintStrokeParameters WithCanvasWrap() => new PaintStrokeParameters(this);
+        internal PaintStrokeParameters WithCanvasWrap() => new PaintStrokeParameters(this, true, SelectionMask);
+        internal PaintStrokeParameters WithSelectionMask(Texture mask) => new PaintStrokeParameters(this, WrapCanvas, mask);
 
         internal bool OverlapsCanvas(Vector2 center, int width, int height)
         {
@@ -33,14 +35,15 @@ namespace DCFApixels.SpriteEditor
                    center.y + radiusY > 0f && center.y - radiusY < 1f;
         }
 
-        private PaintStrokeParameters(PaintStrokeParameters source)
+        private PaintStrokeParameters(PaintStrokeParameters source, bool wrap, Texture mask)
         {
             Color = source.Color;
             Size = source.Size;
             Hardness = source.Hardness;
             SpacingPixels = source.SpacingPixels;
             Erase = source.Erase;
-            WrapCanvas = true;
+            WrapCanvas = wrap;
+            SelectionMask = mask;
             PixelPerfect = source.PixelPerfect;
             Shape = source.Shape;
         }
@@ -55,6 +58,7 @@ namespace DCFApixels.SpriteEditor
                 DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing));
             Erase = erase;
             WrapCanvas = false;
+            SelectionMask = null;
             PixelPerfect = pixelPerfect;
             Shape = shape;
         }

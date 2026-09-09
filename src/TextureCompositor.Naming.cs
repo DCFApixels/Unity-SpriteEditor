@@ -28,6 +28,7 @@ namespace DCFApixels.SpriteEditor
                 case GradientLayer _: return "Gradient";
                 case OutlineLayer _: return "Outline";
                 case SDFLayer _: return "SDF";
+                case NormalMapLayer _: return "Normal Map";
                 default: return ObjectNames.NicifyVariableName(layer.GetType().Name);
             }
         }

@@ -90,6 +90,7 @@ namespace DCFApixels.SpriteEditor
             root.style.flexGrow = 1f;
             root.style.backgroundColor = SpriteEditorUI.PanelColor;
             root.RegisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
+            RegisterAreaSelectionCommands(root);
             root.RegisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.RegisterCallback<DragExitedEvent>(OnToolkitDragExited);
             root.RegisterCallback<PointerDownEvent>(OnOpacityPointerDown, TrickleDown.TrickleDown);
@@ -217,6 +218,7 @@ namespace DCFApixels.SpriteEditor
             BuildPreviewTransformTool();
             previewEyedropper = new PreviewEyedropperManipulator(this);
             toolkitPreviewCanvas.AddManipulator(previewEyedropper);
+            BuildAreaSelectionTools();
             toolkitPreviewCanvas.RegisterCallback<PointerDownEvent>(OnPreviewPointerDown);
             toolkitPreviewCanvas.RegisterCallback<PointerMoveEvent>(OnPreviewPointerMove);
             toolkitPreviewCanvas.RegisterCallback<PointerUpEvent>(OnPreviewPointerUp);
@@ -583,6 +585,7 @@ namespace DCFApixels.SpriteEditor
             });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
+                if (TrySelectLayerAlpha(row, layer, evt)) return;
                 if (evt.button == 0 && evt.altKey && TryToggleClippingAtBoundary(row, layer, evt.position))
                 {
                     evt.PreventDefault();
@@ -667,7 +670,7 @@ namespace DCFApixels.SpriteEditor
             {
                 clipping.style.display = layer.clippingMask ? DisplayStyle.Flex : DisplayStyle.None;
                 Layer basis = compositor.GetClippingBase(layer);
-                cell.tooltip = !layer.clippingMask ? string.Empty : basis == null
+                cell.tooltip = !layer.clippingMask ? "Ctrl-click the thumbnail to select layer alpha." : basis == null
                     ? "Clipping Mask: no base below this layer" : "Clipping Mask → " + basis.layerName;
             });
             row.Add(cell);
@@ -706,7 +709,7 @@ namespace DCFApixels.SpriteEditor
 
             row.Add(CreateLayerVisibilityButton(group));
             VisualElement nameCell = CreateLayerNameCell(row, depth, group);
-            var foldout = new VisualElement { focusable = true, tooltip = "Expand or collapse group; drag to move" };
+            var foldout = new VisualElement { focusable = true, tooltip = "Expand or collapse group; drag to move; Ctrl-click to select group alpha" };
             foldout.AddToClassList("sprite-editor-group-foldout");
             foldout.EnableInClassList("sprite-editor-layer-menu-button--light", !EditorGUIUtility.isProSkin);
             foldout.Add(new Label(GetGroupExpanded(group) ? "▼" : "▶") { pickingMode = PickingMode.Ignore });
@@ -1230,6 +1233,8 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();
             AddPreviewZoomSettings();
+            AddAreaSelectionSettings(PreviewTool.RectangleSelect);
+            AddAreaSelectionSettings(PreviewTool.PolygonSelect);
 
             VisualElement emptyRow = SpriteEditorUI.CreateToolbar();
             toolkitHeaderBindings.Add(() => emptyRow.EnableInClassList("sprite-editor-tool-options--hidden",
@@ -1364,6 +1369,8 @@ namespace DCFApixels.SpriteEditor
             RefreshPreviewQualityControl();
             RefreshPreviewToolToolbar();
             RefreshPreviewTransformTool();
+            GetAreaSelection();
+            areaSelectionOverlay?.Invalidate();
             bool transforming = IsPreviewTransformEnabled;
             toolkitPreviewCanvas.SetTiled(tiledPreview);
             toolkitPreviewCanvas.SetPencilCursor(previewTool == PreviewTool.Pencil);
@@ -1390,6 +1397,12 @@ namespace DCFApixels.SpriteEditor
                 else if (IsPreviewFillEnabled)
                 {
                     toolkitPreviewFooter.text = "LMB fill • Alt pick color • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
+                }
+                else if (IsAreaSelectionTool)
+                {
+                    toolkitPreviewFooter.text = previewTool == PreviewTool.RectangleSelect
+                        ? "Drag select • Shift add • Alt subtract • Ctrl+C copy • Ctrl+V paste • Ctrl+D deselect"
+                        : "Click vertices • Enter/double-click close • Backspace remove vertex • Esc cancel • Ctrl+D deselect";
                 }
                 else if (IsPreviewBrushEnabled)
                 {
@@ -1638,6 +1651,8 @@ namespace DCFApixels.SpriteEditor
                 ResetOpacityEntry();
                 return;
             }
+
+            if (HandleAreaSelectionKey(evt)) return;
 
             if (evt.keyCode == KeyCode.LeftAlt || evt.keyCode == KeyCode.RightAlt)
             {

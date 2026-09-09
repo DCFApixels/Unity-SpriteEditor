@@ -45,7 +45,7 @@ texture in one asset — export a separate image only when you need one.
 | Painting | Brush and eraser, straight lines, flood fill, and RGBA channel masks. |
 | Patterns | Rotatable mirror symmetry, rows, grids, and radial repetition with boundary clipping. |
 | Transforms | On-canvas handles, movable snapping pivot, source aspect ratio, tiling, and filtering. |
-| Effects | Outline, SDF, blend modes, and embedded Shader FX with editable HLSL. |
+| Effects | Outline, SDF, Normal Map, blend modes, and embedded Shader FX with editable HLSL. |
 | Output | Editable documents with Texture2D/Sprite output; layered PSD, PNG, JPEG, TGA, EXR, and Texture2D export. |
 | Automation | C# and JSON APIs, optional CLI commands, and an agent guide. |
 
@@ -113,6 +113,8 @@ The left toolbar selects the editing tool:
 | :--- | :---: | :--- |
 | No Tool | `V` | View the composition without editing handles or painting guides. Used when no saved tool is available. |
 | Transform | `T` | Move, resize, and rotate a non-group layer. |
+| Rectangle Select | `M` | Drag a rectangular pixel selection. |
+| Polygonal Lasso | `L` | Click vertices to select a polygonal area. |
 | Brush | `B` | Paint or erase on a Drawing layer. |
 | Pencil | `P` | Draw crisp pixels with a Circle, Square or Diamond tip. |
 | Fill | `G` | Fill a region or matching colors on a Drawing layer. |
@@ -176,7 +178,7 @@ Unity settings or docking.
 <a id="layers"></a>
 ## Layers & groups
 
-**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Group.
+**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Group.
 
 Drag textures from Project into Layers to place them between rows or inside a group.
 Dropping onto the Preview adds File layers at the top of the root list.
@@ -223,7 +225,33 @@ Groups default to **Pass Through**: children blend directly into the surrounding
 Choose another blend mode to isolate a group. Opacity applies to the whole group, including nested groups.
 Outline/SDF can use a group's own content as input. Group transforms and FX are not supported.
 
-### Clipping masks
+### Area selection and clipboard
+
+**Rectangle Select** (`M`) and **Polygonal Lasso** (`L`) share a canvas-space selection.
+For the lasso, click vertices and finish with `Enter`, a double-click, the first vertex, or **Close**.
+`Backspace` / RMB removes the last vertex; `Esc` cancels the unfinished shape. The header offers
+Replace, Add, Subtract and Intersect; `Shift` adds, `Alt` subtracts, and `Shift+Alt` intersects.
+
+- `Ctrl`-click a layer thumbnail (the foldout icon for a group) to select its alpha, including
+  transform, FX, Swizzle and clipping. Outer visibility/opacity are ignored; a group's child
+  visibility/opacity are retained. `Ctrl`-click elsewhere on a row still toggles layer multi-selection.
+- The active area limits Brush, Pencil, erasing and Fill. Switching layers or tools keeps it.
+  `Ctrl+A` selects all, `Ctrl+D` deselects, and `Ctrl+Shift+I` inverts. An empty active area blocks painting.
+- `Ctrl+C` copies the selected area of the active layer/group with its rendered settings;
+  `Ctrl+Shift+C` copies the visible composition. Without an area selection, copying uses the whole canvas.
+- `Ctrl+V` adds an independent Drawing layer at the top of the root stack, with identity transform
+  and HDR pixels. Position is preserved for equal-sized canvases; different-sized canvases center the
+  copied region and clip to the destination. Paste supports Undo/Redo and does not reapply the current mask.
+
+The clipboard is internal to Sprite Editor, shared between its windows until script reload/editor exit;
+it is not the system image clipboard. Copy ignores preview exposure, channels and Live Quality.
+Area selection is temporary window state, not an asset setting or Undo step: it clears on document
+switch, canvas resize, window close or script reload. It does not restrict independent agent API strokes.
+It supports up to 16,777,216 canvas pixels. Tiled preview wraps selection coverage at canvas edges;
+very complex contours use display-only LOD, and polygon gestures are limited to 256 vertices and
+16 repeated canvas heights. Painting still uses the full-resolution mask.
+
+### Layer clipping masks
 
 Enable **Clipping Mask** in a layer's context menu, or `Alt`-click the boundary above its base.
 The menu applies to all selected layers; the boundary gesture toggles just the upper sibling.
@@ -246,7 +274,7 @@ results can change as with other partial merges.
 <summary>Layer names, opacity, and duplication details</summary>
 
 Each type has an independent document-local name counter: `Layer n` for Drawing, `File n`,
-`Color Fill n`, `Gradient n`, `Outline n`, `SDF n`, and `Group n`.
+`Color Fill n`, `Gradient n`, `Outline n`, `SDF n`, `Normal Map n`, and `Group n`.
 Duplicates retain the full name and append ` Copy n`, using a separate shared copy counter.
 Deleted numbers are not reused.
 
@@ -446,6 +474,33 @@ Group inputs combine visible descendants' alpha without isolating their color bl
 Available distance metrics are **exact Euclidean EDT**, approximate Euclidean, Manhattan, and Chebyshev.
 Width, softness, and maximum distance use output pixels; processing uses Burst and Native Collections.
 
+### Normal Map
+
+Add a **Normal Map** layer and select **Previous** or a **Specific** source, including drag-and-drop
+onto Target. Groups supply their own color composition against transparency, without the external
+backdrop. The source remains editable; conversion to Drawing or PSD export bakes the generated pixels.
+
+- **Height Map** converts luminance, R/G/B, alpha or maximum RGB into tangent-space normals.
+- **Texture** estimates relief from three brightness bands. Tune fine/medium/large detail,
+  their radii, and Light Removal to reduce broad lighting gradients. This is an approximation,
+  not recovered geometry; shadows and painted color differences can become relief.
+- Adjust strength, black/white levels, gamma, height inversion, smoothing, Sobel/Scharr/central
+  derivatives, Flip X/Y, edge sampling (Clamp/Repeat/Mirror), and opaque/source alpha.
+  Ignore Transparent prevents hidden RGB from producing fringes; Alpha height intentionally
+  treats transparency as height. Radii and strength use full-resolution canvas pixels.
+- **Output → Height** shows the reconstructed height for tuning; return to **Normal** for export.
+- **Input Space → Color Values** uses displayed RGB. Use **Linear** for data textures imported
+  without sRGB. The Alpha channel is unaffected by this setting.
+- Default **Encoding → Packed Color** preserves packed normal values in PNG/TGA/PSD and the usual
+  preview. Use **Linear Data** for raw vector data in linear EXR or Texture2D output; its color
+  preview will look brighter. A flat normal is `(0.5, 0.5, 1)` in the intended output encoding.
+
+For a usable normal texture, leave Normal blend, full opacity, identity Swizzle and no color FX
+on the result. Ordinary compositing does not renormalize mixed normals; the layer Transform moves
+the generated image without reorienting its vectors. Import an exported PNG/TGA as **Normal Map**,
+with grayscale conversion disabled. Existing import settings are never changed automatically.
+See [normal-map API settings](Documentation~/AgentAPI.md#normal-map-settings).
+
 ### Blending
 
 RGB blend functions apply where layers overlap; non-overlapping regions retain the present layer's
@@ -588,7 +643,7 @@ See [PSD export details and API](Documentation~/PsdExport.md).
 <a id="shortcuts"></a>
 ## Shortcuts
 
-Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `P` — Pencil · `G` — Fill · `Z` — Zoom.
+Tool keys: `V` — No Tool · `T` — Transform · `M` — Rectangle Select · `L` — Polygonal Lasso · `B` — Brush · `P` — Pencil · `G` — Fill · `Z` — Zoom.
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -602,7 +657,12 @@ Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `P` — Penc
 | `RMB` | Temporarily erase with Brush. |
 | `Shift`-drag / `Shift`-click with Brush | Axis-aligned line / connection from the previous endpoint. |
 | `0`–`9` or numpad | Set active-layer opacity; quick pairs enter a percentage. |
-| `Ctrl`-click / `Shift`-click on layers | Toggle a layer / select a range. |
+| `Ctrl`-click / `Shift`-click on layer rows, outside thumbnails | Toggle a layer / select a range. |
+| `Ctrl`-click on a layer thumbnail or group arrow | Select the layer/group alpha. |
+| `Ctrl+C` / `Ctrl+Shift+C` / `Ctrl+V` | Copy the active layer / copy merged / paste on a new Drawing layer. |
+| `Ctrl+A` / `Ctrl+D` / `Ctrl+Shift+I` | Select all / deselect / invert the area selection. |
+| `Shift` / `Alt` / `Shift+Alt` with a selection tool | Add / subtract / intersect. |
+| `Enter` / `Backspace` / `Escape` with Polygonal Lasso | Close / remove the last vertex / cancel the unfinished polygon. |
 | `Ctrl` during pivot drag | Disable snapping. |
 | `Alt`-click with Zoom | Zoom out. |
 | `MMB`-drag / mouse wheel with any tool | Pan / zoom around the cursor. |

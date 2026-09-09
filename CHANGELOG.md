@@ -4,6 +4,14 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-09-10
+
+### Added
+
+- Normal Map targeted layer with GPU height/texture generation, multiscale detail controls, transparent-aware smoothing, derivative/edge modes, export-aware encoding and complete agent API settings.
+- Rectangle Select and Polygonal Lasso tools with canvas-space coverage, add/subtract/intersect operations, alpha selection from layer thumbnails and tiled-canvas support.
+- Selection-masked brush, pencil, eraser and fill; an internal HDR clipboard with active-layer/merged copy and undoable paste to a new Drawing layer.
+
 ## [0.6.5] - 2026-09-09
 
 ### Added

@@ -361,7 +361,7 @@ namespace DCFApixels.SpriteEditor
                 parameters.WrapCanvas,
                 transform,
                 colorRange == LayerColorRange.Standard,
-                HdrUtility.IsHdr(pixels));
+                HdrUtility.IsHdr(pixels), parameters.SelectionMask);
         }
 
         private void BuildPencilSegment(Vector2 from, Vector2 to, int width, int height,
@@ -965,7 +965,7 @@ namespace DCFApixels.SpriteEditor
                 int outputHeight,
                 Vector2 patternCenter,
                 bool wrapCanvas,
-                TextureTransform transform, bool standard, bool hdrStorage)
+                TextureTransform transform, bool standard, bool hdrStorage, Texture selectionMask = null)
             {
                 if (target == null || stamps == null || stamps.Count == 0)
                     return;
@@ -983,6 +983,17 @@ namespace DCFApixels.SpriteEditor
                 material.SetFloat("_PencilShape", pixelPerfect ? (int)shape + 1f : 0f);
                 material.SetVector(CanvasSizeId, new Vector4(outputWidth, outputHeight, 0f, 0f));
                 material.SetVector(PatternCenterId, new Vector4(patternCenter.x, patternCenter.y, 0f, 0f));
+                material.SetTexture("_SelectionMask", selectionMask != null ? selectionMask : Texture2D.whiteTexture);
+                material.SetFloat("_UseSelection", selectionMask != null ? 1f : 0f);
+                material.SetFloat("_SelectionWrap", wrapCanvas ? 1f : 0f);
+                if (selectionMask != null)
+                {
+                    Vector2 origin = TiledCanvasUtility.ToDocument(Vector2.zero, transform, outputWidth, outputHeight);
+                    Vector2 dx = TiledCanvasUtility.ToDocument(Vector2.right, transform, outputWidth, outputHeight) - origin;
+                    Vector2 dy = TiledCanvasUtility.ToDocument(Vector2.up, transform, outputWidth, outputHeight) - origin;
+                    material.SetVector("_SelectionToDocumentX", new Vector4(dx.x, dy.x, origin.x, 0f));
+                    material.SetVector("_SelectionToDocumentY", new Vector4(dx.y, dy.y, origin.y, 0f));
+                }
                 if (wrapCanvas)
                 {
                     TiledCanvasUtility.GetPeriodBasis(transform, outputWidth, outputHeight, out Vector2 u, out Vector2 v);

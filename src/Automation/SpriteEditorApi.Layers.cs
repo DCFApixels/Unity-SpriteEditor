@@ -21,6 +21,7 @@ namespace DCFApixels.SpriteEditor
                     "file" => new FileLayer(), "drawing" => new DrawingLayer(), "group" => new GroupLayer(),
                     "color" => new ColorFillLayer(), "gradient" => new GradientLayer(),
                     "outline" => new OutlineLayer(), "sdf" => new SDFLayer(),
+                    "normalMap" => new NormalMapLayer(),
                     _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
                 };
                 string alias = Text(operation, "as");
@@ -65,7 +66,7 @@ namespace DCFApixels.SpriteEditor
                     break;
                 case "target":
                     Keys(operation, "op", "layer", "input", "target");
-                    Require(layer is TargetedLayerEffect, "target requires an Outline or SDF layer.");
+                    Require(layer is TargetedLayerEffect, "target requires an Outline, SDF or Normal Map layer.");
                     var effect = (TargetedLayerEffect)layer;
                     effect.inputMode = Enum(operation, "input", EffectInputMode.Specific);
                     Require(effect.inputMode != EffectInputMode.Previous || operation["target"] == null, "Previous input does not take a target.");
@@ -123,7 +124,7 @@ namespace DCFApixels.SpriteEditor
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
-                "distancePosition", "inverted", "maxDistance", "gradient");
+                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
@@ -132,7 +133,8 @@ namespace DCFApixels.SpriteEditor
                     (key == "opacity" || key == "blend" || key == "filter" ||
                     key == "source" && layer is FileLayer || key == "brush" && layer is DrawingLayer ||
                     key == "color" && (layer is ColorFillLayer || layer is OutlineLayer) ||
-                    key == "metric" && layer is TargetedLayerEffect ||
+                    key == "metric" && (layer is SDFLayer || layer is OutlineLayer) ||
+                    key == "normalMap" && layer is NormalMapLayer ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition") && layer is OutlineLayer ||
                     (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer is SDFLayer ||
                     key == "gradient" && (layer is GradientLayer || layer is SDFLayer));
@@ -172,6 +174,8 @@ namespace DCFApixels.SpriteEditor
                 file.AssignSourceTexture(texture, document);
             }
             if (layer is ColorFillLayer fill && settings["color"] != null) fill.color = Color(settings["color"]);
+            if (layer is NormalMapLayer normal && settings["normalMap"] != null)
+                SetNormalMap(normal, Obj(settings["normalMap"], "normalMap"));
             if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(drawing, Obj(settings["brush"], "brush"));
             if (layer is OutlineLayer outline)
             {

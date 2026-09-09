@@ -578,13 +578,13 @@ namespace DCFApixels.SpriteEditor
         {
             if (effect.inputMode != EffectInputMode.Specific)
             {
-                return RenderPreviousInput(
+                return RenderPreviousEffectInput(
                     container,
                     index,
                     outputWidth,
                     outputHeight,
                     scaleMultiplier,
-                    renderStack);
+                    renderStack, effect is NormalMapLayer);
             }
 
             Layer target = FindLayer(effect.TargetLayerId);
@@ -594,7 +594,7 @@ namespace DCFApixels.SpriteEditor
                 return null;
 
             if (target is GroupLayer group)
-                return RenderGroupAlpha(group, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, effect is NormalMapLayer);
             if (!TryFindLayer(target, out List<Layer> targetContainer, out int targetIndex))
                 return null;
 
@@ -608,12 +608,17 @@ namespace DCFApixels.SpriteEditor
         }
 
         private RenderTexture RenderPreviousInput(
+            List<Layer> container, int currentIndex, int outputWidth, int outputHeight,
+            float scaleMultiplier, HashSet<Layer> renderStack) => RenderPreviousEffectInput(
+                container, currentIndex, outputWidth, outputHeight, scaleMultiplier, renderStack, false);
+
+        private RenderTexture RenderPreviousEffectInput(
             List<Layer> container,
             int currentIndex,
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
-            HashSet<Layer> renderStack)
+            HashSet<Layer> renderStack, bool preserveGroupColor)
         {
             int previousIndex = currentIndex + 1;
             if (previousIndex >= container.Count)
@@ -621,7 +626,7 @@ namespace DCFApixels.SpriteEditor
 
             Layer previous = container[previousIndex];
             if (previous is GroupLayer group)
-                return RenderGroupAlpha(group, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, preserveGroupColor);
             return RenderStandalone(
                 container,
                 previousIndex,
@@ -632,11 +637,15 @@ namespace DCFApixels.SpriteEditor
         }
 
         private RenderTexture RenderGroupAlpha(
+            GroupLayer group, int outputWidth, int outputHeight, float scaleMultiplier,
+            HashSet<Layer> renderStack) => RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, false);
+
+        private RenderTexture RenderGroupEffectInput(
             GroupLayer group,
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
-            HashSet<Layer> renderStack)
+            HashSet<Layer> renderStack, bool preserveColor)
         {
             if (group == null || !group.enabled)
                 return null;
@@ -652,12 +661,13 @@ namespace DCFApixels.SpriteEditor
                 // Render only the group's own content against transparency, never its external backdrop.
                 // This also respects nested opacity and alpha-replacing blend modes.
                 CompositeLayers(group.layers, ref mask, outputWidth, outputHeight, scaleMultiplier, renderStack);
-                if (!group.swizzle.IsIdentity)
+                if (preserveColor || !group.swizzle.IsIdentity)
                     mask = FinishStage(mask, group.colorRange == LayerColorRange.Standard, group.swizzle);
                 if (group.clippingMask && TryFindLayer(group, out var container, out int index))
                     ApplyClippingCoverage(ref mask, container, index, outputWidth, outputHeight, scaleMultiplier, renderStack);
                 scaled = GetClearRenderTexture(outputWidth, outputHeight);
-                BlendInto(ref scaled, mask, (BlendMode)AlphaUnionMode, group.opacity);
+                BlendInto(ref scaled, mask, preserveColor ? BlendMode.Normal : (BlendMode)AlphaUnionMode,
+                    group.opacity, preserveColor ? LayerBlendRange.HDR : LayerBlendRange.Standard);
                 RenderTexture result = scaled;
                 scaled = null;
                 return result;

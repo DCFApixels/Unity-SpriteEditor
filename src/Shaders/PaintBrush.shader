@@ -46,6 +46,9 @@ Shader "Hidden/TextureCompositor/PaintBrush"
 
             float4 _Color;
             sampler2D _Backdrop;
+            sampler2D _SelectionMask;
+            float _UseSelection, _SelectionWrap;
+            float3 _SelectionToDocumentX, _SelectionToDocumentY;
             float _PrepareStandard;
             float _Hardness;
             float _PencilShape;
@@ -198,6 +201,14 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                     if (radius > 1.0) discard;
                     float inner = min(saturate(_Hardness), 0.9999);
                     coverage = 1.0 - smoothstep(inner, 1.0, radius);
+                }
+                if (_UseSelection > 0.5)
+                {
+                    float3 source = float3(input.canvasUv, 1.0);
+                    float2 uv = float2(dot(source, _SelectionToDocumentX), dot(source, _SelectionToDocumentY));
+                    if (_SelectionWrap > 0.5) uv = frac(uv);
+                    else if (any(uv < 0.0) || any(uv >= 1.0)) discard;
+                    coverage *= tex2D(_SelectionMask, uv).r;
                 }
                 float alpha = saturate(_Color.a * coverage);
                 if (alpha <= 0.0) discard;

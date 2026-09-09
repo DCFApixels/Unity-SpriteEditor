@@ -30,7 +30,8 @@ namespace DCFApixels.SpriteEditor
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
-            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf");
+            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf", "normalMap");
+            result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayer());
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
             result["tilingModes"] = new JArray(System.Enum.GetNames(typeof(TransformTilingMode)));
             result["filterModes"] = new JArray(System.Enum.GetNames(typeof(LayerFilterMode)));
@@ -144,6 +145,7 @@ namespace DCFApixels.SpriteEditor
                         settings["maxDistance"] = sdf.maxDistanceNormalization;
                         entry["gradientKeys"] = GradientSnapshot(sdf.gradient);
                     }
+                    if (layer is NormalMapLayer normal) settings["normalMap"] = NormalMapSnapshot(normal);
                     if (layer is GradientLayer gradient) entry["gradientKeys"] = GradientSnapshot(gradient.gradient);
                     layers.Add(entry);
                     if (layer is GroupLayer group) Collect(group.layers, layer.Id);
@@ -176,7 +178,7 @@ namespace DCFApixels.SpriteEditor
         private static string TypeName(Layer layer) => layer switch
         {
             FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
-            GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", _ => layer.GetType().Name
+            GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap", _ => layer.GetType().Name
         };
     }
 }

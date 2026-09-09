@@ -308,6 +308,29 @@
     -unity-text-align: middle-left;
 }
 
+.sprite-editor-area-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    overflow: hidden;
+}
+
+.sprite-editor-area-settings > * {
+    flex-shrink: 0;
+    margin-right: 3px;
+}
+
+.sprite-editor-area-mode {
+    width: 86px;
+}
+
+.sprite-editor-area-status {
+    -unity-text-align: middle-left;
+    color: rgb(170, 170, 170);
+}
+
 .sprite-editor-zoom-selection {
     position: absolute;
     left: 0;

@@ -102,6 +102,7 @@ namespace DCFApixels.SpriteEditor
 
         private void SetPreviewTool(PreviewTool tool)
         {
+            areaSelectionManipulator?.Cancel();
             CancelPreviewEyedropper();
             bool changePixelPreview = (previewTool == PreviewTool.Pencil) != (tool == PreviewTool.Pencil);
             CancelPreviewZoomGesture();
@@ -134,6 +135,10 @@ namespace DCFApixels.SpriteEditor
                 SetPreviewTool(PreviewTool.Pencil);
             else if (evt.keyCode == KeyCode.G)
                 SetPreviewTool(PreviewTool.Fill);
+            else if (evt.keyCode == KeyCode.M)
+                SetPreviewTool(PreviewTool.RectangleSelect);
+            else if (evt.keyCode == KeyCode.L)
+                SetPreviewTool(PreviewTool.PolygonSelect);
             else if (evt.keyCode == KeyCode.Z)
                 SetPreviewTool(PreviewTool.Zoom);
             else if (IsPreviewZoomEnabled && evt.keyCode == KeyCode.Escape)

@@ -211,6 +211,7 @@ namespace DCFApixels.SpriteEditor
             FinishPreviewTransform();
             RestoreUnityShortcuts();
             FinishPaintingStroke();
+            ResetAreaSelection();
             TextureCompositor.Changed -= OnCompositorChanged;
             SpriteEditorUserSettings.Changed -= OnPreviewAppearanceChanged;
             ClearLayerDragData();
@@ -271,6 +272,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            areaSelectionManipulator?.Cancel();
             CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             ResetOpacityEntry();
@@ -637,6 +639,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Outline Layer"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
             menu.AddItem(new GUIContent("SDF Layer"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
+            menu.AddItem(new GUIContent("Normal Map Layer"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
             menu.ShowAsContext();
@@ -741,6 +744,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddInsideContextGroups(targets, () => new GradientLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
                 menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
             }
@@ -877,6 +881,9 @@ namespace DCFApixels.SpriteEditor
                 case SDFLayer sdfLayer:
                     SDFLayerEditorWindow.Open(sdfLayer, compositor);
                     break;
+                case NormalMapLayer normalMap:
+                    NormalMapLayerEditorWindow.Open(normalMap, compositor);
+                    break;
             }
         }
 
@@ -1006,6 +1013,7 @@ namespace DCFApixels.SpriteEditor
             ClearLayerDragData();
             lineAnchorLayer = null;
             TextureCompositor previous = compositor;
+            ResetAreaSelection();
             compositor = next;
             compositor.NormalizeModel();
             SelectOnlyLayer(null);

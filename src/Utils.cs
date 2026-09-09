@@ -280,6 +280,7 @@ namespace DCFApixels.SpriteEditor
         private static Material alphaConversionMaterial;
         private static Material previewChannelsMaterial;
         private static Material hdrMaterial;
+        private static Material normalMapMaterial;
 
         static SpriteEditorMaterials()
         {
@@ -289,6 +290,7 @@ namespace DCFApixels.SpriteEditor
 
         public static Material Blend => GetOrCreate(ref blendMaterial, "Hidden/TextureCompositor/Blend");
         public static Material Hdr => GetOrCreate(ref hdrMaterial, "Hidden/TextureCompositor/Hdr");
+        public static Material NormalMap => GetOrCreate(ref normalMapMaterial, "Hidden/TextureCompositor/NormalMap");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
         public static Material PreviewChannels => GetOrCreate(ref previewChannelsMaterial, "Hidden/TextureCompositor/PreviewChannels");
@@ -317,6 +319,8 @@ namespace DCFApixels.SpriteEditor
 
         private static void Dispose()
         {
+            if (normalMapMaterial != null) UnityEngine.Object.DestroyImmediate(normalMapMaterial);
+            normalMapMaterial = null;
             if (hdrMaterial != null) UnityEngine.Object.DestroyImmediate(hdrMaterial);
             hdrMaterial = null;
             if (blendMaterial != null)

@@ -7,7 +7,7 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        private enum PreviewTool { None, Brush, Transform, Fill, Zoom, Pencil }
+        private enum PreviewTool { None, Brush, Transform, Fill, Zoom, Pencil, RectangleSelect, PolygonSelect }
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.None;
         [NonSerialized] private PreviewTool previewSettingsTool = PreviewTool.None;
@@ -23,6 +23,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Button previewTransformButton;
         [NonSerialized] private Button previewFillButton;
         [NonSerialized] private Button previewZoomButton;
+        [NonSerialized] private Button previewRectangleSelectButton;
+        [NonSerialized] private Button previewPolygonSelectButton;
 
         private bool IsPreviewPaintTool => previewTool == PreviewTool.Brush || previewTool == PreviewTool.Pencil;
         private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer;
@@ -84,7 +86,8 @@ namespace DCFApixels.SpriteEditor
             PaintStrokeParameters parameters = previewTool == PreviewTool.Pencil
                 ? paintSettings.GetPencilParameters(paintingErase, GetPaintingColor())
                 : paintSettings.GetStrokeParameters(paintingErase, GetPaintingColor());
-            return tiledPreview ? parameters.WithCanvasWrap() : parameters;
+            if (tiledPreview) parameters = parameters.WithCanvasWrap();
+            return parameters.WithSelectionMask(GetAreaSelectionTexture());
         }
 
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)
@@ -133,7 +136,9 @@ namespace DCFApixels.SpriteEditor
                 case PreviewTool.Pencil:
                 case PreviewTool.Fill: return layer is DrawingLayer;
                 case PreviewTool.Transform: return layer != null && !layer.IsGroup;
-                case PreviewTool.Zoom: return compositor != null;
+                case PreviewTool.Zoom:
+                case PreviewTool.RectangleSelect:
+                case PreviewTool.PolygonSelect: return compositor != null;
                 default: return false;
             }
         }
@@ -169,6 +174,12 @@ namespace DCFApixels.SpriteEditor
                 "Shift: constrain movement / preserve proportions / snap rotation to 15°. Groups are not supported yet.");
             toolbar.Add(previewNoneButton);
             toolbar.Add(previewTransformButton);
+            previewRectangleSelectButton = CreatePreviewToolButton("rectangleSelectTool", PreviewTool.RectangleSelect,
+                "Rectangle Select (M). Drag an area. Shift adds, Alt subtracts; Ctrl+D deselects. Selection limits painting and filling.");
+            previewPolygonSelectButton = CreatePreviewToolButton("polygonSelectTool", PreviewTool.PolygonSelect,
+                "Polygonal Lasso (L). Click vertices; Enter, double-click or click the first point to close. Backspace/RMB removes a vertex; Escape cancels.");
+            toolbar.Add(previewRectangleSelectButton);
+            toolbar.Add(previewPolygonSelectButton);
             toolbar.Add(previewBrushButton);
             toolbar.Add(previewPencilButton);
             toolbar.Add(previewFillButton);
@@ -189,6 +200,10 @@ namespace DCFApixels.SpriteEditor
         private void RefreshPreviewToolToolbar()
         {
             Layer selected = GetSelectedLayer();
+            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.RectangleSelect);
+            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.PolygonSelect);
+            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
+            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
             previewZoomButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
             previewZoomButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Zoom);
             previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.None);
@@ -246,6 +261,10 @@ namespace DCFApixels.SpriteEditor
                     DrawMagnifier(painter);
                 else if (tool == PreviewTool.Pencil)
                     DrawPencil(painter);
+                else if (tool == PreviewTool.RectangleSelect)
+                    DrawRectangleSelect(painter);
+                else if (tool == PreviewTool.PolygonSelect)
+                    DrawPolygonSelect(painter);
                 else
                     DrawBrush(painter);
             }
@@ -264,6 +283,34 @@ namespace DCFApixels.SpriteEditor
                 painter.BeginPath();
                 painter.MoveTo(P(14.5f, 14.5f));
                 painter.LineTo(P(21f, 21f));
+                painter.Stroke();
+            }
+
+            private void DrawRectangleSelect(Painter2D painter)
+            {
+                painter.lineCap = LineCap.Butt;
+                painter.BeginPath();
+                for (int i = 0; i < 4; i++)
+                {
+                    float a = 3f + i * 5f, b = Mathf.Min(a + 3f, 21f);
+                    painter.MoveTo(P(a, 4)); painter.LineTo(P(b, 4));
+                    painter.MoveTo(P(a, 20)); painter.LineTo(P(b, 20));
+                    painter.MoveTo(P(3, a + 1)); painter.LineTo(P(3, Mathf.Min(b + 1, 20)));
+                    painter.MoveTo(P(21, a + 1)); painter.LineTo(P(21, Mathf.Min(b + 1, 20)));
+                }
+                painter.Stroke();
+            }
+            private void DrawPolygonSelect(Painter2D painter)
+            {
+                painter.BeginPath();
+                painter.MoveTo(P(5, 5)); painter.LineTo(P(20, 8));
+                painter.LineTo(P(15, 19)); painter.LineTo(P(3, 16)); painter.ClosePath();
+                painter.Stroke();
+                painter.BeginPath();
+                painter.Arc(P(5, 5), contentRect.width * 2f / 24f, 0f, 360f);
+                painter.Fill();
+                painter.BeginPath();
+                painter.MoveTo(P(14, 19)); painter.BezierCurveTo(P(10, 22), P(18, 25), P(20, 20));
                 painter.Stroke();
             }
 

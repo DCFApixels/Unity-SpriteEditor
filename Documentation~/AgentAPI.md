@@ -134,13 +134,13 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
 - `move`: `index` is the insertion index **after removal** from the old container; omitted parent
   or `parent:""` moves to root. A group cannot move into itself or its descendants.
-- `target`: SDF/Outline only; default input Specific. Previous means the next sibling below the effect.
+- `target`: SDF/Outline/Normal Map only; default input Specific. Previous means the next sibling below the effect.
   Specific targets can be groups, but cannot create a dependency cycle.
 - `stroke`: Drawing only, detailed below.
 
@@ -156,6 +156,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | Drawing | `brush` (partial brush settings below) |
 | Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`) |
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
+| Normal Map | `normalMap`: partial settings object described below |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
@@ -193,6 +194,59 @@ Other settings of existing layers and all existing FX are preserved. API v1 does
 delete layers, duplicate/rasterize layers, resize an existing canvas or change gradient geometry.
 These remain available in the window. Use `enabled:false` to hide an unwanted layer non-destructively.
 
+### Normal Map settings
+
+Use `type:"normalMap"` and put generator settings inside `settings.normalMap`. Both `add` and
+`set` accept partial updates. `describe` exposes `normalMapDefaults`; `inspect` returns every
+generator setting under `settings.normalMap`. Regular layer settings, targets, groups, swizzle,
+clipping masks, duplication, conversion and raster export use the existing paths.
+
+```json
+{"op":"add","type":"normalMap","as":"normal","settings":{"normalMap":{
+  "mode":"Texture","strength":6,"smoothing":1,"mediumRadius":4,"largeRadius":32,
+  "fineDetail":1.5,"mediumDetail":1,"largeDetail":0.5,"lightRemoval":0.75,
+  "edges":"Repeat","encoding":"PackedColor"
+}}}
+{"op":"target","layer":"@normal","input":"Specific","target":"@art"}
+```
+
+| Key | Values / limits |
+|---|---|
+| `mode` | `HeightMap` (default), `Texture` |
+| `sourceChannel` | `Luminance` (default), `Red`, `Green`, `Blue`, `Alpha`, `Maximum` |
+| `inputSpace` | `ColorValues` (default; encoded/display RGB), `Linear` (working values) |
+| `strength` | 0..128, default 4 |
+| `blackLevel`, `whiteLevel` | 0..1 / 0.0001..16; defaults 0/1; white must exceed black |
+| `gamma` | 0.05..8, default 1 |
+| `smoothing` | 0..64 full-resolution pixels, default 1 |
+| `mediumRadius`, `largeRadius` | 0.5..128 / 0.5..512 pixels; defaults 4/32; large must be at least medium |
+| `fineDetail`, `mediumDetail`, `largeDetail` | 0..8; defaults 1/1/0.5; Texture mode only |
+| `lightRemoval` | 0..1, default 0.75; Texture mode only |
+| `edges` | `Clamp` (default), `Repeat`, `Mirror`; independent of Transform tiling |
+| `derivative` | `Sobel` (default), `Scharr`, `CentralDifference` |
+| `inverted`, `flipX`, `flipY` | Boolean, default false |
+| `ignoreTransparent` | Boolean, default true; alpha-normalized smoothing, except when Alpha is height |
+| `alphaMode` | `Opaque` (default), `Source` |
+| `output` | `Normal` (default), `Height` (reconstructed height for tuning) |
+| `encoding` | `PackedColor` (default; PNG/TGA/PSD/display), `LinearData` (raw linear EXR/Texture2D data) |
+
+Normals are tangent-space vectors packed into 0..1 RGB. Alpha is coverage, not a packed X channel.
+Positive height gradients tilt the normal toward negative X/Y; flips reverse each respective axis.
+Texture mode uses differences between smoothed height bands, not geometry or material recognition.
+Its Light Removal attenuates the broad band and may remove real relief too.
+
+A group source is rendered against transparency with its own descendants, opacity, swizzle and
+clipping, without the external backdrop. Existing Outline/SDF group-alpha semantics are unchanged.
+Missing, hidden and cyclic sources use the same rules as other targeted effects.
+
+Keep the resulting normal layer at full opacity with Normal blend, identity swizzle and no color
+FX when exporting a normal texture. Color blending does not renormalize normals. Transform moves
+the output image without rotating its vectors. PackedColor compensates for the compositor's LDR
+gamma encoding; LinearData is the appropriate choice for raw linear output, not ordinary PNG export.
+Import exported packed PNG/TGA as Normal Map with grayscale conversion disabled; see the
+[Unity normal-map import reference](https://docs.unity.cn/6000.1/Documentation/Manual/texture-type-normal-map.html).
+The API does not change source or exported texture import settings automatically.
+
 ### Transforms and coordinates
 
 Transform patches support `position:[x,y]`, `scale:[x,y]`, `pivot:[u,v]`, `rotation`, `tiling`,
@@ -219,7 +273,9 @@ Transform patches support `position:[x,y]`, `scale:[x,y]`, `pivot:[u,v]`, `rotat
 Each stroke has 1..4096 points: one point is a dab, multiple points form a polyline. Use sparse points
 for straight segments; the brush interpolates stamps. Curves can be sampled as a polyline.
 The brush uses the same renderer and source-over alpha as manual painting. `erase:true` uses the eraser.
-No selection or RGBA Preview mask is inherited from the window: specify the desired RGBA explicitly.
+No layer selection, canvas-area selection or RGBA Preview mask is inherited from the window:
+specify the desired RGBA explicitly. Rectangle/lasso coverage and the internal pixel clipboard
+are temporary window tools, not serialized document data or API stroke parameters.
 
 For pixel-aligned pencil strokes, add `"pencil":"Circle"`, `"Square"`, or `"Diamond"` to the
 `stroke` operation (not inside `brush`). Omit it for the regular soft brush. Pencil uses `brush.size`
