@@ -24,6 +24,15 @@ namespace DCFApixels.SpriteEditor
 
         internal PaintStrokeParameters WithCanvasWrap() => new PaintStrokeParameters(this);
 
+        internal bool OverlapsCanvas(Vector2 center, int width, int height)
+        {
+            if (WrapCanvas) return true;
+            float radiusX = Size * .5f / Mathf.Max(1, width);
+            float radiusY = Size * .5f / Mathf.Max(1, height);
+            return center.x + radiusX > 0f && center.x - radiusX < 1f &&
+                   center.y + radiusY > 0f && center.y - radiusY < 1f;
+        }
+
         private PaintStrokeParameters(PaintStrokeParameters source)
         {
             Color = source.Color;

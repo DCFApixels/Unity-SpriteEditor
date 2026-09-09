@@ -7,7 +7,7 @@ Each layer has two independent controls:
 
 | Control | Standard (default) | HDR |
 | :--- | :--- | :--- |
-| Color Range | Clamp the layer's own output after transform and all FX, before blending. | Preserve signed RGB outside 0–1. |
+| Color Range | Clamp the layer's own output after transform, all FX and Swizzle, before blending. | Preserve signed RGB outside 0–1. |
 | Blend Range | Bounded blend functions in the legacy sRGB blend space. | Extended blend functions and compositing in linear light. |
 
 Standard blending bounds the overlap function, **not the entire accumulated image**. A transparent
@@ -21,6 +21,14 @@ Color pickers and API color arrays retain the encoded RGB convention; source tex
 imported sRGB setting. Source import settings are never changed by the compositor.
 
 ## Color compatibility
+
+Swizzle remaps straight linear RGBA after FX and before Color Range. The four selectors accept
+`R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`; inversion means literal `1 - channel`
+in linear space. Alpha is clamped to 0–1 after remapping. Identity is serialized as zero, so old
+documents keep `R G B A`. A nonidentity group Swizzle forces isolation; a Pass Through group
+temporarily uses Normal blending and resumes Pass Through when Swizzle returns to identity.
+Source pixels are not rewritten. Conversion keeps a regular layer's Swizzle as an editable setting,
+while group conversion and merging bake it once. PSD group baking retains original children in a hidden folder.
 
 Brush uniforms and newly applied Shader FX color uniforms use vector properties carrying linear RGBA.
 Color-to-linear conversion occurs once, not both in C# and Unity's material upload. Previously applied
@@ -92,7 +100,7 @@ opacity and alpha-replacing modes. They never include the external backdrop.
 ## Preview and numeric diagnostics
 
 **EV** changes preview exposure in stops, without changing pixels, fill sampling or output.
-The bug button beside RGBA toggles a magenta error overlay. It starts off; a tinted icon indicates errors
+The bug button beside RGBA toggles an error overlay (magenta by default, configurable in **User Settings…**). It starts off; a tinted icon indicates errors
 reported by a small asynchronous GPU readback when that feature is available.
 
 NaN and infinity are replaced with zero. Finite render-stage components outside the half-float range

@@ -51,7 +51,7 @@ namespace DCFApixels.SpriteEditor
             {
                 previewDebug = !previewDebug;
                 UpdateChannelPreview(); UpdateToolkitPreviewPresentation();
-            }) { tooltip = "Debug numeric errors: magenta marks invalid or overflowing components before they were replaced with zero. Preview only." };
+            }) { tooltip = "Debug numeric errors: highlights invalid or overflowing components before they were replaced with zero. Preview only; choose the highlight color in User Settings." };
             debug.AddToClassList("sprite-editor-channel-button");
             debug.AddToClassList("sprite-editor-debug-button");
             debug.Add(new LayerActionIcon(LayerActionIcon.Kind.Bug));
@@ -185,6 +185,8 @@ namespace DCFApixels.SpriteEditor
             material.SetVector("_Channels", PreviewChannelMask);
             material.SetFloat("_Exposure", Mathf.Pow(2f, previewExposure));
             material.SetFloat("_Debug", previewDebug ? 1f : 0f);
+            Color errorColor = SpriteEditorUserSettings.InvalidPixels;
+            material.SetVector("_ErrorColor", (Vector4)(QualitySettings.activeColorSpace == ColorSpace.Linear ? errorColor.linear : errorColor));
             material.SetTexture("_Errors", compositor != null && compositor.NumericErrorMask != null ? compositor.NumericErrorMask : Texture2D.blackTexture);
             RenderTexture previous = RenderTexture.active;
             try

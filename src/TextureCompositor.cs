@@ -350,6 +350,7 @@ namespace DCFApixels.SpriteEditor
                 var conversion = SpriteEditorMaterials.Hdr;
                 conversion.SetFloat("_Saturate", 1f);
                 conversion.SetFloat("_Encode", 1f);
+                conversion.SetFloat("_UseSwizzle", 0f);
                 Graphics.Blit(source, encoded, conversion, 0);
                 RenderTexture.active = encoded;
                 texture.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0, false);
@@ -431,7 +432,7 @@ namespace DCFApixels.SpriteEditor
                 if (included != null && !included.Contains(layer))
                     continue;
                 if (layer == null || !layer.enabled || layer.opacity <= 0f ||
-                    (!(layer is GroupLayer pass) || pass.compositing == GroupCompositing.Isolated) && layer.blendMode == BlendMode.None)
+                    (layer is GroupLayer pass ? !pass.IsPassThrough && pass.EffectiveBlendMode == BlendMode.None : layer.blendMode == BlendMode.None))
                     continue;
 
                 if (layer is GroupLayer group)
@@ -465,7 +466,7 @@ namespace DCFApixels.SpriteEditor
             float scale, HashSet<Layer> stack, HashSet<Layer> included = null)
         {
             if (group.opacity <= 0f) return;
-            bool passThrough = group.compositing == GroupCompositing.PassThrough;
+            bool passThrough = group.IsPassThrough;
             if (passThrough && group.opacity >= 1f)
             {
                 CompositeLayers(group.layers, ref accumulator, w, h, scale, stack, included);
@@ -476,8 +477,8 @@ namespace DCFApixels.SpriteEditor
             {
                 if (passThrough) Graphics.Blit(accumulator, content);
                 CompositeLayers(group.layers, ref content, w, h, scale, stack, included);
-                if (!passThrough) content = FinishStage(content, group.colorRange == LayerColorRange.Standard);
-                BlendInto(ref accumulator, content, passThrough ? (BlendMode)101 : group.blendMode,
+                if (!passThrough) content = FinishStage(content, group.colorRange == LayerColorRange.Standard, group.swizzle);
+                BlendInto(ref accumulator, content, passThrough ? (BlendMode)101 : group.EffectiveBlendMode,
                     group.opacity, group.blendRange);
             }
             finally { RenderTexture.ReleaseTemporary(content); }
@@ -531,7 +532,7 @@ namespace DCFApixels.SpriteEditor
                     applyTransform,
                     applyModifiers);
                 RenderTexture raw = layer.Render(context);
-                try { return FinishStage(raw, layer.colorRange == LayerColorRange.Standard); }
+                try { return FinishStage(raw, layer.colorRange == LayerColorRange.Standard, applyModifiers ? layer.swizzle : default); }
                 catch { if (raw != null) RenderTexture.ReleaseTemporary(raw); throw; }
             }
             finally
@@ -623,6 +624,8 @@ namespace DCFApixels.SpriteEditor
                 // Render only the group's own content against transparency, never its external backdrop.
                 // This also respects nested opacity and alpha-replacing blend modes.
                 CompositeLayers(group.layers, ref mask, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                if (!group.swizzle.IsIdentity)
+                    mask = FinishStage(mask, group.colorRange == LayerColorRange.Standard, group.swizzle);
                 var scaled = GetClearRenderTexture(outputWidth, outputHeight);
                 BlendInto(ref scaled, mask, (BlendMode)AlphaUnionMode, group.opacity);
                 RenderTexture.ReleaseTemporary(mask);

@@ -15,6 +15,26 @@ namespace DCFApixels.SpriteEditor
         public Texture2D OutputTexture => outputTexture;
         public Sprite OutputSprite => outputSprite;
 
+        internal bool HasUnsavedAssetChanges()
+        {
+            if (EditorUtility.IsDirty(this) || outputTexture == null || outputSprite == null ||
+                EditorUtility.IsDirty(outputTexture) || EditorUtility.IsDirty(outputSprite)) return true;
+            foreach (ShaderFX effect in embeddedShaderFX)
+                if (effect != null && EditorUtility.IsDirty(effect)) return true;
+            return HasDirtyPixels(layers);
+
+            bool HasDirtyPixels(System.Collections.Generic.List<Layer> source)
+            {
+                foreach (Layer layer in source)
+                {
+                    if (layer is DrawingLayer drawing && drawing.StoredTexture != null &&
+                        EditorUtility.IsDirty(drawing.StoredTexture)) return true;
+                    if (layer is GroupLayer group && HasDirtyPixels(group.layers)) return true;
+                }
+                return false;
+            }
+        }
+
         internal static TextureCompositor FindDocument(UnityEngine.Object asset)
         {
             if (asset is TextureCompositor document)

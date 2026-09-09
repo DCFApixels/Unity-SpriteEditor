@@ -52,8 +52,7 @@ for (int mode = 0; mode < 3; mode++)
         Check(window.hasUnsavedChanges, "Document edits enable the close warning");
         string id = root.Id;
         int group = Begin("Lifecycle deletion");
-        if (mode == 0) Call(window, "DeleteLayer", document.layers, root);
-        else Call(window, "DeleteLayers", new List<DCFApixels.SpriteEditor.Layer> { root });
+        Call(window, "DeleteLayers", new List<DCFApixels.SpriteEditor.Layer> { root });
         End(group);
         Check(document.layers.Count == 0, "Deletion removes the root");
         Undo.PerformUndo();

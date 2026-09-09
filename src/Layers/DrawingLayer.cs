@@ -69,8 +69,9 @@ namespace DCFApixels.SpriteEditor
                 result.transform = TextureTransform.Default;
                 result.opacity = 1f;
                 result.blendMode = BlendMode.Normal;
-                if (((GroupLayer)source).compositing == GroupCompositing.PassThrough)
+                if (((GroupLayer)source).IsPassThrough)
                     result.colorRange = LayerColorRange.HDR;
+                result.swizzle = default;
                 result.modifiers.Clear();
             }
             result.pixels = texture;
@@ -337,6 +338,7 @@ namespace DCFApixels.SpriteEditor
             {
                 float t = steps <= 0 ? 0f : (float)step / steps;
                 Vector2 point = Vector2.Lerp(fromSourceUv, toSourceUv, t);
+                if (!parameters.OverlapsCanvas(point, outputWidth, outputHeight)) continue;
                 if (parameters.WrapCanvas)
                     point = TiledCanvasUtility.CanonicalSource(point, transform, outputWidth, outputHeight);
                 BuildPatternStamps(point, outputWidth, outputHeight);
@@ -395,6 +397,7 @@ namespace DCFApixels.SpriteEditor
                 if (parameters.WrapCanvas)
                     point = TiledCanvasUtility.CanonicalSource(point, transform, width, height);
                 point = PaintStrokeParameters.SnapPencilCenter(point, width, height, parameters.Size);
+                if (!parameters.OverlapsCanvas(point, width, height)) return;
                 BuildPatternStamps(point, width, height);
                 patternStampSet.Clear();
                 for (int i = 0; i < patternStamps.Count; i++)

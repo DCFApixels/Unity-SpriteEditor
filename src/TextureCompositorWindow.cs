@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -87,6 +88,8 @@ namespace DCFApixels.SpriteEditor
 
         public void AddItemsToMenu(GenericMenu menu)
         {
+            menu.AddItem(new GUIContent("User Settings…"), false, SpriteEditorUserSettingsWindow.Open);
+            menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Reset Sprite Editor Settings…"), false, ConfirmResetEditorSettings);
         }
 
@@ -96,7 +99,7 @@ namespace DCFApixels.SpriteEditor
                 "Reset Sprite Editor Settings",
                 "Reset panel sizes, scrolling, selection, foldouts, RGBA channels and preview tool state in all open " +
                 "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
-                "Shared brush, color and fill settings will also be reset. " +
+                "Shared brush, color, fill and preview appearance settings will also be reset. " +
                 "Open documents (including unsaved work), layers, textures and Shader FX " +
                 "will be preserved. Unity settings and window docking will not change. " +
                 "This settings reset cannot be undone.",
@@ -116,6 +119,7 @@ namespace DCFApixels.SpriteEditor
             EditorPrefs.DeleteKey(PreviewToolPrefKey);
             EditorPrefs.DeleteKey(PreviewTransformReturnToolPrefKey);
             SpriteEditorColorInputs.Reset();
+            SpriteEditorUserSettings.Reset();
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
             ShowNotification(new GUIContent("Sprite Editor settings reset."));
@@ -187,6 +191,7 @@ namespace DCFApixels.SpriteEditor
             paintingPreviewScale = ClampPaintingPreviewScale(
                 EditorPrefs.GetFloat(PaintingPreviewScalePrefKey, DefaultPaintingPreviewScale));
             TextureCompositor.Changed += OnCompositorChanged;
+            SpriteEditorUserSettings.Changed += OnPreviewAppearanceChanged;
 
             if (compositor == null)
                 SetCompositor(CreateTemporaryCompositor());
@@ -207,6 +212,7 @@ namespace DCFApixels.SpriteEditor
             RestoreUnityShortcuts();
             FinishPaintingStroke();
             TextureCompositor.Changed -= OnCompositorChanged;
+            SpriteEditorUserSettings.Changed -= OnPreviewAppearanceChanged;
             ClearLayerDragData();
             ReleasePreview();
             toolkitPreviewCanvas?.ReleaseCheckerTexture();
@@ -215,6 +221,16 @@ namespace DCFApixels.SpriteEditor
         private void OnFocus()
         {
             SuppressUnityShortcuts();
+        }
+
+        private void OnPreviewAppearanceChanged()
+        {
+            toolkitPreviewCanvas?.RefreshCheckerColors();
+            if (previewDebug)
+            {
+                UpdateChannelPreview();
+                UpdateToolkitPreviewPresentation();
+            }
         }
 
         private void OnDestroy()
@@ -226,25 +242,21 @@ namespace DCFApixels.SpriteEditor
 
         private void UpdateUnsavedChangesState()
         {
-            hasUnsavedChanges = compositor != null && !AssetDatabase.Contains(compositor) &&
-                (temporaryDocumentDirty || paintingLayer != null ||
+            hasUnsavedChanges = compositor != null &&
+                (HasDocumentChanges() || paintingLayer != null ||
                  previewTransformManipulator != null && previewTransformManipulator.IsDragging);
-            saveChangesMessage = "Save the unsaved Sprite Editor document before closing? Choose Save to select an asset path.";
+            saveChangesMessage = "Save this Sprite Editor document before closing?\n\n" +
+                "Save opens Save As to choose a file. Discard closes without saving. Cancel keeps the window open.";
+            RefreshDocumentSaveControls();
         }
+
+        private bool HasDocumentChanges() => compositor != null &&
+            (AssetDatabase.Contains(compositor) ? compositor.HasUnsavedAssetChanges() : temporaryDocumentDirty);
 
         public override void SaveChanges()
         {
-            if (compositor != null)
-            {
-                if (AssetDatabase.Contains(compositor))
-                {
-                    PrepareDocumentSave();
-                    if (!compositor.TrySaveWithOutput())
-                        return;
-                }
-                else if (!SaveAsAsset())
-                    return;
-            }
+            if (compositor != null && !SaveAsAsset())
+                return;
             temporaryDocumentDirty = false;
             base.SaveChanges();
         }
@@ -510,6 +522,7 @@ namespace DCFApixels.SpriteEditor
 
         private void FinishPaintingStroke()
         {
+            int capturedPointer = paintingPointerId;
             DrawingLayer finishedLayer = paintingLayer;
             paintingLayer = null;
             paintingErase = false;
@@ -519,6 +532,8 @@ namespace DCFApixels.SpriteEditor
             paintingShiftHeld = false;
             paintingLockedAxis = 0;
             paintingPointerMoved = false;
+            if (capturedPointer >= 0 && toolkitPreviewCanvas != null && toolkitPreviewCanvas.HasPointerCapture(capturedPointer))
+                toolkitPreviewCanvas.ReleasePointer(capturedPointer);
 
             if (finishedLayer == null)
                 return;
@@ -537,7 +552,8 @@ namespace DCFApixels.SpriteEditor
             Vector2 mousePosition,
             Rect imageRect,
             DrawingLayer layer,
-            out Vector2 sourceUv)
+            out Vector2 sourceUv,
+            bool allowOutside = false)
         {
             sourceUv = default;
             if (imageRect.width <= 0f || imageRect.height <= 0f || layer == null)
@@ -553,7 +569,9 @@ namespace DCFApixels.SpriteEditor
                 return !float.IsNaN(sourceUv.x) && !float.IsNaN(sourceUv.y) &&
                        !float.IsInfinity(sourceUv.x) && !float.IsInfinity(sourceUv.y);
             }
-            return TryMapDocumentToLayerUv(documentUv, layer, out sourceUv);
+            bool inside = TryMapDocumentToLayerUv(documentUv, layer, out sourceUv);
+            return inside || allowOutside && !float.IsNaN(sourceUv.x) && !float.IsNaN(sourceUv.y) &&
+                !float.IsInfinity(sourceUv.x) && !float.IsInfinity(sourceUv.y);
         }
 
         private bool TryMapDocumentToLayerUv(Vector2 documentUv, DrawingLayer layer, out Vector2 sourceUv)
@@ -665,7 +683,7 @@ namespace DCFApixels.SpriteEditor
             while (index < container.Count && container[index] != selected[0] &&
                 !(container[index] is GroupLayer parentGroup && ContainerContainsLayer(parentGroup.layers, selected[0])))
                 index++;
-            ExecuteModelChange("Group Sprite Layers", () =>
+            ExecuteContextChange("Group Sprite Layers", () =>
             {
                 GroupLayer group = new GroupLayer { layerName = compositor.AllocateGroupName() };
                 foreach (Layer layer in selected)
@@ -679,79 +697,69 @@ namespace DCFApixels.SpriteEditor
             });
         }
 
-        private void Ungroup(GroupLayer group, List<Layer> container)
-        {
-            int index = container.IndexOf(group);
-            if (index < 0)
-                return;
-            ExecuteModelChange("Ungroup Sprite Layers", () =>
-            {
-                container.RemoveAt(index);
-                container.InsertRange(index, group.layers);
-                SelectOnlyLayer(group.layers.Count > 0 ? group.layers[0]?.Id : null);
-            });
-        }
-
         private void ShowLayerContextMenu(Layer layer, List<Layer> container, int index)
         {
+            var selected = new HashSet<Layer>(GetSelectedParameterLayers(layer));
+            List<Layer> targets = LayerSelectionOperations.Collect(compositor.layers, selected, false);
+            List<Layer> roots = LayerSelectionOperations.Collect(compositor.layers, selected, true);
+            if (roots.Count == 0) return;
             GenericMenu menu = new GenericMenu();
-            if (index > 0)
-                menu.AddItem(new GUIContent("Move Up"), false, () => MoveLayer(container, layer, -1));
+            if (LayerSelectionOperations.Move(compositor, roots, -1, false))
+                menu.AddItem(new GUIContent("Move Up"), false, () => MoveContextLayers(roots, -1));
             else
                 menu.AddDisabledItem(new GUIContent("Move Up"));
-            if (index + 1 < container.Count)
-                menu.AddItem(new GUIContent("Move Down"), false, () => MoveLayer(container, layer, 1));
+            if (LayerSelectionOperations.Move(compositor, roots, 1, false))
+                menu.AddItem(new GUIContent("Move Down"), false, () => MoveContextLayers(roots, 1));
             else
                 menu.AddDisabledItem(new GUIContent("Move Down"));
 
             menu.AddSeparator(string.Empty);
-            if (index > 0 && container[index - 1] is GroupLayer groupAbove)
-                menu.AddItem(new GUIContent("Move Into Group Above"), false, () => MoveIntoGroup(container, layer, groupAbove));
+            if (LayerSelectionOperations.PlanGroupMoves(compositor, roots, true).Count > 0)
+                menu.AddItem(new GUIContent("Move Into Group Above"), false, () => MoveContextLayersAcrossGroups(roots, true));
             else
                 menu.AddDisabledItem(new GUIContent("Move Into Group Above"));
 
-            if (compositor.TryFindParentGroup(container, out _, out _, out _))
-                menu.AddItem(new GUIContent("Move Out Of Group"), false, () => MoveOutOfGroup(container, layer));
+            if (LayerSelectionOperations.PlanGroupMoves(compositor, roots, false).Count > 0)
+                menu.AddItem(new GUIContent("Move Out Of Group"), false, () => MoveContextLayersAcrossGroups(roots, false));
             else
                 menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
 
-            if (layer is GroupLayer group)
+            menu.AddItem(new GUIContent("Group Selected"), false, () => GroupLayers(roots));
+            if (targets.Exists(target => target is GroupLayer))
             {
                 menu.AddSeparator(string.Empty);
-                menu.AddItem(new GUIContent("Add Inside/Drawing Layer"), false, () => AddLayer(group.layers, 0, new DrawingLayer()));
-                menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddLayer(group.layers, 0, new FileLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddLayer(group.layers, 0, new ColorFillLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddLayer(group.layers, 0, new GradientLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddLayer(group.layers, 0, new OutlineLayer()));
-                menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddLayer(group.layers, 0, new SDFLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddLayer(group.layers, 0, new GroupLayer()));
-                menu.AddItem(new GUIContent("Ungroup"), false, () => Ungroup(group, container));
-            }
-            else
-            {
-                menu.AddItem(new GUIContent("Group This Layer"), false, () =>
-                {
-                    SelectOnlyLayer(layer.Id);
-                    GroupSelectedLayer();
-                });
+                menu.AddItem(new GUIContent("Add Inside/Drawing Layer"), false, () => AddInsideContextGroups(targets, () => new DrawingLayer()));
+                menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddInsideContextGroups(targets, () => new FileLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddInsideContextGroups(targets, () => new ColorFillLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddInsideContextGroups(targets, () => new GradientLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
+                menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
+                menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
             }
 
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Convert to Drawing/Keep Transform"), false,
-                () => ConvertLayerToDrawing(layer, false));
+                () => ConvertLayersToDrawing(roots, false));
             menu.AddItem(new GUIContent("Convert to Drawing/Apply Transform"), false,
-                () => ConvertLayerToDrawing(layer, true));
+                () => ConvertLayersToDrawing(roots, true));
             menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Duplicate"), false, () => DuplicateLayers(new List<Layer> { layer }));
-            List<Layer> mergeSelection = IsLayerSelected(layer.Id) ? GetSelectedRoots() : new List<Layer> { layer };
-            menu.AddItem(new GUIContent("Merge Selected %e"), false, () => MergeSelectedLayers(mergeSelection, false));
-            menu.AddItem(new GUIContent("Merge Selected as Copy %&e"), false, () => MergeSelectedLayers(mergeSelection, true));
-            menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
-            if (!(layer is GroupLayer))
+            menu.AddItem(new GUIContent("Duplicate"), false, () => DuplicateLayers(roots));
+            menu.AddItem(new GUIContent("Merge Selected %e"), false, () => MergeSelectedLayers(roots, false));
+            menu.AddItem(new GUIContent("Merge Selected as Copy %&e"), false, () => MergeSelectedLayers(roots, true));
+            menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayers(roots));
+            if (targets.Exists(target => !(target is GroupLayer)))
             {
                 menu.AddSeparator(string.Empty);
-                menu.AddItem(new GUIContent("FX"), false, () => ModifierEditorWindow.Open(layer, compositor));
-                menu.AddItem(new GUIContent("Properties"), false, () => OpenLayerEditor(layer));
+                menu.AddItem(new GUIContent("FX"), false, () =>
+                {
+                    foreach (Layer target in targets)
+                        if (!(target is GroupLayer)) ModifierEditorWindow.Open(target, compositor);
+                });
+                menu.AddItem(new GUIContent("Properties"), false, () =>
+                {
+                    foreach (Layer target in targets) OpenLayerEditor(target);
+                });
             }
             menu.ShowAsContext();
         }
@@ -763,113 +771,80 @@ namespace DCFApixels.SpriteEditor
             "produce an identity Transform. You can undo the entire conversion.";
 
         private void ConvertLayerToDrawing(Layer layer, bool applyTransform, bool groupConfirmed = false)
+            => ConvertLayersToDrawing(new List<Layer> { layer }, applyTransform, groupConfirmed);
+
+        private void ConvertLayersToDrawing(List<Layer> layers, bool applyTransform, bool groupConfirmed = false)
         {
             FinishPreviewTransform();
             FinishPaintingStroke();
-            if (compositor == null || !compositor.TryFindLayer(layer, out List<Layer> container, out int index))
+            if (compositor == null || layers.Count == 0)
                 return;
-            if (layer is GroupLayer && !groupConfirmed && !EditorUtility.DisplayDialog(
-                "Convert Group to Drawing",
+            if (layers.Exists(layer => layer is GroupLayer) && !groupConfirmed && !EditorUtility.DisplayDialog(
+                "Convert Groups to Drawing",
                 GroupConversionWarning,
                 "Convert", "Cancel"))
                 return;
 
-            Texture2D texture = null;
+            var textures = new List<Texture2D>();
+            var replacements = new List<DrawingLayer>();
             int undoGroup = -1;
-            bool registeredTexture = false;
+            int registeredTextures = 0;
+            string activeId = selectedLayerId;
+            var previousSelection = new List<string>(selectedLayerIds);
             try
             {
-                texture = compositor.RasterizeLayer(layer, applyTransform);
-                DrawingLayer replacement = DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform);
+                // Resolve every input before replacing any source or effect target.
+                foreach (Layer layer in layers)
+                {
+                    if (!compositor.TryFindLayer(layer, out _, out _))
+                        throw new InvalidOperationException("The selected layer is no longer in the document.");
+                    Texture2D texture = compositor.RasterizeLayer(layer, applyTransform);
+                    textures.Add(texture);
+                    replacements.Add(DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform));
+                }
                 string undoName = applyTransform ? "Convert to Drawing (Apply Transform)" : "Convert to Drawing (Keep Transform)";
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName(undoName);
                 Undo.RegisterCompleteObjectUndo(compositor, undoName);
-                replacement.MakeTexturePersistent(compositor);
-                Undo.RegisterCreatedObjectUndo(texture, undoName);
-                registeredTexture = true;
-                container[index] = replacement;
-                compositor.DestroyLayerAssets(layer);
-                layer.ReleaseTransientResources();
-                SelectOnlyLayer(replacement.Id);
+                for (int i = 0; i < layers.Count; i++)
+                {
+                    Layer layer = layers[i];
+                    if (!compositor.TryFindLayer(layer, out List<Layer> container, out int index))
+                        throw new InvalidOperationException("The selected layer is no longer in the document.");
+                    replacements[i].MakeTexturePersistent(compositor);
+                    Undo.RegisterCreatedObjectUndo(textures[i], undoName);
+                    registeredTextures++;
+                    container[index] = replacements[i];
+                    compositor.DestroyLayerAssets(layer);
+                    layer.ReleaseTransientResources();
+                }
+                SelectContextLayers(new List<Layer>(replacements), activeId);
                 lineAnchorLayer = null;
                 applyingToolkitChange = true;
                 CommitModelChange();
                 Undo.FlushUndoRecordObjects();
                 Undo.CollapseUndoOperations(undoGroup);
-                Undo.IncrementCurrentGroup();
             }
             catch (Exception exception)
             {
                 if (undoGroup >= 0)
                     Undo.RevertAllDownToGroup(undoGroup);
-                if (!registeredTexture && texture != null)
-                    DestroyImmediate(texture, true);
+                for (int i = registeredTextures; i < textures.Count; i++)
+                    if (textures[i] != null) DestroyImmediate(textures[i], true);
+                selectedLayerIds = previousSelection;
+                selectedLayerId = activeId;
+                NormalizeLayerSelection();
                 Debug.LogException(exception);
                 EditorUtility.DisplayDialog("Cannot Convert Layer", exception.Message, "OK");
             }
             finally
             {
+                if (undoGroup >= 0) Undo.IncrementCurrentGroup();
                 applyingToolkitChange = false;
                 RequestPreview(true);
                 RefreshToolkitInterface(forceValues: true);
             }
-        }
-
-        private void MoveLayer(List<Layer> container, Layer layer, int direction)
-        {
-            int index = container.IndexOf(layer);
-            int destination = index + direction;
-            if (index < 0 || destination < 0 || destination >= container.Count)
-                return;
-            ExecuteModelChange("Reorder Sprite Layer", () =>
-            {
-                container.RemoveAt(index);
-                container.Insert(destination, layer);
-            });
-        }
-
-        private void MoveIntoGroup(List<Layer> container, Layer layer, GroupLayer group)
-        {
-            ExecuteModelChange("Move Layer Into Group", () =>
-            {
-                container.Remove(layer);
-                group.layers.Add(layer);
-                groupExpansion[group.Id] = true;
-            });
-        }
-
-        private void MoveOutOfGroup(List<Layer> container, Layer layer)
-        {
-            if (!compositor.TryFindParentGroup(
-                    container,
-                    out _,
-                    out List<Layer> parentContainer,
-                    out int parentIndex))
-            {
-                return;
-            }
-            ExecuteModelChange("Move Layer Out Of Group", () =>
-            {
-                container.Remove(layer);
-                parentContainer.Insert(parentIndex + 1, layer);
-                SelectOnlyLayer(layer.Id);
-            });
-        }
-
-        private void DeleteLayer(List<Layer> container, Layer layer)
-        {
-            FinishPreviewTransform();
-            FinishPaintingStroke();
-            ExecuteModelChange("Delete Sprite Layer", () =>
-            {
-                Undo.RegisterCompleteObjectUndo(compositor, "Delete Sprite Layer");
-                compositor.DestroyLayerAssets(layer);
-                container.Remove(layer);
-                layer.ReleaseTransientResources();
-                selectedLayerIds.Remove(layer.Id);
-            });
         }
 
         private void OpenLayerEditor(Layer layer)
@@ -1040,14 +1015,14 @@ namespace DCFApixels.SpriteEditor
         private bool ResolveUnsavedTemporaryDocument()
         {
             PrepareDocumentSave();
-            if (compositor == null || AssetDatabase.Contains(compositor) || !temporaryDocumentDirty)
+            if (!HasDocumentChanges())
                 return true;
 
             int choice = EditorUtility.DisplayDialogComplex(
                 "Unsaved Sprite Editor document",
                 "Save the current compositor before replacing it?",
                 "Save As",
-                "Discard",
+                "Don't Save",
                 "Cancel");
             if (choice == 0)
                 return SaveAsAsset();
@@ -1070,6 +1045,7 @@ namespace DCFApixels.SpriteEditor
 
             if (!compositor.TrySaveWithOutput())
                 return;
+            UpdateUnsavedChangesState();
             RefreshToolkitInterface();
         }
 

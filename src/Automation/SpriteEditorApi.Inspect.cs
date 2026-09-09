@@ -27,6 +27,7 @@ namespace DCFApixels.SpriteEditor
             result["operations"] = new JArray("add", "set", "transform", "target", "move", "stroke", "compact");
             result["colorRanges"] = new JArray(System.Enum.GetNames(typeof(LayerColorRange)));
             result["blendRanges"] = new JArray(System.Enum.GetNames(typeof(LayerBlendRange)));
+            result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
             result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf");
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
@@ -89,6 +90,9 @@ namespace DCFApixels.SpriteEditor
                     settings["blend"] = layer.blendMode.ToString();
                     settings["colorRange"] = layer.colorRange.ToString();
                     settings["blendRange"] = layer.blendRange.ToString();
+                    settings["swizzle"] = new JArray(LayerSwizzle.Labels[(int)layer.swizzle[0]],
+                        LayerSwizzle.Labels[(int)layer.swizzle[1]], LayerSwizzle.Labels[(int)layer.swizzle[2]],
+                        LayerSwizzle.Labels[(int)layer.swizzle[3]]);
                     if (layer is GroupLayer folder) settings["compositing"] = folder.compositing.ToString();
                     if (layer is DrawingLayer stored) entry["storageFormat"] = stored.StoredTexture != null ? stored.StoredTexture.format.ToString() : "Unallocated";
                     if (!layer.IsGroup)

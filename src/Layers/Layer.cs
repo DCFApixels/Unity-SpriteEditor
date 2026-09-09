@@ -46,6 +46,7 @@ namespace DCFApixels.SpriteEditor
         public BlendMode blendMode = BlendMode.Normal;
         public LayerColorRange colorRange;
         public LayerBlendRange blendRange;
+        public LayerSwizzle swizzle;
         // Keep the serialized field name and object-reference layout for existing Material FX.
         public List<UnityEngine.Object> modifiers = new List<UnityEngine.Object>();
         public TextureTransform transform = TextureTransform.Default;
@@ -110,6 +111,7 @@ namespace DCFApixels.SpriteEditor
             blendMode = source.blendMode;
             colorRange = source.colorRange;
             blendRange = source.blendRange;
+            swizzle = source.swizzle;
             filterMode = source.filterMode;
             modifiers = source.modifiers == null ? new List<UnityEngine.Object>() : new List<UnityEngine.Object>(source.modifiers);
         }

@@ -4,6 +4,21 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-09-09
+
+### Fixed
+
+- Close warnings now cover edited saved documents as well as temporary ones. The native Save choice opens Save As; cancellation keeps the window open.
+- Disable Save for unchanged saved documents; replace the temporary-document banner with a warning symbol on Save As. Clamp committed Canvas dimensions to the supported range, starting at one pixel.
+- Keep brush/pencil cursors visible in Preview margins and allow strokes to start there. Only the overlapping tip paints canvas pixels; preview overlays remain clipped to Preview.
+
+### Added
+
+- User Settings window in the Sprite Editor window menu, with persistent checkerboard colors and cell size (1–128 UI pixels, default 16), numeric-error highlight color, live preview updates and an appearance reset. These preferences do not affect documents, exports or Undo.
+- Selection-wide layer context-menu commands, including ordered movement, group operations, duplication, conversion and separate Properties/FX windows. Batch conversion resolves all source pixels before replacing layers and supports a single Undo step.
+- Per-layer and group Swizzle with channel selection, inversion and zero/one constants, available in Layer Settings, Properties and the agent API.
+- Automatic isolation for swizzled Pass Through groups; identity restores pass-through rendering. Effect targets, rasterization and exports respect remapped alpha and color; PSD preserves original group children in a hidden folder beside the baked result.
+
 ## [0.6.3] - 2026-09-09
 
 ### Fixed

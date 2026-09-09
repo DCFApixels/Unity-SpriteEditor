@@ -121,14 +121,14 @@ namespace DCFApixels.SpriteEditor
 
         private static void SetLayer(TextureCompositor document, Layer layer, JObject settings)
         {
-            Keys(settings, "name", "enabled", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "compositing", "color", "brush",
+            Keys(settings, "name", "enabled", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
                 "distancePosition", "inverted", "maxDistance", "gradient");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
                 bool valid = key == "name" || key == "enabled" || key == "opacity" || key == "blend" ||
-                    key == "colorRange" || key == "blendRange" || key == "compositing" && layer is GroupLayer || !layer.IsGroup &&
+                    key == "colorRange" || key == "blendRange" || key == "swizzle" || key == "compositing" && layer is GroupLayer || !layer.IsGroup &&
                     (key == "opacity" || key == "blend" || key == "filter" ||
                     key == "source" && layer is FileLayer || key == "brush" && layer is DrawingLayer ||
                     key == "color" && (layer is ColorFillLayer || layer is OutlineLayer) ||
@@ -144,6 +144,21 @@ namespace DCFApixels.SpriteEditor
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
             layer.colorRange = Enum(settings, "colorRange", layer.colorRange);
             layer.blendRange = Enum(settings, "blendRange", layer.blendRange);
+            if (settings["swizzle"] != null)
+            {
+                Require(settings["swizzle"] is JArray array && array.Count == 4,
+                    "swizzle must contain four channel names in output RGBA order.");
+                var values = (JArray)settings["swizzle"];
+                var swizzle = new LayerSwizzle();
+                for (int channel = 0; channel < 4; channel++)
+                {
+                    int source = values[channel].Type == JTokenType.String
+                        ? System.Array.IndexOf(LayerSwizzle.Labels, (string)values[channel]) : -1;
+                    Require(source >= 0, "Invalid swizzle channel. Use R, G, B, A, 1-R, 1-G, 1-B, 1-A, 0 or 1.");
+                    swizzle[channel] = (SwizzleChannel)source;
+                }
+                layer.swizzle = swizzle;
+            }
             if (layer is GroupLayer group)
                 group.compositing = Enum(settings, "compositing", group.compositing);
             layer.filterMode = Enum(settings, "filter", layer.filterMode);

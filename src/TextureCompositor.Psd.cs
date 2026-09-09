@@ -5,6 +5,23 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositor
     {
+        internal Texture2D RenderPsdGroupContent(GroupLayer group)
+        {
+            RenderTexture rendered = GetClearRenderTexture(width, height);
+            RenderTexture previous = RenderTexture.active;
+            try
+            {
+                CompositeLayers(group.layers, ref rendered, width, height, 1f, new HashSet<Layer>());
+                rendered = FinishStage(rendered, group.colorRange == LayerColorRange.Standard, group.swizzle);
+                return CopyToTexture2D(rendered, uploadToGpu: false);
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                if (rendered != null) RenderTexture.ReleaseTemporary(rendered);
+            }
+        }
+
         internal Texture2D RenderPsdCoverage(Layer layer)
         {
             RenderTexture rendered = null;

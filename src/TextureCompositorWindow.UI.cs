@@ -34,7 +34,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private bool toolkitRefreshRequested;
         [NonSerialized] private TextureCompositor toolkitBoundDocument;
         [NonSerialized] private bool toolkitHeaderBuilt;
-        [NonSerialized] private HelpBox toolkitDocumentStatus;
+        [NonSerialized] private Button toolkitSaveButton;
+        [NonSerialized] private Button toolkitSaveAsButton;
         [NonSerialized] private HelpBox toolkitPreviewError;
         private readonly SpriteEditorUI.ValueBindings toolkitSettingsBindings = new SpriteEditorUI.ValueBindings();
         private readonly SpriteEditorUI.ValueBindings toolkitHeaderBindings = new SpriteEditorUI.ValueBindings();
@@ -306,29 +307,20 @@ namespace DCFApixels.SpriteEditor
                 }
             });
             toolbar.Add(toolkitDocumentField);
-            Button save = SpriteEditorUI.CreateToolbarButton("Save", SaveAsset, 46f);
-            save.tooltip = "Save layers and update the embedded full-resolution texture and sprite (Ctrl+S).";
-            save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor));
-            toolkitSettingsBindings.Add(() => save.SetEnabled(compositor != null && AssetDatabase.Contains(compositor)));
-            toolbar.Add(save);
-            toolbar.Add(SpriteEditorUI.CreateToolbarButton("Save As", () =>
+            toolkitSaveButton = SpriteEditorUI.CreateToolbarButton("Save", SaveAsset, 46f);
+            toolkitSaveButton.tooltip = "Save layers and update the embedded full-resolution texture and sprite (Ctrl+S).";
+            toolbar.Add(toolkitSaveButton);
+            toolkitSaveAsButton = SpriteEditorUI.CreateToolbarButton("Save As", () =>
             {
                 SaveAsAsset();
-            }, 64f));
+            }, 82f);
+            toolbar.Add(toolkitSaveAsButton);
+            toolkitSettingsBindings.Add(RefreshDocumentSaveControls);
+            RefreshDocumentSaveControls();
             Button export = SpriteEditorUI.CreateToolbarButton("Export", ShowExportMenu, 64f);
             export.tooltip = "Export the flattened texture as PNG, JPEG, TGA, EXR, or a Unity Texture2D asset.";
             toolbar.Add(export);
             toolkitDocumentRoot.Add(toolbar);
-
-            toolkitDocumentStatus = SpriteEditorUI.AddHelpBox(toolkitDocumentRoot, string.Empty, HelpBoxMessageType.Info);
-            toolkitSettingsBindings.Add(() =>
-            {
-                toolkitDocumentStatus.style.display = AssetDatabase.Contains(compositor) ? DisplayStyle.None : DisplayStyle.Flex;
-                toolkitDocumentStatus.text = temporaryDocumentDirty
-                    ? "Unsaved compositor. Use Save As to keep this layer tree."
-                    : "Temporary compositor. It can be exported directly or saved as an asset.";
-                toolkitDocumentStatus.messageType = temporaryDocumentDirty ? HelpBoxMessageType.Warning : HelpBoxMessageType.Info;
-            });
 
             VisualElement separator = new VisualElement
             {
@@ -338,6 +330,18 @@ namespace DCFApixels.SpriteEditor
             separator.AddToClassList("sprite-editor-document-separator");
             separator.EnableInClassList("sprite-editor-document-separator--light", !EditorGUIUtility.isProSkin);
             toolkitDocumentRoot.Add(separator);
+        }
+
+        private void RefreshDocumentSaveControls()
+        {
+            bool saved = compositor != null && AssetDatabase.Contains(compositor);
+            toolkitSaveButton?.SetEnabled(saved && (HasDocumentChanges() || paintingLayer != null ||
+                previewTransformManipulator != null && previewTransformManipulator.IsDragging));
+            if (toolkitSaveAsButton == null) return;
+            toolkitSaveAsButton.text = compositor != null && !saved ? "⚠ Save As" : "Save As";
+            toolkitSaveAsButton.tooltip = saved
+                ? "Save a copy of this document to a new file."
+                : "This document has no saved file. Use Save As to keep its layers.";
         }
 
         private void BuildToolkitCanvasToolbar()
@@ -352,9 +356,13 @@ namespace DCFApixels.SpriteEditor
             width.tooltip = "Canvas width in pixels. Press Enter or leave the field to apply.";
             width.SetValueWithoutNotify(compositor.width);
             toolkitSettingsBindings.Track(width, () => compositor.width);
-            width.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Sprite Canvas Width",
-                () => compositor.width = Mathf.Max(1, evt.newValue)));
+            width.RegisterValueChangedCallback(evt =>
+            {
+                int value = Mathf.Clamp(evt.newValue, 1, 16384);
+                width.SetValueWithoutNotify(value);
+                if (compositor.width != value)
+                    ApplyToolkitChange("Change Sprite Canvas Width", () => compositor.width = value);
+            });
             toolkitCanvasToolbar.Add(width);
             toolkitCanvasToolbar.Add(new Label("×") { pickingMode = PickingMode.Ignore });
 
@@ -363,9 +371,13 @@ namespace DCFApixels.SpriteEditor
             height.tooltip = "Canvas height in pixels. Press Enter or leave the field to apply.";
             height.SetValueWithoutNotify(compositor.height);
             toolkitSettingsBindings.Track(height, () => compositor.height);
-            height.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Sprite Canvas Height",
-                () => compositor.height = Mathf.Max(1, evt.newValue)));
+            height.RegisterValueChangedCallback(evt =>
+            {
+                int value = Mathf.Clamp(evt.newValue, 1, 16384);
+                height.SetValueWithoutNotify(value);
+                if (compositor.height != value)
+                    ApplyToolkitChange("Change Sprite Canvas Height", () => compositor.height = value);
+            });
             toolkitCanvasToolbar.Add(height);
             AddTiledPreviewControl();
 
@@ -1388,11 +1400,7 @@ namespace DCFApixels.SpriteEditor
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
             if (!IsPreviewBrushEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
-            if (!PreviewContainsPaintPoint(evt.localPosition) ||
-                !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv))
-            {
-                return;
-            }
+            if (!toolkitPreviewCanvas.contentRect.Contains(evt.localPosition)) return;
 
             Focus();
             toolkitPreviewCanvas.Focus();
@@ -1403,17 +1411,28 @@ namespace DCFApixels.SpriteEditor
                 evt.StopImmediatePropagation();
                 return;
             }
-            paintingLayer = layer;
             paintingMouseButton = evt.button;
             paintingPointerId = evt.pointerId;
             paintingErase = erase;
             paintingPointerMoved = false;
-            bool connect = evt.shiftKey && ReferenceEquals(lineAnchorLayer, layer) &&
+            toolkitPreviewCanvas.CapturePointer(evt.pointerId);
+            if (!TryBeginPreviewStroke(evt.localPosition, evt.shiftKey)) FinishPaintingStroke();
+            UpdatePreviewCursor(evt.localPosition, false);
+            evt.PreventDefault();
+            evt.StopImmediatePropagation();
+        }
+
+        private bool TryBeginPreviewStroke(Vector2 position, bool shift)
+        {
+            DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
+            if (layer == null ||
+                !TryMapPreviewToLayerUv(position, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv, allowOutside: true)) return false;
+            paintingLayer = layer;
+            bool connect = shift && ReferenceEquals(lineAnchorLayer, layer) &&
                            lineAnchorCanvasSize == new Vector2Int(compositor.width, compositor.height);
             Vector2 originUv = connect ? lineAnchorUv : startUv;
             lastPaintingUv = originUv;
             hasLastPaintingUv = true;
-            toolkitPreviewCanvas.CapturePointer(evt.pointerId);
             Undo.RecordObject(compositor, "Paint Stroke");
             layer.PrepareStroke(compositor.width, compositor.height, "Paint Stroke");
             if (tiledPreview)
@@ -1426,11 +1445,9 @@ namespace DCFApixels.SpriteEditor
             else
                 layer.PaintPoint(startUv, compositor.width, compositor.height, GetPaintingParameters());
             paintingShiftHeld = false;
-            SetPaintingShift(evt.shiftKey);
+            SetPaintingShift(shift);
             RefreshPreviewDuringPainting();
-            UpdatePreviewCursor(evt.localPosition, false);
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            return true;
         }
 
         private void OnPreviewPointerMove(PointerMoveEvent evt)
@@ -1449,7 +1466,7 @@ namespace DCFApixels.SpriteEditor
                     paintPosition,
                     toolkitPreviewCanvas.ImageRect,
                     paintingLayer,
-                    out Vector2 dragUv))
+                    out Vector2 dragUv, allowOutside: true))
             {
                 PaintTowardsLayerPoint(dragUv);
             }
@@ -1534,7 +1551,7 @@ namespace DCFApixels.SpriteEditor
 
             Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
             if (paintingPointerMoved && toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) &&
-                TryMapPreviewToLayerUv(paintPosition, toolkitPreviewCanvas.ImageRect, paintingLayer, out Vector2 endUv))
+                TryMapPreviewToLayerUv(paintPosition, toolkitPreviewCanvas.ImageRect, paintingLayer, out Vector2 endUv, allowOutside: true))
                 PaintTowardsLayerPoint(endUv);
 
             paintingPointerId = -1;
@@ -1561,7 +1578,7 @@ namespace DCFApixels.SpriteEditor
             bool visible = IsPreviewPaintTool &&
                            !(previewZoomManipulator?.IsPanning ?? false) &&
                            !alt &&
-                           PreviewContainsPaintPoint(localPosition);
+                           toolkitPreviewCanvas != null && toolkitPreviewCanvas.contentRect.Contains(localPosition);
             toolkitPreviewCanvas?.SetCursor(
                 visible,
                 localPosition,
@@ -1868,7 +1885,7 @@ namespace DCFApixels.SpriteEditor
                 PositionElement(checker, presentationRect);
                 PositionElement(image, ImageRect);
                 PositionElement(tiledImage, contentRect);
-                PositionElement(overlay, presentationRect);
+                PositionElement(overlay, contentRect);
                 UpdatePencilCursor();
                 checker.MarkDirtyRepaint();
                 tiledImage.MarkDirtyRepaint();
@@ -1887,12 +1904,6 @@ namespace DCFApixels.SpriteEditor
             private void CreateCheckerTexture()
             {
                 if (checkerTexture != null) return;
-                Color light = EditorGUIUtility.isProSkin
-                    ? new Color(0.30f, 0.30f, 0.30f, 1f)
-                    : new Color(0.84f, 0.84f, 0.84f, 1f);
-                Color dark = EditorGUIUtility.isProSkin
-                    ? new Color(0.23f, 0.23f, 0.23f, 1f)
-                    : new Color(0.70f, 0.70f, 0.70f, 1f);
                 checkerTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
                 {
                     name = "Sprite Editor Checkerboard",
@@ -1900,6 +1911,14 @@ namespace DCFApixels.SpriteEditor
                     filterMode = FilterMode.Point,
                     wrapMode = TextureWrapMode.Repeat
                 };
+                RefreshCheckerColors();
+            }
+
+            public void RefreshCheckerColors()
+            {
+                if (checkerTexture == null) return;
+                Color light = SpriteEditorUserSettings.CheckerLight;
+                Color dark = SpriteEditorUserSettings.CheckerDark;
                 checkerTexture.SetPixels(new[] { light, dark, dark, light });
                 checkerTexture.Apply(false, false);
                 checker.MarkDirtyRepaint();
@@ -1917,8 +1936,9 @@ namespace DCFApixels.SpriteEditor
                 Rect rect = checker.contentRect;
                 if (checkerTexture == null || rect.width <= 0f || rect.height <= 0f) return;
 
-                float u = rect.width / 32f;
-                float v = rect.height / 32f;
+                float period = 2f * SpriteEditorUserSettings.CheckerSize;
+                float u = rect.width / period;
+                float v = rect.height / period;
                 context.AllocateTempMesh(4, 6, out var vertices, out var indices);
                 vertices[0] = new Vertex { position = new Vector3(rect.xMin, rect.yMin, Vertex.nearZ), tint = Color.white, uv = Vector2.zero };
                 vertices[1] = new Vertex { position = new Vector3(rect.xMax, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(u, 0f) };
@@ -1965,7 +1985,7 @@ namespace DCFApixels.SpriteEditor
                 if (brushSettings == null)
                     return;
 
-                Rect rect = new Rect(ImageRect.position - presentationRect.position, ImageRect.size);
+                Rect rect = new Rect(ImageRect.position - contentRect.position, ImageRect.size);
                 Painter2D painter = context.painter2D;
                 Color guide = new Color(0.20f, 0.70f, 1f, 0.55f);
                 painter.lineWidth = 1f;
@@ -1976,7 +1996,7 @@ namespace DCFApixels.SpriteEditor
 
                 if (!cursorVisible || pencilCursor)
                     return;
-                Vector2 localCursor = cursorPosition - presentationRect.position;
+                Vector2 localCursor = cursorPosition - contentRect.position;
                 float pixelScale = PixelScale;
                 float transformScale = drawingLayer == null ? 1f :
                     (Mathf.Abs(drawingLayer.transform.scale.x) + Mathf.Abs(drawingLayer.transform.scale.y)) * 0.5f;
@@ -1997,7 +2017,7 @@ namespace DCFApixels.SpriteEditor
                 if (pencilCursorElement == null) return;
                 bool visible = pencilCursor && cursorVisible && brushSettings != null;
                 TextureTransform transform = drawingLayer?.transform ?? TextureTransform.Default;
-                Rect rect = new Rect(ImageRect.position - presentationRect.position, ImageRect.size);
+                Rect rect = new Rect(ImageRect.position - contentRect.position, ImageRect.size);
                 if (!visible || !TiledCanvasUtility.IsInvertible(transform) || rect.width <= 0f || rect.height <= 0f)
                 {
                     pencilCursorElement.SetVisible(false);

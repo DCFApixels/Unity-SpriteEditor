@@ -24,13 +24,14 @@ namespace DCFApixels.SpriteEditor
 
         public static void Open(Layer layer, TextureCompositor compositor)
         {
-            ModifierEditorWindow window = GetWindow<ModifierEditorWindow>(true, "Layer Modifiers");
+            ModifierEditorWindow window = CreateInstance<ModifierEditorWindow>();
+            window.titleContent = new GUIContent("FX — " + layer?.layerName);
             window.compositor = compositor;
             window.layer = layer;
             window.layerId = layer?.Id;
             window.minSize = new Vector2(320f, 260f);
             window.RefreshInterface();
-            window.Show();
+            window.ShowUtility();
         }
 
         private void OnEnable()

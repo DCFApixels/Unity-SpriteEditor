@@ -33,13 +33,15 @@ namespace DCFApixels.SpriteEditor
         }
 
         // Inspect actual render-stage pixels before saturation or nonfinite display sanitization.
-        internal RenderTexture FinishStage(RenderTexture raw, bool saturate = false)
+        internal RenderTexture FinishStage(RenderTexture raw, bool saturate = false, LayerSwizzle swizzle = default)
         {
             if (raw == null) return null;
             Material material = SpriteEditorMaterials.Hdr;
             RenderTexture result = null;
             try
             {
+                material.SetVector("_Swizzle", swizzle.ShaderValue);
+                material.SetFloat("_UseSwizzle", swizzle.IsIdentity ? 0f : 1f);
                 if (collectingErrors && numericErrors != null)
                 {
                     var next = ErrorTarget(numericErrors.width, numericErrors.height);

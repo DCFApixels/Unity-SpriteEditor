@@ -58,8 +58,10 @@ namespace DCFApixels.SpriteEditor
                 transform.parent.Insert(transform.parent.IndexOf(transform) + 1, container);
             else
                 root.Insert(0, container);
+            var swizzle = BuildSwizzle(layer, apply, bindings);
+            container.parent.Insert(container.parent.IndexOf(container) + 1, swizzle);
             var color = SpriteEditorUI.ConfigureField(new EnumField("Color Range", layer.colorRange));
-            color.tooltip = "Standard clamps this layer after its FX. HDR keeps signed linear values beyond 0–1.";
+            color.tooltip = "Standard clamps this layer after its FX and Swizzle. HDR keeps signed linear values beyond 0–1.";
             bindings.Track(color, () => (Enum)layer.colorRange);
             color.RegisterValueChangedCallback(evt => apply("Change Layer Color Range",
                 () => SetColorRange(layer, (LayerColorRange)evt.newValue)));
@@ -71,7 +73,7 @@ namespace DCFApixels.SpriteEditor
             card.Add(blend);
             bindings.Add(() =>
             {
-                bool active = !(layer is GroupLayer group) || group.compositing == GroupCompositing.Isolated;
+                bool active = !(layer is GroupLayer group) || !group.IsPassThrough;
                 color.SetEnabled(active); blend.SetEnabled(active); preset.SetEnabled(active);
             });
             if (layer is DrawingLayer pixels)
@@ -91,6 +93,45 @@ namespace DCFApixels.SpriteEditor
                 bindings.Add(() => compact.SetEnabled(HdrUtility.IsHdr(pixels.StoredTexture)));
                 card.Add(compact);
             }
+        }
+
+        private static VisualElement BuildSwizzle(Layer layer, Action<string, Action> apply, SpriteEditorUI.ValueBindings bindings)
+        {
+            var container = new VisualElement();
+            container.AddToClassList("sprite-editor-swizzle");
+            var row = new VisualElement();
+            row.AddToClassList("sprite-editor-swizzle-row");
+            var label = new Label("Swizzle");
+            label.AddToClassList("unity-base-field__label");
+            row.Add(label);
+            SpriteEditorUI.ConfigureField(row);
+            var channels = new VisualElement();
+            channels.AddToClassList("sprite-editor-swizzle-channels");
+            row.Add(channels);
+            for (int channel = 0; channel < 4; channel++)
+            {
+                int output = channel;
+                var choices = new List<string>(LayerSwizzle.Labels);
+                var field = new DropdownField(choices, (int)layer.swizzle[output]);
+                field.AddToClassList("sprite-editor-swizzle-channel");
+                field.tooltip = "Output " + LayerSwizzle.Labels[output] + ": select a source channel, its inverse, or a constant. Applied after FX in linear space, before Color Range and blending.";
+                bindings.Track(field, () => LayerSwizzle.Labels[(int)layer.swizzle[output]]);
+                field.RegisterValueChangedCallback(evt =>
+                {
+                    int source = choices.IndexOf(evt.newValue);
+                    if (source >= 0) apply("Change Layer Swizzle", () => layer.swizzle[output] = (SwizzleChannel)source);
+                });
+                channels.Add(field);
+            }
+            container.Add(row);
+            if (layer is GroupLayer group)
+            {
+                var hint = new HelpBox("Swizzle isolates this group using Normal blending. Restore R G B A to resume Pass Through.", HelpBoxMessageType.Info);
+                bindings.Add(() => hint.EnableInClassList("sprite-editor-swizzle-hint--hidden",
+                    group.compositing != GroupCompositing.PassThrough || group.swizzle.IsIdentity));
+                container.Add(hint);
+            }
+            return container;
         }
 
         private static void SetColorRange(Layer layer, LayerColorRange range)

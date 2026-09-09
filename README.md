@@ -157,12 +157,16 @@ conversion with **Keep Transform**, **Apply Transform**, or **Cancel**.
 That click never paints or fills — click again after conversion.
 
 <details>
-<summary>Separate Properties windows and resetting the workspace</summary>
+<summary>User settings, separate Properties windows and workspace reset</summary>
 
 Each **⋮ → Properties** invocation on a layer opens a separate window. **FX** is in the same row menu.
 
+Open **window tab ⋮ → User Settings…** to choose the light/dark checkerboard colors, cell size (1–128 UI pixels, default 16), and the
+invalid-pixel highlight color. Changes update all open previews immediately and persist for your
+user account, without changing documents, exports or Undo. **Reset Preview Appearance** restores the defaults.
+
 Use **window tab ⋮ → Reset Sprite Editor Settings…** to reset panel sizes, scrolling, selection,
-foldouts, preview tools, shared painting preferences, channels, and Live Quality.
+foldouts, preview tools, shared painting preferences, preview colors, channels, and Live Quality.
 The confirmed reset applies to all open Sprite Editor windows and has no Undo.
 It does not delete documents, unsaved work, per-layer settings, or assets, and does not change
 Unity settings or docking.
@@ -197,7 +201,11 @@ or use the footer:
 | **Folder** | Group selected layers. | Group the dragged selection. |
 | **Trash** | Delete selected layers. | Delete the dragged selection. |
 
-**⋮ → Duplicate** copies a single layer or a whole group. Copies appear above their originals.
+Commands in **⋮** or the row's right-click menu apply to the entire selection. Group-only commands
+affect selected groups; **Properties** and **FX** open a separate window for each supported layer.
+Selected groups carry their descendants once when moving, duplicating, converting or deleting.
+
+**⋮ → Duplicate** copies selected layers and whole groups. Copies appear above their originals.
 Drawing pixels and embedded Shader FX are independent; external assets remain linked.
 Targets within the copied set follow the copies. Moving, grouping, deleting, and duplicating
 a selection support Undo/Redo.
@@ -495,10 +503,13 @@ The document header provides **New · document field · Save · Save As · Expor
 
 | Action | Result |
 | :--- | :--- |
-| **Save** | Update the current document and output without a dialog. Disabled before the first save. |
+| **Save** | Update the current document and output without a dialog. Disabled before the first save or when there are no unsaved changes. |
 | **Save As** | Create an independent editable document and outputs. |
 | `Ctrl+S` | Save an existing document, or open Save As for a new one. |
 | **Export** | Write a separate image or a layered PSD. |
+
+A warning symbol on **Save As** indicates a document with no saved file. Closing a changed document
+opens Unity's **Save / Discard / Cancel** dialog: Save runs Save As, and Cancel keeps the window open.
 
 ### Use the saved asset directly
 
@@ -528,6 +539,14 @@ including after canvas resizing. Output Sprite uses a centered pivot, full-recta
 PNG/JPEG/TGA exported into `Assets` are imported as single Sprite assets; EXR as a linear texture.
 Replacing a standalone Texture2D asks for confirmation and preserves references.
 Other asset types and sub-assets are protected.
+
+**Swizzle** in Layer Settings remaps the four output channels of any layer or group.
+Each dropdown offers `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0` and `1`.
+The default `R G B A` leaves pixels unchanged. Remapping happens after FX in linear space,
+before Color Range and blending, and does not modify source pixels.
+A changed group swizzle isolates its children; restoring `R G B A` restores Pass Through
+if that was the group's selected mode. PSD export bakes swizzled pixels; for groups it also
+preserves the original children in a hidden folder.
 
 The compositor uses **linear HDR** working pixels. Layer **Color Range** and **Blend Range** independently
 control bounded and extended behavior. Drawing starts in 8-bit storage and promotes to half-float for HDR;

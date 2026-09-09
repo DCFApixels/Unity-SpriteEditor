@@ -12,6 +12,8 @@ namespace DCFApixels.SpriteEditor
         public GroupCompositing compositing;
 
         internal override bool IsGroup => true;
+        internal bool IsPassThrough => compositing == GroupCompositing.PassThrough && swizzle.IsIdentity;
+        internal BlendMode EffectiveBlendMode => compositing == GroupCompositing.PassThrough ? BlendMode.Normal : blendMode;
 
         internal override RenderTexture Render(in LayerRenderContext context)
         {

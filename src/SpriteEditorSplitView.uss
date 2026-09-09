@@ -1006,6 +1006,37 @@
     margin-right: 6px;
 }
 
+.sprite-editor-swizzle-row,
+.sprite-editor-swizzle-channels {
+    flex-direction: row;
+    align-items: center;
+}
+
+.sprite-editor-swizzle {
+    flex-shrink: 0;
+}
+
+.sprite-editor-swizzle-channels {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sprite-editor-swizzle-channel {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+    margin-left: 2px;
+    margin-right: 0;
+}
+
+.sprite-editor-swizzle-hint--hidden {
+    display: none;
+}
+
+.sprite-editor-swizzle-channel > .unity-base-field__input {
+    min-width: 0;
+}
+
 .sprite-editor-preview-exposure {
     width: 88px;
     flex-shrink: 0;
@@ -1035,3 +1066,33 @@
 
 .unity-button.sprite-editor-channel-button.sprite-editor-channel-button--error { color: rgb(255, 125, 195); }
 .unity-button.sprite-editor-debug-button { align-items: center; justify-content: center; padding: 0; }
+
+.sprite-editor-user-settings {
+    padding: 8px 10px;
+}
+
+.sprite-editor-user-settings-heading {
+    -unity-font-style: bold;
+    margin-top: 8px;
+    margin-bottom: 6px;
+}
+
+.sprite-editor-user-settings-color > .unity-base-field__label {
+    min-width: 120px;
+}
+
+.sprite-editor-user-settings-color > .unity-base-field__input {
+    flex-grow: 1;
+    min-width: 50px;
+}
+
+.sprite-editor-user-settings-note {
+    white-space: normal;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    opacity: 0.7;
+}
+
+.sprite-editor-user-settings-reset {
+    align-self: flex-start;
+}

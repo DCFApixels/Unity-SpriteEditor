@@ -7,6 +7,7 @@ Shader "Hidden/TextureCompositor/PreviewChannels"
         _Exposure ("Exposure multiplier", Float) = 1
         _Debug ("Numeric errors", Float) = 0
         _Errors ("Error mask", 2D) = "black" {}
+        _ErrorColor ("Error display color", Vector) = (1, 0, 1, 1)
     }
     SubShader
     {
@@ -22,11 +23,11 @@ Shader "Hidden/TextureCompositor/PreviewChannels"
             sampler2D _MainTex;
             sampler2D _Errors;
             float _Exposure, _Debug;
-            float4 _Channels;
+            float4 _Channels, _ErrorColor;
 
             float4 frag(v2f_img input) : SV_Target
             {
-                if (_Debug > 0.5 && tex2D(_Errors, input.uv).r > 0.5) return float4(1, 0, 1, 1);
+                if (_Debug > 0.5 && tex2D(_Errors, input.uv).r > 0.5) return float4(_ErrorColor.rgb, 1);
                 float4 color = tex2D(_MainTex, input.uv);
                 color.rgb = saturate(color.rgb * _Exposure);
                 #if defined(UNITY_COLORSPACE_GAMMA)

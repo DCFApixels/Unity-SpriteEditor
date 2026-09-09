@@ -84,11 +84,23 @@ namespace DCFApixels.SpriteEditor
                 {
                     report.groupCount++;
                     records.Add(new PsdWriter.LayerRecord { name = "</Group>", id = LayerId(group, ids, ":end"), section = 3, visible = false });
+                    bool bakedSwizzle = !group.swizzle.IsIdentity;
+                    if (bakedSwizzle)
+                        records.Add(new PsdWriter.LayerRecord { name = "</Group>", id = LayerId(group, ids, ":source-end"), section = 3, visible = false });
                     Collect(document, group.layers, records, report, visited, ids);
-                    bool isolated = group.compositing == GroupCompositing.Isolated;
-                    string groupBlend = isolated ? BlendKey(group.blendMode, out _) : "pass";
+                    if (bakedSwizzle)
+                    {
+                        records.Add(new PsdWriter.LayerRecord { name = "Source Layers", id = LayerId(group, ids, ":sources"),
+                            section = 1, visible = false, opacity = 255, blend = "norm", sectionBlend = "norm" });
+                        records.Add(new PsdWriter.LayerRecord { name = "Swizzle Result", id = LayerId(group, ids, ":swizzle"),
+                            visible = true, opacity = 255, blend = "norm",
+                            openPixels = () => new Pixels(document.RenderPsdGroupContent(group), document.width, document.height) });
+                        report.Note(group, "Group Swizzle is baked into a child layer. Original children are preserved in the hidden Source Layers folder.");
+                    }
+                    bool isolated = !group.IsPassThrough;
+                    string groupBlend = isolated ? BlendKey(group.EffectiveBlendMode, out _) : "pass";
                     records.Add(new PsdWriter.LayerRecord { name = group.layerName, id = LayerId(group, ids), section = 1,
-                        visible = group.enabled && (!isolated || group.blendMode != BlendMode.None), opacity = ToByte(group.opacity),
+                        visible = group.enabled && (!isolated || group.EffectiveBlendMode != BlendMode.None), opacity = ToByte(group.opacity),
                         blend = isolated ? groupBlend : "norm", sectionBlend = groupBlend });
                     if (isolated && group.blendRange == LayerBlendRange.HDR)
                         report.Note(group, "HDR group blending is approximated in the 8-bit layer stack; merged pixels are clamped.");
@@ -109,7 +121,8 @@ namespace DCFApixels.SpriteEditor
                 if (approximate) report.Note(layer, layer.blendMode + " is approximated by " + record.blend + "; the merged image retains the original result.");
                 if (layer.blendMode == BlendMode.None) report.Note(layer, "No-op blend is represented by a hidden layer.");
 
-                bool modifiers = HasModifiers(layer);
+                bool modifiers = HasModifiers(layer) || !layer.swizzle.IsIdentity;
+                if (!layer.swizzle.IsIdentity) report.Note(layer, "Swizzle is baked into the layer pixels.");
                 if (layer is ColorFillLayer fill && !modifiers)
                 {
                     record.adjustment = true;
@@ -139,7 +152,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 else if (!(layer is DrawingLayer) && !(layer is FileLayer))
                     report.Note(layer, "Rasterized with its transform and FX; no compatible editable representation for these settings.");
-                else if (modifiers)
+                else if (HasModifiers(layer))
                     report.Note(layer, "Shader/Material FX are baked into the layer pixels.");
                 records.Add(record);
             }

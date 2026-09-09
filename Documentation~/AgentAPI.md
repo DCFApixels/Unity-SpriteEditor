@@ -148,7 +148,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 
 | Applies to | Supported keys |
 |---|---|
-| All | `name` (string), `enabled` (boolean), `opacity` (0..1), `blend`, `colorRange` / `blendRange` (`Standard`, `HDR`) |
+| All | `name` (string), `enabled` (boolean), `opacity` (0..1), `blend`, `colorRange` / `blendRange` (`Standard`, `HDR`), `swizzle` (four channel names in output RGBA order) |
 | Non-group | `filter` (`Source`, `Point`, `Bilinear`, `Trilinear`) |
 | Group | `compositing` (`PassThrough`, `Isolated`); ranges are active only when isolated |
 | File | `source` (already imported Texture2D path in Assets or Packages) |
@@ -161,6 +161,16 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
 Groups default to PassThrough; set `compositing:"Isolated"` to apply their own blend mode and ranges.
 Group opacity applies to the complete result, not separately to every child. Group transforms/FX are rejected.
+`swizzle` accepts `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1` as strings.
+For example, `"swizzle":["B","G","R","A"]` exchanges red and blue;
+`["A","A","A","1"]` displays alpha as opaque grayscale. The default is `["R","G","B","A"]`.
+It runs after FX in linear working space and before Color Range and layer blending. Output alpha
+remains bounded to 0..1. Source pixels and brush settings are unchanged.
+A nonidentity group swizzle forces isolated rendering. A saved Pass Through group uses Normal
+blending while swizzled, then resumes Pass Through when restored to identity. Explicitly isolated
+groups retain their chosen blend mode. `Describe` lists `swizzleChannels`; `Inspect` includes each
+layer's swizzle, including groups.
+
 Setting Drawing `colorRange:"HDR"` promotes storage. Standard does not downgrade it. The explicit operation
 `{"op":"compact","layer":"@drawing"}` clamps/quantizes to 8-bit and switches to Standard, with native Undo.
 Only use compact when the user asks to discard HDR precision. Inspect reports `storageFormat`.
