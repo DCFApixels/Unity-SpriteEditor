@@ -119,6 +119,7 @@ namespace DCFApixels.SpriteEditor
             Undo.FlushUndoRecordObjects();
             EditorPrefs.DeleteKey(PaintingPreviewScalePrefKey);
             EditorPrefs.DeleteKey(PaintToolSettingsPrefKey);
+            SpriteEditorColorInputs.Reset();
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
             ShowNotification(new GUIContent("Sprite Editor settings reset."));
@@ -135,6 +136,9 @@ namespace DCFApixels.SpriteEditor
             layerSettingsPaneHeight = DefaultLayerSettingsPaneHeight;
             paintingPreviewScale = DefaultPaintingPreviewScale;
             previewChannels = AllPreviewChannels;
+            previewDebug = false;
+            previewExposure = 0f;
+            colorSettingsExpanded = false;
             tiledPreview = false;
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
@@ -737,6 +741,9 @@ namespace DCFApixels.SpriteEditor
                 () => ConvertLayerToDrawing(layer, true));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Duplicate"), false, () => DuplicateLayers(new List<Layer> { layer }));
+            List<Layer> mergeSelection = IsLayerSelected(layer.Id) ? GetSelectedRoots() : new List<Layer> { layer };
+            menu.AddItem(new GUIContent("Merge Selected %e"), false, () => MergeSelectedLayers(mergeSelection, false));
+            menu.AddItem(new GUIContent("Merge Selected as Copy %&e"), false, () => MergeSelectedLayers(mergeSelection, true));
             menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayer(container, layer));
             if (!(layer is GroupLayer))
             {

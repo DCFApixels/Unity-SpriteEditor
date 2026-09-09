@@ -4,6 +4,33 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Multi-selection opacity and blend editing from inline fields without clearing the selection; numeric opacity shortcuts also affect selected layers and groups.
+- Preview navigation with any tool: middle-button drag pans and the mouse wheel zooms around the cursor without modifying document data.
+- Merge selected layers and groups into a Drawing layer with `Ctrl+E`, or keep originals with `Ctrl+Alt+E`; includes full-resolution FX/transform baking and single-step Undo.
+- Global HDR / Standard color-picker preference for tools, layer colors/gradients and Shader FX parameters.
+- Linear HDR rendering with independent Color Range and Blend Range per layer, HDR color controls,
+  and half-float saved Texture2D/EXR output. LDR exports clamp a separate copy.
+- Drawing storage promotion, explicit undoable conversion to 8-bit, HDR-aware painting and floating-point fill.
+- Group opacity, pass-through before/after interpolation and isolated group blending, including nested groups and PSD metadata.
+- Preview-only exposure and cumulative numeric-error diagnostics with a bug toggle and small asynchronous GPU readback.
+- Agent API range/group controls, storage inspection and explicit `compact` operation; opt-in HDR/group regression checks.
+
+### Changed
+
+- `TextureCompositor.Compose()` returns linear RGBAHalf instead of RGBA32. Raw-pixel consumers must account for its format.
+- SDF and Outline keep their bounded mask thresholds while producing floating-point color output.
+
+### Fixed
+
+- Standard picker mode now displays and paints bounded colors without overwriting their stored HDR intensity when switching modes.
+- Limited excessive brush/fill intensity to half-float capacity while preserving linear RGB ratios, instead of replacing bright components with black.
+- Removed repeated color-space conversion in brush and Shader FX uniforms, including previously applied effects.
+- Preserved legacy Color Fill appearance while keeping its picker, API colors and PSD metadata consistent.
+- Respected linear versus sRGB destination encoding when writing 8-bit pixels.
+- Added opt-in color-pipeline regression checks with non-primary colors and serialization round-trips.
+
 ## [0.6.1] - 2026-09-09
 
 ### Added

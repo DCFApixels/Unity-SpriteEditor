@@ -42,9 +42,7 @@ namespace DCFApixels.SpriteEditor
             });
             root.Add(gradientType);
 
-            GradientField gradient = SpriteEditorUI.ConfigureField(new GradientField("Gradient"));
-            gradient.SetValueWithoutNotify(layer.gradient);
-            bindings.Track(gradient, () => layer.gradient);
+            GradientField gradient = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new GradientField("Gradient"), bindings, () => layer.gradient));
             gradient.RegisterValueChangedCallback(evt =>
                 applyChange("Change Gradient", () => layer.gradient = GradientUtility.Create(evt.newValue)));
             root.Add(gradient);

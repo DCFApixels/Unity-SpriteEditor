@@ -34,7 +34,7 @@ static class Program
             new PsdWriter.LayerRecord { name = "</Group>", section = 3 },
             new PsdWriter.LayerRecord { name = "</Group>", section = 3 },
             new PsdWriter.LayerRecord { name = "Hidden", visible = false, openPixels = () => new Pixels() },
-            new PsdWriter.LayerRecord { name = "Nested", section = 1 },
+            new PsdWriter.LayerRecord { name = "Nested", section = 1, blend = "mul ", sectionBlend = "mul ", opacity = 153 },
             new PsdWriter.LayerRecord { name = "Группа 💗", section = 1 },
         };
         var fill = new PsdWriter.LayerRecord { name = "Fill", adjustment = true, mask = true, openPixels = () => new Pixels() };

@@ -83,7 +83,7 @@ namespace DCFApixels.SpriteEditor
             RenderTexture thumbnail = RenderTexture.GetTemporary(
                 Mathf.Max(1, Mathf.RoundToInt(output.width * scale)),
                 Mathf.Max(1, Mathf.RoundToInt(output.height * scale)),
-                0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
+                0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             RenderTexture previous = RenderTexture.active;
             try
             {

@@ -28,6 +28,20 @@ Check(UnityEngine.Mathf.Approximately(zoomed.width, fitted.width * 2f), "Click d
 Check(Close(UV(zoomed, anchor), uv), "Pixel under click stays under cursor");
 Call("ZoomAt", bounds, dimensions, zoomed, anchor, fittedScale);
 Check(Close(Image(bounds).position, fitted.position), "Zoom-out reverses anchored zoom-in");
+float Wheel(float scale, float delta) => (float)type.GetMethod("WheelScale",
+    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).Invoke(null, new object[] { scale, delta });
+Check(UnityEngine.Mathf.Approximately(Wheel(1f, -3f), 1.2f), "Wheel up zooms in by twenty percent per notch");
+Check(UnityEngine.Mathf.Approximately(Wheel(Wheel(1f, -3f), 3f), 1f), "Wheel directions reverse each other");
+var emptyAnchor = new UnityEngine.Vector2(12, 12);
+var emptyUv = UV(Image(bounds), emptyAnchor);
+Call("ZoomAt", bounds, dimensions, Image(bounds), emptyAnchor, Wheel(fittedScale, -3f));
+Check(Close(UV(Image(bounds), emptyAnchor), emptyUv), "Wheel zoom anchors correctly outside the physical canvas");
+var wheelImage = Image(bounds);
+Call("Pan", bounds, dimensions, wheelImage, new UnityEngine.Vector2(15, 21));
+Check(Close(Image(bounds).position, wheelImage.position + new UnityEngine.Vector2(15, 21)), "Pan after wheel zoom follows pointer displacement");
+Check(Wheel(64f, -3f) == 64f && Wheel(1f / 1024f, 3f) == 1f / 1024f, "Wheel respects scale limits");
+Check(Wheel(1f, float.NaN) == 1f && Wheel(1f, float.PositiveInfinity) == 1f, "Invalid wheel deltas do not change zoom");
+Call("Reset");
 var selection = new UnityEngine.Rect(204, 104, 200, 100);
 Call("Frame", bounds, dimensions, Image(bounds), selection);
 var framed = Image(bounds);

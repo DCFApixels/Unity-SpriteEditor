@@ -279,6 +279,7 @@ namespace DCFApixels.SpriteEditor
         private static Material paintBrushMaterial;
         private static Material alphaConversionMaterial;
         private static Material previewChannelsMaterial;
+        private static Material hdrMaterial;
 
         static SpriteEditorMaterials()
         {
@@ -287,6 +288,7 @@ namespace DCFApixels.SpriteEditor
         }
 
         public static Material Blend => GetOrCreate(ref blendMaterial, "Hidden/TextureCompositor/Blend");
+        public static Material Hdr => GetOrCreate(ref hdrMaterial, "Hidden/TextureCompositor/Hdr");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
         public static Material PreviewChannels => GetOrCreate(ref previewChannelsMaterial, "Hidden/TextureCompositor/PreviewChannels");
@@ -315,6 +317,8 @@ namespace DCFApixels.SpriteEditor
 
         private static void Dispose()
         {
+            if (hdrMaterial != null) UnityEngine.Object.DestroyImmediate(hdrMaterial);
+            hdrMaterial = null;
             if (blendMaterial != null)
                 UnityEngine.Object.DestroyImmediate(blendMaterial);
             if (transformMaterial != null)
@@ -340,6 +344,7 @@ namespace DCFApixels.SpriteEditor
 
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string layerId;
+        [SerializeField] private bool colorSettingsExpanded;
 
         [NonSerialized] private Layer currentLayer;
         [NonSerialized] private RenderTexture previewTexture;
@@ -488,6 +493,8 @@ namespace DCFApixels.SpriteEditor
             ScrollView scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = 1f;
             BuildSettings(scroll, currentLayer);
+            LayerColorSettingsView.Build(scroll, currentLayer, ApplyLayerChange, SettingsBindings,
+                colorSettingsExpanded, value => colorSettingsExpanded = value);
             SettingsBindings.Refresh(forceValues);
             scroll.Add(SpriteEditorUI.CreateHeading(PreviewTitle));
 

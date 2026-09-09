@@ -39,7 +39,7 @@ namespace DCFApixels.SpriteEditor
                         uniforms.AppendLine($"float {name};");
                         break;
                     case ShaderFXParameterType.Color:
-                        properties.AppendLine($"{name} (\"{name}\", Color) = (1,1,1,1)");
+                        properties.AppendLine($"{name} (\"{name}\", Vector) = (1,1,1,1)");
                         uniforms.AppendLine($"float4 {name};");
                         break;
                     case ShaderFXParameterType.Vector:

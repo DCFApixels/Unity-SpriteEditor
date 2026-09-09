@@ -20,6 +20,7 @@ Shader "Hidden/TextureCompositor/Transform"
             #pragma fragment frag
             #pragma target 3.5
             #include "UnityCG.cginc"
+        #include "HdrColor.cginc"
 
             #if defined(SHADER_API_D3D11) || defined(SHADER_API_METAL) || defined(SHADER_API_VULKAN)
                 #define TRANSFORM_NATIVE_SAMPLERS
@@ -36,6 +37,7 @@ Shader "Hidden/TextureCompositor/Transform"
             #else
                 sampler2D _MainTex;
             #endif
+            float _DecodeSource;
             float4 _MainTex_TexelSize;
             float2 _Pivot;
             float2 _Position;
@@ -65,7 +67,7 @@ Shader "Hidden/TextureCompositor/Transform"
                 return clamp(pixel, 0.0, size - 1.0);
             }
 
-            fixed4 FetchPixel(float2 pixel, float2 size, float mip)
+            float4 FetchPixel(float2 pixel, float2 size, float mip)
             {
                 pixel = float2(AddressPixel(pixel.x, size.x, _WrapModeU),
                     AddressPixel(pixel.y, size.y, _WrapModeV));
@@ -77,7 +79,7 @@ Shader "Hidden/TextureCompositor/Transform"
                 #endif
             }
 
-            fixed4 SampleMip(float2 uv, float mip)
+            float4 SampleMip(float2 uv, float mip)
             {
                 float2 size = max(floor(_MainTex_TexelSize.zw / exp2(mip)), 1.0);
                 float2 pixel = uv * size;
@@ -86,9 +88,9 @@ Shader "Hidden/TextureCompositor/Transform"
                 pixel -= 0.5;
                 float2 blend = frac(pixel);
                 float2 first = floor(pixel);
-                fixed4 bottom = lerp(FetchPixel(first, size, mip),
+                float4 bottom = lerp(FetchPixel(first, size, mip),
                     FetchPixel(first + float2(1, 0), size, mip), blend.x);
-                fixed4 top = lerp(FetchPixel(first + float2(0, 1), size, mip),
+                float4 top = lerp(FetchPixel(first + float2(0, 1), size, mip),
                     FetchPixel(first + float2(1, 1), size, mip), blend.x);
                 return lerp(bottom, top, blend.y);
             }
@@ -104,7 +106,7 @@ Shader "Hidden/TextureCompositor/Transform"
                 return clamp(mip, 0.0, (float)(_SourceMipCount - 1));
             }
 
-            fixed4 SampleFiltered(float2 uv, float mip)
+            float4 SampleFiltered(float2 uv, float mip)
             {
                 if (_FilterMode != 2)
                     mip = floor(mip + 0.5);
@@ -137,13 +139,13 @@ Shader "Hidden/TextureCompositor/Transform"
                     }
                 #endif
                 float lowerMip = floor(mip);
-                fixed4 lower = SampleMip(uv, lowerMip);
+                float4 lower = SampleMip(uv, lowerMip);
                 if (_FilterMode != 2 || mip == lowerMip)
                     return lower;
                 return lerp(lower, SampleMip(uv, min(lowerMip + 1.0, (float)(_SourceMipCount - 1))), frac(mip));
             }
 
-            fixed4 frag(v2f_img input) : SV_Target
+            float4 frag(v2f_img input) : SV_Target
             {
                 float2 pivotPixels = _Pivot * _OutputSize;
                 float2 local = input.uv * _OutputSize - pivotPixels - _Position;
@@ -163,8 +165,12 @@ Shader "Hidden/TextureCompositor/Transform"
                 float mip = SourceMipLevel(sourceUV);
                 if (_ClipOutside != 0 &&
                     (sourceUV.x < 0.0 || sourceUV.x > 1.0 || sourceUV.y < 0.0 || sourceUV.y > 1.0))
-                    return fixed4(0, 0, 0, 0);
-                return SampleFiltered(sourceUV, mip);
+                    return float4(0, 0, 0, 0);
+                float4 color = SampleFiltered(sourceUV, mip);
+                #if defined(UNITY_COLORSPACE_GAMMA)
+                if (_DecodeSource > 0.5) color.rgb = SpriteDecode(color.rgb);
+                #endif
+                return color;
             }
             ENDCG
         }

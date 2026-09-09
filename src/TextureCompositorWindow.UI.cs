@@ -526,15 +526,55 @@ namespace DCFApixels.SpriteEditor
             });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
+                if (evt.button == 1)
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                    FinishPreviewTransform();
+                    FinishPaintingStroke();
+                    Focus();
+                    if (!IsLayerSelected(layer.Id))
+                    {
+                        SelectOnlyLayer(layer.Id);
+                        RefreshToolkitInterface();
+                    }
+                    return;
+                }
                 if (evt.button != 0 || evt.target is VisualElement target &&
                     target.ClassListContains("sprite-editor-layer-drag-handle"))
                     return;
+                for (VisualElement field = evt.target as VisualElement; field != null && field != row; field = field.parent)
+                {
+                    if (!field.ClassListContains("sprite-editor-layer-multi-edit")) continue;
+                    if (!IsLayerSelected(layer.Id))
+                    {
+                        FinishPreviewTransform();
+                        FinishPaintingStroke();
+                        SelectOnlyLayer(layer.Id);
+                        RefreshToolkitInterface();
+                    }
+                    return;
+                }
+                if (evt.target is VisualElement menuTarget &&
+                    menuTarget.ClassListContains("sprite-editor-layer-menu-button"))
+                {
+                    if (!IsLayerSelected(layer.Id)) SelectLayerFromPointer(layer, evt);
+                    return;
+                }
                 SelectLayerFromPointer(layer, evt);
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
                     evt.PreventDefault();
                     evt.StopImmediatePropagation();
                 }
+            }, TrickleDown.TrickleDown);
+            row.RegisterCallback<PointerUpEvent>(evt =>
+            {
+                if (evt.button != 1) return;
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                if (compositor != null && compositor.TryFindLayer(layer, out List<Layer> container, out int index))
+                    ShowLayerContextMenu(layer, container, index);
             }, TrickleDown.TrickleDown);
             return row;
         }
@@ -567,7 +607,7 @@ namespace DCFApixels.SpriteEditor
             row.Add(foldout);
 
             TextField name = new TextField();
-            name.style.flexGrow = 1f;
+            name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(group.layerName);
             toolkitLayerBindings.Track(name, () => group.layerName);
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
@@ -575,12 +615,18 @@ namespace DCFApixels.SpriteEditor
                 () => group.layerName = evt.newValue));
             row.Add(name);
 
-            Label count = new Label($"{group.layers.Count} items");
-            toolkitLayerBindings.Add(() => count.text = $"{group.layers.Count} items");
-            count.style.width = 52f;
-            count.style.fontSize = 10f;
-            row.Add(count);
-            row.Add(SpriteEditorUI.CreateButton("+", () => ShowAddMenu(group.layers, 0), 24f));
+            toolkitLayerBindings.Add(() => name.tooltip = $"{group.layers.Count} items");
+            var opacity = new FloatField { tooltip = "Group opacity from 0 to 1." };
+            opacity.AddToClassList("sprite-editor-group-opacity");
+            opacity.AddToClassList("sprite-editor-layer-multi-edit");
+            toolkitLayerBindings.Track(opacity, () => group.opacity);
+            opacity.RegisterValueChangedCallback(evt => ApplySelectedOpacity(group, evt.newValue));
+            row.Add(opacity);
+            var blend = LayerColorSettingsView.GroupBlend(group,
+                (mode, passThrough) => ApplySelectedBlend(group, mode, passThrough), toolkitLayerBindings);
+            blend.AddToClassList("sprite-editor-group-blend");
+            blend.AddToClassList("sprite-editor-layer-multi-edit");
+            row.Add(blend);
             row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(group, container, index)));
             RegisterToolkitLayerDrop(row, group, container, index, depth);
             return row;
@@ -619,8 +665,7 @@ namespace DCFApixels.SpriteEditor
             toolkitLayerBindings.Add(() => thumbnail.image = layer.GetPreviewTexture(18));
 
             TextField name = new TextField();
-            name.style.flexGrow = 1f;
-            name.style.minWidth = 72f;
+            name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(layer.layerName);
             toolkitLayerBindings.Track(name, () => layer.layerName);
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
@@ -629,21 +674,19 @@ namespace DCFApixels.SpriteEditor
             row.Add(name);
 
             FloatField opacity = new FloatField();
+            opacity.AddToClassList("sprite-editor-layer-multi-edit");
             opacity.tooltip = "Layer opacity from 0 to 1.";
             opacity.style.width = 48f;
             opacity.SetValueWithoutNotify(layer.opacity);
             toolkitLayerBindings.Track(opacity, () => layer.opacity);
-            opacity.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Layer Opacity",
-                () => layer.opacity = Mathf.Clamp01(evt.newValue)));
+            opacity.RegisterValueChangedCallback(evt => ApplySelectedOpacity(layer, evt.newValue));
             row.Add(opacity);
 
             EnumField blend = new EnumField(layer.blendMode);
+            blend.AddToClassList("sprite-editor-layer-multi-edit");
             toolkitLayerBindings.Track(blend, () => (Enum)layer.blendMode);
             blend.style.width = 126f;
-            blend.RegisterValueChangedCallback(evt => ApplyToolkitChange(
-                "Change Layer Blend Mode",
-                () => layer.blendMode = (BlendMode)evt.newValue));
+            blend.RegisterValueChangedCallback(evt => ApplySelectedBlend(layer, (BlendMode)evt.newValue));
             row.Add(blend);
 
             if (layer is TargetedLayerEffect effect)
@@ -1163,7 +1206,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 else if (IsPreviewZoomEnabled)
                 {
-                    toolkitPreviewFooter.text = "Click zoom in • Alt-click zoom out • Area drag to frame • MMB pan • Esc cancel";
+                    toolkitPreviewFooter.text = "Click zoom in • Alt-click zoom out • Area drag to frame • MMB pan • Wheel zoom • Esc cancel";
                 }
                 else if (IsPreviewFillEnabled)
                 {
@@ -1382,6 +1425,7 @@ namespace DCFApixels.SpriteEditor
         {
             DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
             bool visible = previewTool == PreviewTool.Brush &&
+                           !(previewZoomManipulator?.IsPanning ?? false) &&
                            !alt &&
                            PreviewContainsPaintPoint(localPosition);
             toolkitPreviewCanvas?.SetCursor(
@@ -1414,6 +1458,14 @@ namespace DCFApixels.SpriteEditor
                 return;
             ResetOpacityEntry();
 
+            if (evt.keyCode == KeyCode.Escape && previewZoomManipulator != null && previewZoomManipulator.IsDragging)
+            {
+                CancelPreviewZoomGesture();
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                return;
+            }
+
             if (HandlePreviewTransformKey(evt))
                 return;
 
@@ -1425,6 +1477,13 @@ namespace DCFApixels.SpriteEditor
             }
 
             bool actionModifier = evt.ctrlKey || evt.commandKey;
+            if (actionModifier && !evt.shiftKey && evt.keyCode == KeyCode.E)
+            {
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                if (compositor != null) MergeSelectedLayers(GetSelectedRoots(), evt.altKey);
+                return;
+            }
             bool undo = actionModifier && !evt.altKey && evt.keyCode == KeyCode.Z && !evt.shiftKey;
             bool redo = actionModifier && !evt.altKey &&
                         ((evt.keyCode == KeyCode.Z && evt.shiftKey) ||

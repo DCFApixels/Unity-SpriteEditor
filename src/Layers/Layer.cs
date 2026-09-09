@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
+    public enum LayerColorRange { Standard, HDR }
+    public enum LayerBlendRange { Standard, HDR }
     internal readonly struct LayerRenderContext
     {
         public readonly TextureCompositor compositor;
@@ -42,6 +44,8 @@ namespace DCFApixels.SpriteEditor
         public bool enabled = true;
         [Range(0f, 1f)] public float opacity = 1f;
         public BlendMode blendMode = BlendMode.Normal;
+        public LayerColorRange colorRange;
+        public LayerBlendRange blendRange;
         // Keep the serialized field name and object-reference layout for existing Material FX.
         public List<UnityEngine.Object> modifiers = new List<UnityEngine.Object>();
         public TextureTransform transform = TextureTransform.Default;
@@ -104,6 +108,8 @@ namespace DCFApixels.SpriteEditor
             enabled = source.enabled;
             opacity = source.opacity;
             blendMode = source.blendMode;
+            colorRange = source.colorRange;
+            blendRange = source.blendRange;
             filterMode = source.filterMode;
             modifiers = source.modifiers == null ? new List<UnityEngine.Object>() : new List<UnityEngine.Object>(source.modifiers);
         }
@@ -126,8 +132,8 @@ namespace DCFApixels.SpriteEditor
                 context.width,
                 context.height,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default);
+                RenderTextureFormat.ARGBFloat,
+                RenderTextureReadWrite.Linear);
             FilterMode resolvedFilter = ResolveFilterMode(source);
             current.filterMode = resolvedFilter;
             current.wrapMode = TextureWrapMode.Clamp;
@@ -135,6 +141,9 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 Material transformMaterial = SpriteEditorMaterials.Transform;
+                if (transformMaterial != null)
+                    transformMaterial.SetFloat("_DecodeSource", source is Texture2D t &&
+                        UnityEngine.Experimental.Rendering.GraphicsFormatUtility.IsSRGBFormat(t.graphicsFormat) ? 1f : 0f);
                 if (transformMaterial == null)
                 {
                     Graphics.Blit(source, current);
@@ -175,6 +184,7 @@ namespace DCFApixels.SpriteEditor
                     Graphics.Blit(source, current, transformMaterial);
                 }
 
+                current = context.compositor.FinishStage(current);
                 if (!context.applyModifiers || modifiers == null)
                     return current;
 
@@ -190,8 +200,8 @@ namespace DCFApixels.SpriteEditor
                         context.width,
                         context.height,
                         0,
-                        RenderTextureFormat.ARGB32,
-                        RenderTextureReadWrite.Default);
+                        RenderTextureFormat.ARGBFloat,
+                        RenderTextureReadWrite.Linear);
                     next.filterMode = resolvedFilter;
                     next.wrapMode = TextureWrapMode.Clamp;
                     try
@@ -205,6 +215,7 @@ namespace DCFApixels.SpriteEditor
                     }
                     RenderTexture.ReleaseTemporary(current);
                     current = next;
+                    current = context.compositor.FinishStage(current);
                 }
 
                 return current;

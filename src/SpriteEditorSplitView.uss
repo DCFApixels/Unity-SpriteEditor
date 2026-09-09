@@ -249,11 +249,46 @@
     flex-shrink: 0;
     align-items: stretch;
     margin: 4px 0;
-    padding: 5px 6px 6px;
+    padding: 2px 6px;
 }
 
 .sprite-editor-transform-card > .unity-foldout {
     align-self: stretch;
+    min-width: 0;
+}
+
+.unity-help-box.sprite-editor-color-card {
+    flex-direction: column;
+    flex-shrink: 0;
+    align-items: stretch;
+    margin: 4px 0;
+    padding: 2px 6px;
+}
+
+.sprite-editor-color-card > .unity-foldout {
+    min-width: 0;
+}
+
+.sprite-editor-color-card > .unity-foldout > .unity-foldout__toggle {
+    margin-right: 110px;
+    min-height: 20px;
+}
+
+.sprite-editor-color-card > .unity-foldout > .unity-foldout__toggle .unity-toggle__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sprite-editor-color-preset {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    width: 104px;
+    margin: 0;
+}
+
+.sprite-editor-color-preset > .unity-base-field__input {
     min-width: 0;
 }
 
@@ -319,6 +354,18 @@
     --layer-row-selected: #99b8d9;
     --layer-row-active: #619ee0;
     --layer-row-outline: #78afe8;
+}
+
+.sprite-editor-layer-name {
+    flex-basis: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 72px;
+    overflow: hidden;
+}
+
+.sprite-editor-layer-name > .unity-base-field__input {
+    min-width: 0;
 }
 
 .sprite-editor-layer-row--selected {
@@ -761,3 +808,32 @@
     --channel-text: #dce3ed;
     --channel-border: #7298c5;
 }
+.sprite-editor-group-opacity { width: 48px; flex-shrink: 0; }
+.sprite-editor-group-blend { width: 126px; flex-shrink: 0; }
+.sprite-editor-storage-description { font-size: 10px; margin-left: 3px; margin-top: 2px; opacity: 0.7; }
+.sprite-editor-compact-storage { align-self: flex-start; margin-bottom: 6px; }
+.unity-button.sprite-editor-hdr-button {
+    width: 36px;
+    margin-right: 6px;
+}
+
+.sprite-editor-preview-exposure {
+    width: 88px;
+    flex-shrink: 0;
+    margin-right: 7px;
+}
+
+.sprite-editor-preview-exposure > .unity-base-field__label {
+    min-width: 24px;
+    width: 24px;
+    flex-shrink: 0;
+    margin: 0 2px 0 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+}
+
+.sprite-editor-preview-exposure > .unity-base-field__input {
+    min-width: 0;
+}
+.unity-button.sprite-editor-channel-button.sprite-editor-channel-button--error { color: rgb(255, 125, 195); }
+.unity-button.sprite-editor-debug-button { align-items: center; justify-content: center; padding: 0; }

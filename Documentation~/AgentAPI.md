@@ -148,17 +148,24 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 
 | Applies to | Supported keys |
 |---|---|
-| All | `name` (string), `enabled` (boolean) |
-| Non-group | `opacity` (0..1), `blend` (BlendMode name), `filter` (`Source`, `Point`, `Bilinear`, `Trilinear`) |
+| All | `name` (string), `enabled` (boolean), `opacity` (0..1), `blend`, `colorRange` / `blendRange` (`Standard`, `HDR`) |
+| Non-group | `filter` (`Source`, `Point`, `Bilinear`, `Trilinear`) |
+| Group | `compositing` (`PassThrough`, `Isolated`); ranges are active only when isolated |
 | File | `source` (already imported Texture2D path in Assets or Packages) |
-| Color | `color` (`[r,g,b,a]`, each 0..1) |
+| Color | `color` (`[r,g,b,a]`, encoded RGB -107..107, alpha 0..1) |
 | Drawing | `brush` (partial brush settings below) |
 | Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`) |
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
-Discover blend modes and distance metrics with `sprite_editor_describe`. Groups are organizational,
-pass-through containers: group opacity, transform and modifiers are deliberately rejected.
+Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
+Groups default to PassThrough; set `compositing:"Isolated"` to apply their own blend mode and ranges.
+Group opacity applies to the complete result, not separately to every child. Group transforms/FX are rejected.
+Setting Drawing `colorRange:"HDR"` promotes storage. Standard does not downgrade it. The explicit operation
+`{"op":"compact","layer":"@drawing"}` clamps/quantizes to 8-bit and switches to Standard, with native Undo.
+Only use compact when the user asks to discard HDR precision. Inspect reports `storageFormat`.
+Colors retain the encoded RGB convention; rendering and EXR/Texture2D output are linear HDR.
+The render command writes a clamped PNG copy. See [HDR behavior](HDR.md).
 Other settings of existing layers and all existing FX are preserved. API v1 does not author Shader FX,
 delete layers, duplicate/rasterize layers, resize an existing canvas or change gradient geometry.
 These remain available in the window. Use `enabled:false` to hide an unwanted layer non-destructively.
@@ -207,7 +214,7 @@ Color alpha zero leaves no mark, including for the eraser; eraser strength other
 
 | Brush field | Values |
 |---|---|
-| `color` | RGBA array, 0..1 |
+| `color` | RGBA array: encoded RGB -107..107, alpha 0..1; Standard clamps the painting color |
 | `size` | 1..4096 |
 | `hardness` | 0..1 |
 | `spacing` | 0.01..4, fraction of brush size (0.16 = 16%) |

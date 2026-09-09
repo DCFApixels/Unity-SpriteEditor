@@ -44,13 +44,13 @@ namespace DCFApixels.SpriteEditor
                     (int)sourceChannel,
                     metric);
 
-                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBA32, false)
+                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBAFloat, false, true)
                 {
                     hideFlags = HideFlags.HideAndDontSave,
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp
                 };
-                NativeArray<Color32> outputPixels = resultTexture.GetRawTextureData<Color32>();
+                NativeArray<Color> outputPixels = resultTexture.GetRawTextureData<Color>();
                 float maxDistance = GetNormalizationDistance(context);
                 bool isTwoColorGradient = GradientUtility.IsTwoColorGradient(gradient, out Color left, out Color right);
                 Gradient evaluatedGradient = gradient ?? GradientUtility.WhiteToBlack;
@@ -81,7 +81,7 @@ namespace DCFApixels.SpriteEditor
                         if (inverted)
                             normalized = 1f - normalized;
 
-                        outputPixels[i] = (Color32)evaluatedGradient.Evaluate(normalized);
+                        outputPixels[i] = HdrUtility.Decode(evaluatedGradient.Evaluate(normalized));
                     }
                 }
 
@@ -157,7 +157,7 @@ namespace DCFApixels.SpriteEditor
     internal struct SdfTwoColorOutputJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<float> signedDistances;
-        [WriteOnly] public NativeArray<Color32> output;
+        [WriteOnly] public NativeArray<Color> output;
         public float4 left;
         public float4 right;
         public float maxDistance;
@@ -187,12 +187,8 @@ namespace DCFApixels.SpriteEditor
             if (inverted)
                 normalized = 1f - normalized;
 
-            float4 color = math.saturate(math.lerp(left, right, normalized));
-            output[index] = new Color32(
-                ToByte(color.x),
-                ToByte(color.y),
-                ToByte(color.z),
-                ToByte(color.w));
+            float4 color = math.lerp(left, right, normalized);
+            output[index] = HdrUtility.Decode(new Color(color.x, color.y, color.z, color.w));
         }
 
         private static byte ToByte(float value)

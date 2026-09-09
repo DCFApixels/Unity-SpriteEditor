@@ -39,6 +39,7 @@ try
         for (int i = 0; i < samples.Length; i++)
         {
             Color32 input = samples[i], expected;
+            if (QualitySettings.activeColorSpace == ColorSpace.Gamma) input = ((Color)input).gamma;
             int rgb = mask & 7;
             byte alpha = (mask & 8) != 0 ? input.a : (byte)255;
             if (rgb == 0)

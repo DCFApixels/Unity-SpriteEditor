@@ -40,20 +40,20 @@ namespace DCFApixels.SpriteEditor
                     (int)SDFLayer.SourceChannel.Alpha,
                     metric);
 
-                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBA32, false)
+                resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBAFloat, false, true)
                 {
                     hideFlags = HideFlags.HideAndDontSave,
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp
                 };
-                NativeArray<Color32> outputPixels = resultTexture.GetRawTextureData<Color32>();
+                NativeArray<Color> outputPixels = resultTexture.GetRawTextureData<Color>();
                 OutlineJob job = new OutlineJob
                 {
                     signedDistances = signedDistances,
                     output = outputPixels,
                     outlineWidth = Mathf.Max(0f, outlineWidth / context.scaleMultiplier),
                     outlineSoftness = Mathf.Max(0f, outlineSoftness / context.scaleMultiplier),
-                    outlineColor = (Color32)outlineColor,
+                    outlineColor = HdrUtility.Decode(outlineColor),
                     outlinePosition = (int)outlinePosition
                 };
                 job.Schedule(outputPixels.Length, 128).Complete();
@@ -89,10 +89,10 @@ namespace DCFApixels.SpriteEditor
     internal struct OutlineJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<float> signedDistances;
-        public NativeArray<Color32> output;
+        public NativeArray<Color> output;
         public float outlineWidth;
         public float outlineSoftness;
-        public Color32 outlineColor;
+        public Color outlineColor;
         public int outlinePosition;
 
         public void Execute(int index)
@@ -129,11 +129,11 @@ namespace DCFApixels.SpriteEditor
                     : math.saturate((range - edgeDistance) / softness);
             }
 
-            output[index] = new Color32(
+            output[index] = new Color(
                 outlineColor.r,
                 outlineColor.g,
                 outlineColor.b,
-                (byte)math.round(outlineColor.a * alpha));
+                outlineColor.a * alpha);
         }
     }
 }

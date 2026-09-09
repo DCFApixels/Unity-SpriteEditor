@@ -91,13 +91,13 @@ namespace DCFApixels.SpriteEditor
 
         private Texture2D GenerateGradientTexture(int width, int height)
         {
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp
             };
-            Color[] pixels = new Color[width * height];
+            var pixels = texture.GetRawTextureData<Color>();
             Gradient evaluatedGradient = gradient ?? GradientUtility.WhiteToBlack;
 
             for (int y = 0; y < height; y++)
@@ -106,11 +106,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     float u = (x + 0.5f) / width;
                     float v = (y + 0.5f) / height;
-                    pixels[y * width + x] = evaluatedGradient.Evaluate(GetGradientCoord(u, v));
+                    pixels[y * width + x] = HdrUtility.Decode(evaluatedGradient.Evaluate(GetGradientCoord(u, v)));
                 }
             }
 
-            texture.SetPixels(pixels);
             texture.Apply(false, false);
             return texture;
         }

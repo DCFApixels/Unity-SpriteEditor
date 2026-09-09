@@ -83,9 +83,7 @@ namespace DCFApixels.SpriteEditor
                 applyChange("Invert SDF", () => layer.inverted = evt.newValue));
             root.Add(inverted);
 
-            GradientField gradient = SpriteEditorUI.ConfigureField(new GradientField("Gradient"));
-            gradient.SetValueWithoutNotify(layer.gradient);
-            bindings.Track(gradient, () => layer.gradient);
+            GradientField gradient = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new GradientField("Gradient"), bindings, () => layer.gradient));
             gradient.RegisterValueChangedCallback(evt =>
                 applyChange("Change SDF Gradient", () => layer.gradient = GradientUtility.Create(evt.newValue)));
             root.Add(gradient);

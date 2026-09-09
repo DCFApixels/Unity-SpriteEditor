@@ -90,9 +90,9 @@ namespace DCFApixels.SpriteEditor
 
         public static Color Color(JToken token)
         {
-            Require(token is JArray array && array.Count == 4, "Color must be [r, g, b, a], each in 0..1.");
-            return new Color(Number(token[0], "r", 0f, 1f), Number(token[1], "g", 0f, 1f),
-                Number(token[2], "b", 0f, 1f), Number(token[3], "a", 0f, 1f));
+            Require(token is JArray array && array.Count == 4, "Color must be [r, g, b, a]; alpha is 0..1, RGB may be HDR.");
+            return new Color(Number(token[0], "r", -107f, 107f), Number(token[1], "g", -107f, 107f),
+                Number(token[2], "b", -107f, 107f), Number(token[3], "a", 0f, 1f));
         }
 
         public static T Enum<T>(JObject obj, string key, T fallback) where T : struct

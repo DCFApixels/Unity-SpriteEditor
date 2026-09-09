@@ -7,7 +7,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class DrawingLayer : Layer
+    public sealed partial class DrawingLayer : Layer
     {
         private const int MinimumRepeatCount = 2;
         private const int MaximumRepeatCount = 64;
@@ -69,6 +69,8 @@ namespace DCFApixels.SpriteEditor
                 result.transform = TextureTransform.Default;
                 result.opacity = 1f;
                 result.blendMode = BlendMode.Normal;
+                if (((GroupLayer)source).compositing == GroupCompositing.PassThrough)
+                    result.colorRange = LayerColorRange.HDR;
                 result.modifiers.Clear();
             }
             result.pixels = texture;
@@ -78,6 +80,13 @@ namespace DCFApixels.SpriteEditor
             texture.wrapModeU = samplingSource != null ? samplingSource.wrapModeU : TextureWrapMode.Clamp;
             texture.wrapModeV = samplingSource != null ? samplingSource.wrapModeV : TextureWrapMode.Clamp;
             texture.name = result.GetTextureName();
+            return result;
+        }
+
+        internal static DrawingLayer FromMergedTexture(Texture2D texture)
+        {
+            var result = new DrawingLayer { pixels = texture, colorRange = LayerColorRange.HDR };
+            result.AssignNewId();
             return result;
         }
 
@@ -99,8 +108,8 @@ namespace DCFApixels.SpriteEditor
                 context.width,
                 context.height,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default);
+                RenderTextureFormat.ARGBHalf,
+                RenderTextureReadWrite.Linear);
             straight.filterMode = ResolveFilterMode();
             straight.wrapMode = TextureWrapMode.Clamp;
 
@@ -151,24 +160,10 @@ namespace DCFApixels.SpriteEditor
 
         internal void ApplyFillPixels(NativeArray<Color32> output, int width, int height, string undoName)
         {
-            unchecked { pixelsRevision++; }
-            if (pixels == null)
-            {
-                pixels = new Texture2D(width, height, TextureFormat.RGBA32, false)
-                {
-                    name = GetTextureName(), hideFlags = HideFlags.HideAndDontSave,
-                    filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp
-                };
-                Undo.RegisterCreatedObjectUndo(pixels, undoName);
-            }
-            else
-            {
-                Undo.RegisterCompleteObjectUndo(pixels, undoName);
-            }
-            pixels.SetPixelData(output, 0);
-            pixels.Apply(false, false);
-            EditorUtility.SetDirty(pixels);
-            InvalidatePaintSurface();
+            using var linear = new NativeArray<Color>(output.Length, Allocator.TempJob);
+            var values = linear;
+            for (int i = 0; i < output.Length; i++) values[i] = HdrUtility.Decode(output[i]);
+            ApplyFillPixels(linear, width, height, undoName);
         }
 
         internal void InitializeCanvas(int width, int height)
@@ -182,6 +177,7 @@ namespace DCFApixels.SpriteEditor
         internal void PrepareStroke(int width, int height, string undoName)
         {
             unchecked { pixelsRevision++; }
+            EnsureHdrStorage();
             EnsurePaintSurface(width, height);
             if (pixels == null)
                 SyncSurfaceToTexture();
@@ -356,7 +352,9 @@ namespace DCFApixels.SpriteEditor
                 outputHeight,
                 patternCenter,
                 parameters.WrapCanvas,
-                transform);
+                transform,
+                colorRange == LayerColorRange.Standard,
+                HdrUtility.IsHdr(pixels));
         }
 
         internal void ClearSurface(int width, int height)
@@ -387,7 +385,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (pixels != null && !AssetDatabase.Contains(pixels))
                     UnityEngine.Object.DestroyImmediate(pixels);
-                pixels = new Texture2D(paintSurface.width, paintSurface.height, TextureFormat.RGBA32, false)
+                pixels = new Texture2D(paintSurface.width, paintSurface.height, colorRange == LayerColorRange.HDR ? TextureFormat.RGBAHalf : TextureFormat.RGBA32, false, colorRange == LayerColorRange.HDR)
                 {
                     name = GetTextureName(),
                     hideFlags = HideFlags.HideAndDontSave,
@@ -400,8 +398,8 @@ namespace DCFApixels.SpriteEditor
                 paintSurface.width,
                 paintSurface.height,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default);
+                RenderTextureFormat.ARGBHalf,
+                RenderTextureReadWrite.Linear);
             RenderTexture previous = RenderTexture.active;
             try
             {
@@ -412,7 +410,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 else
                 {
-                    conversion.SetFloat("_Mode", 1f);
+                    conversion.SetFloat("_Mode", HdrUtility.IsHdr(pixels) ? 3f : 2f);
                     Graphics.Blit(paintSurface, straight, conversion);
                 }
 
@@ -500,8 +498,8 @@ namespace DCFApixels.SpriteEditor
                 width,
                 height,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default)
+                RenderTextureFormat.ARGBHalf,
+                RenderTextureReadWrite.Linear)
             {
                 name = GetTextureName() + " (Paint Surface)",
                 hideFlags = HideFlags.HideAndDontSave,
@@ -525,6 +523,7 @@ namespace DCFApixels.SpriteEditor
                     else
                     {
                         conversion.SetFloat("_Mode", 0f);
+                        conversion.SetFloat("_DecodeSource", HdrUtility.IsHdr(pixels) ? 0f : 1f);
                         Graphics.Blit(pixels, paintSurface, conversion);
                     }
                 }
@@ -911,7 +910,7 @@ namespace DCFApixels.SpriteEditor
                 int outputHeight,
                 Vector2 patternCenter,
                 bool wrapCanvas,
-                TextureTransform transform)
+                TextureTransform transform, bool standard, bool hdrStorage)
             {
                 if (target == null || stamps == null || stamps.Count == 0)
                     return;
@@ -922,7 +921,9 @@ namespace DCFApixels.SpriteEditor
 
                 float radiusX = sizePixels / Mathf.Max(1f, outputWidth) * 0.5f;
                 float radiusY = sizePixels / Mathf.Max(1f, outputHeight) * 0.5f;
-                material.SetColor(ColorId, color);
+                color = HdrUtility.DecodePaintColor(color);
+                if (standard) color = HdrUtility.Saturate(color);
+                material.SetVector(ColorId, (Vector4)color);
                 material.SetFloat(HardnessId, Mathf.Clamp01(hardness));
                 material.SetVector(CanvasSizeId, new Vector4(outputWidth, outputHeight, 0f, 0f));
                 material.SetVector(PatternCenterId, new Vector4(patternCenter.x, patternCenter.y, 0f, 0f));
@@ -948,47 +949,60 @@ namespace DCFApixels.SpriteEditor
                     (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
 
                 RenderTexture previous = RenderTexture.active;
+                RenderTexture snapshot = null;
                 try
                 {
+                    if (standard && hdrStorage && !erase)
+                    {
+                        snapshot = HdrUtility.Temporary(target.width, target.height);
+                        Graphics.Blit(target, snapshot);
+                        material.SetTexture("_Backdrop", snapshot);
+                    }
                     RenderTexture.active = target;
                     GL.PushMatrix();
                     try
                     {
                         GL.LoadOrtho();
-                        if (!material.SetPass(0))
-                            return;
-
-                        GL.Begin(GL.QUADS);
-                        try
+                        for (int pass = snapshot != null ? 0 : 1; pass < 2; pass++)
                         {
-                            for (int i = 0; i < stamps.Count; i++)
+                            material.SetFloat("_PrepareStandard", pass == 0 ? 1f : 0f);
+                            material.SetFloat(SourceBlendId, pass == 0 || !erase ? 1f : 0f);
+                            material.SetFloat(DestinationBlendId, pass == 0 ? 0f : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                            if (!material.SetPass(0))
+                                return;
+
+                            GL.Begin(GL.QUADS);
+                            try
                             {
-                                PaintStamp stamp = stamps[i];
-                                if (wrapCanvas)
+                                for (int i = 0; i < stamps.Count; i++)
                                 {
-                                    DrawWrappedStamp(stamp, radiusX, radiusY, transform, outputWidth, outputHeight);
-                                    continue;
-                                }
-                                Rect brushRect = new Rect(
-                                    stamp.center.x - radiusX,
-                                    stamp.center.y - radiusY,
-                                    radiusX * 2f,
-                                    radiusY * 2f);
-                                if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
-                                    brushRect.yMax <= 0f || brushRect.yMin >= 1f)
-                                {
-                                    continue;
-                                }
+                                    PaintStamp stamp = stamps[i];
+                                    if (wrapCanvas)
+                                    {
+                                        DrawWrappedStamp(stamp, radiusX, radiusY, transform, outputWidth, outputHeight);
+                                        continue;
+                                    }
+                                    Rect brushRect = new Rect(
+                                        stamp.center.x - radiusX,
+                                        stamp.center.y - radiusY,
+                                        radiusX * 2f,
+                                        radiusY * 2f);
+                                    if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
+                                        brushRect.yMax <= 0f || brushRect.yMin >= 1f)
+                                    {
+                                        continue;
+                                    }
 
-                                DrawVertex(brushRect.xMin, brushRect.yMin, 0f, 0f, stamp);
-                                DrawVertex(brushRect.xMin, brushRect.yMax, 0f, 1f, stamp);
-                                DrawVertex(brushRect.xMax, brushRect.yMax, 1f, 1f, stamp);
-                                DrawVertex(brushRect.xMax, brushRect.yMin, 1f, 0f, stamp);
+                                    DrawVertex(brushRect.xMin, brushRect.yMin, 0f, 0f, stamp);
+                                    DrawVertex(brushRect.xMin, brushRect.yMax, 0f, 1f, stamp);
+                                    DrawVertex(brushRect.xMax, brushRect.yMax, 1f, 1f, stamp);
+                                    DrawVertex(brushRect.xMax, brushRect.yMin, 1f, 0f, stamp);
+                                }
                             }
-                        }
-                        finally
-                        {
-                            GL.End();
+                            finally
+                            {
+                                GL.End();
+                            }
                         }
                     }
                     finally
@@ -999,6 +1013,9 @@ namespace DCFApixels.SpriteEditor
                 finally
                 {
                     RenderTexture.active = previous;
+                    material.SetFloat("_PrepareStandard", 0f);
+                    material.SetTexture("_Backdrop", null);
+                    if (snapshot != null) RenderTexture.ReleaseTemporary(snapshot);
                 }
             }
 

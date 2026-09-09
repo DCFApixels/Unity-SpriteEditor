@@ -8,7 +8,7 @@ composition, independently of the exported editable layer representation.
 
 | Source | PSD representation |
 | :--- | :--- |
-| Groups | Nested, pass-through folders; visibility and names preserved. Empty groups are retained. |
+| Groups | Nested pass-through or isolated folders; blend, opacity, visibility and names preserved. Empty groups are retained. |
 | Drawing / File | Raster layer at canvas resolution, with transform, sampling, tiling and FX baked into pixels. |
 | Color Fill without FX | Editable solid-color fill; rendered alpha becomes a layer mask, preserving color alpha and transformed boundaries. |
 | Gradient without FX | Editable color/opacity stops, type, angle, scale and offset where compatible. Clip boundaries become a mask. |
@@ -49,7 +49,8 @@ Linear Light Add/Sub uses Linear Light, Negation uses Difference, and Overwrite 
 None is exported hidden because it is a no-op. Each affected layer is listed in export notes.
 Background-dependent modes cannot always be baked independently while retaining an editable stack.
 
-The merged image retains the original compositor result, subject to 8-bit merged-alpha matte rounding.
+The merged image retains a clamped copy of the compositor result, subject to 8-bit merged-alpha matte rounding.
+HDR values and extended blending cannot be fully represented in this 8-bit format; export notes identify affected layers.
 Applications that recomposite the editable stack can produce a different result. Layer-aware Unity import
 does not necessarily reproduce every blend or layer effect; ordinary texture import uses the merged result.
 Export does not install a layered importer or change the selected importer type.

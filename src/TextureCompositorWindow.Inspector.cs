@@ -6,6 +6,7 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
+        [SerializeField] private bool colorSettingsExpanded;
         [NonSerialized] private ScrollView toolkitLayerSettingsScroll;
         [NonSerialized] private Label toolkitLayerSettingsTitle;
         [NonSerialized] private Layer toolkitInspectorLayer;
@@ -62,9 +63,11 @@ namespace DCFApixels.SpriteEditor
 
             if (layer is GroupLayer)
             {
+                LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
+                    colorSettingsExpanded, value => colorSettingsExpanded = value);
                 SpriteEditorUI.AddHelpBox(root,
-                    "Groups are pass-through: their children blend directly into the layer stack. " +
-                    "Transform and modifiers are edited on individual layers.",
+                    "Pass Through lets children blend with the backdrop. Other blend modes isolate the group. " +
+                    "Opacity applies to the whole group. Transform and modifiers remain per-child settings.",
                     HelpBoxMessageType.Info);
                 return;
             }
@@ -92,6 +95,8 @@ namespace DCFApixels.SpriteEditor
                         AddToolkitInspectorEffectTarget);
                     break;
             }
+            LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
+                colorSettingsExpanded, value => colorSettingsExpanded = value);
             toolkitInspectorShaderFX = new LayerShaderFXView(layer, compositor, ApplyToolkitChange);
             root.Add(toolkitInspectorShaderFX);
         }

@@ -103,6 +103,9 @@ The version badge shows [package.json](package.json), not the latest tag.
 The **Preview is on the left**. **Layer Settings** and **Layers** are stacked on the right.
 Drag the dividers to resize the panes; the right pane keeps its width when the window is resized.
 Layer Settings follows the active layer, with **Transform** collapsed by default.
+**Color & Blending** follows Transform and is also collapsed by default; its expansion state is shared
+across layers within the window. The header's **Standard / HDR** dropdown sets both ranges in one
+Undo step. A blank value means the ranges differ; expand the section to edit them independently.
 
 The left toolbar selects the editing tool:
 
@@ -121,7 +124,8 @@ The footer always shows **Live Quality** on the left and **RGBA channels** on th
 
 With Zoom selected, click to double the scale or `Alt`-click to halve it.
 Drag a rectangle to frame an area, including empty space around the image.
-`MMB`-drag pans; `Escape` cancels a pending selection. **Fit** shows the whole canvas;
+With any tool selected, `MMB`-drag pans and the mouse wheel zooms around the cursor, including over
+empty preview space. `Escape` ends navigation or cancels a pending area selection. **Fit** shows the whole canvas;
 **100%** uses one UI unit per source pixel.
 
 Zoom and pan affect only the view and survive tool/layer changes. Opening another document restores Fit.
@@ -188,11 +192,18 @@ Drawing pixels and embedded Shader FX are independent; external assets remain li
 Targets within the copied set follow the copies. Moving, grouping, deleting, and duplicating
 a selection support Undo/Redo.
 
-Groups are nested **pass-through** containers: children blend directly into the surrounding stack.
+**Merge selection:** `Ctrl+E` replaces selected layers with one Drawing layer; `Ctrl+Alt+E` creates
+a merged copy and keeps the originals enabled. Both commands are also available from **⋮** or a right-click
+on the layer row. Right-clicking a selected row preserves the selection; an unselected row becomes selected.
+Groups include their descendants once. Visible content, transforms, opacity and FX are baked at full
+canvas resolution into half-float pixels, with an identity transform. The result is placed above the
+top selected branch in the nearest common group. Each merge is one Undo step, without a confirmation dialog.
+Blending against unselected content can change. Effects targeting removed layers are redirected to the
+merged result; effects using Previous retain their former input where it still exists.
 
-> [!IMPORTANT]
-> Groups have visibility, but no group-level opacity, blend mode, transform, or FX.
-> Outline/SDF can still use a group as input.
+Groups default to **Pass Through**: children blend directly into the surrounding stack.
+Choose another blend mode to isolate a group. Opacity applies to the whole group, including nested groups.
+Outline/SDF can use a group's own content as input. Group transforms and FX are not supported.
 
 <details>
 <summary>Layer names, opacity, and duplication details</summary>
@@ -202,13 +213,16 @@ Each type has an independent document-local name counter: `Layer n` for Drawing,
 Duplicates retain the full name and append ` Copy n`, using a separate shared copy counter.
 Deleted numbers are not reused.
 
-Number keys set the active layer's opacity: `5` → 50%, then `7` within 0.6 seconds → 57%.
+Number keys set the selected layers' and groups' opacity: `5` → 50%, then `7` within 0.6 seconds → 57%.
 After a pause, `7` → 70%. `0` means 100%; quick `00` means 0%, and `05` means 5%.
-A quick pair is one Undo step. This changes layer opacity, not brush opacity, and does not apply to groups.
+A quick pair is one Undo step. This changes layer opacity, not brush opacity.
 
 A selected group carries its descendants only once. Duplicated effects retain their inputs:
 if a Previous input is no longer adjacent, the copy switches to an explicit target.
-Inline controls and row menus operate on that row, not the entire selection.
+Clicking opacity or blend fields on selected rows preserves the selection; editing either assigns
+the same value to all selected rows in one Undo step. Unselected children of selected groups are
+unchanged. **Pass Through** applies only to selected groups.
+Other inline controls and row menus operate on that row, except **Merge Selected**, which uses the selection.
 
 </details>
 
@@ -494,7 +508,16 @@ PNG/JPEG/TGA exported into `Assets` are imported as single Sprite assets; EXR as
 Replacing a standalone Texture2D asks for confirmation and preserves references.
 Other asset types and sub-assets are protected.
 
-The compositor renders in **8-bit RGBA**. EXR export does not add HDR range or recover precision.
+The compositor uses **linear HDR** working pixels. Layer **Color Range** and **Blend Range** independently
+control bounded and extended behavior. Drawing starts in 8-bit storage and promotes to half-float for HDR;
+returning to Standard does not discard stored HDR. Explicit **Convert to 8-bit** supports Undo.
+EXR and Texture2D output preserve HDR; PNG/JPEG/TGA/PSD clamp an export copy.
+
+The **HDR** toggle beside **EV** in the preview footer switches all color and gradient pickers without changing
+stored values or layer ranges. Standard displays and paints colors without HDR intensity; switching back
+restores the stored HDR colors. Editing a color replaces it. The toggle defaults to off, persists and stays outside Undo.
+Preview **EV** and the **bug button** control exposure and numeric-error visualization only.
+See [HDR, storage and group behavior](Documentation~/HDR.md).
 
 **Layered PSD** prioritizes structure and editability. It preserves layer names, order, visibility,
 opacity and supported blend modes. SDF, Shader FX and incompatible procedural settings are rasterized;
@@ -512,6 +535,7 @@ Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `G` — Fill
 | :--- | :--- |
 | `Ctrl+S` | Save / Save As. |
 | `Ctrl+Z` | Undo. |
+| `Ctrl+E` / `Ctrl+Alt+E` | Merge selected layers / create a merged copy. |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo. |
 | `[` / `]` | Decrease / increase brush size. |
 | `X` | Swap foreground/background colors. |
@@ -520,7 +544,8 @@ Tool keys: `V` — No Tool · `T` — Transform · `B` — Brush · `G` — Fill
 | `0`–`9` or numpad | Set active-layer opacity; quick pairs enter a percentage. |
 | `Ctrl`-click / `Shift`-click on layers | Toggle a layer / select a range. |
 | `Ctrl` during pivot drag | Disable snapping. |
-| `Alt`-click / `MMB`-drag with Zoom | Zoom out / pan. |
+| `Alt`-click with Zoom | Zoom out. |
+| `MMB`-drag / mouse wheel with any tool | Pan / zoom around the cursor. |
 | `Enter` in Transform | Exit the tool. |
 | `Escape` during a transform or zoom gesture | Cancel the gesture. |
 

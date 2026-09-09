@@ -2,7 +2,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
 {
     Properties
     {
-        _Color ("Color", Color) = (1, 1, 1, 1)
+        _Color ("Linear brush RGBA", Vector) = (1, 1, 1, 1)
         _SrcBlend ("Source Blend", Float) = 1
         _DstBlend ("Destination Blend", Float) = 10
     }
@@ -44,7 +44,9 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 float3 tileData : TEXCOORD5;
             };
 
-            fixed4 _Color;
+            float4 _Color;
+            sampler2D _Backdrop;
+            float _PrepareStandard;
             float _Hardness;
             float2 _CanvasSize;
             float2 _PatternCenter;
@@ -84,7 +86,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 return best;
             }
 
-            fixed4 frag(v2f input) : SV_Target
+            float4 frag(v2f input) : SV_Target
             {
                 bool tiled = input.tileData.z > 0.5;
                 float2 clipUv = input.canvasUv;
@@ -141,7 +143,13 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 float inner = min(saturate(_Hardness), 0.9999);
                 float coverage = 1.0 - smoothstep(inner, 1.0, radius);
                 float alpha = saturate(_Color.a * coverage);
-                return fixed4(_Color.rgb * alpha, alpha);
+                if (alpha <= 0.0) discard;
+                if (_PrepareStandard > 0.5)
+                {
+                    float4 before = tex2D(_Backdrop, input.canvasUv);
+                    return float4(clamp(before.rgb, 0.0, before.a), before.a);
+                }
+                return float4(_Color.rgb * alpha, alpha);
             }
             ENDCG
         }

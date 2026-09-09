@@ -67,7 +67,14 @@ try
                 cpuOnly = (Texture2D)copy.Invoke(null, new object[] { gpu, false });
                 uploaded = (Texture2D)copy.Invoke(null, new object[] { gpu, true });
                 EqualPixels(cpuOnly, uploaded);
-                legacy = (Texture2D)composePreview.Invoke(document, new object[] { size });
+                var linear = (Texture2D)composePreview.Invoke(document, new object[] { size });
+                try
+                {
+                    var toLdr = type.Assembly.GetType("DCFApixels.SpriteEditor.HdrUtility")
+                        .GetMethod("ToLdr", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                    legacy = (Texture2D)toLdr.Invoke(null, new object[] { linear, false });
+                }
+                finally { UnityEngine.Object.DestroyImmediate(linear); }
                 EqualPixels(cpuOnly, legacy);
                 Check(RenderTexture.active == sentinel, "Readback changed the active target");
             }

@@ -11,6 +11,13 @@ namespace DCFApixels.SpriteEditor
         private float scale = 1f;
         private Vector2 center = new Vector2(0.5f, 0.5f);
 
+        internal static float WheelScale(float currentScale, float delta)
+        {
+            if (float.IsNaN(delta) || float.IsInfinity(delta)) return currentScale;
+            return Mathf.Clamp(currentScale * Mathf.Pow(1.2f, Mathf.Clamp(-delta / 3f, -12f, 12f)),
+                MinimumScale, MaximumScale);
+        }
+
         internal void Reset()
         {
             fit = true;

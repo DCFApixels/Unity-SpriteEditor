@@ -11,6 +11,8 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private int previewChannels = AllPreviewChannels;
         [NonSerialized] private RenderTexture channelPreviewTexture;
         [NonSerialized] private Button[] channelButtons;
+        [SerializeField] private bool previewDebug;
+        [SerializeField] private float previewExposure;
 
         private Vector4 PreviewChannelMask => new Vector4(
             (previewChannels & 1) != 0 ? 1f : 0f,
@@ -24,13 +26,37 @@ namespace DCFApixels.SpriteEditor
             footer.AddToClassList("sprite-editor-preview-footer");
             footer.Add(BuildPreviewQualityControl());
             footer.RegisterCallback<GeometryChangedEvent>(evt =>
-                footer.EnableInClassList("sprite-editor-preview-footer--compact", evt.newRect.width < 290f));
+                footer.EnableInClassList("sprite-editor-preview-footer--compact", evt.newRect.width < 460f));
             toolkitPreviewFooter = new Label();
             toolkitPreviewFooter.AddToClassList("sprite-editor-preview-status");
             footer.Add(toolkitPreviewFooter);
             VisualElement channels = new VisualElement();
             channels.AddToClassList("sprite-editor-preview-channels");
             footer.Add(channels);
+            channels.Add(SpriteEditorColorInputs.CreateToggleControl());
+            var exposure = new FloatField("EV") { value = previewExposure, tooltip = "Preview exposure only, in stops. Does not affect painting, fill sampling or export." };
+            exposure.AddToClassList("sprite-editor-preview-exposure");
+            exposure.RegisterValueChangedCallback(evt =>
+            {
+                previewExposure = float.IsNaN(evt.newValue) ? 0f : Mathf.Clamp(evt.newValue, -20f, 20f);
+                exposure.SetValueWithoutNotify(previewExposure);
+                UpdateChannelPreview(); UpdateToolkitPreviewPresentation();
+            });
+            channels.Add(exposure);
+            var debug = new Button(() =>
+            {
+                previewDebug = !previewDebug;
+                UpdateChannelPreview(); UpdateToolkitPreviewPresentation();
+            }) { tooltip = "Debug numeric errors: magenta marks invalid or overflowing components before they were replaced with zero. Preview only." };
+            debug.AddToClassList("sprite-editor-channel-button");
+            debug.AddToClassList("sprite-editor-debug-button");
+            debug.Add(new LayerActionIcon(LayerActionIcon.Kind.Bug));
+            debug.schedule.Execute(() =>
+            {
+                debug.EnableInClassList("sprite-editor-channel-button--enabled", previewDebug);
+                debug.EnableInClassList("sprite-editor-channel-button--error", compositor != null && compositor.HasNumericErrors);
+            }).Every(150);
+            channels.Add(debug);
             channelButtons = new Button[4];
             string[] labels = { "R", "G", "B", "A" };
             for (int i = 0; i < labels.Length; i++)
@@ -100,16 +126,16 @@ namespace DCFApixels.SpriteEditor
 
         private Color GetPaintingColor()
         {
-            Color color = paintSettings.brushColor;
+            Color color = SpriteEditorColorInputs.DisplayColor(paintSettings.brushColor);
             if (paintingErase)
                 return color;
             Vector4 mask = PreviewChannelMask;
-            return new Color(color.r * mask.x, color.g * mask.y, color.b * mask.z, color.a * mask.w);
+            return HdrUtility.ApplyChannelMask(color, mask);
         }
 
         private void UpdateChannelPreview()
         {
-            if (previewTexture == null || (previewChannels & AllPreviewChannels) == AllPreviewChannels)
+            if (previewTexture == null)
             {
                 ReleaseChannelPreview();
                 return;
@@ -134,6 +160,9 @@ namespace DCFApixels.SpriteEditor
             }
             channelPreviewTexture.filterMode = previewTexture.filterMode;
             material.SetVector("_Channels", PreviewChannelMask);
+            material.SetFloat("_Exposure", Mathf.Pow(2f, previewExposure));
+            material.SetFloat("_Debug", previewDebug ? 1f : 0f);
+            material.SetTexture("_Errors", compositor != null && compositor.NumericErrorMask != null ? compositor.NumericErrorMask : Texture2D.blackTexture);
             RenderTexture previous = RenderTexture.active;
             try
             {

@@ -49,6 +49,12 @@ namespace DCFApixels.SpriteEditor
             Layer layer = Resolve(document, Text(operation, "layer"), aliases);
             switch (op)
             {
+                case "compact":
+                    Keys(operation, "op", "layer");
+                    Require(layer is DrawingLayer, "compact requires a Drawing layer.");
+                    if (execute) ((DrawingLayer)layer).ConvertTo8Bit();
+                    else layer.colorRange = LayerColorRange.Standard;
+                    break;
                 case "set":
                     Keys(operation, "op", "layer", "settings");
                     SetLayer(document, layer, Obj(operation["settings"], "settings"));
@@ -83,6 +89,7 @@ namespace DCFApixels.SpriteEditor
                 default:
                     throw new SpriteEditorApiException("invalid_request", "Unknown operation: " + op);
             }
+            if (execute && layer is DrawingLayer changedDrawing) changedDrawing.SetColorRange(layer.colorRange);
             return layer;
         }
 
@@ -114,13 +121,14 @@ namespace DCFApixels.SpriteEditor
 
         private static void SetLayer(TextureCompositor document, Layer layer, JObject settings)
         {
-            Keys(settings, "name", "enabled", "opacity", "blend", "filter", "source", "color", "brush",
+            Keys(settings, "name", "enabled", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
                 "distancePosition", "inverted", "maxDistance", "gradient");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
-                bool valid = key == "name" || key == "enabled" || !layer.IsGroup &&
+                bool valid = key == "name" || key == "enabled" || key == "opacity" || key == "blend" ||
+                    key == "colorRange" || key == "blendRange" || key == "compositing" && layer is GroupLayer || !layer.IsGroup &&
                     (key == "opacity" || key == "blend" || key == "filter" ||
                     key == "source" && layer is FileLayer || key == "brush" && layer is DrawingLayer ||
                     key == "color" && (layer is ColorFillLayer || layer is OutlineLayer) ||
@@ -134,6 +142,10 @@ namespace DCFApixels.SpriteEditor
             layer.enabled = Bool(settings, "enabled", layer.enabled);
             layer.opacity = Number(settings, "opacity", layer.opacity, 0f, 1f);
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
+            layer.colorRange = Enum(settings, "colorRange", layer.colorRange);
+            layer.blendRange = Enum(settings, "blendRange", layer.blendRange);
+            if (layer is GroupLayer group)
+                group.compositing = Enum(settings, "compositing", group.compositing);
             layer.filterMode = Enum(settings, "filter", layer.filterMode);
             if (layer is FileLayer file && settings["source"] != null)
             {
@@ -189,7 +201,7 @@ namespace DCFApixels.SpriteEditor
 
         private static void SetTransform(TextureCompositor document, Layer layer, JObject settings)
         {
-            Require(!layer.IsGroup, "Groups are pass-through and do not have a transform.");
+            Require(!layer.IsGroup, "Groups do not have a transform.");
             Keys(settings, "reset", "position", "scale", "pivot", "rotation", "tiling", "originalAspect");
             TextureTransform transform = Bool(settings, "reset") ? TextureTransform.Default : layer.transform;
             if (settings["position"] != null) transform.position = Vector(settings["position"], "position");

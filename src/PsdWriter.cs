@@ -18,6 +18,7 @@ namespace DCFApixels.SpriteEditor
         {
             public string name = "";
             public string blend = "norm";
+            public string sectionBlend = "pass";
             public uint id;
             public byte opacity = 255;
             public bool visible = true;
@@ -121,7 +122,7 @@ namespace DCFApixels.SpriteEditor
                             if (folder) w.Block("lsct", () =>
                             {
                                 w.U32((uint)layer.section);
-                                if (layer.section != 3) { w.Code("8BIM"); w.Code("pass"); w.U32(0); }
+                                if (layer.section != 3) { w.Code("8BIM"); w.Code(layer.sectionBlend); w.U32(0); }
                             });
                             if (layer.fillOpacity != 255)
                                 w.Block("iOpa", () => w.Byte(layer.fillOpacity));

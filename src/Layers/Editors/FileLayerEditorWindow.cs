@@ -67,9 +67,7 @@ namespace DCFApixels.SpriteEditor
                 applyChange,
                 bindings);
 
-            ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
-            color.SetValueWithoutNotify(layer.color);
-            bindings.Track(color, () => layer.color);
+            ColorField color = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new ColorField("Color"), bindings, () => layer.color));
             color.RegisterValueChangedCallback(evt =>
                 applyChange("Change Fill Color", () => layer.color = evt.newValue));
             root.Add(color);

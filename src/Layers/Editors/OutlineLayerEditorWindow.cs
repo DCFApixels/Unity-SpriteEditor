@@ -40,9 +40,7 @@ namespace DCFApixels.SpriteEditor
                 () => layer.metric = (DistanceMetric)evt.newValue));
             root.Add(metric);
 
-            ColorField color = SpriteEditorUI.ConfigureField(new ColorField("Color"));
-            color.SetValueWithoutNotify(layer.outlineColor);
-            bindings.Track(color, () => layer.outlineColor);
+            ColorField color = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new ColorField("Color"), bindings, () => layer.outlineColor));
             color.RegisterValueChangedCallback(evt =>
                 applyChange("Change Outline Color", () => layer.outlineColor = evt.newValue));
             root.Add(color);

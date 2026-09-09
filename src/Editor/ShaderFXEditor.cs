@@ -130,10 +130,19 @@ namespace DCFApixels.SpriteEditor
                 nameof(ShaderFXParameter.floatValue), nameof(ShaderFXParameter.colorValue),
                 nameof(ShaderFXParameter.vectorValue), nameof(ShaderFXParameter.textureValue)
             };
-            PropertyField[] fields = new PropertyField[valueNames.Length];
+            VisualElement[] fields = new VisualElement[valueNames.Length];
             for (int i = 0; i < fields.Length; i++)
             {
-                fields[i] = new PropertyField(property.FindPropertyRelative(valueNames[i]), "Value");
+                SerializedProperty value = property.FindPropertyRelative(valueNames[i]);
+                if (valueNames[i] == nameof(ShaderFXParameter.colorValue))
+                {
+                    ColorField color = SpriteEditorColorInputs.Bind(new ColorField("Value"), value,
+                        () => ((ShaderFX)value.serializedObject.targetObject).NotifyValuesChanged());
+                    color.AddToClassList(BaseField<UnityEngine.Color>.alignedFieldUssClassName);
+                    fields[i] = color;
+                }
+                else
+                    fields[i] = new PropertyField(value, "Value");
                 root.Add(fields[i]);
             }
             void RefreshType(SerializedProperty current)

@@ -15,6 +15,8 @@ assert.equal(bottom.blendMode, 'multiply');
 assert.equal(bottom.opacity, 128 / 255);
 assert.equal(group.blendMode, 'pass through');
 assert.equal(group.children[0].name, 'Nested');
+assert.equal(group.children[0].blendMode, 'multiply');
+assert.equal(group.children[0].opacity, 153 / 255);
 assert.equal(group.children[0].children[0].hidden, true);
 assert.deepEqual(fill.vectorFill, { type: 'color', color: { r: 255, g: 64, b: 32 } });
 assert.equal(fill.mask.imageData.data[0], 20);

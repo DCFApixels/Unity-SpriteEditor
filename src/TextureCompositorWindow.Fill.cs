@@ -14,15 +14,13 @@ namespace DCFApixels.SpriteEditor
 
         private void AddPaintColorFields(VisualElement row)
         {
-            ColorField primary = CompactField(new ColorField(), 54f);
+            ColorField primary = CompactField(SpriteEditorColorInputs.Bind(new ColorField(), toolkitHeaderBindings, () => paintSettings.brushColor), 54f);
             primary.tooltip = PrimaryBrushColorContent.tooltip;
-            toolkitHeaderBindings.Track(primary, () => paintSettings.brushColor);
             primary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
                 () => paintSettings.brushColor = evt.newValue));
             row.Add(primary);
-            ColorField secondary = CompactField(new ColorField(), 54f);
+            ColorField secondary = CompactField(SpriteEditorColorInputs.Bind(new ColorField(), toolkitHeaderBindings, () => paintSettings.secondaryBrushColor), 54f);
             secondary.tooltip = SecondaryBrushColorContent.tooltip;
-            toolkitHeaderBindings.Track(secondary, () => paintSettings.secondaryBrushColor);
             secondary.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
                 () => paintSettings.secondaryBrushColor = evt.newValue));
             row.Add(secondary);
@@ -98,9 +96,8 @@ namespace DCFApixels.SpriteEditor
                 }
             }
             Vector4 channels = PreviewChannelMask;
-            Color foreground = paintSettings.brushColor;
-            Color32 color = new Color(foreground.r * channels.x, foreground.g * channels.y,
-                foreground.b * channels.z, foreground.a * channels.w);
+            Color foreground = SpriteEditorColorInputs.DisplayColor(paintSettings.brushColor);
+            Color color = HdrUtility.DecodePaintColor(HdrUtility.ApplyChannelMask(foreground, channels));
             if (color.a == 0) return true;
             FinishPaintingStroke();
             FinishPreviewTransform();
@@ -116,18 +113,18 @@ namespace DCFApixels.SpriteEditor
                 if (length > MaximumFillPixels || (paintSettings.fillSampleMode == FillSampleMode.AllLayers &&
                     (long)compositor.width * compositor.height > MaximumFillPixels))
                     throw new InvalidOperationException("Fill supports up to 16,777,216 pixels (for example, 4096 × 4096) per source/reference image.");
-                using var source = new NativeArray<Color32>(length, Allocator.TempJob);
-                using var reference = new NativeArray<Color32>(length, Allocator.TempJob);
+                using var source = stored != null ? HdrUtility.ReadPixels(stored, Allocator.TempJob) : new NativeArray<Color>(length, Allocator.TempJob);
+                using var reference = new NativeArray<Color>(length, Allocator.TempJob);
                 using var valid = new NativeArray<byte>(length, Allocator.TempJob);
-                using var output = new NativeArray<Color32>(length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
-                if (stored != null) NativeArray<Color32>.Copy(stored.GetRawTextureData<Color32>(), source);
+                using var output = new NativeArray<Color>(length, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
                 if (paintSettings.fillSampleMode == FillSampleMode.AllLayers)
                 {
                     composite = compositor.Compose();
+                    using var compositePixels = HdrUtility.ReadPixels(composite, Allocator.TempJob);
                     Vector2 origin = MapLayerToDocumentUv(Vector2.zero, layer);
-                    new FloodFillUtility.ProjectReferenceJob
+                    new HdrFloodFillUtility.ProjectReferenceJob
                     {
-                        composite = composite.GetRawTextureData<Color32>(), reference = reference, valid = valid,
+                        composite = compositePixels, reference = reference, valid = valid,
                         width = width, compositeWidth = composite.width, compositeHeight = composite.height,
                         origin = origin,
                         stepX = (MapLayerToDocumentUv(Vector2.right, layer) - origin) / width,
@@ -136,15 +133,15 @@ namespace DCFApixels.SpriteEditor
                 }
                 else
                 {
-                    new FloodFillUtility.CopyReferenceJob
+                    new HdrFloodFillUtility.CopyReferenceJob
                     {
-                        source = source, reference = reference, valid = valid
+                        source = source, reference = reference, valid = valid, standard = layer.colorRange == LayerColorRange.Standard
                     }.Schedule(length, 256).Complete();
                 }
                 int seed = Mathf.Clamp(Mathf.FloorToInt(uv.y * height), 0, height - 1) * width +
                     Mathf.Clamp(Mathf.FloorToInt(uv.x * width), 0, width - 1);
-                if (!FloodFillUtility.Fill(source, reference, valid, output, width, height, seed, color,
-                    paintSettings.fillTolerance, paintSettings.fillExpand, paintSettings.fillAntialias, paintSettings.fillContiguous)) return true;
+                if (!HdrFloodFillUtility.Fill(source, reference, valid, output, width, height, seed, color,
+                    paintSettings.fillTolerance, paintSettings.fillExpand, paintSettings.fillAntialias, paintSettings.fillContiguous, layer.colorRange == LayerColorRange.Standard)) return true;
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName("Fill Drawing Layer");

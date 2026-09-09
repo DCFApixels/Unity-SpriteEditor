@@ -28,7 +28,7 @@ namespace DCFApixels.SpriteEditor
             if (evt.ctrlKey || evt.commandKey || evt.altKey || evt.shiftKey)
                 return false;
             Layer layer = GetSelectedLayer();
-            if (layer == null || layer.IsGroup)
+            if (layer == null)
                 return false;
             if (evt.keyCode == KeyCode.None && evt.character >= '0' && evt.character <= '9')
             {
@@ -55,7 +55,7 @@ namespace DCFApixels.SpriteEditor
             Undo.IncrementCurrentGroup();
             int group = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Change Layer Opacity");
-            ApplyToolkitChange("Change Layer Opacity", () => layer.opacity = percent / 100f);
+            ApplySelectedOpacity(layer, percent / 100f);
             Undo.FlushUndoRecordObjects();
             if (pair && previousGroup >= 0)
                 Undo.CollapseUndoOperations(previousGroup);

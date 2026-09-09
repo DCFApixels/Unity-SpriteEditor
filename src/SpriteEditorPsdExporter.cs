@@ -85,10 +85,18 @@ namespace DCFApixels.SpriteEditor
                     report.groupCount++;
                     records.Add(new PsdWriter.LayerRecord { name = "</Group>", id = LayerId(group, ids, ":end"), section = 3, visible = false });
                     Collect(document, group.layers, records, report, visited, ids);
-                    records.Add(new PsdWriter.LayerRecord { name = group.layerName, id = LayerId(group, ids), section = 1, visible = group.enabled });
+                    bool isolated = group.compositing == GroupCompositing.Isolated;
+                    string groupBlend = isolated ? BlendKey(group.blendMode, out _) : "pass";
+                    records.Add(new PsdWriter.LayerRecord { name = group.layerName, id = LayerId(group, ids), section = 1,
+                        visible = group.enabled && (!isolated || group.blendMode != BlendMode.None), opacity = ToByte(group.opacity),
+                        blend = isolated ? groupBlend : "norm", sectionBlend = groupBlend });
+                    if (isolated && group.blendRange == LayerBlendRange.HDR)
+                        report.Note(group, "HDR group blending is approximated in the 8-bit layer stack; merged pixels are clamped.");
                     continue;
                 }
                 report.layerCount++;
+                if (layer.colorRange == LayerColorRange.HDR || layer.blendRange == LayerBlendRange.HDR)
+                    report.Note(layer, "HDR values are clamped for this 8-bit export. Extended blending may differ in the editable stack.");
                 var record = new PsdWriter.LayerRecord
                 {
                     name = layer.layerName,

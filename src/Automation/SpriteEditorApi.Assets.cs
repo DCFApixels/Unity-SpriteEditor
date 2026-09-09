@@ -149,7 +149,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     preview = document.ComposePreview(maxSize);
                     Require(preview != null, "No preview was generated.", "render_failed");
-                    byte[] bytes = preview.EncodeToPNG();
+                    byte[] bytes;
+                    Texture2D encoded = HdrUtility.ToLdr(preview);
+                    try { bytes = encoded.EncodeToPNG(); }
+                    finally { Object.DestroyImmediate(encoded); }
                     Directory.CreateDirectory(Path.GetDirectoryName(full));
                     using (var stream = new FileStream(full, overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write))
                         stream.Write(bytes, 0, bytes.Length);

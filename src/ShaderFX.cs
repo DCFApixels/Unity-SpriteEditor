@@ -15,7 +15,7 @@ namespace DCFApixels.SpriteEditor
         public string name = "_Amount";
         public ShaderFXParameterType type;
         public float floatValue = 1f;
-        public Color colorValue = Color.white;
+        [ColorUsage(true, true)] public Color colorValue = Color.white;
         public Vector4 vectorValue;
         public Texture2D textureValue;
 
@@ -26,7 +26,7 @@ namespace DCFApixels.SpriteEditor
             switch (type)
             {
                 case ShaderFXParameterType.Float: material.SetFloat(propertyName, floatValue); break;
-                case ShaderFXParameterType.Color: material.SetColor(propertyName, colorValue); break;
+                case ShaderFXParameterType.Color: HdrUtility.SetShaderColor(material, propertyName, colorValue); break;
                 case ShaderFXParameterType.Vector: material.SetVector(propertyName, vectorValue); break;
                 case ShaderFXParameterType.Texture2D:
                     material.SetTexture(propertyName, textureValue != null ? textureValue : Texture2D.whiteTexture);

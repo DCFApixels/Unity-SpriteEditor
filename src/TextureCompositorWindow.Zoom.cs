@@ -70,6 +70,7 @@ namespace DCFApixels.SpriteEditor
             private Vector2 start, current;
             private readonly VisualElement selection;
             internal bool IsDragging => pointerId >= 0;
+            internal bool IsPanning => IsDragging && panning;
 
             internal PreviewZoomManipulator(TextureCompositorWindow owner)
             {
@@ -83,6 +84,7 @@ namespace DCFApixels.SpriteEditor
             {
                 target.Add(selection);
                 target.RegisterCallback<PointerDownEvent>(OnDown);
+                target.RegisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
                 target.RegisterCallback<PointerMoveEvent>(OnMove);
                 target.RegisterCallback<PointerUpEvent>(OnUp);
                 target.RegisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
@@ -95,6 +97,7 @@ namespace DCFApixels.SpriteEditor
             {
                 Cancel();
                 target.UnregisterCallback<PointerDownEvent>(OnDown);
+                target.UnregisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
                 target.UnregisterCallback<PointerMoveEvent>(OnMove);
                 target.UnregisterCallback<PointerUpEvent>(OnUp);
                 target.UnregisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
@@ -119,7 +122,13 @@ namespace DCFApixels.SpriteEditor
 
             private void OnDown(PointerDownEvent evt)
             {
-                if (!owner.IsPreviewZoomEnabled || IsDragging || (evt.button != 0 && evt.button != 2) ||
+                if (IsDragging)
+                {
+                    evt.PreventDefault();
+                    evt.StopImmediatePropagation();
+                    return;
+                }
+                if (owner.compositor == null || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
                     !target.contentRect.Contains(evt.localPosition)) return;
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
@@ -130,13 +139,37 @@ namespace DCFApixels.SpriteEditor
                 zoomOut = evt.altKey;
                 pointerId = evt.pointerId;
                 target.CapturePointer(pointerId);
+                owner.toolkitPreviewCanvas.SetCursor(false, default, false);
                 evt.PreventDefault();
                 evt.StopImmediatePropagation();
+            }
+
+            private void OnWheel(WheelEvent evt)
+            {
+                Vector2 point = target.WorldToLocal(evt.mousePosition);
+                if (owner.compositor == null || !target.contentRect.Contains(point) || evt.delta.y == 0f ||
+                    float.IsNaN(evt.delta.y) || float.IsInfinity(evt.delta.y)) return;
+                evt.PreventDefault();
+                evt.StopImmediatePropagation();
+                if (IsDragging && !panning) Cancel();
+                owner.FinishPreviewTransform();
+                owner.FinishPaintingStroke();
+                SpritePreviewElement canvas = owner.toolkitPreviewCanvas;
+                canvas.ZoomAt(point, PreviewViewport.WheelScale(canvas.PixelScale, evt.delta.y));
+                if (IsPanning) current = point;
+                owner.UpdatePreviewCursor(point, evt.altKey);
             }
 
             private void OnMove(PointerMoveEvent evt)
             {
                 if (!IsDragging || evt.pointerId != pointerId) return;
+                if ((evt.pressedButtons & (panning ? 4 : 1)) == 0)
+                {
+                    Cancel();
+                    owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
+                    evt.StopImmediatePropagation();
+                    return;
+                }
                 Vector2 point = evt.localPosition;
                 if (panning) owner.toolkitPreviewCanvas.Pan(point - current);
                 current = point;
@@ -147,6 +180,7 @@ namespace DCFApixels.SpriteEditor
             private void OnUp(PointerUpEvent evt)
             {
                 if (!IsDragging || evt.pointerId != pointerId || evt.button != (panning ? 2 : 0)) return;
+                if (panning) owner.toolkitPreviewCanvas.Pan((Vector2)evt.localPosition - current);
                 current = evt.localPosition;
                 if (!panning)
                 {
@@ -163,6 +197,7 @@ namespace DCFApixels.SpriteEditor
                         canvas.ZoomAt(start, canvas.PixelScale * 2f);
                 }
                 Cancel();
+                owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 evt.PreventDefault();
                 evt.StopImmediatePropagation();
             }

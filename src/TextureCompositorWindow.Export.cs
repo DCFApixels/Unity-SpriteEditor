@@ -122,47 +122,19 @@ namespace DCFApixels.SpriteEditor
 
         private static byte[] EncodeExportTexture(Texture2D texture, TextureExportFormat format)
         {
-            switch (format)
-            {
-                case TextureExportFormat.Png: return texture.EncodeToPNG();
-                case TextureExportFormat.Tga: return texture.EncodeToTGA();
-                case TextureExportFormat.Exr: return EncodeLinearExr(texture);
-                case TextureExportFormat.Jpeg:
-                    var pixels = texture.GetRawTextureData<Color32>();
-                    for (int i = 0; i < pixels.Length; i++)
-                    {
-                        Color32 color = pixels[i];
-                        int background = 255 * (255 - color.a);
-                        pixels[i] = new Color32(
-                            (byte)((color.r * color.a + background + 127) / 255),
-                            (byte)((color.g * color.a + background + 127) / 255),
-                            (byte)((color.b * color.a + background + 127) / 255), 255);
-                    }
-                    texture.Apply(false, false);
-                    return texture.EncodeToJPG(95);
-                default: throw new ArgumentOutOfRangeException(nameof(format));
-            }
-        }
-
-        private static byte[] EncodeLinearExr(Texture2D source)
-        {
-            Texture2D linear = new Texture2D(source.width, source.height, TextureFormat.RGBAFloat, false, true)
-            {
-                hideFlags = HideFlags.HideAndDontSave
-            };
+            if (format == TextureExportFormat.Exr) return texture.EncodeToEXR(Texture2D.EXRFlags.CompressZIP);
+            Texture2D ldr = HdrUtility.ToLdr(texture, format == TextureExportFormat.Jpeg);
             try
             {
-                var input = source.GetRawTextureData<Color32>();
-                var output = linear.GetRawTextureData<Color>();
-                for (int i = 0; i < input.Length; i++)
-                    output[i] = ((Color)input[i]).linear;
-                linear.Apply(false, false);
-                return linear.EncodeToEXR(Texture2D.EXRFlags.CompressZIP);
+                switch (format)
+                {
+                    case TextureExportFormat.Png: return ldr.EncodeToPNG();
+                    case TextureExportFormat.Tga: return ldr.EncodeToTGA();
+                    case TextureExportFormat.Jpeg: return ldr.EncodeToJPG(95);
+                    default: throw new ArgumentOutOfRangeException(nameof(format));
+                }
             }
-            finally
-            {
-                DestroyImmediate(linear);
-            }
+            finally { DestroyImmediate(ldr); }
         }
 
         private static bool CanExportTextureAsset(string path)

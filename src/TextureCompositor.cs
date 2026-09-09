@@ -57,6 +57,7 @@ namespace DCFApixels.SpriteEditor
         private void OnDisable()
         {
             ReleaseLayerResources(layers);
+            ReleaseDiagnostics();
         }
 
         private void OnDestroy()
@@ -198,7 +199,7 @@ namespace DCFApixels.SpriteEditor
                 if (layer is GroupLayer group)
                 {
                     rendered = GetClearRenderTexture(width, height);
-                    CompositeLayers(group.layers, ref rendered, width, height, 1f, new HashSet<Layer>());
+                    CompositeGroup(group, ref rendered, width, height, 1f, new HashSet<Layer>());
                 }
                 else
                 {
@@ -207,7 +208,11 @@ namespace DCFApixels.SpriteEditor
                     if (rendered == null)
                         rendered = GetClearRenderTexture(width, height);
                 }
-                return CopyToTexture2D(rendered);
+                Texture2D linear = HdrUtility.ReadLinear(rendered);
+                if (layer.colorRange == LayerColorRange.HDR || layer is GroupLayer || layer is DrawingLayer drawing && HdrUtility.IsHdr(drawing.StoredTexture))
+                    return linear;
+                try { return HdrUtility.ToLdr(linear); }
+                finally { DestroyImmediate(linear); }
             }
             finally
             {
@@ -332,16 +337,21 @@ namespace DCFApixels.SpriteEditor
             if (source == null)
                 return null;
 
+            RenderTexture encoded = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            RenderTexture previous = RenderTexture.active;
             Texture2D texture = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp
             };
-            RenderTexture previous = RenderTexture.active;
             try
             {
-                RenderTexture.active = source;
+                var conversion = SpriteEditorMaterials.Hdr;
+                conversion.SetFloat("_Saturate", 1f);
+                conversion.SetFloat("_Encode", 1f);
+                Graphics.Blit(source, encoded, conversion, 0);
+                RenderTexture.active = encoded;
                 texture.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0, false);
                 if (uploadToGpu)
                     texture.Apply(false, false);
@@ -355,6 +365,7 @@ namespace DCFApixels.SpriteEditor
             finally
             {
                 RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(encoded);
             }
         }
 
@@ -363,7 +374,7 @@ namespace DCFApixels.SpriteEditor
             RenderTexture composite = RenderComposite(outputWidth, outputHeight, scaleMultiplier);
             try
             {
-                return CopyToTexture2D(composite);
+                return HdrUtility.ReadLinear(composite);
             }
             finally
             {
@@ -374,6 +385,7 @@ namespace DCFApixels.SpriteEditor
         private RenderTexture RenderComposite(int outputWidth, int outputHeight, float scaleMultiplier)
         {
             RenderTexture previous = RenderTexture.active;
+            BeginDiagnostics(outputWidth, outputHeight);
             RenderTexture accumulator = GetClearRenderTexture(outputWidth, outputHeight);
             try
             {
@@ -384,12 +396,14 @@ namespace DCFApixels.SpriteEditor
                     outputHeight,
                     scaleMultiplier,
                     new HashSet<Layer>());
+                EndDiagnostics();
                 return accumulator;
             }
             catch
             {
                 RenderTexture.active = previous;
                 RenderTexture.ReleaseTemporary(accumulator);
+                ReleaseDiagnostics();
                 throw;
             }
             finally
@@ -404,7 +418,8 @@ namespace DCFApixels.SpriteEditor
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
-            HashSet<Layer> renderStack)
+            HashSet<Layer> renderStack,
+            HashSet<Layer> included = null)
         {
             if (sourceLayers == null)
                 return;
@@ -413,19 +428,15 @@ namespace DCFApixels.SpriteEditor
             for (int i = sourceLayers.Count - 1; i >= 0; i--)
             {
                 Layer layer = sourceLayers[i];
-                if (layer == null || !layer.enabled)
+                if (included != null && !included.Contains(layer))
+                    continue;
+                if (layer == null || !layer.enabled || layer.opacity <= 0f ||
+                    (!(layer is GroupLayer pass) || pass.compositing == GroupCompositing.Isolated) && layer.blendMode == BlendMode.None)
                     continue;
 
                 if (layer is GroupLayer group)
                 {
-                    // A group is deliberately not composited into an intermediate color target.
-                    CompositeLayers(
-                        group.layers,
-                        ref accumulator,
-                        outputWidth,
-                        outputHeight,
-                        scaleMultiplier,
-                        renderStack);
+                    CompositeGroup(group, ref accumulator, outputWidth, outputHeight, scaleMultiplier, renderStack, included);
                     continue;
                 }
 
@@ -441,13 +452,35 @@ namespace DCFApixels.SpriteEditor
 
                 try
                 {
-                    BlendInto(ref accumulator, rendered, layer.blendMode, layer.opacity);
+                    BlendInto(ref accumulator, rendered, layer.blendMode, layer.opacity, layer.blendRange);
                 }
                 finally
                 {
                     RenderTexture.ReleaseTemporary(rendered);
                 }
             }
+        }
+
+        private void CompositeGroup(GroupLayer group, ref RenderTexture accumulator, int w, int h,
+            float scale, HashSet<Layer> stack, HashSet<Layer> included = null)
+        {
+            if (group.opacity <= 0f) return;
+            bool passThrough = group.compositing == GroupCompositing.PassThrough;
+            if (passThrough && group.opacity >= 1f)
+            {
+                CompositeLayers(group.layers, ref accumulator, w, h, scale, stack, included);
+                return;
+            }
+            RenderTexture content = GetClearRenderTexture(w, h);
+            try
+            {
+                if (passThrough) Graphics.Blit(accumulator, content);
+                CompositeLayers(group.layers, ref content, w, h, scale, stack, included);
+                if (!passThrough) content = FinishStage(content, group.colorRange == LayerColorRange.Standard);
+                BlendInto(ref accumulator, content, passThrough ? (BlendMode)101 : group.blendMode,
+                    group.opacity, group.blendRange);
+            }
+            finally { RenderTexture.ReleaseTemporary(content); }
         }
 
         private RenderTexture RenderStandalone(
@@ -497,7 +530,9 @@ namespace DCFApixels.SpriteEditor
                     scaleMultiplier,
                     applyTransform,
                     applyModifiers);
-                return layer.Render(context);
+                RenderTexture raw = layer.Render(context);
+                try { return FinishStage(raw, layer.colorRange == LayerColorRange.Standard); }
+                catch { if (raw != null) RenderTexture.ReleaseTemporary(raw); throw; }
             }
             finally
             {
@@ -585,16 +620,13 @@ namespace DCFApixels.SpriteEditor
             RenderTexture mask = GetClearRenderTexture(outputWidth, outputHeight);
             try
             {
-                bool hasContent = AccumulateGroupAlpha(
-                    group.layers,
-                    ref mask,
-                    outputWidth,
-                    outputHeight,
-                    scaleMultiplier,
-                    renderStack);
-                if (!hasContent)
-                    return null;
-                RenderTexture result = mask;
+                // Render only the group's own content against transparency, never its external backdrop.
+                // This also respects nested opacity and alpha-replacing blend modes.
+                CompositeLayers(group.layers, ref mask, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                var scaled = GetClearRenderTexture(outputWidth, outputHeight);
+                BlendInto(ref scaled, mask, (BlendMode)AlphaUnionMode, group.opacity);
+                RenderTexture.ReleaseTemporary(mask);
+                RenderTexture result = scaled;
                 mask = null;
                 return result;
             }
@@ -606,66 +638,7 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private bool AccumulateGroupAlpha(
-            List<Layer> sourceLayers,
-            ref RenderTexture mask,
-            int outputWidth,
-            int outputHeight,
-            float scaleMultiplier,
-            HashSet<Layer> renderStack)
-        {
-            if (sourceLayers == null)
-                return false;
-
-            bool hasContent = false;
-            for (int i = sourceLayers.Count - 1; i >= 0; i--)
-            {
-                Layer layer = sourceLayers[i];
-                if (layer == null || !layer.enabled)
-                    continue;
-
-                RenderTexture rendered;
-                float opacity;
-                if (layer is GroupLayer nestedGroup)
-                {
-                    rendered = RenderGroupAlpha(
-                        nestedGroup,
-                        outputWidth,
-                        outputHeight,
-                        scaleMultiplier,
-                        renderStack);
-                    opacity = 1f;
-                }
-                else
-                {
-                    rendered = RenderStandalone(
-                        sourceLayers,
-                        i,
-                        outputWidth,
-                        outputHeight,
-                        scaleMultiplier,
-                        renderStack);
-                    opacity = layer.opacity;
-                }
-
-                if (rendered == null)
-                    continue;
-
-                hasContent = true;
-                try
-                {
-                    BlendInto(ref mask, rendered, (BlendMode)AlphaUnionMode, opacity);
-                }
-                finally
-                {
-                    RenderTexture.ReleaseTemporary(rendered);
-                }
-            }
-
-            return hasContent;
-        }
-
-        private static void BlendInto(ref RenderTexture accumulator, RenderTexture layer, BlendMode mode, float opacity)
+        private void BlendInto(ref RenderTexture accumulator, RenderTexture layer, BlendMode mode, float opacity, LayerBlendRange blendRange = LayerBlendRange.Standard)
         {
             RenderTexture previous = RenderTexture.active;
             Material material = SpriteEditorMaterials.Blend;
@@ -673,8 +646,8 @@ namespace DCFApixels.SpriteEditor
                 accumulator.width,
                 accumulator.height,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default);
+                RenderTextureFormat.ARGBFloat,
+                RenderTextureReadWrite.Linear);
             try
             {
                 result.filterMode = FilterMode.Bilinear;
@@ -687,9 +660,11 @@ namespace DCFApixels.SpriteEditor
                 {
                     material.SetTexture("_Blend", layer);
                     material.SetFloat("_Mode", (int)mode);
+                    material.SetFloat("_HdrBlend", blendRange == LayerBlendRange.HDR ? 1f : 0f);
                     material.SetFloat("_Opacity", Mathf.Clamp01(opacity));
                     Graphics.Blit(accumulator, result, material);
                 }
+                result = FinishStage(result);
             }
             catch
             {
@@ -708,8 +683,8 @@ namespace DCFApixels.SpriteEditor
                 outputWidth,
                 outputHeight,
                 0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.Default);
+                RenderTextureFormat.ARGBFloat,
+                RenderTextureReadWrite.Linear);
             RenderTexture previous = RenderTexture.active;
             try
             {

@@ -104,6 +104,48 @@ namespace DCFApixels.SpriteEditor
             return result;
         }
 
+        private List<Layer> GetSelectedParameterLayers(Layer source)
+        {
+            var result = new List<Layer>();
+            if (compositor == null || source == null || !compositor.TryFindLayer(source, out _, out _)) return result;
+            if (!IsLayerSelected(source.Id)) result.Add(source);
+            else
+                foreach (string id in selectedLayerIds)
+                {
+                    Layer selected = compositor.FindLayer(id);
+                    if (selected != null) result.Add(selected);
+                }
+            return result;
+        }
+
+        private void ApplySelectedParameter(Layer source, string undoName, System.Action<Layer> change)
+        {
+            List<Layer> targets = GetSelectedParameterLayers(source);
+            if (targets.Count == 0) return;
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            ApplyToolkitChange(undoName, () =>
+            {
+                foreach (Layer layer in targets) change(layer);
+            });
+        }
+
+        private void ApplySelectedOpacity(Layer source, float value)
+        {
+            float opacity = float.IsNaN(value) ? 0f : Mathf.Clamp01(value);
+            ApplySelectedParameter(source, "Change Selected Layers Opacity", layer => layer.opacity = opacity);
+        }
+
+        private void ApplySelectedBlend(Layer source, BlendMode mode, bool passThrough = false)
+        {
+            ApplySelectedParameter(source, "Change Selected Layers Blend", layer =>
+            {
+                if (layer is GroupLayer group)
+                    group.compositing = passThrough ? GroupCompositing.PassThrough : GroupCompositing.Isolated;
+                if (!passThrough) layer.blendMode = mode;
+            });
+        }
+
         private void CollectSelectedRoots(List<Layer> container, List<Layer> result)
         {
             foreach (Layer layer in container)
@@ -186,6 +228,32 @@ namespace DCFApixels.SpriteEditor
                 }
                 SelectOnlyLayer(null);
             });
+        }
+
+        private void MergeSelectedLayers(List<Layer> layers, bool keepSources)
+        {
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            if (compositor == null || layers.Count == 0) return;
+            applyingToolkitChange = true;
+            try
+            {
+                DrawingLayer merged = compositor.MergeLayers(layers, keepSources);
+                SelectOnlyLayer(merged.Id);
+                temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+                lineAnchorLayer = null;
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception);
+                EditorUtility.DisplayDialog("Cannot Merge Layers", exception.Message, "OK");
+            }
+            finally
+            {
+                applyingToolkitChange = false;
+                RequestPreview(true);
+                RefreshToolkitInterface(forceValues: true);
+            }
         }
 
         private List<Layer> GetDraggedRoots() => GetDraggedLayer() != null

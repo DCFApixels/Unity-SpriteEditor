@@ -8,14 +8,16 @@ namespace DCFApixels.SpriteEditor
     public sealed class GroupLayer : Layer
     {
         [SerializeReference] public List<Layer> layers = new List<Layer>();
+        // Zero preserves the behavior of documents saved before group blending existed.
+        public GroupCompositing compositing;
 
         internal override bool IsGroup => true;
 
         internal override RenderTexture Render(in LayerRenderContext context)
         {
-            // Groups are structural nodes. TextureCompositor flattens their children
-            // into the parent stack so blend modes behave as if no isolated group exists.
+            // The compositor owns both pass-through and isolated group evaluation.
             return null;
         }
     }
+    public enum GroupCompositing { PassThrough, Isolated }
 }

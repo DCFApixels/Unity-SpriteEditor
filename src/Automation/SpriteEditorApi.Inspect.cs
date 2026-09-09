@@ -24,7 +24,10 @@ namespace DCFApixels.SpriteEditor
         public static string Describe() => Respond(() =>
         {
             JObject result = Success();
-            result["operations"] = new JArray("add", "set", "transform", "target", "move", "stroke");
+            result["operations"] = new JArray("add", "set", "transform", "target", "move", "stroke", "compact");
+            result["colorRanges"] = new JArray(System.Enum.GetNames(typeof(LayerColorRange)));
+            result["blendRanges"] = new JArray(System.Enum.GetNames(typeof(LayerBlendRange)));
+            result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
             result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf");
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
             result["tilingModes"] = new JArray(System.Enum.GetNames(typeof(TransformTilingMode)));
@@ -81,6 +84,12 @@ namespace DCFApixels.SpriteEditor
                     if (layer == null) continue;
                     JObject settings = new JObject { ["name"] = layer.layerName, ["enabled"] = layer.enabled };
                     var entry = new JObject { ["id"] = layer.Id, ["type"] = TypeName(layer), ["parent"] = parent, ["index"] = i, ["settings"] = settings };
+                    settings["opacity"] = layer.opacity;
+                    settings["blend"] = layer.blendMode.ToString();
+                    settings["colorRange"] = layer.colorRange.ToString();
+                    settings["blendRange"] = layer.blendRange.ToString();
+                    if (layer is GroupLayer folder) settings["compositing"] = folder.compositing.ToString();
+                    if (layer is DrawingLayer stored) entry["storageFormat"] = stored.StoredTexture != null ? stored.StoredTexture.format.ToString() : "Unallocated";
                     if (!layer.IsGroup)
                     {
                         settings["opacity"] = layer.opacity;
