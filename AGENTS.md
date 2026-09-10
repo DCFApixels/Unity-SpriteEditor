@@ -31,3 +31,11 @@ coordinates, safety/Undo semantics and complete workflows. Examples live in
   uses the actual compositor and requires graphics; do not launch it with `-nographics`.
 - Scope new assets to the user's requested output location. Do not overwrite unrelated files,
   alter existing source import settings, or delete working documents to retry a failed command.
+
+## Documentation maintenance
+
+- Keep README files concise: introduction, installation, quick start and links to the guide.
+- Update the matching `Documentation~/en/` and `Documentation~/ru/` user-guide pages for feature changes.
+  Keep the shared English API contract in `Documentation~/AgentAPI.md` accurate; preserve existing URLs.
+- Follow `Documentation~/building.md` for website validation. Jekyll builds are documentation-only;
+  they do not authorize a Unity build, compilation or asset reimport.

@@ -8,6 +8,15 @@ permalink: /reference/hdr/
 ---
 
 # Color range, HDR and groups
+{: .no_toc }
+
+<details markdown="1">
+<summary>On this page</summary>
+
+- Contents
+{:toc}
+
+</details>
 
 ## Layer controls
 

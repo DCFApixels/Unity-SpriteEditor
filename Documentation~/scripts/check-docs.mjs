@@ -69,6 +69,25 @@ function checkSource() {
     if (/\b(?:PLACEHOLDER|TODO_TRANSLATE)\b/.test(content)) fail(`${file}: unfinished content`);
   }
   console.log(`Source: ${pages.size} pages, reciprocal EN/RU navigation and local Markdown links checked.`);
+  const listeners = [];
+  let closed = false;
+  let stopped = false;
+  vm.runInNewContext(text(path.join(source, '_includes/js/custom.js')), {
+    jtd: { onReady: callback => callback() },
+    document: {
+      documentElement: { classList: { remove: () => { closed = true; } } },
+      getElementById: () => ({ addEventListener: (name, handler, capture) => { if (name === 'focusout' && capture) listeners.push(handler); } })
+    }
+  });
+  if (listeners.length !== 2) fail('Focus guard was not attached to input and results');
+  for (const listener of listeners) {
+    closed = stopped = false;
+    listener({ relatedTarget: null, stopImmediatePropagation: () => { stopped = true; } });
+    if (!closed || !stopped) fail('Search does not close safely without a focus target');
+    closed = stopped = false;
+    listener({ relatedTarget: {}, stopImmediatePropagation: () => { stopped = true; } });
+    if (closed || stopped) fail('Search guard intercepts ordinary focus transitions');
+  }
 }
 
 function checkSite() {

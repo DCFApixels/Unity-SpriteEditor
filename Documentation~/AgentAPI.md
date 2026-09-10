@@ -8,6 +8,15 @@ permalink: /reference/agentapi/
 ---
 
 # Sprite Editor: agent API v1
+{: .no_toc }
+
+<details markdown="1">
+<summary>On this page</summary>
+
+- Contents
+{:toc}
+
+</details>
 
 The API edits the same model and uses the same renderer, brush and save path as the window.
 No Sprite Editor window or active selection is required. It creates ordinary compositor `.asset`

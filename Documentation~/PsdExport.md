@@ -8,6 +8,15 @@ permalink: /reference/psdexport/
 ---
 
 # Layered PSD export
+{: .no_toc }
+
+<details markdown="1">
+<summary>On this page</summary>
+
+- Contents
+{:toc}
+
+</details>
 
 Choose **Export → Layered PSD (.psd)**. The source document is not converted or saved by this operation.
 Hidden layers and nested folders are included. A compatibility image is rendered from the original

@@ -4,6 +4,19 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-09-10
+
+### Added
+
+- A Just the Docs website with English and Russian workflow guides, cross-language page links, keyboard-accessible search, technical references and troubleshooting.
+- GitHub Pages deployment with pinned theme dependencies and automated checks for navigation, generated links, fragment targets and English/Cyrillic search.
+- A documentation URL in Package Manager and the theme's source acknowledgement and MIT license.
+
+### Changed
+
+- Shortened both READMEs to installation, quick start and a guide map; detailed controls and caveats now live in the documentation.
+- Preserved existing API and rendering reference paths, and documented the current alpha-product Swizzle options in the HDR reference.
+
 ## [0.7.6] - 2026-09-10
 
 ### Added
