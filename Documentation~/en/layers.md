@@ -29,18 +29,36 @@ Use **+** at the bottom of Layers to choose a type:
 
 You can also drag a Project texture onto the Preview to add it at the top,
 or drop it between rows to choose its position. A newly assigned image keeps its original proportions.
+Assigning an HDR texture to a File layer sets **Color Range** and **Blend Range** to **HDR**.
+You can change both afterwards in **Color & Blending**.
 
 ## Select and arrange
 
 Click a row to select it. Hold `Ctrl` to select several layers or `Shift` to select a range.
 The **last selected layer is active**: this is the layer you paint on and edit in Layer Settings.
 
-Drag a row's thumbnail or empty space to move the selected layers.
+Drag a row's thumbnail, empty space, name, opacity field or eye to move the selected layers.
+In the name and opacity fields, drag up or down to move layers; drag left or right to select text.
+While a field is focused for editing, dragging only selects text; leave the field to move layers from it again.
+Dragging from a field cancels its unconfirmed input; dragging the eye does not toggle visibility.
+Confirm name and opacity edits with `Enter` or by leaving the field.
 Edit the name directly in the row. **Opacity** controls how much the layer shows;
 **Blend** controls how it combines with the image below.
 Changing either on a selected row updates all selected layers.
 
 Use the eye to hide a layer. The eye in the column header reveals all layers.
+
+## Edit layer settings
+
+The selected layer's settings are divided into four foldouts:
+
+- **Transform:** position, size, rotation and tiling.
+- **Color & Blending:** color ranges and Swizzle. The Standard/HDR selector is also available in the header.
+- **Properties:** settings specific to this layer, such as its source texture, effect target or drawing symmetry.
+- **FX:** add and adjust shader effects.
+
+Expand the sections you need. The same sections are available in **layer ⋮ → Properties**.
+Sections that do not apply to the selected layer are greyed out.
 
 ## Keep related parts in a group
 

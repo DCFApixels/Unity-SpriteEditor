@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     internal sealed class LayerActionIcon : VisualElement
     {
-        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha, AddDrawing }
+        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha, AddDrawing, Transform, Properties, Effects }
 
         private readonly Kind kind;
 
@@ -30,6 +30,28 @@ namespace DCFApixels.SpriteEditor
             painter.BeginPath();
             switch (kind)
             {
+                case Kind.Transform:
+                    DrawTransform(painter);
+                    return;
+                case Kind.Properties:
+                    DrawProperties(painter);
+                    return;
+                case Kind.Effects:
+                    painter.strokeColor = new Color(0.7f, 0.6f, 0.86f);
+                    painter.MoveTo(new Vector2(6f, 2f));
+                    painter.LineTo(new Vector2(7.5f, 6.5f));
+                    painter.LineTo(new Vector2(12f, 8f));
+                    painter.LineTo(new Vector2(7.5f, 9.5f));
+                    painter.LineTo(new Vector2(6f, 14f));
+                    painter.LineTo(new Vector2(4.5f, 9.5f));
+                    painter.LineTo(new Vector2(1f, 8f));
+                    painter.LineTo(new Vector2(4.5f, 6.5f));
+                    painter.ClosePath();
+                    painter.MoveTo(new Vector2(12f, 1f));
+                    painter.LineTo(new Vector2(12f, 5f));
+                    painter.MoveTo(new Vector2(10f, 3f));
+                    painter.LineTo(new Vector2(14f, 3f));
+                    break;
                 case Kind.Alpha:
                     DrawAlpha(painter);
                     return;
@@ -92,6 +114,44 @@ namespace DCFApixels.SpriteEditor
                     break;
             }
             painter.Stroke();
+        }
+
+        private static void DrawTransform(Painter2D painter)
+        {
+            void Axis(Vector2 end, Vector2 wing, Color color)
+            {
+                painter.strokeColor = color;
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(7f, 10f));
+                painter.LineTo(end);
+                painter.LineTo(wing);
+                painter.Stroke();
+            }
+            Axis(new Vector2(7f, 2f), new Vector2(5f, 4f), new Color(0.56f, 0.78f, 0.46f));
+            Axis(new Vector2(14f, 12f), new Vector2(12f, 9f), new Color(0.9f, 0.55f, 0.48f));
+            Axis(new Vector2(2f, 14f), new Vector2(2f, 11f), new Color(0.48f, 0.7f, 0.9f));
+        }
+
+        private static void DrawProperties(Painter2D painter)
+        {
+            painter.strokeColor = new Color(0.48f, 0.72f, 0.8f);
+            painter.lineWidth = 1.25f;
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 3f + i * 5f;
+                float knob = i == 1 ? 10f : 6f;
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(2f, y));
+                painter.LineTo(new Vector2(knob - 1.5f, y));
+                painter.MoveTo(new Vector2(knob + 1.5f, y));
+                painter.LineTo(new Vector2(14f, y));
+                painter.MoveTo(new Vector2(knob - 1.5f, y - 1.5f));
+                painter.LineTo(new Vector2(knob + 1.5f, y - 1.5f));
+                painter.LineTo(new Vector2(knob + 1.5f, y + 1.5f));
+                painter.LineTo(new Vector2(knob - 1.5f, y + 1.5f));
+                painter.ClosePath();
+                painter.Stroke();
+            }
         }
 
         private static void DrawAlpha(Painter2D painter)

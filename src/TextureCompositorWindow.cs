@@ -140,6 +140,8 @@ namespace DCFApixels.SpriteEditor
             previewDebug = false;
             previewExposure = 0f;
             colorSettingsExpanded = false;
+            layerPropertiesExpanded = true;
+            layerFxExpanded = false;
             tiledPreview = false;
             ReleasePostFx();
             postFxEnabled = false;

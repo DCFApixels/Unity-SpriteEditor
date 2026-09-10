@@ -22,9 +22,6 @@ namespace DCFApixels.SpriteEditor
             this.applyChange = applyChange;
             SpriteEditorUI.ApplyWindowStyles(this);
             AddToClassList("sprite-editor-layer-fx");
-            Label title = new Label("FX");
-            title.AddToClassList("sprite-editor-shader-fx-heading");
-            Add(title);
             VisualElement toolbar = new VisualElement();
             toolbar.AddToClassList("sprite-editor-layer-fx-toolbar");
             toolbar.Add(new Button(() => Change("Add Shader FX", () => owner.AddEmbeddedShaderFX(layer))) { text = "+ Shader FX" });

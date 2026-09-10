@@ -7,6 +7,8 @@ namespace DCFApixels.SpriteEditor
     public sealed partial class TextureCompositorWindow
     {
         [SerializeField] private bool colorSettingsExpanded;
+        [SerializeField] private bool layerPropertiesExpanded = true;
+        [SerializeField] private bool layerFxExpanded;
         [NonSerialized] private ScrollView toolkitLayerSettingsScroll;
         [NonSerialized] private Label toolkitLayerSettingsTitle;
         [NonSerialized] private Layer toolkitInspectorLayer;
@@ -61,22 +63,19 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            if (layer is GroupLayer)
-            {
-                LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
-                    colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
-                SpriteEditorUI.AddHelpBox(root,
-                    "Pass Through lets children blend with the backdrop. Other blend modes isolate the group. " +
-                    "Opacity applies to the whole group. Transform and modifiers remain per-child settings.",
-                    HelpBoxMessageType.Info);
-                return;
-            }
+            toolkitInspectorShaderFX = SpriteEditorUI.BuildLayerInspectorSections(root, layer, compositor,
+                ApplyToolkitChange, toolkitInspectorBindings, properties => BuildToolkitLayerProperties(properties, layer),
+                colorSettingsExpanded, value => colorSettingsExpanded = value,
+                layerPropertiesExpanded, value => layerPropertiesExpanded = value,
+                layerFxExpanded, value => layerFxExpanded = value);
+        }
 
+        private void BuildToolkitLayerProperties(VisualElement root, Layer layer)
+        {
             switch (layer)
             {
-                case ShaderProcessorLayer processor:
+                case ShaderProcessorLayer:
                     SpriteEditorUI.AddHelpBox(root, "Processes the composited layers below. Normal blends between the original and processed image using Opacity. In a Pass Through group, the external backdrop is included. Add or edit Shader FX below.", HelpBoxMessageType.Info);
-                    SpriteEditorUI.AddTextureTransform(root, processor, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
                 case DrawingLayer drawing:
                     DrawingLayerEditorWindow.BuildFields(root, drawing, compositor, ApplyToolkitChange, toolkitInspectorBindings);
@@ -114,10 +113,6 @@ namespace DCFApixels.SpriteEditor
                         AddToolkitInspectorEffectTarget);
                     break;
             }
-            LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
-                colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
-            toolkitInspectorShaderFX = new LayerShaderFXView(layer, compositor, ApplyToolkitChange);
-            root.Add(toolkitInspectorShaderFX);
         }
 
         private void AddToolkitInspectorEffectTarget(VisualElement root, TargetedLayerEffect effect)

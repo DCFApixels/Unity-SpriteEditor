@@ -19,7 +19,6 @@ namespace DCFApixels.SpriteEditor
             Action<VisualElement, TargetedLayerEffect> addEffectTarget)
         {
             addEffectTarget(root, layer);
-            SpriteEditorUI.AddTextureTransform(root, layer, compositor, applyChange, bindings);
             var radius = SpriteEditorUI.ConfigureField(new Slider("Radius (px)", 0f, GaussianBlurLayer.MaximumRadius)
                 { showInputField = true, tooltip = "Kernel extent in original canvas pixels (three standard deviations). Zero leaves the source unchanged." });
             radius.SetValueWithoutNotify(layer.radius);

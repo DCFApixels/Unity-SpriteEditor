@@ -24,7 +24,6 @@ namespace DCFApixels.SpriteEditor
         {
             SpriteEditorUI.ApplyWindowStyles(root);
             addEffectTarget(root, layer);
-            SpriteEditorUI.AddTextureTransform(root, layer, compositor, applyChange, bindings);
             var settings = new VisualElement { name = "normalMapSettings" };
             settings.AddToClassList("sprite-editor-normal-map-settings");
             root.Add(settings);

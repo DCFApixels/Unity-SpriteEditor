@@ -497,45 +497,90 @@
     flex-shrink: 0;
 }
 
-.unity-help-box.sprite-editor-transform-card {
-    flex-direction: column;
+.sprite-editor-inspector-section.unity-foldout {
     flex-shrink: 0;
-    align-items: stretch;
-    margin: 4px 0;
-    padding: 2px 6px;
-}
-
-.sprite-editor-transform-card > .unity-foldout {
-    align-self: stretch;
     min-width: 0;
+    margin: 0;
+    padding: 0;
+    border-top-width: 1px;
+    border-top-color: #252525;
+    background-color: #383838;
 }
 
-.unity-help-box.sprite-editor-color-card {
-    flex-direction: column;
+.sprite-editor-inspector-section > .unity-foldout__toggle {
+    height: 24px;
     flex-shrink: 0;
-    align-items: stretch;
-    margin: 4px 0;
-    padding: 2px 6px;
-}
-
-.sprite-editor-color-card > .unity-foldout {
     min-width: 0;
+    margin: 0;
+    padding: 0 6px;
+    background-color: #414141;
+    -unity-font-style: bold;
 }
 
-.sprite-editor-color-card > .unity-foldout > .unity-foldout__toggle {
-    margin-right: 110px;
-    min-height: 20px;
+.sprite-editor-inspector-section > .unity-foldout__toggle:hover {
+    background-color: #494949;
 }
 
-.sprite-editor-color-card > .unity-foldout > .unity-foldout__toggle .unity-toggle__text {
+.sprite-editor-inspector-section > .unity-foldout__toggle .unity-toggle__text {
+    margin-left: 22px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.sprite-editor-inspector-section-content {
+    margin: 0;
+    padding: 5px 8px 7px;
+    min-width: 0;
+}
+
+.sprite-editor-inspector-section-icon {
+    position: absolute;
+    left: 21px;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    color: #a4b9cd;
+}
+
+.sprite-editor-inspector-section--light.unity-foldout {
+    background-color: #c4c4c4;
+    border-top-color: #9a9a9a;
+}
+
+.sprite-editor-inspector-section--light > .unity-foldout__toggle {
+    background-color: #cecece;
+}
+
+.sprite-editor-inspector-section--light > .unity-foldout__toggle:hover {
+    background-color: #d8d8d8;
+}
+
+.sprite-editor-inspector-section--light > .sprite-editor-inspector-section-icon {
+    color: #577185;
+}
+
+.sprite-editor-inspector-section:disabled > .unity-foldout__toggle {
+    background-color: #3b3b3b;
+    color: #858585;
+}
+
+.sprite-editor-inspector-section:disabled > .sprite-editor-inspector-section-icon {
+    opacity: 0.35;
+}
+
+.sprite-editor-inspector-section--light:disabled > .unity-foldout__toggle {
+    background-color: #c7c7c7;
+    color: #8a8a8a;
+}
+
+.sprite-editor-color-card > .unity-foldout__toggle {
+    padding-right: 116px;
+}
+
 .sprite-editor-color-preset {
     position: absolute;
-    top: 2px;
+    top: 3px;
     right: 6px;
     width: 104px;
     margin: 0;
@@ -543,6 +588,19 @@
 
 .sprite-editor-color-preset > .unity-base-field__input {
     min-width: 0;
+}
+
+.sprite-editor-layer-inspector {
+    padding: 0 0 8px;
+}
+
+.sprite-editor-properties-window {
+    padding: 0 0 8px;
+    background-color: #383838;
+}
+
+.sprite-editor-properties-window--light {
+    background-color: #c4c4c4;
 }
 
 .sprite-editor-transform-card .unity-vector2-field .unity-composite-field__field-spacer {
@@ -975,7 +1033,7 @@
 }
 
 .sprite-editor-layer-fx {
-    margin-top: 8px;
+    min-width: 0;
 }
 
 .sprite-editor-layer-fx-toolbar {

@@ -267,6 +267,65 @@ namespace DCFApixels.SpriteEditor
             return result;
         }
 
+        internal static Foldout CreateInspectorSection(string title, string name, LayerActionIcon.Kind icon,
+            bool expanded, Action<bool> expansionChanged = null, bool available = true)
+        {
+            var section = new Foldout { text = title, name = name, value = available && expanded };
+            section.SetEnabled(available);
+            ApplyWindowStyles(section);
+            section.AddToClassList("sprite-editor-inspector-section");
+            section.EnableInClassList("sprite-editor-inspector-section--light", !EditorGUIUtility.isProSkin);
+            section.contentContainer.AddToClassList("sprite-editor-inspector-section-content");
+            var headerIcon = new LayerActionIcon(icon);
+            headerIcon.AddToClassList("sprite-editor-inspector-section-icon");
+            section.hierarchy.Add(headerIcon);
+            if (expansionChanged != null)
+                section.RegisterValueChangedCallback(evt =>
+                {
+                    if (evt.target == section) expansionChanged(evt.newValue);
+                });
+            return section;
+        }
+
+        internal static LayerShaderFXView BuildLayerInspectorSections(VisualElement root, Layer layer,
+            TextureCompositor owner, Action<string, Action> apply, ValueBindings bindings,
+            Action<VisualElement> buildProperties, bool colorExpanded, Action<bool> colorExpansionChanged,
+            bool propertiesExpanded, Action<bool> propertiesExpansionChanged,
+            bool fxExpanded, Action<bool> fxExpansionChanged)
+        {
+            bool group = layer is GroupLayer;
+            if (group)
+            {
+                var transform = CreateInspectorSection("Transform", "transformSection", LayerActionIcon.Kind.Transform,
+                    false, available: false);
+                transform.tooltip = "Transform the individual layers inside this group.";
+                root.Add(transform);
+            }
+            else AddTextureTransform(root, layer, owner, apply, bindings);
+
+            LayerColorSettingsView.Build(root, layer, apply, bindings, colorExpanded, colorExpansionChanged, owner);
+            var properties = CreateInspectorSection("Properties", "propertiesSection", LayerActionIcon.Kind.Properties,
+                propertiesExpanded, propertiesExpansionChanged, !group && !(layer is ShaderProcessorLayer));
+            root.Add(properties);
+            if (group)
+                properties.tooltip = "Edit the group's opacity and blend mode in the layer list.";
+            else if (layer is ShaderProcessorLayer)
+                properties.tooltip = "Configure this processor in the FX section.";
+            else buildProperties(properties.contentContainer);
+
+            var fx = CreateInspectorSection("FX", "fxSection", LayerActionIcon.Kind.Effects,
+                fxExpanded, fxExpansionChanged, !group);
+            root.Add(fx);
+            if (group)
+            {
+                fx.tooltip = "Add FX to the individual layers, or use an effect layer targeting this group.";
+                return null;
+            }
+            var view = new LayerShaderFXView(layer, owner, apply);
+            fx.Add(view);
+            return view;
+        }
+
         public static void AddTextureTransform(
             VisualElement parent,
             Layer layer,
@@ -276,12 +335,8 @@ namespace DCFApixels.SpriteEditor
         {
             TextureTransform read() => layer.transform;
             void write(TextureTransform value) => layer.transform = value;
-            VisualElement container = new VisualElement();
-            ApplyWindowStyles(container);
-            container.AddToClassList(HelpBox.ussClassName);
-            container.AddToClassList("sprite-editor-transform-card");
-            Foldout card = new Foldout { text = "Transform", value = false };
-            container.Add(card);
+            Foldout card = CreateInspectorSection("Transform", "transformSection", LayerActionIcon.Kind.Transform, false);
+            card.AddToClassList("sprite-editor-transform-card");
 
             Vector2Field pivot = ConfigureField(new Vector2Field("Pivot"));
             pivot.tooltip = "Normalized pivot inside the output canvas.";
@@ -374,7 +429,7 @@ namespace DCFApixels.SpriteEditor
             filter.RegisterValueChangedCallback(evt =>
                 applyChange("Change Layer Filter", () => layer.filterMode = (LayerFilterMode)evt.newValue));
             card.Add(filter);
-            parent.Add(container);
+            parent.Add(card);
         }
 
         internal static Button CreateOriginalAspectButton(

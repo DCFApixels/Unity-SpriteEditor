@@ -24,12 +24,6 @@ namespace DCFApixels.SpriteEditor
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             SpriteEditorUI.ApplyWindowStyles(root);
-            SpriteEditorUI.AddTextureTransform(
-                root,
-                layer,
-                compositor,
-                applyChange,
-                bindings);
             root.Add(SpriteEditorUI.CreateHeading("Symmetry & Repeat"));
 
             PopupField<PaintRepeatMode> mode = SpriteEditorUI.ConfigureField(new PopupField<PaintRepeatMode>(

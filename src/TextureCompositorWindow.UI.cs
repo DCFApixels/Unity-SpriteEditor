@@ -153,9 +153,7 @@ namespace DCFApixels.SpriteEditor
 
             toolkitLayerSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitLayerSettingsScroll.name = "selected-layer-settings";
-            toolkitLayerSettingsScroll.style.paddingLeft = 8f;
-            toolkitLayerSettingsScroll.style.paddingRight = 8f;
-            toolkitLayerSettingsScroll.style.paddingBottom = 8f;
+            toolkitLayerSettingsScroll.AddToClassList("sprite-editor-layer-inspector");
             layerSettingsPane.RegisterCallback<GeometryChangedEvent>(evt =>
             {
                 if (evt.newRect.height >= 100f)
@@ -607,6 +605,8 @@ namespace DCFApixels.SpriteEditor
             });
             row.RegisterCallback<PointerDownEvent>(evt =>
             {
+                if (evt.button == 0 && IsFocusedLayerTextControl(FindLayerDragControl(row, evt.target as VisualElement)))
+                    return;
                 if (TrySelectLayerAlpha(row, layer, evt)) return;
                 if (evt.button == 0 && evt.altKey && TryToggleClippingAtBoundary(row, layer, evt.position))
                 {
@@ -665,6 +665,7 @@ namespace DCFApixels.SpriteEditor
 
         private static bool IsLayerDragArea(VisualElement row, VisualElement element)
         {
+            if (FindLayerDragControl(row, element) != null) return true;
             for (; element != null && element != row; element = element.parent)
             {
                 if (element.ClassListContains("sprite-editor-group-foldout")) return true;
@@ -672,6 +673,23 @@ namespace DCFApixels.SpriteEditor
                     return false;
             }
             return element == row;
+        }
+
+        private static VisualElement FindLayerDragControl(VisualElement row, VisualElement element)
+        {
+            for (; element != null && element != row; element = element.parent)
+                if (element.ClassListContains("sprite-editor-layer-name") ||
+                    element.ClassListContains("sprite-editor-layer-opacity") ||
+                    element.ClassListContains("sprite-editor-layer-enabled"))
+                    return element;
+            return null;
+        }
+
+        private static bool IsFocusedLayerTextControl(VisualElement control)
+        {
+            if (!(control is TextField) && !(control is FloatField)) return false;
+            var focused = control.focusController?.focusedElement as VisualElement;
+            return focused != null && (focused == control || control.Contains(focused));
         }
 
         private VisualElement CreateLayerNameCell(VisualElement row, int depth, Layer layer)
@@ -759,7 +777,7 @@ namespace DCFApixels.SpriteEditor
             });
             nameCell.Add(foldout);
 
-            TextField name = new TextField();
+            TextField name = new TextField { isDelayed = true };
             name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(group.layerName);
             toolkitLayerBindings.Track(name, () => group.layerName);
@@ -769,7 +787,7 @@ namespace DCFApixels.SpriteEditor
             nameCell.Add(name);
 
             toolkitLayerBindings.Add(() => name.tooltip = $"{group.layers.Count} items");
-            var opacity = new FloatField { tooltip = "Group opacity from 0 to 1." };
+            var opacity = new FloatField { isDelayed = true, tooltip = "Group opacity from 0 to 1." };
             opacity.AddToClassList("sprite-editor-layer-opacity");
             opacity.AddToClassList("sprite-editor-layer-multi-edit");
             toolkitLayerBindings.Track(opacity, () => group.opacity);
@@ -806,7 +824,7 @@ namespace DCFApixels.SpriteEditor
             nameCell.Add(thumbnail);
             toolkitLayerBindings.Add(() => thumbnail.image = layer.GetPreviewTexture(18));
 
-            TextField name = new TextField();
+            TextField name = new TextField { isDelayed = true };
             name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(layer.layerName);
             toolkitLayerBindings.Track(name, () => layer.layerName);
@@ -815,7 +833,7 @@ namespace DCFApixels.SpriteEditor
                 () => layer.layerName = evt.newValue));
             nameCell.Add(name);
 
-            FloatField opacity = new FloatField();
+            FloatField opacity = new FloatField { isDelayed = true };
             opacity.AddToClassList("sprite-editor-layer-multi-edit");
             opacity.tooltip = "Layer opacity from 0 to 1.";
             opacity.AddToClassList("sprite-editor-layer-opacity");
@@ -858,9 +876,7 @@ namespace DCFApixels.SpriteEditor
 
         private Button CreateLayerVisibilityButton(Layer layer)
         {
-            var button = new Button(() => ApplyToolkitChange(
-                layer is GroupLayer ? "Toggle Sprite Group" : "Toggle Sprite Layer",
-                () => layer.enabled = !layer.enabled));
+            var button = new Button(() => ToggleLayerVisibility(layer));
             button.AddToClassList("sprite-editor-layer-enabled");
             var eye = new LayerActionIcon(LayerActionIcon.Kind.Eye);
             eye.AddToClassList("sprite-editor-layer-eye");
@@ -878,6 +894,12 @@ namespace DCFApixels.SpriteEditor
             Refresh();
             toolkitLayerBindings.Add(Refresh);
             return button;
+        }
+
+        private void ToggleLayerVisibility(Layer layer)
+        {
+            ApplyToolkitChange(layer is GroupLayer ? "Toggle Sprite Group" : "Toggle Sprite Layer",
+                () => layer.enabled = !layer.enabled);
         }
 
         private static Button CreateLayerMenuButton(Action clicked)
@@ -915,6 +937,10 @@ namespace DCFApixels.SpriteEditor
             private Vector2 start;
             private int pointerId = -1;
             private VisualElement pressedFoldout;
+            private VisualElement pressedControl;
+            private VisualElement textInputTarget;
+            private PointerDownEvent pendingTextDown;
+            private bool selectingText;
 
             public LayerDragManipulator(TextureCompositorWindow owner, Layer layer)
             {
@@ -924,9 +950,10 @@ namespace DCFApixels.SpriteEditor
 
             protected override void RegisterCallbacksOnTarget()
             {
-                target.RegisterCallback<PointerDownEvent>(OnPointerDown);
-                target.RegisterCallback<PointerMoveEvent>(OnPointerMove);
-                target.RegisterCallback<PointerUpEvent>(OnPointerUp);
+                target.RegisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
+                target.RegisterCallback<PointerMoveEvent>(OnPointerMove, TrickleDown.TrickleDown);
+                target.RegisterCallback<PointerUpEvent>(OnPointerUp, TrickleDown.TrickleDown);
+                target.RegisterCallback<PointerCancelEvent>(OnPointerCancel, TrickleDown.TrickleDown);
                 target.RegisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
                 target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
             }
@@ -934,9 +961,10 @@ namespace DCFApixels.SpriteEditor
             protected override void UnregisterCallbacksFromTarget()
             {
                 Release();
-                target.UnregisterCallback<PointerDownEvent>(OnPointerDown);
-                target.UnregisterCallback<PointerMoveEvent>(OnPointerMove);
-                target.UnregisterCallback<PointerUpEvent>(OnPointerUp);
+                target.UnregisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
+                target.UnregisterCallback<PointerMoveEvent>(OnPointerMove, TrickleDown.TrickleDown);
+                target.UnregisterCallback<PointerUpEvent>(OnPointerUp, TrickleDown.TrickleDown);
+                target.UnregisterCallback<PointerCancelEvent>(OnPointerCancel, TrickleDown.TrickleDown);
                 target.UnregisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
                 target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
             }
@@ -945,7 +973,9 @@ namespace DCFApixels.SpriteEditor
             {
                 if (evt.button != 0 || pointerId >= 0 || !IsLayerDragArea(target, evt.target as VisualElement))
                     return;
-                owner.rootVisualElement.Focus();
+                VisualElement control = FindLayerDragControl(target, evt.target as VisualElement);
+                if (IsFocusedLayerTextControl(control)) return;
+                if (control == null) owner.rootVisualElement.Focus();
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
                     owner.SelectLayerFromPointer(layer, evt, preserveSelection: true);
@@ -956,6 +986,7 @@ namespace DCFApixels.SpriteEditor
                 owner.FinishPaintingStroke();
                 owner.activeLayerDrag?.Cancel();
                 owner.activeLayerDrag = this;
+                pressedControl = control;
                 for (var element = evt.target as VisualElement; element != null && element != target; element = element.parent)
                     if (element.ClassListContains("sprite-editor-group-foldout"))
                     {
@@ -965,22 +996,42 @@ namespace DCFApixels.SpriteEditor
                     }
                 start = evt.position;
                 pointerId = evt.pointerId;
+                if (control is TextField || control is FloatField)
+                {
+                    textInputTarget = evt.target as VisualElement;
+                    pendingTextDown = PointerDownEvent.GetPooled(evt);
+                }
                 target.CapturePointer(pointerId);
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
             }
 
             private void OnPointerMove(PointerMoveEvent evt)
             {
-                if (pointerId != evt.pointerId)
+                if (pointerId != evt.pointerId || selectingText)
                     return;
                 if ((evt.pressedButtons & 1) == 0)
                 {
                     Release();
                     return;
                 }
-                if (Vector2.Distance(start, evt.position) < 4f)
+                Vector2 delta = (Vector2)evt.position - start;
+                if (delta.sqrMagnitude < 16f)
+                {
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
+                }
 
+                if (pendingTextDown != null && Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+                {
+                    BeginTextSelection(evt);
+                    return;
+                }
+
+                if (pressedControl is TextField name)
+                    name.SetValueWithoutNotify(layer.layerName);
+                else if (pressedControl is FloatField opacity)
+                    opacity.SetValueWithoutNotify(layer.opacity);
+                owner.rootVisualElement.Focus();
                 DragAndDrop.PrepareStartDrag();
                 DragAndDrop.objectReferences = Array.Empty<UnityEngine.Object>();
                 bool selected = owner.IsLayerSelected(layer.Id);
@@ -992,11 +1043,40 @@ namespace DCFApixels.SpriteEditor
                 evt.StopImmediatePropagation();
             }
 
+            private void BeginTextSelection(PointerMoveEvent evt)
+            {
+                selectingText = true;
+                if (owner.IsLayerSelected(layer.Id)) owner.ActivateSelectedLayer(layer.Id);
+                else owner.SelectOnlyLayer(layer.Id);
+                owner.selectionAnchorId = layer.Id;
+                owner.RefreshToolkitInterface();
+                target.ReleasePointer(pointerId);
+                using (var down = pendingTextDown)
+                {
+                    pendingTextDown = null;
+                    down.target = textInputTarget;
+                    textInputTarget.SendEvent(down);
+                }
+                using (var move = PointerMoveEvent.GetPooled(evt))
+                {
+                    move.target = textInputTarget;
+                    textInputTarget.SendEvent(move);
+                }
+                SpriteEditorUI.ConsumeEvent(evt);
+            }
+
             private void OnPointerUp(PointerUpEvent evt)
             {
                 if (pointerId != evt.pointerId || evt.button != 0)
                     return;
+                if (selectingText)
+                {
+                    Release();
+                    return;
+                }
+                SpriteEditorUI.ConsumeEvent(evt);
                 VisualElement foldout = pressedFoldout;
+                VisualElement control = pressedControl;
                 Release();
                 if (foldout != null)
                 {
@@ -1011,13 +1091,30 @@ namespace DCFApixels.SpriteEditor
                     owner.SelectOnlyLayer(layer.Id);
                 owner.selectionAnchorId = layer.Id;
                 owner.RefreshToolkitInterface();
-                evt.StopImmediatePropagation();
+                if (control == null || !control.worldBound.Contains(evt.position)) return;
+                if (control is TextField name)
+                {
+                    name.Focus();
+                    name.SelectAll();
+                }
+                else if (control is FloatField opacity)
+                {
+                    opacity.Focus();
+                    opacity.SelectAll();
+                }
+                else if (control.ClassListContains("sprite-editor-layer-enabled"))
+                    owner.ToggleLayerVisibility(layer);
             }
 
             private void OnCaptureOut(PointerCaptureOutEvent evt)
             {
-                if (pointerId == evt.pointerId)
+                if (pointerId == evt.pointerId && !selectingText && evt.target == target)
                     Release();
+            }
+
+            private void OnPointerCancel(PointerCancelEvent evt)
+            {
+                if (pointerId == evt.pointerId) Release();
             }
 
             private void OnDetach(DetachFromPanelEvent evt) => Release();
@@ -1029,6 +1126,11 @@ namespace DCFApixels.SpriteEditor
                 int previousPointer = pointerId;
                 pointerId = -1;
                 pressedFoldout = null;
+                pressedControl = null;
+                textInputTarget = null;
+                pendingTextDown?.Dispose();
+                pendingTextDown = null;
+                selectingText = false;
                 if (owner.activeLayerDrag == this)
                     owner.activeLayerDrag = null;
                 if (previousPointer >= 0 && target.HasPointerCapture(previousPointer))

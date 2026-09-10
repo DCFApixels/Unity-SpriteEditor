@@ -24,12 +24,6 @@ namespace DCFApixels.SpriteEditor
             VisualElement root, FileLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
-            SpriteEditorUI.AddTextureTransform(
-                root,
-                layer,
-                compositor,
-                applyChange,
-                bindings);
 
             ObjectField texture = SpriteEditorUI.ConfigureField(new ObjectField("Source Texture")) as ObjectField;
             texture.objectType = typeof(Texture2D);
@@ -60,12 +54,6 @@ namespace DCFApixels.SpriteEditor
             VisualElement root, ColorFillLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
-            SpriteEditorUI.AddTextureTransform(
-                root,
-                layer,
-                compositor,
-                applyChange,
-                bindings);
 
             ColorField color = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new ColorField("Color"), bindings, () => layer.color));
             color.RegisterValueChangedCallback(evt =>

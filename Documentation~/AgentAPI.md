@@ -114,6 +114,9 @@ unity command sprite_editor_render --assetPath 'Assets/Art/AgentIcon/Icon.asset'
 The `.asset` is already usable as a texture/Sprite in Unity; this temporary PNG is only for inspection.
 
 An initially empty File layer automatically gets Original Aspect when assigned its first texture.
+Assigning a different HDR-format source sets both `colorRange` and `blendRange` to `HDR`.
+Explicit ranges in the same settings object override these defaults. Reassigning the same source,
+assigning a non-HDR source or subsequent refreshes do not reset the ranges.
 An explicit transform patch is applied **after** this fit. Setting `scale:[1,1]` explicitly therefore
 stretches a non-square source to the full canvas; omit scale to preserve the initial aspect fit.
 

@@ -11,8 +11,7 @@ namespace DCFApixels.SpriteEditor
             OpenPropertiesWindow<ShaderProcessorLayerEditorWindow>(layer, compositor);
         protected override void BuildSettings(VisualElement root, Layer layer)
         {
-            SpriteEditorUI.AddTextureTransform(root, layer, Compositor, ApplyLayerChange, SettingsBindings);
-            root.Add(new LayerShaderFXView(layer, Compositor, ApplyLayerChange));
+            SpriteEditorUI.AddHelpBox(root, "Processes the composited layers below. Add or edit its effects in FX.", HelpBoxMessageType.Info);
         }
     }
 }

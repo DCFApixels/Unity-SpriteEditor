@@ -19,7 +19,6 @@ namespace DCFApixels.SpriteEditor
             Action<VisualElement, TargetedLayerEffect> addEffectTarget)
         {
             addEffectTarget(root, layer);
-            SpriteEditorUI.AddTextureTransform(root, layer, compositor, applyChange, bindings);
             var mode = SpriteEditorUI.ConfigureField(new EnumField("Mode", layer.mode));
             bindings.Track(mode, () => (Enum)layer.mode);
             mode.RegisterValueChangedCallback(evt => applyChange("Change Motion Blur Mode",

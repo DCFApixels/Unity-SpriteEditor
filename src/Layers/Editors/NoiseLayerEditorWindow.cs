@@ -17,7 +17,6 @@ namespace DCFApixels.SpriteEditor
         internal static void BuildFields(VisualElement root, NoiseLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
-            SpriteEditorUI.AddTextureTransform(root, layer, compositor, applyChange, bindings);
 
             EnumField Choice<T>(VisualElement parent, string label, Func<T> get, Action<T> set) where T : struct, Enum
             {

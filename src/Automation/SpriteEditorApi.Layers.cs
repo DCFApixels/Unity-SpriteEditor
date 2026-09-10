@@ -153,8 +153,6 @@ namespace DCFApixels.SpriteEditor
             Require(!(layer is ShaderProcessorLayer) || !layer.clippingMask, "Shader Processor is a stack operation and cannot be a clipping layer.");
             layer.opacity = Number(settings, "opacity", layer.opacity, 0f, 1f);
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
-            layer.colorRange = Enum(settings, "colorRange", layer.colorRange);
-            layer.blendRange = Enum(settings, "blendRange", layer.blendRange);
             if (settings["swizzle"] != null)
             {
                 Require(settings["swizzle"] is JArray array && array.Count == 4,
@@ -181,6 +179,8 @@ namespace DCFApixels.SpriteEditor
                 Require(!ReferenceEquals(TextureCompositor.FindDocument(texture), document), "A document cannot sample its own output texture.");
                 file.AssignSourceTexture(texture, document);
             }
+            layer.colorRange = Enum(settings, "colorRange", layer.colorRange);
+            layer.blendRange = Enum(settings, "blendRange", layer.blendRange);
             if (layer is ColorFillLayer fill && settings["color"] != null) fill.color = Color(settings["color"]);
             if (layer is NormalMapLayer normal && settings["normalMap"] != null)
                 SetNormalMap(normal, Obj(settings["normalMap"], "normalMap"));

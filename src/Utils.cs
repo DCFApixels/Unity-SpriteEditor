@@ -365,12 +365,15 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private TextureCompositor compositor;
         [SerializeField] private string layerId;
         [SerializeField] private bool colorSettingsExpanded;
+        [SerializeField] private bool propertiesExpanded = true;
+        [SerializeField] private bool fxExpanded;
 
         [NonSerialized] private Layer currentLayer;
         [NonSerialized] private RenderTexture previewTexture;
         [NonSerialized] private bool previewRequested;
         [NonSerialized] private double previewAt;
         [NonSerialized] private EffectTargetSettingsView effectTargetSettings;
+        [NonSerialized] private LayerShaderFXView shaderFXView;
         [NonSerialized] private Image previewImage;
         [NonSerialized] private Label previewPlaceholder;
         [NonSerialized] private bool applyingChange;
@@ -485,6 +488,7 @@ namespace DCFApixels.SpriteEditor
             Layer nextLayer = valid ? currentLayer : null;
             if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && boundCompositor == compositor)
             {
+                shaderFXView?.Refresh();
                 SettingsBindings.Refresh(forceValues);
                 return;
             }
@@ -492,15 +496,15 @@ namespace DCFApixels.SpriteEditor
             boundLayer = nextLayer;
             boundCompositor = compositor;
             SettingsBindings.Clear();
+            shaderFXView = null;
             previewImage = null;
             previewPlaceholder = null;
             InvalidateEffectTargetOptions();
             VisualElement root = rootVisualElement;
             root.Clear();
-            root.style.paddingLeft = 8f;
-            root.style.paddingRight = 8f;
-            root.style.paddingTop = 8f;
-            root.style.paddingBottom = 8f;
+            SpriteEditorUI.ApplyWindowStyles(root);
+            root.AddToClassList("sprite-editor-properties-window");
+            root.EnableInClassList("sprite-editor-properties-window--light", !EditorGUIUtility.isProSkin);
 
             if (!valid)
             {
@@ -514,9 +518,11 @@ namespace DCFApixels.SpriteEditor
 
             ScrollView scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.style.flexGrow = 1f;
-            BuildSettings(scroll, currentLayer);
-            LayerColorSettingsView.Build(scroll, currentLayer, ApplyLayerChange, SettingsBindings,
-                colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);
+            shaderFXView = SpriteEditorUI.BuildLayerInspectorSections(scroll, currentLayer, compositor,
+                ApplyLayerChange, SettingsBindings, properties => BuildSettings(properties, currentLayer),
+                colorSettingsExpanded, value => colorSettingsExpanded = value,
+                propertiesExpanded, value => propertiesExpanded = value,
+                fxExpanded, value => fxExpanded = value);
             SettingsBindings.Refresh(forceValues);
             scroll.Add(SpriteEditorUI.CreateHeading(PreviewTitle));
 

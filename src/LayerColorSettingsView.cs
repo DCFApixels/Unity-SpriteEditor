@@ -27,16 +27,9 @@ namespace DCFApixels.SpriteEditor
         internal static void Build(VisualElement root, Layer layer, Action<string, Action> apply,
             SpriteEditorUI.ValueBindings bindings, bool expanded, Action<bool> expansionChanged, TextureCompositor owner = null)
         {
-            SpriteEditorUI.ApplyWindowStyles(root);
-            var container = new VisualElement();
-            container.AddToClassList(HelpBox.ussClassName);
-            container.AddToClassList("sprite-editor-color-card");
-            var card = new Foldout { text = "Color & Blending", value = expanded };
-            card.RegisterValueChangedCallback(evt =>
-            {
-                if (evt.target == card) expansionChanged(evt.newValue);
-            });
-            container.Add(card);
+            var card = SpriteEditorUI.CreateInspectorSection("Color & Blending", "colorSection",
+                LayerActionIcon.Kind.Alpha, expanded, expansionChanged);
+            card.AddToClassList("sprite-editor-color-card");
             var preset = new DropdownField(new List<string> { "Standard", "HDR" }, 0);
             preset.AddToClassList("sprite-editor-color-preset");
             preset.tooltip = "Set both Color Range and Blend Range. An empty value means the ranges differ.";
@@ -52,14 +45,8 @@ namespace DCFApixels.SpriteEditor
                     layer.blendRange = hdr ? LayerBlendRange.HDR : LayerBlendRange.Standard;
                 });
             });
-            container.Add(preset);
-            VisualElement transform = root.Q<VisualElement>(className: "sprite-editor-transform-card");
-            if (transform != null)
-                transform.parent.Insert(transform.parent.IndexOf(transform) + 1, container);
-            else
-                root.Insert(0, container);
-            var swizzle = BuildSwizzle(layer, apply, bindings, owner);
-            container.parent.Insert(container.parent.IndexOf(container) + 1, swizzle);
+            card.hierarchy.Add(preset);
+            root.Add(card);
             var color = SpriteEditorUI.ConfigureField(new EnumField("Color Range", layer.colorRange));
             color.tooltip = "Standard clamps this layer after its FX and Swizzle. HDR keeps signed linear values beyond 0–1.";
             bindings.Track(color, () => (Enum)layer.colorRange);
@@ -71,6 +58,7 @@ namespace DCFApixels.SpriteEditor
             bindings.Track(blend, () => (Enum)layer.blendRange);
             blend.RegisterValueChangedCallback(evt => apply("Change Layer Blend Range", () => layer.blendRange = (LayerBlendRange)evt.newValue));
             card.Add(blend);
+            card.Add(BuildSwizzle(layer, apply, bindings, owner));
             bindings.Add(() =>
             {
                 bool active = !(layer is GroupLayer group) || !group.IsPassThrough ||

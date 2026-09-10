@@ -4,6 +4,15 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.10] - 2026-09-10
+
+### Changed
+
+- Unified layer settings into Transform, Color & Blending, Properties and FX sections with compact headers and icons. Only Properties starts expanded; unavailable sections are greyed out.
+- Assigning an HDR texture to a File layer automatically enables HDR color and blend ranges, while preserving subsequent manual changes and explicit API overrides.
+- Layers and groups can be dragged by their name, opacity field or visibility icon. Vertical field gestures move layers, horizontal gestures select text, and focused text fields stay in editing mode.
+- Name and opacity edits commit on Enter or focus loss; starting a layer drag discards unconfirmed input without toggling visibility.
+
 ## [0.7.9] - 2026-09-10
 
 ### Changed

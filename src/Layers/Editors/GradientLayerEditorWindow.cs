@@ -24,12 +24,6 @@ namespace DCFApixels.SpriteEditor
             VisualElement root, GradientLayer layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
-            SpriteEditorUI.AddTextureTransform(
-                root,
-                layer,
-                compositor,
-                applyChange,
-                bindings);
 
             EnumField gradientType = SpriteEditorUI.ConfigureField(
                 new EnumField("Gradient Type", layer.gradientType));

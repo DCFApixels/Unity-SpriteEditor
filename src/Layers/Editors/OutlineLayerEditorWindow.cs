@@ -26,12 +26,6 @@ namespace DCFApixels.SpriteEditor
             Action<VisualElement, TargetedLayerEffect> addEffectTarget)
         {
             addEffectTarget(root, layer);
-            SpriteEditorUI.AddTextureTransform(
-                root,
-                layer,
-                compositor,
-                applyChange,
-                bindings);
 
             EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
             bindings.Track(metric, () => (Enum)layer.metric);
