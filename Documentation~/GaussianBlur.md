@@ -1,3 +1,12 @@
+---
+layout: default
+title: Gaussian Blur and caching
+parent: Technical reference
+nav_order: 4
+lang: en
+permalink: /reference/gaussianblur/
+---
+
 # Gaussian Blur and effect caching
 
 Gaussian Blur is a nondestructive targeted effect layer. Its source is the next sibling below it
@@ -72,4 +81,4 @@ The cache is an optimization: cold, warm and evicted results must match at the s
 ## Validation
 
 After manually compiling in Unity, run the opt-in checks described in
-[Gaussian Blur tests](../Tests~/GaussianBlur.md). No build or automatic project compilation is needed.
+[Gaussian Blur tests](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/Tests~/GaussianBlur.md). No build or automatic project compilation is needed.

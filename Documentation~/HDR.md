@@ -1,3 +1,12 @@
+---
+layout: default
+title: HDR and groups
+parent: Technical reference
+nav_order: 3
+lang: en
+permalink: /reference/hdr/
+---
+
 # Color range, HDR and groups
 
 ## Layer controls
@@ -23,7 +32,8 @@ imported sRGB setting. Source import settings are never changed by the composito
 ## Color compatibility
 
 Swizzle remaps straight linear RGBA after FX and before Color Range. The four selectors accept
-`R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`; inversion means literal `1 - channel`
+`R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`, `R * A`, `G * A`, `B * A`;
+products use the original input alpha, and inversion means literal `1 - channel`
 in linear space. Alpha is clamped to 0–1 after remapping. Identity is serialized as zero, so old
 documents keep `R G B A`. A nonidentity group Swizzle forces isolation; a Pass Through group
 temporarily uses Normal blending and resumes Pass Through when Swizzle returns to identity and clipping is inactive.

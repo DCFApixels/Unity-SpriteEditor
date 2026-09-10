@@ -1,0 +1,48 @@
+---
+title: "Keyboard shortcuts"
+parent: "English"
+nav_order: 14
+lang: "en"
+permalink: "/en/shortcuts/"
+alternate: "ru/shortcuts.md"
+previous_page: "en/saving.md"
+next_page: "en/automation.md"
+---
+
+# Keyboard shortcuts
+
+## Document, layers and opacity
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+S` | Save / Save As. |
+| `Ctrl+Z` · `Ctrl+Y` / `Ctrl+Shift+Z` | Undo · Redo. |
+| `Up` / `Down` | Previous / next visible layer. |
+| `Ctrl`-click / `Shift`-click outside thumbnails | Toggle a layer / select a range. |
+| `Ctrl+Shift`-click | Add a range. |
+| `Ctrl+E` / `Ctrl+Alt+E` | Merge selection / merge a copy. |
+| `0`–`9` or numpad | Set selected-layer opacity. |
+
+`5` means 50%; press `7` within 0.6 seconds for 57%. After a pause, `7` means 70%.
+`0` means 100%, quick `00` means 0%, and `05` means 5%. A quick pair is one Undo step.
+
+## Painting, selection and navigation
+
+| Shortcut | Action |
+| :--- | :--- |
+| `[` / `]` · `X` | Resize brush/pencil · swap colors. |
+| `Alt`-click/drag with Brush, Pencil or Fill | Sample the primary color. |
+| `RMB` with Brush/Pencil | Temporarily erase. |
+| `Shift`-drag / `Shift`-click while painting | Axis line / connect endpoints. |
+| `Ctrl`-click a thumbnail/group arrow | Select alpha. |
+| `Ctrl+C` / `Ctrl+Shift+C` / `Ctrl+V` | Copy layer / copy merged / paste. |
+| `Ctrl+A` / `Ctrl+D` / `Ctrl+Shift+I` | Select all / deselect / invert area. |
+| `Shift` / `Alt` / `Shift+Alt` with selection tools | Add / subtract / intersect. |
+| `Enter` / `Backspace` / `Escape` with Lasso | Close / remove vertex / cancel. |
+| `MMB`-drag / mouse wheel | Pan / zoom with any tool. |
+| `Alt`-click with Zoom | Zoom out. |
+| `Ctrl` while snapping | Bypass snapping. |
+| `Enter` in Transform · `Escape` during a gesture | Exit tool · cancel gesture. |
+
+On macOS, `Cmd` also works for saving, selection and Undo/Redo.
+Text/numeric fields keep normal input. Unity shortcuts are suspended only while Sprite Editor is focused.

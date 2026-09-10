@@ -1,0 +1,7 @@
+{% if page.previous_page or page.next_page %}
+<nav class="guide-pagination" aria-label="{% if page.lang == 'ru' %}Страницы руководства{% else %}Guide pages{% endif %}">
+  <span>{% if page.previous_page %}{% assign previous = site.pages | where: "path", page.previous_page | first %}<a href="{{ previous.url | relative_url }}">← {{ previous.title }}</a>{% endif %}</span>
+  <span>{% if page.next_page %}{% assign next = site.pages | where: "path", page.next_page | first %}<a href="{{ next.url | relative_url }}">{{ next.title }} →</a>{% endif %}</span>
+</nav>
+{% endif %}
+<p class="text-small text-grey-dk-000">Unity Sprite Editor · <a href="https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/LICENSE.md">MIT</a> · <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a></p>

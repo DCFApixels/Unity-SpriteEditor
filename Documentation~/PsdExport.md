@@ -1,3 +1,12 @@
+---
+layout: default
+title: PSD export
+parent: Technical reference
+nav_order: 6
+lang: en
+permalink: /reference/psdexport/
+---
+
 # Layered PSD export
 
 Choose **Export → Layered PSD (.psd)**. The source document is not converted or saved by this operation.

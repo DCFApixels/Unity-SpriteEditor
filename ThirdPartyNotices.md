@@ -1,7 +1,8 @@
 # Third-party notices
 
 Sprite Editor's own MIT license does not replace the licenses of third-party components.
-FastNoiseLite is bundled as source. The Unity packages listed below are resolved by Package
+FastNoiseLite is bundled as source. The documentation theme is resolved separately at site build time.
+The Unity packages listed below are resolved by Package
 Manager and are not vendored into this repository; their installed packages supply their
 own licenses and any transitive third-party notices.
 
@@ -74,3 +75,17 @@ com.unity.collections copyright © 2024 Unity Technologies
 Licensed under the Unity Companion License for Unity-dependent projects (see https://unity3d.com/legal/licenses/unity_companion_license).
 
 Unless expressly provided otherwise, the Software under this license is made available strictly on an “AS IS” BASIS WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. Please review the license for details on these and other terms and conditions.
+
+## Documentation website
+
+The website uses [Just the Docs 0.12.0](https://github.com/just-the-docs/just-the-docs/tree/v0.12.0),
+copyright Patrick Marsceill and contributors, under the MIT license.
+The original [license text](Documentation~/Licenses/JustTheDocs-LICENSE.txt) is included unchanged.
+The theme is installed from RubyGems during documentation builds, not bundled into the Unity runtime.
+Generated pages use its layouts, styles and search assets; their original license headers are retained.
+
+The build uses [Jekyll](https://github.com/jekyll/jekyll) (MIT),
+[jekyll-relative-links](https://github.com/benbalter/jekyll-relative-links) (MIT),
+and [WEBrick](https://github.com/ruby/webrick) (BSD-2-Clause).
+Direct and transitive versions are recorded in `Documentation~/Gemfile.lock`; resolved gems supply
+their own licenses. These are documentation tooling dependencies, not Unity package dependencies.

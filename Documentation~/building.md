@@ -1,0 +1,61 @@
+---
+title: "Building the documentation"
+nav_order: 5
+permalink: "/building/"
+search_exclude: true
+---
+
+# Building the documentation
+
+The Jekyll source is `Documentation~`. Unity ignores that directory; building this website does
+not build, compile, import or open the Unity project. Just the Docs and Jekyll versions are pinned
+in Gemfile, with transitive dependencies in Gemfile.lock.
+
+## Local preview
+
+Use Ruby 3.3 with a working native-extension toolchain, Bundler and Node.js 22 or newer.
+On Windows, RubyInstaller + Devkit supplies the native toolchain. On Linux, install Ruby development
+headers and a C/C++ compiler through the normal environment setup.
+
+From the repository's `Documentation~` directory:
+
+```sh
+bundle install
+node scripts/check-docs.mjs source
+bundle exec just-the-docs rake search:init
+bundle exec jekyll serve --baseurl /Unity-SpriteEditor --host 127.0.0.1
+```
+
+Open `http://127.0.0.1:4000/Unity-SpriteEditor/`. Search initialization creates a generated theme file;
+it is intentionally ignored by Git. Build output, caches and installed gems are not Unity assets.
+
+## Production checks
+
+```sh
+bundle exec jekyll build --strict_front_matter
+node scripts/check-docs.mjs site
+```
+
+The checks cover local source links, language counterparts, navigation metadata, generated page and
+asset links, fragment targets and an indexed page from each language. Inspect the actual site at
+both desktop and mobile widths after layout changes; source validation alone cannot prove visual quality.
+
+## GitHub Pages
+
+The Documentation workflow builds on relevant main-branch changes and pull requests. Only main
+publishes. Set repository **Settings → Pages → Source → GitHub Actions** once.
+The deployment environment is `github-pages`. No workflow step invokes Unity or installs Unity packages.
+
+Published URL: [dcfapixels.github.io/Unity-SpriteEditor](https://dcfapixels.github.io/Unity-SpriteEditor/).
+If the repository name or host changes, update `url` and `baseurl` in `_config.yml` and README links.
+
+## Editing pages
+
+- Keep matching user-guide paths under `en/` and `ru/`; each has an `alternate` front-matter path.
+- Use relative Markdown links to source `.md` files. The relative-links plugin rewrites them for the site;
+  the same links remain usable when reading the sources on GitHub.
+- Use stable ASCII permalinks; do not move the existing API/reference files without preserving links.
+- Each page has one H1. Introduce the task, then show steps, controls, caveats and related pages.
+- Keep README as an introduction, installation, quick start and a map to these guides.
+- Do not duplicate API tables into both languages. Explain workflows bilingually; link the shared contract.
+- Keep dependency sources and licenses in the repository notices when updating the theme.

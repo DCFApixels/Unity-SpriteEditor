@@ -76,3 +76,11 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Documentation site build artifacts (not Unity assets)
+Documentation~/_site/
+Documentation~/.jekyll-cache/
+Documentation~/.sass-cache/
+Documentation~/.bundle/
+Documentation~/vendor/
+Documentation~/assets/js/zzzz-search-data.json

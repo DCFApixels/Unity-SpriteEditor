@@ -1,0 +1,6 @@
+{% if page.alternate %}
+  {% assign translation = site.pages | where: "path", page.alternate | first %}
+  {% if translation %}
+    <a class="language-link" href="{{ translation.url | relative_url }}" lang="{{ translation.lang }}" hreflang="{{ translation.lang }}">{% if translation.lang == 'ru' %}Русский{% else %}English{% endif %}</a>
+  {% endif %}
+{% endif %}

@@ -1,3 +1,12 @@
+---
+layout: default
+title: Motion Blur internals
+parent: Technical reference
+nav_order: 5
+lang: en
+permalink: /reference/motionblur/
+---
+
 # Motion Blur
 
 Motion Blur is a targeted effect layer, using the same source selection, hidden-source handling,
@@ -72,4 +81,4 @@ memory. No CPU pixel readback, serialized derived textures or new pixel Undo sto
 ## Automation and validation
 
 - [Agent parameters](AgentAPI.md#motion-blur-settings)
-- [Tests and manual checks](../Tests~/MotionBlur.md)
+- [Tests and manual checks](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/Tests~/MotionBlur.md)

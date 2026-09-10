@@ -1,0 +1,31 @@
+.main-content {
+  line-height: 1.65;
+}
+
+.main-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.main-content .hero-image {
+  display: block;
+  width: 720px;
+  margin: 1.5rem auto;
+  border: 1px solid #50545d;
+  border-radius: 6px;
+}
+
+.language-link {
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+}
+
+.guide-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #50545d;
+}
