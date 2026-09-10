@@ -11,27 +11,27 @@ next_page: "en/troubleshooting.md"
 
 # Automation
 
-The C# / JSON API can create documents, import images, arrange layers, set effects and paint strokes.
-An optional Unity Pipeline adapter exposes `sprite_editor_*` commands through Unity CLI;
-the C# API works without it.
+An agent can help assemble a document: add images as layers, arrange them, apply effects
+or make simple painted marks. You can then open the result in Sprite Editor and continue by hand.
 
-[Agent guide](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/AGENTS.md) · [API reference](../AgentAPI.md) ·
-[JSON examples](../Examples/index.md) · [Changelog](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/CHANGELOG.md)
+## What to ask for
 
-## A safe authoring loop
+Describe the image you want, its canvas size and what should remain on separate layers.
+For example:
 
-1. Select the intended Unity project and discover commands with `sprite_editor_describe`.
-2. Inspect existing documents with `sprite_editor_inspect`: use stable layer IDs and revision, not names.
-3. Import a local image, create a File layer and set its Transform.
-4. Validate an unfamiliar batch with `dryRun:true`, then execute it.
-5. Save, render and inspect the result. Check API `success` separately from CLI exit status.
+> Create a 512 × 512 document. Add this image on a File layer, keep its proportions,
+> add a soft outline and save the document in Assets/Icons.
 
-API colors are explicit: the window's HDR picker preference does not change an agent request.
-Window area selections do not clip API strokes. API v1 cannot author Shader FX code;
-existing code and unrelated settings survive partial updates.
+For changes to an existing image, name the document and describe the desired result.
+Ask for a copy if you want to keep the original.
 
-The [full API specification](../AgentAPI.md) and JSON examples are maintained in English as one
-protocol reference. The user guide is available in both languages.
+Check the result visually, especially after merging layers or applying effects.
 
-Respect project rules for compilation, dependency installation and asset changes.
-After an uncertain response, inspect before retrying: add operations are not idempotent.
+## Connect an agent
+
+Give the agent the repository's [agent instructions](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/AGENTS.md).
+They explain how to use Sprite Editor in your Unity project.
+
+Command syntax and integration setup are kept in the separate
+[API reference](../AgentAPI.md), with [examples](../Examples/index.md).
+You do not need them for ordinary editing.

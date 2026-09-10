@@ -23,8 +23,8 @@ next_page: "en/automation.md"
 | `Ctrl+E` / `Ctrl+Alt+E` | Merge selection / merge a copy. |
 | `0`–`9` or numpad | Set selected-layer opacity. |
 
-`5` means 50%; press `7` within 0.6 seconds for 57%. After a pause, `7` means 70%.
-`0` means 100%, quick `00` means 0%, and `05` means 5%. A quick pair is one Undo step.
+`5` means 50%; quickly press `7` next for 57%. After a pause, `7` means 70%.
+`0` means 100%, quick `00` means 0%, and `05` means 5%.
 
 ## Painting, selection and navigation
 
@@ -45,4 +45,4 @@ next_page: "en/automation.md"
 | `Enter` in Transform · `Escape` during a gesture | Exit tool · cancel gesture. |
 
 On macOS, `Cmd` also works for saving, selection and Undo/Redo.
-Text/numeric fields keep normal input. Unity shortcuts are suspended only while Sprite Editor is focused.
+Use these shortcuts while the Sprite Editor window is focused.

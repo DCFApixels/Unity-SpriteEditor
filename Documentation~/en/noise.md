@@ -10,41 +10,37 @@ alternate: "ru/noise.md"
 
 # Procedural Noise
 
-Noise generates OpenSimplex2, OpenSimplex2S, Perlin, Value, Value Cubic or Cellular on the GPU.
-Choose Seed, adjust Scale/Offset, and add fractals or Domain Warp. Larger Scale means finer detail;
-it is measured across the shorter canvas side. Drag numeric labels or sliders to update the preview.
+Use Noise for clouds, grain, stone-like patterns or a starting point for a height map.
+Add **Noise** from the layer menu and adjust the settings while watching the image.
 
-**Color Values** outputs display-oriented grayscale; **Linear Data** keeps raw 0–1 values for masks,
-height maps and channel packing. RGB contains the same scalar and alpha is 1. Only parameters are
-stored, not pixel snapshots. Export uses the same coordinates/seed at full resolution.
-Tiled preview repeats the result; Noise itself is not inherently seamless.
+## Start with the pattern
 
-## Choose the noise character
-
-| Setting | When to change it |
+| Setting | What to try |
 | :--- | :--- |
-| Noise Type | OpenSimplex2/Perlin for smooth variation; Cellular for cell structure; Value for interpolated random values. |
-| Seed | Get another pattern with the same settings. |
-| Scale / Offset | Change detail size and position in noise space, independently of the layer Transform. |
-| Fractal | FBm combines octaves; Ridged emphasizes ridges; PingPong folds repeating transitions. |
-| Octaves | Number of detail levels, 1–8. More levels cost more GPU work. |
-| Lacunarity / Gain | Frequency growth and amplitude decay for successive octaves. |
-| Domain Warp | Distort coordinates before evaluating noise. Strength controls displacement. |
-| Encoding | Color Values for visible gray; Linear Data for numeric masks and height. |
+| Noise Type | OpenSimplex2 or Perlin for smooth variation; Cellular for cells; Value for a simpler random pattern. |
+| Seed | Change the pattern without changing its character. |
+| Scale | Increase for finer detail, decrease for larger shapes. |
+| Offset | Move the pattern. |
+| Fractal | FBm adds detail; Ridged emphasizes ridges; PingPong creates repeated bands. |
+| Octaves | Add more levels of detail. |
+| Domain Warp | Bend and distort the pattern; Strength controls how far. |
 
-Weighted Strength changes octave contribution based on the noise result.
-Cellular Distance, Return and Jitter control cells; Ping Pong Strength belongs to Fractal → PingPong.
-Changing modes does not turn their retained settings into shared tool preferences.
+For finer control, **Lacunarity** changes the spacing between detail scales and **Gain**
+changes how strongly the smaller details show.
+With Cellular, try **Distance**, **Return** and **Jitter** to change the shape and regularity of the cells.
 
-## Example: a procedural height map
+## Color texture or height map?
 
-1. Add Noise and choose Encoding → Linear Data.
-2. Choose Fractal → FBm, start with three octaves and adjust Scale.
-3. Add Normal Map above it: Generation → Height Map, Input Space → Linear in Advanced.
-4. Tune Normal Map Strength and Smoothing. Changing Noise Seed produces another surface.
+Choose **Encoding → Color Values** when using the noise as a visible grayscale image.
+Choose **Linear Data** when using it as a height map or packing it into texture channels.
 
-Generation runs directly on the GPU at the requested resolution, without an additional two-stage
-Noise refinement algorithm. Cost grows with pixel count, octave count and Warp.
-Saving uses full resolution.
+To create surface relief:
 
-[All parameters and limits](../AgentAPI.md#noise-settings) · [Normal Map](normal-map.md)
+1. Add Noise and choose **Linear Data**.
+2. Choose **Fractal → FBm**, start with three octaves and adjust Scale.
+3. Add **Normal Map** above it and choose **Generation → Height Map**.
+4. In Normal Map's Advanced settings, choose **Input Space → Linear**.
+5. Adjust Strength and Smoothing. Change Noise Seed to try another surface.
+
+**Tiled** preview helps you inspect seams, but does not make Noise itself seamless.
+For the next step, see [Normal Map](normal-map.md).

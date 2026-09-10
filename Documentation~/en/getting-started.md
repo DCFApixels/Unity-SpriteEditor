@@ -10,67 +10,46 @@ next_page: "en/layers.md"
 
 # Start here
 
-**Unity 6 (`6000.0`) or newer.** In **Window → Package Management → Package Manager**,
-choose **Install package from git URL** and paste:
+## Install
+
+Requires **Unity 6 or newer**. Open **Window → Package Management → Package Manager**,
+choose **Install package from git URL**, and paste:
 
 ```text
 https://github.com/DCFApixels/Unity-SpriteEditor.git
 ```
 
-Burst, Collections and Newtonsoft Json are declared in [package.json](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/package.json).
+## Make your first image
 
-## Install through manifest.json or pin a version
+1. Open **Window → Sprite Editor**, click **New**, and set the canvas **W / H**.
+2. Drag a texture from Project onto the Preview, or click **Page +** at the bottom of Layers to create a Drawing layer.
+3. Choose **Transform** (`T`) to arrange the image, or **Brush** (`B`) to paint.
+4. Press `Ctrl+S` and choose where to save the document.
+5. Use the saved asset as a texture in Unity, or expand it in Project and drag **Output Sprite** into a sprite field.
 
-Add this entry to the `dependencies` object in `Packages/manifest.json`:
-
-```json
-"com.dcfa_pixels.sprite-editor": "https://github.com/DCFApixels/Unity-SpriteEditor.git"
-```
-
-The URL follows the default branch. Append `#<tag>` to pin an existing
-[release tag](https://github.com/DCFApixels/Unity-SpriteEditor/tags).
-The version badge reflects package.json, not the latest tag.
-
-## Your first document
-
-1. Open **Window → Sprite Editor**, click **New**, and set **W / H** above the Preview.
-2. Drag a texture from Project onto the Preview, or click **Page +** in the Layers footer
-   to create an empty Drawing layer.
-3. Select the layer: use **Transform** (`T`) to arrange it, or **Brush** (`B`) to paint on Drawing.
-4. Press `Ctrl+S` to save the editable document and its full-resolution output.
-5. Assign the saved asset to a texture field, or expand it in Project and use **Output Sprite**.
-
-Double-click the saved texture, sprite, or nested document to reopen it.
-**Assets → Open in Sprite Editor** and the document Inspector button also work.
+Double-click the saved asset to continue editing. You do not need to export it first.
 
 ## Find your way around
 
-The Preview is on the left; **Layer Settings** and **Layers** are on the right.
-Select a layer to edit its settings. Drag the dividers to resize the panes; the right pane keeps
-its width when the window resizes. The left toolbar selects a tool, whose options appear above the Preview.
+The canvas is on the left. **Layers** is the list on the right; **Layer Settings** above it
+shows the selected layer's controls. Drag a divider to make more room where you need it.
 
-Pan with `MMB`-drag and zoom with the mouse wheel, regardless of the selected tool.
-**Fit** shows the whole canvas; **100%** uses one UI unit per source pixel.
+Choose a tool on the left toolbar; its options appear above the canvas.
+Pan by holding the mouse wheel and dragging. Scroll to zoom; **Fit** shows the whole canvas.
 
-## Tools and preferences
-
-| Tool | Key | Purpose |
+| Tool | Key | Use it to… |
 | :--- | :---: | :--- |
-| No Tool | `V` | View without editing handles. |
-| Transform | `T` | Move, resize and rotate a non-group layer. |
-| Rectangle Select | `M` | Select a rectangle. |
-| Polygonal Lasso | `L` | Select a polygon by clicking its vertices. |
-| Brush / Pencil | `B` / `P` | Soft-edged painting / crisp pixel painting. |
-| Fill | `G` | Fill a connected region or all matching colors. |
-| Zoom | `Z` | Click to zoom in, `Alt`-click to zoom out, or drag an area to frame it. |
+| No Tool | `V` | View the image without editing handles. |
+| Transform | `T` | Move, resize and rotate a layer. |
+| Rectangle Select | `M` | Select a rectangular area. |
+| Polygonal Lasso | `L` | Select an area by clicking around its outline. |
+| Brush / Pencil | `B` / `P` | Paint soft strokes or crisp pixels. |
+| Fill | `G` | Fill an area with color. |
+| Zoom | `Z` | Zoom in or frame an area. |
 
-Zoom can frame empty space too. Navigation changes only the view; opening another document restores Fit.
-The last tool is remembered. No Tool keeps the options row empty instead of moving the canvas.
+## Make the workspace comfortable
 
-Each **layer ⋮ → Properties** invocation opens a separate window; **FX** opens the modifier editor.
-**Window tab ⋮ → User Settings…** controls checkerboard colors, cell size and the invalid-pixel color.
-These are user preferences, not document edits.
+**Window tab ⋮ → User Settings…** lets you change the transparency checkerboard's colors
+and size. **Reset Sprite Editor Settings…** restores the workspace preferences without deleting your documents.
 
-**Reset Sprite Editor Settings…** in the same menu resets layout and tool/view preferences in all
-open windows after confirmation. It has no Undo, but does not delete documents, unsaved work or assets,
-change per-layer settings, or alter Unity docking.
+To keep a layer's settings in a separate window, use **layer ⋮ → Properties**.

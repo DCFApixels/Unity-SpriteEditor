@@ -12,52 +12,55 @@ previous_page: "en/automation.md"
 
 ## The brush leaves no mark
 
-1. Check that Drawing is active; another layer type needs conversion.
-2. Enable A in the Preview footer and check the selected color's alpha.
-3. Clear the area selection with `Ctrl+D`: an active empty selection blocks strokes.
-4. Check visibility, opacity, Clipping Mask and the clipping base.
-5. On transformed Drawing layers, consider the source frame, not only canvas boundaries.
+1. Select a Drawing layer.
+2. Turn on all four channel buttons in the Preview footer and check the paint color's transparency.
+3. Press `Ctrl+D` to remove an area selection.
+4. Check that the layer is visible and its opacity is not zero.
+5. If Clipping Mask is enabled, check that its base layer is visible and contains an image.
 
-## Painted color does not match the swatch
+On a transformed layer, make sure you are painting over the layer's image.
 
-Reset EV to 0 and enable RGBA first. Disable Post FX when comparing with the source composition.
-Then check Blend, opacity, Color/Blend Range and the HDR picker.
-For numeric maps, check Encoding and the source texture's imported sRGB flag.
-[Color controls explained](color.md).
+## The color looks wrong
 
-## An effect is empty or processes the wrong source
+Reset **EV** to 0 and turn on **RGBA**.
+Disable **Post FX** to compare with the unprocessed image.
+Check the layer's Blend and opacity, then its [color settings](color.md).
 
-Previous uses the next sibling below, not an arbitrary earlier layer in the tree.
-After reordering, check Input/Target. Specific is useful when the stack changes frequently.
-Hidden sources are valid; hidden children of a target group remain excluded.
-Self-references and cyclic targets are invalid.
+If you are making a normal map or another data texture, check the Encoding choice
+in that layer's settings.
 
-## Repeated strokes or seams look unexpected
+## An effect is empty or uses the wrong image
 
-Symmetry & Repeat copies strokes; Transform Tiling repeats a source;
-Tiled preview repeats the whole document. These are three different mechanisms.
-See [symmetry and seamless painting](symmetry.md). Effects have their own Edges setting;
-Tiled alone does not make procedural Noise seamless.
+Check **Input / Target**, especially after moving layers.
+**Previous** uses the layer immediately below the effect in the same group.
+Use **Specific** if you want to keep the same source when rearranging the list.
 
-## Unity shows an older texture
+A hidden source still works. For a group source, leave the children you want to include visible.
 
-Click Save in Sprite Editor: consumers use the last saved output, not the unsaved preview.
-This also applies after changes to external textures, FX or Undo.
-Post FX is never included in that saved texture.
+## There are seams in the repeated image
 
-## A large canvas renders slowly
+Check which [repeat mode](symmetry.md) you are using.
+For blur and Normal Map, set **Edges → Repeat** as well as enabling Tiled preview.
+Tiled shows the seams; it does not automatically make every source seamless.
 
-Lower Live Quality while painting. Pencil intentionally keeps full-resolution preview.
-Large blurs show a cheaper interactive result before refining it.
-The effect cache is capped at 256 MiB, but that is not a total GPU-memory limit:
-full-resolution temporary buffers and Undo storage are separate.
-See [Gaussian Blur and caching](../GaussianBlur.md), [Motion Blur memory](../MotionBlur.md#cache-and-memory).
+## Unity shows an older image
 
-## Post-processing differs from the game
+Click **Save** in Sprite Editor after editing, including after changing a linked texture.
+Unity uses the last saved result. Preview-only Post FX does not appear in that texture.
 
-Check camera source, profile, URP support and the post-processing switch.
-The preview uses a synthetic surface, not the scene; temporal effects and some Renderer Features
-cannot be reproduced. See [Post FX compatibility](post-fx.md).
+## Painting feels slow
 
-If the issue remains, include the package and Unity versions, reproduction steps and a minimal
-shareable document in a [bug report](https://github.com/DCFApixels/Unity-SpriteEditor/issues).
+Lower **Live Quality** in the Preview footer.
+For a complex image, temporarily hide effects you do not need while painting.
+Pencil keeps full quality for accurate pixel work.
+
+## Post FX looks different from the game
+
+Check the camera or profile selection and make sure post-processing is enabled.
+The Preview does not include the surrounding scene, and some effects are not supported.
+See [Post FX](post-fx.md).
+
+## Still stuck?
+
+Include the package and Unity versions, steps to reproduce the problem and, if possible,
+a small document you can share in a [bug report](https://github.com/DCFApixels/Unity-SpriteEditor/issues).

@@ -11,28 +11,45 @@ next_page: "en/effects.md"
 
 # Symmetry and seamless painting
 
-For mirrored or repeated strokes, open **Symmetry & Repeat** in the Drawing layer's settings.
-Each layer remembers its own setup. For edge wrapping across the whole canvas, enable **Tiled**
-above the Preview and paint on any copy: footprints crossing an edge continue on the opposite side.
+Use symmetry to paint matching details, ornaments or repeated shapes.
+Use Tiled view to paint a texture that joins at its edges.
 
-## Symmetry modes, boundaries and the difference from tiling
+## Repeat a stroke
 
-| Mode | Controls |
+Select a Drawing layer and open **Symmetry & Repeat** in Layer Settings.
+Each Drawing layer can have its own setup.
+
+| Mode | Use it for |
 | :--- | :--- |
-| Mirror | X/Y axes, Center and Angle. At 0°, X mirrors across the vertical axis, Y across the horizontal. |
-| Horizontal / Vertical | Row or column with a copy count. |
-| Grid | Independent X/Y copy counts. |
-| Radial | Center, sector count and Start Angle. |
-| None | No stroke copies. |
+| Mirror | Reflected strokes across X, Y or both axes. Move Center and rotate Angle to place the axes. |
+| Horizontal / Vertical | A row or column of copies. |
+| Grid | Copies in rows and columns. |
+| Radial | Copies around Center. Choose the number of sectors and rotate Start Angle to position them. |
+| None | Ordinary painting without copies. |
 
-**Copy / Alternate Mirror** chooses ordinary or alternating reflected copies in repeat modes.
-Mirror is its own mode, not an extra reflection on top. Mirror rotates counterclockwise;
-Radial's start angle is counterclockwise from the left.
+In repeat modes, choose **Copy** for identical copies or **Alternate Mirror**
+to reflect every second copy.
 
-**Edges → Continue** allows crossing region boundaries. **Clip** constrains a stroke to its starting
-region and each repeated footprint to its own region. The active copy stays under the cursor.
+## Keep strokes inside a segment
 
-Symmetry duplicates **new strokes**. Transform tiling repeats **a layer's source**.
-Tiled preview repeats **the whole composition** without changing document/export size.
-In Tiled view, Brush/Pencil erasing and painting wrap across edges even with a transform;
-the transformed source frame still determines where its pixels can receive marks.
+**Edges → Clip** keeps each stroke inside the segment where you started it.
+Choose **Continue** when you want a stroke to travel into neighboring segments.
+
+For Mirror at 0°, X reflects across a vertical line and Y across a horizontal line.
+Rotate the angle when you need a diagonal axis.
+
+## Paint seamless edges
+
+1. Enable **Tiled** above the Preview.
+2. Choose Brush or Pencil and paint on any visible copy.
+3. Paint across a border: the clipped part continues on the opposite edge.
+4. Zoom out to check the repeated pattern.
+
+Tiled does not enlarge the saved image.
+For effects such as blur, also choose **Edges → Repeat** to avoid seams at their borders.
+
+## Which repeat setting do I need?
+
+- **Symmetry & Repeat** makes copies of new strokes.
+- **Transform → Tiling** repeats an existing layer image.
+- **Tiled preview** shows copies of the whole canvas and lets you paint across its edges.

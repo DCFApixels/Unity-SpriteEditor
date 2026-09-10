@@ -11,38 +11,64 @@ next_page: "en/post-fx.md"
 
 # Color, HDR and channels
 
-Picker colors, stored pixels, layer ranges and preview display are separate controls.
-Change the one that belongs to the stage you want to affect.
+For ordinary painting, leave **HDR** off and all four **R / G / B / A** buttons on.
+Use the controls below when you need extra brightness, channel masks or texture data.
 
-## Channel display, HDR colors and layer ranges
+## Inspect a channel
 
-One RGB channel displays grayscale, with transparency when A is enabled. A alone displays opaque
-grayscale alpha. Two or three RGB channels retain their colors; A off ignores transparency.
+The footer channel buttons let you see parts of the image separately:
 
-The footer **HDR** button changes color/gradient pickers, not stored colors or layer ranges.
-With HDR off, colors display and paint without their stored HDR intensity; switching back restores it.
-Editing a color replaces the stored value.
+- **R, G or B alone:** show that channel in black and white. Keep A on to retain transparency.
+- **A alone:** show transparency as black and white.
+- **Several color channels:** keep their colors and hide the others.
+- **A off:** view colors without transparency.
 
-In **Layer Settings → Color & Blending**, Color Range and Blend Range independently control bounded
-or extended behavior. The header dropdown sets both; a blank value means they differ.
-The compositor works in linear HDR. Drawing starts in 8-bit storage and promotes to half-float;
-returning to Standard does not discard stored HDR. Use **Convert to 8-bit** explicitly when needed.
+These buttons also mask **new painting**. Disabled RGB channels receive zero;
+if A is off, Brush, Pencil and Fill leave no mark. They do not change existing pixels.
 
-[HDR, storage and groups](../HDR.md)
+## Paint bright HDR colors
 
-## Pack texture data with Swizzle and Assign Channels
+Enable **HDR** beside EV to choose colors brighter than ordinary white.
+This is useful for luminous details you want to use with bloom.
 
-**Swizzle** remaps any layer/group's RGBA after FX, before range handling and blending:
-`R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`, `R * A`, `G * A`, `B * A`.
-Products use the original input alpha. A changed group Swizzle isolates its content.
+In **Layer Settings → Color & Blending**, choose **HDR** in the header dropdown
+to let the layer retain that extra brightness. **Standard** is the usual choice for ordinary artwork.
 
-**Row menu → Assign Channels** configures selected layers in top-to-bottom tree order:
+The HDR button controls color picking; it does not convert your existing image.
+Turning it off lets you paint with the color without its extra intensity.
+Turning it back on restores that intensity unless you have edited the color in between.
 
-- **1–3 layers:** each layer's `R * A` goes to R, G or B; other RGB channels are zero and A is 1.
-  Upper selected layers use Add; the bottom layer's blend and all opacities stay unchanged.
-- **4 layers:** each layer's `R * A` goes to R, G, B or A; other channels are zero. Only Swizzle changes.
-  RGB layers then have zero alpha and are skipped by ordinary blending: this preset alone
-  does **not** assemble a finished four-channel texture.
+## Fine-tune a layer's color range
 
-Disabled above four layers. The command does not merge, reorder or move layers; existing groups,
-surrounding content and clipping still affect the composition. It is one Undo step.
+You can leave **Color & Blending** closed for most work. Expand it to set the two ranges separately:
+
+| Setting | Controls |
+| :--- | :--- |
+| Color Range | Whether the layer itself keeps extra brightness. |
+| Blend Range | Whether its blend works with that extra brightness or within the ordinary range. |
+
+The dropdown in the foldout header changes both settings together.
+A blank value means the two are different.
+
+Switching to Standard does not erase stored HDR colors.
+Use **Convert to 8-bit** only if you want to permanently reduce the stored color range.
+
+## Rearrange channels with Swizzle
+
+**Swizzle** chooses what goes into each output channel of a layer or group.
+For example, choose R in the R, G and B fields to make a grayscale image from the red channel.
+
+Each field offers the original channels, their inverses, black (`0`), white (`1`),
+or a color channel multiplied by transparency (`R * A`, `G * A`, `B * A`).
+Changing a group's Swizzle treats its contents as one image, so outside blending can look different.
+
+## Pack several masks
+
+Select layers and choose **Assign Channels** in the row menu.
+The order is top to bottom, and each layer uses its red channel multiplied by its transparency.
+
+- **1–3 layers:** assign them to R, G and B. The upper selected layers use Add to combine the masks.
+- **4 layers:** assign them to R, G, B and A. This only sets Swizzle: with ordinary blending,
+  the RGB layers have no visible opacity, so it is not a ready-to-export four-channel combination.
+
+The command is unavailable for more than four layers. It leaves the layers separate.

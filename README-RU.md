@@ -34,12 +34,11 @@
 </p>
 
 > [!NOTE]
-> Sprite Editor — инструмент **только для Unity Editor**, построенный на UI Toolkit.
-> Сохранённые текстуры и спрайты можно использовать в игре без пересчёта слоёв.
+> Создавай и редактируй изображения в **Unity Editor**, затем используй сохранённые текстуры и спрайты в игре.
 
 ## Что можно создавать
 
-- Многослойные спрайты и иконки из исходных изображений, рисования, заливок, градиентов и GPU-шума.
+- Многослойные спрайты и иконки из исходных изображений, рисования, заливок, градиентов и шума.
 - Пиксельную графику и бесшовные паттерны с кистью/карандашом, выделениями, симметрией и тайловым рисованием.
 - Обводки, поля расстояний, карты нормалей, Gaussian/Motion Blur и собственные Shader FX.
 - Упакованные каналы текстур и HDR-композиции, с необязательным просмотром игровых Post FX.
@@ -53,7 +52,6 @@
 https://github.com/DCFApixels/Unity-SpriteEditor.git
 ```
 
-Зависимости указаны в [package.json](package.json). Для фиксации релиза добавь `#<tag>`.
 [Подробности установки](Documentation~/ru/getting-started.md).
 
 <a id="quick-start"></a>
@@ -66,7 +64,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 5. Назначь ассет в текстурное поле или используй вложенный **Output Sprite**.
 
 Двойной клик по сохранённому ассету открывает его снова. PNG, TGA, JPEG, EXR, многослойный PSD
-и Texture2D экспортируются, когда нужен отдельный файл. В игре используется последний явно сохранённый результат.
+и Texture2D экспортируются, когда нужен отдельный файл. Сохрани изменения, чтобы обновить изображение в игре.
 
 <a id="workspace"></a>
 <a id="layers"></a>
@@ -84,8 +82,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 **[Открыть документацию →](https://dcfapixels.github.io/Unity-SpriteEditor/ru/)** ·
 [English](https://dcfapixels.github.io/Unity-SpriteEditor/en/)
 
-Руководство идёт по рабочему процессу — от первого холста до сложных эффектов и автоматизации.
-Ссылки на исходные страницы также работают прямо на GitHub:
+Руководство идёт по рабочему процессу — от первого холста к рисованию, эффектам и экспорту:
 
 | Что дальше | Руководство |
 | :--- | :--- |
@@ -95,7 +92,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 | Управлять композицией | [Наложение и обтравка](Documentation~/ru/blending.md) · [Shader FX](Documentation~/ru/shader-fx.md) · [HDR и каналы](Documentation~/ru/color.md) |
 | Проверить и использовать результат | [Превью](Documentation~/ru/preview.md) · [Post FX](Documentation~/ru/post-fx.md) · [Сохранение и экспорт](Documentation~/ru/saving.md) |
 | Найти управление или решить проблему | [Горячие клавиши](Documentation~/ru/shortcuts.md) · [Неожиданный результат](Documentation~/ru/troubleshooting.md) |
-| Автоматизировать работу | [Рабочий цикл](Documentation~/ru/automation.md) · [Справочник API](Documentation~/AgentAPI.md) · [Инструкция агенту](AGENTS.md) |
+| Автоматизировать работу | [Работа с агентом](Documentation~/ru/automation.md) |
 
 ## Благодарности
 

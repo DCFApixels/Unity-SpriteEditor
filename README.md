@@ -34,12 +34,11 @@ texture in one asset — export a separate image only when you need one.
 </p>
 
 > [!NOTE]
-> Sprite Editor is an **Editor-only** tool built with UI Toolkit. Its saved textures and sprites
-> can be used at runtime without rendering the layer stack.
+> Create and edit images in **Unity Editor**, then use the saved textures and sprites in your game.
 
 ## What you can make
 
-- Layered sprites and icons from imported images, painted pixels, fills, gradients and GPU noise.
+- Layered sprites and icons from imported images, painted pixels, fills, gradients and noise.
 - Pixel art and seamless patterns with Brush/Pencil, selections, symmetry and tiled painting.
 - Outlines, distance fields, normal maps, Gaussian/Motion Blur and custom Shader FX.
 - Packed texture channels and HDR compositions, with optional game Post FX preview.
@@ -53,7 +52,6 @@ texture in one asset — export a separate image only when you need one.
 https://github.com/DCFApixels/Unity-SpriteEditor.git
 ```
 
-Dependencies are declared in [package.json](package.json). To pin a release, append `#<tag>`.
 [Installation details](Documentation~/en/getting-started.md).
 
 <a id="quick-start"></a>
@@ -66,7 +64,7 @@ Dependencies are declared in [package.json](package.json). To pin a release, app
 5. Assign that asset to a texture field, or use its nested **Output Sprite**.
 
 Double-click the saved asset to reopen it. Export PNG, TGA, JPEG, EXR, layered PSD or Texture2D
-only when you need a separate file. Runtime consumers use the last explicitly saved result.
+only when you need a separate file. Save your changes to update the image used in your game.
 
 <a id="workspace"></a>
 <a id="layers"></a>
@@ -84,8 +82,7 @@ only when you need a separate file. Runtime consumers use the last explicitly sa
 **[Read the documentation →](https://dcfapixels.github.io/Unity-SpriteEditor/en/)** ·
 [Русская версия](https://dcfapixels.github.io/Unity-SpriteEditor/ru/)
 
-The guide follows the editing workflow, from the first canvas to advanced effects and automation.
-These source links also work directly on GitHub:
+The guide follows the editing workflow, from the first canvas to painting, effects and export:
 
 | Next step | Guide |
 | :--- | :--- |
@@ -95,7 +92,7 @@ These source links also work directly on GitHub:
 | Control the composition | [Blending and clipping](Documentation~/en/blending.md) · [Shader FX](Documentation~/en/shader-fx.md) · [HDR and channels](Documentation~/en/color.md) |
 | Inspect and deliver | [Preview](Documentation~/en/preview.md) · [Post FX](Documentation~/en/post-fx.md) · [Save and export](Documentation~/en/saving.md) |
 | Find a control or solve a problem | [Shortcuts](Documentation~/en/shortcuts.md) · [Troubleshooting](Documentation~/en/troubleshooting.md) |
-| Automate authoring | [Workflow](Documentation~/en/automation.md) · [API reference](Documentation~/AgentAPI.md) · [Agent instructions](AGENTS.md) |
+| Automate authoring | [Working with an agent](Documentation~/en/automation.md) |
 
 ## Acknowledgements
 

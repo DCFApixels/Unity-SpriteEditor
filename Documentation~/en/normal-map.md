@@ -10,53 +10,47 @@ alternate: "ru/normal-map.md"
 
 # Normal Map
 
-Start in **Simple**, which shows the common controls without changing the calculation.
-**Advanced** exposes everything. Switching back does not reset advanced values;
-the editor shows a notice when those settings have been modified.
+A normal map makes a surface appear raised or indented when lit in a material.
+Start in **Simple** for the common controls; open **Advanced** when you need finer adjustments.
+Returning to Simple keeps your advanced settings.
 
-## From an existing height map
+## From a height map
 
 1. Add Normal Map above File, Drawing or Noise.
-2. Leave Input at Previous, or assign Target explicitly.
-3. Choose Generation → Height Map and the intended Source Channel.
-4. Start with Strength 4 and Smoothing 1 px, then adjust surface relief.
-5. Hide the source itself if the output should contain only the normal map.
+2. Leave **Input → Previous**, or assign another Target.
+3. Choose **Generation → Height Map** and the channel that contains the height.
+4. Start with **Strength** 4 and **Smoothing** 1 px, then adjust the relief.
+5. Hide the source layer if you want to see only the normal map.
 
-Brighter means higher. Strength 0 produces a flat normal; Invert Height reverses the height.
-For a numeric linear source, open Advanced and choose Input Space → Linear.
-Color Values reads displayed RGB; alpha is unaffected by color space.
+Light areas are high; dark areas are low. **Invert Height** reverses them.
+**Strength** makes the relief stronger; **Smoothing** softens fine bumps.
+For a Noise source with Linear Data encoding, choose **Input Space → Linear** in Advanced.
 
 ## From a color texture
 
-Choose Generation → Texture. It estimates height from contrast at multiple scales;
-it does not recover actual geometry or reliably separate lighting from material color.
+Choose **Generation → Texture** to estimate relief from an ordinary image.
+This is a starting point, not an exact reconstruction: shadows or painted color changes can look like dents.
 
-In Advanced, choose Output → Height to inspect the reconstruction first. Adjust
-Fine / Medium / Large Detail and the medium/large radii.
-Light Removal attenuates broad brightness changes, but can also remove real large-scale relief.
-Return Output to Normal before saving the normal map.
+In Advanced, choose **Output → Height** to check the inferred height.
+Adjust **Fine / Medium / Large Detail** for small texture, medium features and broad shapes.
+Try **Light Removal** if lighting in the source is creating unwanted slopes.
+Return **Output** to **Normal** when you are happy with the surface.
 
-## Controls by purpose
+## Useful finishing controls
 
-| Section | Controls |
-| :--- | :--- |
-| Source | Height channel; Input Space; Ignore Transparent for alpha-normalized smoothing. |
-| Surface | Strength, Smoothing, Invert Height, Edges; Derivative in Advanced. |
-| Height Levels | Black/White Level and Gamma for the reconstructed height range. |
-| Texture Detail | Detail scales and weights, used only in Texture mode. |
-| Output | Flip X/Y, Alpha, Normal/Height and Encoding. |
+- **Height Levels:** adjust Black/White Level and Gamma if the relief is too flat or too harsh.
+- **Edges → Repeat:** use for a seamless source.
+- **Alpha → Opaque:** make a solid map; **Source** keeps the source transparency.
+- **Flip Y:** try this if the target material shows bumps as dents.
 
-Edges controls boundary sampling independently of Transform: Clamp, Repeat or Mirror.
-Use Repeat for a tileable source. Alpha → Opaque creates a solid map;
-Source retains source coverage. When Alpha supplies height, transparency participates as height.
+## Save for a material
 
-## Export without changing the data
+For a normal map on its own, keep **Normal** blending, full opacity and unchanged Swizzle.
+Avoid color effects, which can distort the relief.
 
-Keep Normal blend, opacity 1, identity Swizzle and no color FX.
-Blending does not renormalize vectors. Transform moves the image but does not rotate its normals.
+Choose **Packed Color** for PNG/TGA/PSD. Import the exported PNG or TGA into Unity as
+**Normal Map**, without grayscale conversion.
+Choose **Linear Data** when your workflow needs a linear EXR or Texture2D.
 
-- **Packed Color:** PNG, TGA, PSD and display; import PNG/TGA as Normal Map without grayscale conversion.
-- **Linear Data:** raw 0–1 values for linear EXR or Texture2D; these look different in the color preview.
-
-Use Flip Y if the consumer expects the opposite green-channel direction.
-[Complete parameter ranges](../AgentAPI.md#normal-map-settings).
+Rotating a finished normal-map layer rotates its image, not the direction of its lighting.
+For correctly oriented relief, transform the source before generating the map.

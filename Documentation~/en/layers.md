@@ -12,38 +12,56 @@ next_page: "en/transform.md"
 
 # Layers and groups
 
-The list shows the **topmost layer first**. The **last selected layer is active**: painting, transforms
-and Layer Settings use that layer. Click a row to select it; use `Ctrl` to toggle rows,
-`Shift` for a range, and `Up` / `Down` to navigate visible rows.
+Build an image from separate layers so you can move or adjust each part independently.
+The top of the list is the front of the image.
 
-Start with a **File**, **Drawing**, **Color Fill**, **Gradient** or **Noise** layer from **+**.
-Drag Project textures into the list to place them between rows or inside groups; dropping onto
-the Preview adds them at the top. The first texture assigned to an empty File layer receives
-**Original Aspect** automatically. Existing source textures are never modified.
+## Add a layer
 
-Drag a selected row's background or thumbnail to move the selection. Use **Folder** to group it.
-Adjust opacity and Blend inline; changing either on a selected row updates all selected rows.
+Use **+** at the bottom of Layers to choose a type:
 
-## Footer actions, groups, duplication and naming
+| Layer | Use it for |
+| :--- | :--- |
+| File | An existing texture from Project. |
+| Drawing Layer | Painting, erasing and filling. |
+| Color Fill | A single-color background or shape. |
+| Gradient | A smooth color transition. |
+| Noise | A generated pattern. See [Noise](noise.md). |
+
+You can also drag a Project texture onto the Preview to add it at the top,
+or drop it between rows to choose its position. A newly assigned image keeps its original proportions.
+
+## Select and arrange
+
+Click a row to select it. Hold `Ctrl` to select several layers or `Shift` to select a range.
+The **last selected layer is active**: this is the layer you paint on and edit in Layer Settings.
+
+Drag a row's thumbnail or empty space to move the selected layers.
+Edit the name directly in the row. **Opacity** controls how much the layer shows;
+**Blend** controls how it combines with the image below.
+Changing either on a selected row updates all selected layers.
+
+Use the eye to hide a layer. The eye in the column header reveals all layers.
+
+## Keep related parts in a group
+
+Select layers and click **Folder**, or drag layers into an existing group.
+Use the group's arrow to expand or collapse it.
+
+Groups start in **Pass Through**, so their layers can blend with layers outside the group.
+Choose another blend mode to blend the group as one image. Group opacity fades the whole group.
+Transform and Shader FX are available on individual layers, not groups.
+
+## Duplicate, merge or delete
+
+Right-click a row or open **⋮** for actions on the selection.
+**Duplicate** makes a copy you can edit separately. File layers still use the same source texture.
 
 | Footer icon | Click | Drop selected layers |
 | :--- | :--- | :--- |
-| **+** | Choose a layer type. | Duplicate the selection. |
-| **Page +** | Create Drawing above the active layer. | Merge into a Drawing copy, keeping originals. |
-| **Folder** | Group the selection. | Group the dragged layers. |
-| **Trash** | Delete the selection. | Delete the dragged layers. |
+| **+** | Choose a layer type. | Duplicate. |
+| **Page +** | Add a Drawing layer. | Make a merged Drawing copy. |
+| **Folder** | Group the selection. | Group. |
+| **Trash** | Delete the selection. | Delete. |
 
-Open the row menu with **⋮** or right-click. Its actions apply to the selection where supported.
-A selected group includes descendants once. **Duplicate** creates independent Drawing pixels and
-embedded FX; external source assets remain linked. Targets within the copied set follow the copies.
-
-Groups default to **Pass Through**: children blend with the surrounding stack. Another blend mode
-isolates the group; group opacity affects the whole result. Group transforms and modifiers are not supported.
-The eye in the table header reveals all layers and groups.
-
-Each layer type has its own increasing name counter. Drawing uses `Layer n`;
-other types use their type name, such as `File n`, `Noise n` and `Group n`.
-Copies append ` Copy n` using a separate shared counter. Deleted numbers are not reused.
-
-
-For a procedural source, see [Noise](noise.md). For transparency and masks, see [blending and clipping](blending.md).
+See [merging and conversion](transform.md#merge-layers-or-convert-them-to-drawing)
+when you want to paint on the combined result.

@@ -1,5 +1,6 @@
 ---
 layout: default
+search_exclude: true
 title: Motion Blur internals
 parent: Technical reference
 nav_order: 5

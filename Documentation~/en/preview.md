@@ -11,45 +11,44 @@ next_page: "en/color.md"
 
 # Preview and navigation
 
-The Preview footer provides quality, channel, exposure and diagnostic controls.
-**Live Quality** changes painting-time resolution (12.5–100%, default 80%), not saved/exported pixels.
-**EV** changes preview exposure; the bug button reveals invalid numeric pixels.
+Use the Preview to inspect your image up close, check seams or look at individual channels.
+Changing the view does not resize the document.
 
-> **Important.**
-> The **R / G / B / A** buttons are also a **paint mask**.
-> Disabled RGB channels write `0` in new strokes/fills; with A disabled, they leave no mark.
-> Erasing ignores this mask. Existing pixels and exported channels are not changed by the switches.
+## Move around
 
-## Pan and zoom
+- Hold the mouse wheel and drag to pan.
+- Scroll to zoom around the pointer with any tool.
+- With **Zoom** (`Z`), click to zoom in, `Alt`-click to zoom out, or drag a rectangle around the area you want to inspect.
+- **Fit** shows the whole canvas; **100%** is useful for checking pixel detail.
 
-Drag with `MMB` to pan; the wheel zooms around the pointer with any tool.
-With Zoom (`Z`), click to zoom in, `Alt`-click to zoom out, or drag a rectangle to frame it.
-The rectangle can extend beyond the canvas. **Fit** frames the full canvas;
-**100%** means one UI unit per source pixel, not necessarily one physical monitor pixel.
+Turn on **Tiled** to see repeated copies of the image and paint across its edges.
+See [seamless painting](symmetry.md).
 
-**Tiled** displays neighboring copies without enlarging the document.
-[Seamless painting](symmetry.md) wraps Brush and Pencil footprints across the edges.
+## Balance detail and responsiveness
 
-## Quality and exposure
+Lower **Live Quality** in the footer if painting on a large image feels slow.
+Save and export still use full resolution.
 
-Pencil temporarily fixes Live Quality at 100% and uses Point filtering. Changing tools restores
-normal preview settings. Effect quality and preview dimensions are separate: stopping an edit
-refines the blur; saving renders at full canvas dimensions.
+Pencil always shows crisp pixels at full quality, so you can place individual pixels accurately.
 
-EV affects display only. It resets to 0 when the window opens; a nonzero value highlights the field.
-If white looks gray or the image is overexposed, check EV and channel buttons first.
+## Check brightness and channels
 
-## Diagnostics
+**EV** changes the viewing exposure, not the image itself. Keep it at **0** for the normal view.
+If white looks gray or colors look overexposed, check this field first.
 
-The bug button shows invalid numeric pixels accumulated across stages of the current render.
-A location can stay marked even if a later layer covers it. This is not a history of every document error.
-Invalid numbers are made safe during rendering; the mask is not exported.
+**R / G / B / A** lets you inspect the color channels or transparency separately.
+See [color and channels](color.md) for the display modes.
 
-Set its color, checkerboard colors and cell size in **Window tab ⋮ → User Settings…**.
-[HDR and diagnostic details](../HDR.md#preview-and-numeric-diagnostics).
+> Channel buttons also affect new paint: disabled color channels receive zero,
+> and turning off A prevents Brush, Pencil and Fill from leaving a mark.
+> Turn all four channels on for ordinary painting.
 
-## What does not change export
+## Background and problem pixels
 
-Zoom, pan, Tiled, EV, diagnostics and [Post FX](post-fx.md) are presentation settings.
-Channel switches also leave old pixels unchanged, but affect new strokes.
-[Color, HDR and channel packing](color.md) explains the distinction.
+Change the transparency checkerboard's colors and size in
+**Window tab ⋮ → User Settings…**.
+
+The bug button highlights pixels with invalid color values. Use it to investigate a broken-looking
+effect; its highlight color is also in User Settings. The overlay is not included in saved images.
+
+Zoom, Tiled, EV and [Post FX](post-fx.md) change only the view.

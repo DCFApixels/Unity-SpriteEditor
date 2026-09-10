@@ -1,5 +1,6 @@
 ---
 layout: default
+search_exclude: true
 title: HDR and groups
 parent: Technical reference
 nav_order: 3

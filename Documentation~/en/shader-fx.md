@@ -11,44 +11,39 @@ next_page: "en/preview.md"
 
 # Shader FX and Processor
 
-Use **+ Shader FX** in a layer's settings, write `ApplyFX`, and click **Apply**.
-Code and parameters can live inside the document. For an effect on the already-composited
-stack below a position, add a **Shader Processor** layer instead.
+Use a custom shader effect when you need a look that the built-in layers do not provide.
+You can use an existing effect and adjust its parameters without writing code.
 
-## Shader FX: a first snippet, parameters and reusable code
+## Apply an existing effect
 
-Add a **Float** parameter named `_Amount`, then apply this example:
+1. Select the layer you want to change.
+2. Use **+ Reference** in its FX section and choose an effect asset.
+3. Adjust the effect's exposed sliders, colors or textures.
+4. If you want a separate copy stored with this document, choose **Embed**.
 
-```hlsl
-float4 ApplyFX(float2 uv, float4 color)
-{
-    return float4(lerp(color.rgb, 1.0 - color.rgb, saturate(_Amount)), color.a);
-}
-```
+A referenced effect is shared with other places that use it.
+An embedded copy can be edited independently.
+When several effects are present, their order matters.
 
-Parameters support Float, Color, Vector and Texture2D. Their uniforms are generated automatically.
-Code and declarations stay drafts until Apply; a compile error keeps the last working effect.
-Undo/Redo restores code, caret and selection, but restored code still needs Apply.
+## Affect one layer or the image below?
 
-`SampleInput(uv)` reads the layer after earlier modifiers. Return straight RGBA; opacity/blending
-come later. Built-in inputs include `_MainTex`, `_MainTex_TexelSize`, `_InputSize`,
-`_CanvasSize` (width, height, 1/width, 1/height) and `_PreviewScale`. Do not redeclare generated uniforms.
+**Shader FX** belongs to one layer and changes that layer's image.
 
-Standard `#include` supports project/package paths and relative paths. Relative paths start in
-the document/FX asset folder, or Assets before the first save. After library edits, click Apply again;
-after Save As to another folder, check relative paths. Libraries must suit the fragment-shader environment.
+A **Shader Processor** is a separate layer that changes the combined image below it.
+Place it above the layers you want to process.
+Use **Normal** blending and lower Opacity to mix the effect with the original;
+hide the Processor to compare before and after.
 
-**+ Reference** links an external FX shared by its users; **Embed** makes an independent document-owned
-copy. Save As and layer duplication copy embedded FX independently. FX run in order after Transform;
-changing parameter values does not regenerate shaders.
+In a Pass Through group, a Processor can also affect the background beneath the group.
+Use an isolated group if the effect should stay within that group's contents.
 
-## Shader Processor: process the lower stack instead of one layer
+Unlike [Post FX preview](post-fx.md), both are included in the saved image.
 
-The Processor uses the same ApplyFX/SampleInput interface, with the lower composite as input.
-Normal blending uses Opacity to mix original and processed RGBA; 100% replaces the input.
-Other blends combine it with the result. Both ranges default to HDR; hiding the Processor bypasses it.
+## Create your own effect
 
-In Pass Through groups it also sees the external backdrop; isolated groups restrict it to their
-children. Standalone previews and rasterization evaluate lower siblings against transparency.
-Processors are clipping-chain boundaries, not clipping layers or bases. PSD bakes the composite
-and retains the original layers in a hidden Source Layers folder.
+If you have shader code, use **+ Shader FX**, paste it into the editor and click **Apply**.
+The code and settings stay with the document; no separate file is required.
+If the code contains an error, the previous working version stays visible.
+
+Writing an effect is optional. The [shader authoring reference](../ShaderFX.md)
+is for creating code and reusable libraries.

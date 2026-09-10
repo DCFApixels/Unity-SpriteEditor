@@ -1,5 +1,6 @@
 ---
 layout: default
+search_exclude: true
 title: Agent API
 parent: Technical reference
 nav_order: 1

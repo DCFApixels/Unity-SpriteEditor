@@ -13,7 +13,8 @@ next_page: "en/getting-started.md"
 
 Read from first document to final export, or jump directly to the tool you need.
 
-The names of controls match the Unity window. Most operations are nondestructive until you merge, rasterize or explicitly convert storage.
+Start with an image, arrange its layers, paint the details and save the result for your project.
+Control names in this guide match the labels in the editor.
 
 - [Start here](getting-started.md)
 - [Layers and groups](layers.md)
@@ -32,4 +33,4 @@ The names of controls match the Unity window. Most operations are nondestructive
 - [Automation](automation.md)
 - [Troubleshooting](troubleshooting.md)
 
-Also: [Noise](noise.md), [Normal Map](normal-map.md). The technical [reference](../reference.md) and API are maintained in English as one contract.
+For generated textures, also see [Noise](noise.md) and [Normal Map](normal-map.md).

@@ -1,5 +1,6 @@
 ---
 layout: default
+search_exclude: true
 title: PSD export
 parent: Technical reference
 nav_order: 6

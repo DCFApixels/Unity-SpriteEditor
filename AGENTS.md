@@ -35,6 +35,11 @@ coordinates, safety/Undo semantics and complete workflows. Examples live in
 ## Documentation maintenance
 
 - Keep README files concise: introduction, installation, quick start and links to the guide.
+- Write the EN/RU user guides for artists: lead with the desired visual result, where to click,
+  and how controls change the image. Omit rendering/storage/cache internals, Undo implementation
+  details, regression history and descriptions of incidental UI layout behavior. Keep warnings only
+  when they affect the result, compatibility or loss of editable work. Ordinary Undo shortcuts belong
+  in the shortcuts page. Keep programming contracts in the separate technical reference, not the guides.
 - Update the matching `Documentation~/en/` and `Documentation~/ru/` user-guide pages for feature changes.
   Keep the shared English API contract in `Documentation~/AgentAPI.md` accurate; preserve existing URLs.
 - Follow `Documentation~/building.md` for website validation. Jekyll builds are documentation-only;

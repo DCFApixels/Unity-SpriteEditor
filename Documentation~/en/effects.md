@@ -12,65 +12,68 @@ next_page: "en/blending.md"
 
 # Effect layers
 
-Use **+** to add an effect layer above its source:
+Effect layers create outlines, soften images or turn texture detail into surface relief.
+They keep the source editable, so you can adjust it without rebuilding the effect.
+
+## Choose an effect
+
+Use **+** at the bottom of Layers:
 
 | Goal | Layer | Start with |
 | :--- | :--- | :--- |
-| Outline a shape | Outline | Width, softness and position. |
-| Build a distance field | SDF | Source channel, threshold and distance. |
-| Generate surface normals | Normal Map | Height Map or Texture; Simple controls first. |
+| Outline a shape | Outline | Width, softness and inside/outside placement. |
+| Make a mask based on distance from an edge | SDF | Source channel, Threshold and Max Distance. |
+| Create surface relief | Normal Map | Height Map or Texture. See [Normal Map](normal-map.md). |
 | Soften an image | Gaussian Blur | Radius. |
-| Create a motion trail | Motion Blur | Linear distance/angle or Circular arc/center. |
+| Create a motion trail | Motion Blur | Linear or Circular. |
 
-**Previous** means the next sibling below the effect; **Specific** selects a layer or group.
-Drag a layer onto Target to assign it. With a dragged selection, the active layer is used.
-A hidden target still works; inside a target group, hidden children remain excluded.
-Effects see the group's own isolated content, while the group's main composition may stay Pass Through.
+## Choose what the effect uses
 
-## Blur controls and interactive quality
+**Input → Previous** uses the layer directly below the effect in the same group.
+Choose **Specific** to select another layer or group, or drag it onto **Target**.
+When dragging several selected layers, the active one becomes the target.
 
-- **Gaussian Blur:** Radius is 0–256 original canvas pixels, default 8; zero bypasses it.
-- **Motion Blur:** Linear uses Distance (0–512 px) and Angle. Circular uses Arc (0–360°)
-  and normalized Center, with `(0.5, 0.5)` at the middle. Circular is rotation, not zoom.
-  Direction is Centered/Forward/Backward; Forward follows Angle or turns counterclockwise.
-- **Strength** on Motion Blur is 0–400%, default 100%. Below 100% it mixes with the original.
-  Above 100% it makes translucent trails denser without changing length or color brightness;
-  fully opaque pixels are unchanged.
-- **Edges:** Transparent, Clamp, Repeat or Mirror, independent of Tiled preview.
-  Both effects filter color with alpha correctly; use HDR Color Range to retain intensities above 1.
+You can hide the source and still see the effect. For a group, hide the group itself,
+not the children you want included. The effect uses only that group's contents, not the background behind it.
 
-Large blurs use cheaper interactive previews and refine after editing settles. Saving and export
-use full quality. Cache storage is bounded and separate from Undo; large cold renders can still be
-expensive, and long circular arcs can show discrete traces on fine details.
+## Outline and SDF
 
-[Gaussian rendering & cache](../GaussianBlur.md) · [Motion Blur details](../MotionBlur.md)
+Use **Outline** for a border around a shape. Adjust its width and softness,
+then choose whether it sits inside, outside or across the edge.
 
-## Outline/SDF sources and Normal Map output
+Use **SDF** when you want a gradual transition based on distance from the shape.
+**Threshold** decides where the edge begins; **Max Distance** controls how far the transition extends.
+Use the gradient to color it. The distance algorithm changes the character of corners and diagonals:
+Euclidean gives rounded distances, while Manhattan and Chebyshev give more angular results.
 
-Outline/SDF use grayscale coverage for groups; Normal Map and blurs use RGBA.
-Available distance algorithms include exact Euclidean EDT, approximate Euclidean, Manhattan and Chebyshev.
-Self-referencing and cyclic effect targets are rejected.
+## Gaussian Blur
 
-Normal Map **Height Map** uses a chosen height channel; **Texture** estimates relief from image detail.
-Use **Output → Height** to tune the reconstruction, then return to Normal.
-Advanced exposes filtering, detail bands, lighting removal, levels, orientation and encoding;
-switching back to Simple does not reset them.
+Increase **Radius** for a softer image. Start small for edge cleanup;
+use a larger radius for broad, soft shapes.
 
-Keep Normal blending, opacity 1 and identity Swizzle for a usable normal texture. Mixing does not
-renormalize vectors; Transform moves the image without reorienting normals.
-Packed Color is suited to PNG/TGA/PSD; Linear Data is for linear EXR/Texture2D.
-Import an exported PNG/TGA as **Normal Map**, without grayscale conversion.
+To blur several layers together:
 
-[Normal Map parameters](../AgentAPI.md#normal-map-settings)
+1. Put them in a group and add Gaussian Blur above it.
+2. Leave Input at Previous.
+3. Hide the group itself to show only the blurred result.
+4. Adjust Radius.
 
+## Motion Blur
 
+Choose **Linear** for a straight trail. **Distance** sets its length and **Angle** sets its direction.
+Choose **Circular** for a rotating trail, then set **Center** and **Arc**.
 
-## Example: blur a group while keeping its sources
+**Direction** places the trail around the source, ahead of it or behind it.
+**Strength** below 100% brings back more of the sharp original.
+Above 100%, it makes translucent trails denser without making them longer.
 
-1. Put the source layers in a group.
-2. Add Gaussian Blur above it and leave Input at Previous.
-3. Hide the group itself to avoid drawing a second copy; leave its children enabled.
-4. Adjust Radius. For a tileable source, choose Edges → Repeat.
-5. Save: the editable group remains in the document and the output texture contains the blur.
+## Keep the edges right
 
-For surface relief, follow the [Normal Map walkthrough](normal-map.md).
+Blur effects have an **Edges** setting:
+
+- **Transparent:** fade into empty space.
+- **Clamp:** extend the edge colors.
+- **Repeat:** wrap around; useful for seamless textures.
+- **Mirror:** reflect the image at the border.
+
+For seamless work, set Edges on the effect as well as enabling [Tiled preview](symmetry.md).

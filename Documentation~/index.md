@@ -28,10 +28,10 @@ Create, paint, combine and save an editable document with a ready-to-use texture
 ## Requirements and scope
 
 Unity 6 (`6000.0`) or newer. Sprite Editor runs only in the Editor;
-saved textures and sprites work at runtime without rendering the layer stack.
+use the saved textures and sprites in your game.
 Game Post FX preview is optional and currently needs URP 17.x with Universal Renderer.
 Other editing tools do not require a render pipeline package.
 
-The [technical reference](reference.md) covers rendering, storage and the agent API.
+Creating an integration or writing shader code? The separate [technical reference](reference.md) is for developers.
 See the [changelog](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/CHANGELOG.md)
 for changes and [acknowledgements](credits.md) for third-party sources and licenses.

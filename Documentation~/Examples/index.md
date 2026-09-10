@@ -1,5 +1,6 @@
 ---
 title: "JSON examples"
+search_exclude: true
 parent: "Technical reference"
 nav_order: 2
 permalink: "/reference/examples/"

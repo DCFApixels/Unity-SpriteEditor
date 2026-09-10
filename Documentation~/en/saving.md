@@ -11,41 +11,43 @@ next_page: "en/shortcuts.md"
 
 # Save and export
 
-`Ctrl+S` saves the document, or opens Save As the first time.
-**Save** updates it without a dialog and is disabled when there is nothing to save;
-**Save As** makes an independent copy. Closing a changed document offers **Save / Discard / Cancel**.
+Save your document to keep its layers editable and use the result directly in Unity.
+Export only when you need a separate image file.
 
-The saved `.asset` already contains a full-resolution **Texture2D**, **Output Sprite**,
-and the editable layer document. Assign the main asset to a texture field, or expand it to use the sprite.
-A separate export is optional.
+## Save a document
 
-> **Important.**
-> Unity uses the output from the **last explicit Sprite Editor save**.
-> Save again after Undo/Redo, FX changes or edits to linked source textures.
+Press `Ctrl+S`. The first save asks for a location; later saves update the same file.
+**Save As** makes a separate copy. If you close a document with changes,
+you can save, discard them or cancel closing.
 
-## Export when you need a separate file
+The saved asset is ready to use as a **texture**.
+Expand it in Project to use **Output Sprite**. Double-click it to continue editing.
+
+Unity shows the **last saved image**. Save again after editing the document or changing a linked texture.
+File layers keep their links to source textures; keep those sources in the project.
+
+## Choose an export format
+
+Use **Export** in the window header:
 
 | Format | Best for |
 | :--- | :--- |
 | **PNG / TGA** | Color images with transparency. |
-| **JPEG** | Opaque images; exports against white at quality 95. |
-| **EXR** | Linear HDR RGB + alpha. |
-| **PSD** | Layered interchange with nested groups and a merged image. |
-| **Texture2D (.asset)** | A standalone Unity texture without the editable document. |
+| **JPEG** | Images that do not need transparency; transparent areas become white. |
+| **EXR** | HDR images. |
+| **PSD** | Exchanging a layered image. |
+| **Texture2D (.asset)** | A standalone Unity texture without the editable layers. |
 
-## Saved references, HDR export and PSD trade-offs
+EXR and Texture2D keep HDR brightness. PNG, JPEG, TGA and PSD use the ordinary color range.
+Exporting does not reduce the colors stored in your original document.
 
-Saving preserves output references, including after canvas resize. Drawing pixels and embedded FX
-are stored in the document; external textures and referenced FX stay linked. Project thumbnails
-show saved pixels. Output Sprite has a centered pivot, full-rectangle mesh and 100 PPU.
+Preview settings such as zoom, EV and Post FX are not included in the saved or exported image.
 
-EXR and Texture2D retain HDR; PNG/JPEG/TGA/PSD clamp an export copy.
-Images exported into Assets are imported as single Sprites, except EXR, which is a linear texture.
-Replacing a standalone Texture2D asks for confirmation and preserves references.
+## What remains editable in PSD?
 
-PSD preserves names, order, visibility, opacity and supported blends. Compatible fills, gradients
-and Outline strokes stay editable; other effects are rasterized and unsupported blends approximated.
-Export notes explain compromises per layer. Keep the native document: PSD does not retain live
-effect targets or shader code.
+PSD keeps the layer names, order, groups, visibility, opacity and supported blends.
+Compatible color fills, gradients and outlines remain editable.
+Other effects become pixels, and some blend modes can look different.
 
-[PSD export details](../PsdExport.md)
+Read the export notes if the result differs. Keep the original Sprite Editor document
+so you can still change all effects and their sources later.

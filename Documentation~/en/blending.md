@@ -11,21 +11,38 @@ next_page: "en/shader-fx.md"
 
 # Blending and clipping
 
-Enable **Clipping Mask** in the row menu, or `Alt`-click the boundary above the base layer.
-Consecutive clipped layers use the first non-clipped sibling below, within the same group.
-They keep their colors/effects but cannot expand the base's alpha.
+Use **Blend** in a layer row to change how its colors combine with the image below.
+Lower **Opacity** to make the result less pronounced.
 
-## Clipping, group blending and blend modes
+## Choose a blend
 
-A hidden, transparent or missing base hides the chain. Base opacity applies once to the whole result.
-Groups participating in clipping are isolated while in that chain. Clipping supports Undo/Redo,
-duplication, the agent API and PSD clipping flags; merging bakes it.
+Start with these common choices:
 
-Ordinary blend modes combine RGB in overlaps with source-over alpha.
-**Overwrite** replaces complete RGBA; layer opacity interpolates old/new pixels.
-**None** leaves the composition unchanged.
+| Blend | Typical use |
+| :--- | :--- |
+| Normal | Place the layer over the image. |
+| Multiply | Add shadows or darken a texture. |
+| Screen | Lighten an image or add a soft glow. |
+| Add | Add bright highlights and luminous details. |
+| Overlay / Soft Light | Add contrast or tint while retaining image detail. |
+| Darken / Lighten | Keep the darker or lighter parts of the two layers. |
+| Difference | Compare two images or create contrasting patterns. |
 
-Normal · Add · Subtract · Multiply · Divide · Screen · Overlay · Darken · Lighten ·
-Color Dodge · Color Burn · Linear Dodge (Add) · Linear Burn · Linear Light ·
-Linear Light Add/Sub · Vivid Light · Pin Light · Hard Mix · Hard Light · Soft Light ·
-Difference · Exclusion · Negation · None · Overwrite.
+The dropdown includes more variants for different results.
+**Overwrite** replaces the image below, including with transparent pixels;
+**None** leaves it unchanged.
+
+For groups, **Pass Through** lets the contents blend with layers outside the group.
+Choose another mode to treat the group as one image.
+
+## Keep paint inside another layer's shape
+
+Clipping is useful for shading a character, adding texture to lettering or coloring a silhouette:
+
+1. Put the shape layer below the layer you want to clip.
+2. Open the upper layer's **⋮** menu and enable **Clipping Mask**.
+3. Paint or add effects on the upper layer: they remain inside the base shape.
+
+You can also `Alt`-click the boundary above the base layer to toggle clipping.
+Several consecutive clipped layers can use the same base; keep them in the same group.
+If the base is hidden or empty, its clipped layers disappear too.

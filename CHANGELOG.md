@@ -4,6 +4,14 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.8] - 2026-09-10
+
+### Changed
+
+- Reworked the English and Russian guides around artists' tasks, visual results and practical examples.
+- Simplified both READMEs and removed implementation details from the user guides.
+- Separated shader authoring instructions from effect usage and kept developer references out of guide search results.
+
 ## [0.7.7] - 2026-09-10
 
 ### Added

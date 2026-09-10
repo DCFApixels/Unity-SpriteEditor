@@ -1,5 +1,6 @@
 ---
 layout: default
+search_exclude: true
 title: Gaussian Blur and caching
 parent: Technical reference
 nav_order: 4

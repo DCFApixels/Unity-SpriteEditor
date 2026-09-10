@@ -11,27 +11,41 @@ next_page: "en/symmetry.md"
 
 # Area selections
 
-Use **Rectangle Select** (`M`) or **Polygonal Lasso** (`L`).
-The selected area clips painting, erasing and fill. `Ctrl`-click a layer thumbnail or group arrow
-to select its alpha; `Ctrl+D` clears the selection.
+Select an area to paint, erase or fill without touching the rest of the image.
+Use **Rectangle Select** (`M`) for a rectangle or **Polygonal Lasso** (`L`) for a shape with straight sides.
 
-`Ctrl+C` copies the active layer's selected area; `Ctrl+Shift+C` copies the visible composition.
-`Ctrl+V` pastes onto a **new Drawing layer**.
+## Make and adjust a selection
 
-## Lasso gestures, selection operations and clipboard behavior
+Drag with Rectangle Select. With Lasso, click around the outline and finish with
+`Enter`, a double-click or a click on the first point.
+`Backspace` or a right-click removes the last point; `Escape` cancels the unfinished outline.
 
-Click lasso vertices, then finish with `Enter`, a double-click, the first vertex or **Close**.
-`Backspace` / `RMB` removes a vertex; `Escape` cancels the unfinished shape.
-Replace/Add/Subtract/Intersect are in the header; hold `Shift` / `Alt` / `Shift+Alt`
-to add/subtract/intersect. `Ctrl+A` selects all and `Ctrl+Shift+I` inverts.
+Choose **Replace**, **Add**, **Subtract** or **Intersect** above the canvas.
+You can also hold:
 
-A selection survives tool/layer changes but clears on document switch, canvas resize, window close
-or script reload. It is temporary view state, not Undo history, and does not restrict agent API strokes.
-An active empty selection blocks painting. Selections support up to 16,777,216 canvas pixels.
+- `Shift` to add an area.
+- `Alt` to subtract.
+- `Shift+Alt` to keep only the overlap.
 
-Alpha selection includes transform, FX, Swizzle and clipping; the selected layer's outer
-visibility/opacity are ignored, while child settings inside a group are retained.
+`Ctrl+A` selects the whole canvas. `Ctrl+Shift+I` selects the opposite area.
+`Ctrl+D` removes the selection so you can paint everywhere again.
 
-The clipboard is internal to Sprite Editor, shared between its windows until script reload or exit.
-Without an area selection, copy uses the whole canvas. Paste preserves position on an equal-sized
-canvas, or centers/clips the copied region on a different-sized one. Preview settings do not affect copying.
+## Select a layer's shape
+
+Hold `Ctrl` and click a layer thumbnail or the group's arrow.
+The selection follows its visible shape, including soft edges, rather than its rectangular bounds.
+You can use a hidden layer as the shape.
+
+## Copy and paste
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Ctrl+C` | Copy the selected area from the active layer. |
+| `Ctrl+Shift+C` | Copy what is visible in that area across all layers. |
+| `Ctrl+V` | Paste onto a new Drawing layer. |
+
+Without a selection, copy uses the whole canvas. You can paste between Sprite Editor windows.
+On a canvas of the same size, the copy keeps its position; on a different-sized canvas, it is centered.
+
+A selection stays active when you change tools or layers. It is not saved with the document.
+If painting seems blocked, try `Ctrl+D`.

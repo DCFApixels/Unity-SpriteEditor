@@ -56,7 +56,11 @@ If the repository name or host changes, update `url` and `baseurl` in `_config.y
 - Use relative Markdown links to source `.md` files. The relative-links plugin rewrites them for the site;
   the same links remain usable when reading the sources on GitHub.
 - Use stable ASCII permalinks; do not move the existing API/reference files without preserving links.
-- Each page has one H1. Introduce the task, then show steps, controls, caveats and related pages.
+- Each page has one H1. User guides are for artists: introduce the visual task, then show steps and
+  explain controls by their effect on the image. Keep only caveats that affect the result or risk losing
+  editable work. Do not narrate UI layout mechanics, caching, storage internals, Undo implementation,
+  or past fixes. Programming details belong in the separate technical reference.
+- Exclude engineering references from site search so artist queries lead to practical guides.
 - Keep README as an introduction, installation, quick start and a map to these guides.
 - Do not duplicate API tables into both languages. Explain workflows bilingually; link the shared contract.
 - Keep dependency sources and licenses in the repository notices when updating the theme.
