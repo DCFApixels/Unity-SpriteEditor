@@ -98,6 +98,10 @@ namespace DCFApixels.SpriteEditor
                     NormalMapLayerEditorWindow.BuildFields(root, normalMap, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
+                case GaussianBlurLayer gaussian:
+                    GaussianBlurLayerEditorWindow.BuildFields(root, gaussian, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                        AddToolkitInspectorEffectTarget);
+                    break;
             }
             LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
                 colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);

@@ -29,6 +29,9 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private StyleLength activeDropMarginLeft;
         [NonSerialized] private LayerDragManipulator activeLayerDrag;
         [NonSerialized] private int paintingPointerId = -1;
+        [NonSerialized] private bool previewPointerInside;
+        [NonSerialized] private bool previewPointerAlt;
+        [NonSerialized] private Vector2 previewPointerPosition;
         [NonSerialized] private bool applyingToolkitChange;
         [NonSerialized] private bool rebuildingToolkit;
         [NonSerialized] private bool toolkitRefreshRequested;
@@ -65,6 +68,7 @@ namespace DCFApixels.SpriteEditor
 
         public void CreateGUI()
         {
+            ClearPreviewPointerCursor();
             CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
@@ -163,6 +167,9 @@ namespace DCFApixels.SpriteEditor
             layersPane.Add(CreatePaneHeader("Layers", "layersTitle"));
             settingsSplit.Add(layersPane);
 
+            VisualElement layerTableHeader = BuildLayerTableHeader();
+            layersPane.Add(layerTableHeader);
+
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitSettingsScroll.name = "layer-list";
             toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
@@ -170,6 +177,13 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.style.flexGrow = 1f;
             toolkitSettingsScroll.style.paddingBottom = 8f;
             layersPane.Add(toolkitSettingsScroll);
+            ScrollView layerList = toolkitSettingsScroll;
+            layerList.contentViewport.RegisterCallback<GeometryChangedEvent>(evt =>
+            {
+                float scrollbarWidth = Mathf.Max(0f, layerList.contentRect.width - evt.newRect.width);
+                if (!Mathf.Approximately(layerTableHeader.resolvedStyle.marginRight, scrollbarWidth))
+                    layerTableHeader.style.marginRight = scrollbarWidth;
+            });
 
             toolkitLayerFooter = new VisualElement { name = "layersFooter" };
             toolkitLayerFooter.AddToClassList("sprite-editor-layers-footer");
@@ -391,7 +405,6 @@ namespace DCFApixels.SpriteEditor
         private void BuildToolkitSettings()
         {
             toolkitSettingsScroll.Clear();
-            toolkitSettingsScroll.Add(BuildLayerTableHeader());
 
             toolkitLayerHierarchyRoot = new VisualElement();
             toolkitLayerHierarchyRoot.style.flexShrink = 0f;
@@ -588,14 +601,12 @@ namespace DCFApixels.SpriteEditor
                 if (TrySelectLayerAlpha(row, layer, evt)) return;
                 if (evt.button == 0 && evt.altKey && TryToggleClippingAtBoundary(row, layer, evt.position))
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
                 if (evt.button == 1)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     FinishPreviewTransform();
                     FinishPaintingStroke();
                     Focus();
@@ -629,15 +640,13 @@ namespace DCFApixels.SpriteEditor
                 SelectLayerFromPointer(layer, evt);
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                 }
             }, TrickleDown.TrickleDown);
             row.RegisterCallback<PointerUpEvent>(evt =>
             {
                 if (evt.button != 1) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 if (compositor != null && compositor.TryFindLayer(layer, out List<Layer> container, out int index))
                     ShowLayerContextMenu(layer, container, index);
             }, TrickleDown.TrickleDown);
@@ -661,10 +670,30 @@ namespace DCFApixels.SpriteEditor
             var cell = new VisualElement();
             cell.AddToClassList("sprite-editor-layer-name-cell");
             cell.style.paddingLeft = depth * ToolkitLayerIndent;
-            var clipping = new Label("↳") { pickingMode = PickingMode.Ignore };
+            var clipping = new VisualElement { pickingMode = PickingMode.Ignore };
             clipping.style.width = 12f;
+            clipping.style.height = 18f;
             clipping.style.flexShrink = 0f;
-            clipping.style.unityTextAlign = TextAnchor.MiddleCenter;
+            clipping.style.alignSelf = Align.Center;
+            clipping.generateVisualContent += context =>
+            {
+                if (clipping.contentRect.width < 1f || clipping.contentRect.height < 1f) return;
+                Painter2D painter = context.painter2D;
+                painter.strokeColor = clipping.resolvedStyle.color;
+                painter.lineWidth = 1.3f;
+                painter.lineJoin = LineJoin.Round;
+                painter.lineCap = LineCap.Round;
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(10f, 7f));
+                painter.LineTo(new Vector2(5f, 7f));
+                painter.LineTo(new Vector2(5f, 16f));
+                painter.Stroke();
+                painter.BeginPath();
+                painter.MoveTo(new Vector2(2f, 13f));
+                painter.LineTo(new Vector2(5f, 16f));
+                painter.LineTo(new Vector2(8f, 13f));
+                painter.Stroke();
+            };
             cell.Add(clipping);
             toolkitLayerBindings.Add(() =>
             {
@@ -716,8 +745,7 @@ namespace DCFApixels.SpriteEditor
             foldout.RegisterCallback<KeyDownEvent>(evt =>
             {
                 if (evt.keyCode != KeyCode.Space && evt.keyCode != KeyCode.Return) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 ToggleLayerGroup(group);
             });
             nameCell.Add(foldout);
@@ -1378,6 +1406,7 @@ namespace DCFApixels.SpriteEditor
                 compositor.width, compositor.height,
                 IsPreviewBrushEnabled ? drawing : null, transforming,
                 IsPreviewPaintTool ? paintSettings : null);
+            RefreshPreviewPointerCursor();
             if (toolkitPreviewError != null)
             {
                 toolkitPreviewError.text = previewError ?? string.Empty;
@@ -1436,8 +1465,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerLeave(PointerLeaveEvent evt)
         {
-            if (paintingLayer == null)
-                toolkitPreviewCanvas?.SetCursor(false, default, false);
+            ClearPreviewPointerCursor();
         }
 
         private void OnPreviewPointerDown(PointerDownEvent evt)
@@ -1454,8 +1482,7 @@ namespace DCFApixels.SpriteEditor
             bool erase = evt.button == 1 || paintSettings.tool == PaintToolMode.Eraser;
             if (!erase && (previewChannels & 8) == 0)
             {
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 return;
             }
             paintingMouseButton = evt.button;
@@ -1465,8 +1492,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.CapturePointer(evt.pointerId);
             if (!TryBeginPreviewStroke(evt.localPosition, evt.shiftKey)) FinishPaintingStroke();
             UpdatePreviewCursor(evt.localPosition, false);
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
 
         private bool TryBeginPreviewStroke(Vector2 position, bool shift)
@@ -1522,8 +1548,7 @@ namespace DCFApixels.SpriteEditor
                 hasLastPaintingUv = false;
             }
 
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
 
         private void PaintTowardsLayerPoint(Vector2 pointUv)
@@ -1606,8 +1631,7 @@ namespace DCFApixels.SpriteEditor
                 toolkitPreviewCanvas.ReleasePointer(evt.pointerId);
             FinishPaintingStroke();
             UpdatePreviewCursor(evt.localPosition, evt.altKey);
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
 
         private void OnPreviewPointerCaptureOut(PointerCaptureOutEvent evt)
@@ -1620,16 +1644,37 @@ namespace DCFApixels.SpriteEditor
 
         private void UpdatePreviewCursor(Vector2 localPosition, bool alt)
         {
+            previewPointerPosition = localPosition;
+            previewPointerAlt = alt;
+            previewPointerInside = toolkitPreviewCanvas != null && toolkitPreviewCanvas.contentRect.Contains(localPosition);
             previewEyedropper?.UpdateCursor(localPosition, alt);
-            DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
+            bool panning = previewZoomManipulator?.IsPanning ?? false;
             bool visible = IsPreviewPaintTool &&
-                           !(previewZoomManipulator?.IsPanning ?? false) &&
-                           !alt &&
-                           toolkitPreviewCanvas != null && toolkitPreviewCanvas.contentRect.Contains(localPosition);
+                           !panning && !alt && previewPointerInside;
             toolkitPreviewCanvas?.SetCursor(
                 visible,
                 localPosition,
                 paintingLayer != null ? paintingErase : paintSettings.tool == PaintToolMode.Eraser);
+            MouseCursor transformCursor = !panning && previewPointerInside && previewTool == PreviewTool.Transform
+                ? previewTransformManipulator?.GetCursor(localPosition, alt) ?? MouseCursor.Pan
+                : MouseCursor.Pan;
+            toolkitPreviewCanvas?.SetToolCursor(previewTool, visible, panning, transformCursor);
+        }
+
+        private void RefreshPreviewPointerCursor()
+        {
+            if (previewPointerInside)
+                UpdatePreviewCursor(previewPointerPosition, previewPointerAlt);
+            else
+                toolkitPreviewCanvas?.SetToolCursor(previewTool, false, previewZoomManipulator?.IsPanning ?? false);
+        }
+
+        private void ClearPreviewPointerCursor()
+        {
+            previewPointerInside = false;
+            previewPointerAlt = false;
+            toolkitPreviewCanvas?.SetCursor(false, default, false);
+            toolkitPreviewCanvas?.SetToolCursor(previewTool, false, false);
         }
 
         private void OnToolkitKeyDown(KeyDownEvent evt)
@@ -1637,8 +1682,7 @@ namespace DCFApixels.SpriteEditor
             if ((evt.ctrlKey || evt.commandKey) && !evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.S)
             {
                 ResetOpacityEntry();
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 if (compositor != null && AssetDatabase.Contains(compositor))
                     SaveAsset();
                 else
@@ -1659,8 +1703,7 @@ namespace DCFApixels.SpriteEditor
                 previewEyedropper?.UpdateModifier(true);
                 if (CanUsePreviewEyedropper)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
             }
@@ -1672,8 +1715,7 @@ namespace DCFApixels.SpriteEditor
             if (evt.keyCode == KeyCode.Escape && previewZoomManipulator != null && previewZoomManipulator.IsDragging)
             {
                 CancelPreviewZoomGesture();
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 return;
             }
 
@@ -1690,8 +1732,7 @@ namespace DCFApixels.SpriteEditor
             bool actionModifier = evt.ctrlKey || evt.commandKey;
             if (actionModifier && !evt.shiftKey && evt.keyCode == KeyCode.E)
             {
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 if (compositor != null) MergeSelectedLayers(GetSelectedRoots(), evt.altKey);
                 return;
             }
@@ -1707,8 +1748,7 @@ namespace DCFApixels.SpriteEditor
                     Undo.PerformUndo();
                 else
                     Undo.PerformRedo();
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 return;
             }
 
@@ -1719,8 +1759,7 @@ namespace DCFApixels.SpriteEditor
             if (swapColors)
             {
                 ApplyPaintToolChange(paintSettings.SwapBrushColors);
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 return;
             }
 
@@ -1737,8 +1776,7 @@ namespace DCFApixels.SpriteEditor
                 ApplyPaintToolChange(() => paintSettings.pencilSize = Mathf.Clamp(Mathf.RoundToInt(nextSize), 1, 4096));
             else
                 ApplyPaintToolChange(() => paintSettings.brushSize = nextSize);
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
 
         private void OnToolkitKeyUp(KeyUpEvent evt)
@@ -1748,8 +1786,7 @@ namespace DCFApixels.SpriteEditor
                 previewEyedropper?.UpdateModifier(evt.altKey);
                 if (CanUsePreviewEyedropper)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
             }
@@ -1781,6 +1818,8 @@ namespace DCFApixels.SpriteEditor
             private readonly PreviewViewport viewport;
             private readonly VisualElement checker;
             private Texture2D checkerTexture;
+            private Texture2D transparentCursorTexture;
+            private bool toolCursorHidden;
             private readonly Image image;
             private readonly VisualElement tiledImage;
             private readonly VisualElement overlay;
@@ -1821,6 +1860,7 @@ namespace DCFApixels.SpriteEditor
                 Add(checker);
                 RegisterCallback<AttachToPanelEvent>(_ => CreateCheckerTexture());
                 RegisterCallback<DetachFromPanelEvent>(_ => ReleaseCheckerTexture());
+                RegisterCallback<DetachFromPanelEvent>(_ => ReleaseToolCursor());
 
                 image = new Image
                 {
@@ -1843,6 +1883,42 @@ namespace DCFApixels.SpriteEditor
                 overlay.Add(pencilCursorElement);
 
                 RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
+            }
+
+            public void SetToolCursor(PreviewTool tool, bool hide, bool panning, MouseCursor transformCursor = MouseCursor.Pan)
+            {
+                bool transforming = !panning && tool == PreviewTool.Transform;
+                EnableInClassList("sprite-editor-preview-cursor--pan", panning || (transforming && transformCursor == MouseCursor.Pan));
+                EnableInClassList("sprite-editor-preview-cursor--zoom", !panning && tool == PreviewTool.Zoom);
+                EnableInClassList("sprite-editor-preview-cursor--scale", transforming && transformCursor == MouseCursor.ScaleArrow);
+                EnableInClassList("sprite-editor-preview-cursor--rotate", transforming && transformCursor == MouseCursor.RotateArrow);
+                EnableInClassList("sprite-editor-preview-cursor--move", transforming && transformCursor == MouseCursor.MoveArrow);
+                if (toolCursorHidden == hide) return;
+                toolCursorHidden = hide;
+                if (!hide)
+                {
+                    style.cursor = StyleKeyword.Null;
+                    return;
+                }
+                if (transparentCursorTexture == null)
+                {
+                    transparentCursorTexture = new Texture2D(16, 16, TextureFormat.RGBA32, false)
+                    {
+                        name = "Sprite Editor Transparent Cursor",
+                        hideFlags = HideFlags.HideAndDontSave
+                    };
+                    transparentCursorTexture.SetPixels32(new Color32[16 * 16]);
+                    transparentCursorTexture.Apply(false, false);
+                }
+                style.cursor = new UnityEngine.UIElements.Cursor { texture = transparentCursorTexture, hotspot = Vector2.zero };
+            }
+
+            public void ReleaseToolCursor()
+            {
+                style.cursor = StyleKeyword.Null;
+                toolCursorHidden = false;
+                if (transparentCursorTexture != null) UnityEngine.Object.DestroyImmediate(transparentCursorTexture);
+                transparentCursorTexture = null;
             }
 
             public void SetTiled(bool enabled)

@@ -45,7 +45,7 @@ texture in one asset — export a separate image only when you need one.
 | Painting | Brush and eraser, straight lines, flood fill, and RGBA channel masks. |
 | Patterns | Rotatable mirror symmetry, rows, grids, and radial repetition with boundary clipping. |
 | Transforms | On-canvas handles, movable snapping pivot, source aspect ratio, tiling, and filtering. |
-| Effects | Outline, SDF, Normal Map, blend modes, and embedded Shader FX with editable HLSL. |
+| Effects | Outline, SDF, Normal Map, Gaussian Blur, blend modes, and embedded Shader FX with editable HLSL. |
 | Output | Editable documents with Texture2D/Sprite output; layered PSD, PNG, JPEG, TGA, EXR, and Texture2D export. |
 | Automation | C# and JSON APIs, optional CLI commands, and an agent guide. |
 
@@ -178,7 +178,7 @@ Unity settings or docking.
 <a id="layers"></a>
 ## Layers & groups
 
-**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Group.
+**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Gaussian Blur · Group.
 
 Drag textures from Project into Layers to place them between rows or inside a group.
 Dropping onto the Preview adds File layers at the top of the root list.
@@ -274,7 +274,7 @@ results can change as with other partial merges.
 <summary>Layer names, opacity, and duplication details</summary>
 
 Each type has an independent document-local name counter: `Layer n` for Drawing, `File n`,
-`Color Fill n`, `Gradient n`, `Outline n`, `SDF n`, `Normal Map n`, and `Group n`.
+`Color Fill n`, `Gradient n`, `Outline n`, `SDF n`, `Normal Map n`, `Gaussian Blur n`, and `Group n`.
 Duplicates retain the full name and append ` Copy n`, using a separate shared copy counter.
 Deleted numbers are not reused.
 
@@ -470,16 +470,38 @@ explicitly (**Specific**). Drag a layer onto **Target** to assign it; with a dra
 the active layer is used. This also works in separate Properties windows.
 Cross-document, self-referencing, and cyclic targets are rejected.
 
-Effect layers (Outline, SDF and Normal Map) can process hidden sources in both Previous and
+Effect layers (Outline, SDF, Normal Map and Gaussian Blur) can process hidden sources in both Previous and
 Specific modes. The source's eye toggle controls its own contribution to the composition, not
 its availability as an effect input. A hidden group still supplies its visible children;
 individually hidden children remain excluded. Source opacity and clipping behavior are unchanged.
 
-Group inputs combine visible descendants' alpha without isolating their color blending.
+Group inputs use grayscale coverage from the group's own isolated composition, respecting visible
+descendants' blending and opacity without the external backdrop.
 Available distance metrics are **exact Euclidean EDT**, approximate Euclidean, Manhattan, and Chebyshev.
 Width, softness, and maximum distance use output pixels; processing uses Burst and Native Collections.
 
+### Gaussian Blur
+
+Add **Gaussian Blur Layer** and use **Previous** or assign a layer/group with **Specific**.
+Hidden sources remain usable. A group supplies its isolated content; its normal composition can
+remain Pass Through. **Radius** is the kernel extent in original canvas pixels (0–256, default 8);
+zero bypasses the blur. **Edges** offers Transparent (default), Clamp, Repeat and Mirror.
+Use Repeat for seamless textures; enabling Tiled preview does not change the effect's edge mode.
+
+Color and alpha are blurred together in premultiplied linear light. Set the effect's Color Range
+to HDR to retain intensities above 1. While painting or changing settings, large kernels use a
+reduced-resolution approximation; after editing settles, the Preview refines automatically.
+Save, export and conversion use the full-quality algorithm; PSD stores the result as a raster layer.
+The main window shares a bounded cache of effect results and group sources, separate from Undo.
+See [rendering and cache details](Documentation~/GaussianBlur.md) and
+[agent settings](Documentation~/AgentAPI.md#gaussian-blur-settings).
+
 ### Normal Map
+
+**Settings → Simple / Advanced** changes only the visible controls in Layer Settings and Properties.
+Simple is the default; Advanced exposes the full set, grouped into Source, Surface, Height Levels,
+Texture Detail and Output. The choice is remembered for the Editor session. Hidden values are preserved;
+a small link in Simple indicates modified advanced settings. Texture Detail applies only to Texture generation.
 
 Add a **Normal Map** layer and select **Previous** or a **Specific** source, including drag-and-drop
 onto Target. Groups supply their own color composition against transparency, without the external

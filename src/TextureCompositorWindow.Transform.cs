@@ -156,8 +156,7 @@ namespace DCFApixels.SpriteEditor
                 TogglePreviewTransform();
             else
                 return false;
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             return true;
         }
 
@@ -193,6 +192,7 @@ namespace DCFApixels.SpriteEditor
             private const int RotateHandle = 9;
             private const int PivotHandle = 10;
             private const float PivotSnapDistance = 10f;
+            private const float CanvasSnapDistance = 8f;
             private readonly TextureCompositorWindow owner;
             private Layer layer;
             private TextureTransform original;
@@ -299,6 +299,18 @@ namespace DCFApixels.SpriteEditor
                 return source.x >= 0f && source.y >= 0f && source.x <= dimensions.x && source.y <= dimensions.y ? MoveHandle : -1;
             }
 
+            internal MouseCursor GetCursor(Vector2 point, bool alt)
+            {
+                if (!owner.IsPreviewTransformEnabled || (alt && !IsDragging)) return MouseCursor.Pan;
+                Rect rect = owner.toolkitPreviewCanvas.ImageRect;
+                if (rect.width <= 0f || rect.height <= 0f) return MouseCursor.Pan;
+                int hit = IsDragging ? handle : HitTest(point, owner.GetSelectedLayer().transform, rect,
+                    new Vector2(owner.compositor.width, owner.compositor.height));
+                if (hit == RotateHandle) return MouseCursor.RotateArrow;
+                if (hit == PivotHandle) return MouseCursor.MoveArrow;
+                return hit >= 0 && hit < Handles.Length ? MouseCursor.ScaleArrow : MouseCursor.Pan;
+            }
+
             private void OnDown(PointerDownEvent evt)
             {
                 if (!owner.IsPreviewTransformEnabled || evt.button != 0 || evt.altKey || IsDragging)
@@ -323,6 +335,7 @@ namespace DCFApixels.SpriteEditor
                 pointerId = evt.pointerId;
                 undoGroup = -1;
                 target.CapturePointer(pointerId);
+                owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 evt.StopImmediatePropagation();
             }
 
@@ -331,6 +344,7 @@ namespace DCFApixels.SpriteEditor
                 if (!IsDragging || evt.pointerId != pointerId)
                     return;
                 UpdateTransform(evt.localPosition, evt.shiftKey, evt.ctrlKey);
+                owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 evt.StopImmediatePropagation();
             }
 
@@ -341,19 +355,19 @@ namespace DCFApixels.SpriteEditor
 
             private void OnModifierDown(KeyDownEvent evt)
             {
-                if (RefreshPivotModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
+                if (RefreshTransformModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
                     evt.StopPropagation();
             }
 
             private void OnModifierUp(KeyUpEvent evt)
             {
-                if (RefreshPivotModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
+                if (RefreshTransformModifiers(evt.keyCode, evt.shiftKey, evt.ctrlKey))
                     evt.StopPropagation();
             }
 
-            private bool RefreshPivotModifiers(KeyCode key, bool shift, bool control)
+            private bool RefreshTransformModifiers(KeyCode key, bool shift, bool control)
             {
-                if (!IsDragging || handle != PivotHandle ||
+                if (!IsDragging ||
                     (key != KeyCode.LeftControl && key != KeyCode.RightControl &&
                      key != KeyCode.LeftShift && key != KeyCode.RightShift))
                     return false;
@@ -380,7 +394,60 @@ namespace DCFApixels.SpriteEditor
                 return result;
             }
 
-            private void UpdateTransform(Vector2 point, bool constrain, bool disablePivotSnap)
+            private static float CanvasEdgeOffset(float value, float extent, float tolerance)
+            {
+                float offset = NearestCanvasEdgeOffset(value, extent);
+                return Mathf.Abs(offset) <= tolerance ? offset : 0f;
+            }
+
+            private static float NearestCanvasEdgeOffset(float value, float extent) =>
+                Mathf.Abs(value) <= Mathf.Abs(extent - value) ? -value : extent - value;
+
+            private Vector2 SnapMove(TextureTransform transform, bool horizontal, bool vertical)
+            {
+                Vector2 min = TransformPoint(Handles[0], transform, size);
+                Vector2 max = min;
+                for (int i = 2; i < Handles.Length; i += 2)
+                {
+                    Vector2 corner = TransformPoint(Handles[i], transform, size);
+                    min = Vector2.Min(min, corner);
+                    max = Vector2.Max(max, corner);
+                }
+                Vector2 tolerance = new Vector2(CanvasSnapDistance * size.x / gestureImageRect.width,
+                    CanvasSnapDistance * size.y / gestureImageRect.height);
+                Vector2 first = new Vector2(NearestCanvasEdgeOffset(min.x, size.x), NearestCanvasEdgeOffset(min.y, size.y));
+                Vector2 last = new Vector2(NearestCanvasEdgeOffset(max.x, size.x), NearestCanvasEdgeOffset(max.y, size.y));
+                Vector2 offset = new Vector2(Mathf.Abs(first.x) <= Mathf.Abs(last.x) ? first.x : last.x,
+                    Mathf.Abs(first.y) <= Mathf.Abs(last.y) ? first.y : last.y);
+                return new Vector2(horizontal && Mathf.Abs(offset.x) <= tolerance.x ? offset.x : 0f,
+                    vertical && Mathf.Abs(offset.y) <= tolerance.y ? offset.y : 0f);
+            }
+
+            private Vector2 SnapResize(Vector2 point, Vector2 direction, bool free)
+            {
+                Vector2 pixelsToPreview = new Vector2(gestureImageRect.width / size.x, gestureImageRect.height / size.y);
+                if (free)
+                    return point + new Vector2(CanvasEdgeOffset(point.x, size.x, CanvasSnapDistance / pixelsToPreview.x),
+                        CanvasEdgeOffset(point.y, size.y, CanvasSnapDistance / pixelsToPreview.y));
+
+                Vector2 result = point;
+                float nearest = CanvasSnapDistance * CanvasSnapDistance;
+                for (int axis = 0; axis < 2; axis++)
+                {
+                    if (Mathf.Abs(direction[axis]) < 0.00001f) continue;
+                    for (int edge = 0; edge < 2; edge++)
+                    {
+                        Vector2 offset = direction * ((edge * size[axis] - point[axis]) / direction[axis]);
+                        float distance = Vector2.Scale(offset, pixelsToPreview).sqrMagnitude;
+                        if (distance > nearest) continue;
+                        nearest = distance;
+                        result = point + offset;
+                    }
+                }
+                return result;
+            }
+
+            private void UpdateTransform(Vector2 point, bool constrain, bool disableSnap)
             {
                 ValidateSelection();
                 if (!IsDragging)
@@ -403,13 +470,17 @@ namespace DCFApixels.SpriteEditor
                         Vector2 localDelta = Rotate(delta, -original.rotation);
                         Vector2 pivotDelta = new Vector2(localDelta.x / original.scale.x, localDelta.y / original.scale.y);
                         next.pivot += new Vector2(pivotDelta.x / size.x, pivotDelta.y / size.y);
-                        if (!disablePivotSnap)
+                        if (!disableSnap)
                             next.pivot = SnapPivot(next.pivot, Vector2.Scale(original.pivot, size) + original.position + delta);
                         Vector2 actualPivotDelta = Vector2.Scale(next.pivot - original.pivot, size);
                         next.position += Rotate(Vector2.Scale(actualPivotDelta, original.scale), original.rotation) - actualPivotDelta;
                     }
                     else
+                    {
                         next.position += delta;
+                        if (!disableSnap)
+                            next.position += SnapMove(next, !constrain || delta.x != 0f, !constrain || delta.y != 0f);
+                    }
                 }
                 else if (handle == RotateHandle)
                 {
@@ -440,6 +511,31 @@ namespace DCFApixels.SpriteEditor
                         float ratio = x && (!y || Mathf.Abs(ratioX - 1f) >= Mathf.Abs(ratioY - 1f)) ? ratioX : ratioY;
                         next.scale = new Vector2(SafeScale(original.scale.x * ratio), SafeScale(original.scale.y * ratio));
                     }
+                    if (!disableSnap)
+                    {
+                        Vector2 span = Vector2.Scale(grip - anchor, size);
+                        Vector2 actualHandle = fixedPoint + Rotate(Vector2.Scale(span, next.scale), original.rotation);
+                        Vector2 direction = constrain
+                            ? Rotate(Vector2.Scale(span, original.scale), original.rotation)
+                            : Rotate(x ? Vector2.right : Vector2.up, original.rotation);
+                        Vector2 snapped = SnapResize(actualHandle, direction, x && y && !constrain);
+                        Vector2 snappedLocal = Rotate(snapped - fixedPoint, -original.rotation);
+                        if (constrain)
+                        {
+                            Vector2 originalSpan = Vector2.Scale(span, original.scale);
+                            float lengthSquared = originalSpan.sqrMagnitude;
+                            if (lengthSquared > 0.0000001f)
+                            {
+                                float ratio = Vector2.Dot(snappedLocal, originalSpan) / lengthSquared;
+                                next.scale = new Vector2(SafeScale(original.scale.x * ratio), SafeScale(original.scale.y * ratio));
+                            }
+                        }
+                        else
+                        {
+                            if (x) next.scale.x = SafeScale(snappedLocal.x / span.x);
+                            if (y) next.scale.y = SafeScale(snappedLocal.y / span.y);
+                        }
+                    }
                     Vector2 pivot = Vector2.Scale(original.pivot, size);
                     next.position = fixedPoint - pivot - Rotate(
                         Vector2.Scale(Vector2.Scale(anchor, size) - pivot, next.scale), original.rotation);
@@ -468,6 +564,7 @@ namespace DCFApixels.SpriteEditor
                     return;
                 UpdateTransform(evt.localPosition, evt.shiftKey, evt.ctrlKey);
                 End(false, true);
+                owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 evt.StopImmediatePropagation();
             }
 
@@ -504,6 +601,7 @@ namespace DCFApixels.SpriteEditor
                 layer = null;
                 undoGroup = -1;
                 owner.previewTransformOverlay?.MarkDirtyRepaint();
+                if (owner.previewTool == PreviewTool.Transform) owner.RefreshPreviewPointerCursor();
             }
 
             public void Draw(MeshGenerationContext context)

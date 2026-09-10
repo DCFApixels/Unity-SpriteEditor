@@ -153,6 +153,7 @@ namespace DCFApixels.SpriteEditor
             paintingShiftHeld = false;
             paintingLockedAxis = 0;
             ReleasePreview();
+            ReleaseEffectCache();
             CreateGUI();
             RequestPreview(true);
             Repaint();
@@ -216,7 +217,9 @@ namespace DCFApixels.SpriteEditor
             SpriteEditorUserSettings.Changed -= OnPreviewAppearanceChanged;
             ClearLayerDragData();
             ReleasePreview();
+            ReleaseEffectCache();
             toolkitPreviewCanvas?.ReleaseCheckerTexture();
+            toolkitPreviewCanvas?.ReleaseToolCursor();
         }
 
         private void OnFocus()
@@ -272,6 +275,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnLostFocus()
         {
+            ClearPreviewPointerCursor();
             areaSelectionManipulator?.Cancel();
             CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
@@ -355,6 +359,7 @@ namespace DCFApixels.SpriteEditor
 
         private void Update()
         {
+            RequestEffectRefinement();
             UpdateUnsavedChangesState();
             if (toolkitRefreshRequested)
                 RefreshToolkitInterface();
@@ -640,6 +645,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("Outline Layer"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
             menu.AddItem(new GUIContent("SDF Layer"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
             menu.AddItem(new GUIContent("Normal Map Layer"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
+            menu.AddItem(new GUIContent("Gaussian Blur Layer"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
             menu.ShowAsContext();
@@ -745,6 +751,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Gaussian Blur Layer"), false, () => AddInsideContextGroups(targets, () => new GaussianBlurLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
                 menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
             }
@@ -884,6 +891,9 @@ namespace DCFApixels.SpriteEditor
                 case NormalMapLayer normalMap:
                     NormalMapLayerEditorWindow.Open(normalMap, compositor);
                     break;
+                case GaussianBlurLayer gaussian:
+                    GaussianBlurLayerEditorWindow.Open(gaussian, compositor);
+                    break;
             }
         }
 
@@ -932,8 +942,10 @@ namespace DCFApixels.SpriteEditor
 
         private void RequestPreview(bool immediate = false)
         {
+            double requestedAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
+            if (!previewRequested || requestedAt < previewAt)
+                previewAt = requestedAt;
             previewRequested = true;
-            previewAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
         }
 
         private void UpdatePreview()
@@ -951,7 +963,10 @@ namespace DCFApixels.SpriteEditor
                 int maxSize = previewTool == PreviewTool.Pencil
                     ? Mathf.Max(compositor.width, compositor.height)
                     : paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
-                previewTexture = compositor.RenderPreview(maxSize);
+                previewEffectCache ??= new EffectRenderCache();
+                bool interactive = EffectsAreInteractive;
+                previewTexture = compositor.RenderCachedPreview(maxSize, previewEffectCache, interactive, paintingLayer);
+                effectRefinementPending = interactive;
                 ApplyPreviewTextureFilter();
                 UpdateChannelPreview();
             }
@@ -1013,6 +1028,7 @@ namespace DCFApixels.SpriteEditor
             ClearLayerDragData();
             lineAnchorLayer = null;
             TextureCompositor previous = compositor;
+            ReleaseEffectCache();
             ResetAreaSelection();
             compositor = next;
             compositor.NormalizeModel();
@@ -1153,6 +1169,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
+            effectInteractiveUntil = EditorApplication.timeSinceStartup + .2d;
             UpdateUnsavedChangesState();
             RequestPreview();
             if (!applyingToolkitChange)
@@ -1164,6 +1181,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnUndoRedo()
         {
+            ReleaseEffectCache();
             ResetOpacityEntry();
             previewTransformManipulator?.End(false, false);
             if (compositor == null)

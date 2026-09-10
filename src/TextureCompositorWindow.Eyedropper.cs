@@ -109,15 +109,13 @@ namespace DCFApixels.SpriteEditor
             {
                 if (pointerId >= 0)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
                 if (!evt.altKey || evt.button != 0 || !owner.CanUsePreviewEyedropper ||
                     owner.compositor == null || owner.paintingLayer != null ||
                     !owner.PreviewContainsPaintPoint(evt.localPosition)) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 owner.Focus();
                 target.Focus();
                 try
@@ -143,8 +141,7 @@ namespace DCFApixels.SpriteEditor
             private void OnMove(PointerMoveEvent evt)
             {
                 if (pointerId < 0 || evt.pointerId != pointerId) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 if ((evt.pressedButtons & 1) == 0) Cancel();
                 else if (evt.altKey)
                 {
@@ -157,8 +154,7 @@ namespace DCFApixels.SpriteEditor
             private void OnUp(PointerUpEvent evt)
             {
                 if (evt.pointerId != pointerId || evt.button != 0) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 try { if (evt.altKey) Sample(evt.localPosition); }
                 finally { Cancel(); }
                 owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);

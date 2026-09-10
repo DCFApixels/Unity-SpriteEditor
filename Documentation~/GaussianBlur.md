@@ -1,0 +1,75 @@
+# Gaussian Blur and effect caching
+
+Gaussian Blur is a nondestructive targeted effect layer. Its source is the next sibling below it
+(Previous) or a specific layer/group. The source's visibility does not prevent sampling; hidden
+children inside a group remain excluded. Cycles are rejected as with other effect layers.
+
+## Parameters and rendering
+
+- **Radius:** 0–256 original canvas pixels, default 8. This is the finite kernel extent,
+  with sigma equal to radius / 3 (a minimum sigma of 1/3 pixel for nonzero subpixel radii).
+  Zero bypasses filtering. Preview scaling adjusts the radius, not the document setting.
+- **Edges:** Transparent, Clamp, Repeat or Mirror; default Transparent. These address the source
+  canvas boundary independently of tiled viewing and the effect's output Transform.
+- **Color:** straight RGBA is premultiplied before filtering and unpremultiplied afterwards.
+  Transparent RGB cannot contaminate visible edges. Filtering is linear and floating point;
+  the layer's Standard/HDR range still controls final saturation.
+
+Full quality uses horizontal and vertical normalized Gaussian convolutions. Adjacent weights are
+paired through bilinear sampling, with explicit edge interpolation for seamless Repeat/Mirror.
+The original data and source dimensions do not change.
+
+The main window uses interactive quality during painting, on-canvas transforms and a short settling
+period after parameter changes. Kernels above 24 preview pixels reduce the working image in powers
+of two, up to 16x per axis where dimensions permit. Filtered reduction and a variance adjustment
+keep the approximation close to the final blur. Quality refinement follows the end of interaction.
+It is still synchronous GPU work, not a promise of a stall-free final render at every canvas size.
+Preview resolution follows existing Live Quality rules. Full-quality preview is not necessarily
+full canvas resolution; saves, exports and rasterization use the original output dimensions.
+
+## Group sources
+
+An effect sees the group's own isolated composition on transparency, including internal blends,
+opacity, swizzle and clipping. The group's role in the main composition is unchanged: Pass Through
+children can still interact with the external backdrop there. The effect does not sample that backdrop.
+Group transforms and modifiers remain unsupported, as before.
+
+Outline and SDF retain their established grayscale-coverage group source, including when SDF selects
+a non-alpha channel. Normal Map and Gaussian Blur request RGBA. Both source representations use the
+same composite alpha, so adding a color consumer does not change an existing Outline/SDF result.
+
+## Cache ownership and memory
+
+The main window owns a 256 MiB LRU budget shared by effect outputs, group sources and their diagnostic
+masks. Entries are created on demand. Groups with only coverage consumers retain an RFloat source
+(ARGBHalf fallback); a reachable color consumer promotes the shared source to RGBAHalf. Coverage
+consumers extract alpha from that RGBA entry. Intermediate color buffers can still be required to
+compute coverage correctly, especially for color-to-alpha swizzle; the alpha cache saves retained
+memory, not necessarily all temporary rendering memory.
+
+After the last color consumer disappears, RGBA may remain until replacement/eviction. Entries with
+no effect consumers are removed on the next preview. Oversized entries are rendered without storage.
+The budget covers retained cache textures, not the canvas, preview, temporary blur buffers, CPU
+readbacks, driver overhead or Unity Undo storage. No CPU image copies are retained by this cache.
+Returning a cached source uses a temporary GPU copy to preserve existing renderer ownership rules.
+
+Dependency fingerprints include serialized settings, group descendants, targeted/clipping inputs,
+texture update/dirty counters and live painting frames. Fingerprints are memoized within a render.
+Resolution, scale and interactive quality must match. Undo invalidates the window cache; changing
+documents, closing the window or reloading scripts releases it. Source-less cycles cannot hit a
+cached image. Arbitrary Material/Shader FX and their dependents bypass caching because they may
+read time or external resources not represented by the layer model.
+
+Numeric-error masks are captured locally with each entry and accumulated again on cache hits.
+Neither the cache nor its masks are serialized, saved into compositor assets, or registered with
+Undo. Gaussian changes record settings through the existing Undo path. Drawing pixel history is
+unchanged; no changed-tile Undo storage is introduced.
+
+Ordinary composite renders outside the main window share a short-lived cache for that render only.
+Direct per-layer Properties/raster/PSD renders use full quality without the persistent window cache.
+The cache is an optimization: cold, warm and evicted results must match at the same quality.
+
+## Validation
+
+After manually compiling in Unity, run the opt-in checks described in
+[Gaussian Blur tests](../Tests~/GaussianBlur.md). No build or automatic project compilation is needed.

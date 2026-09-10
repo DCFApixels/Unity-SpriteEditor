@@ -288,7 +288,28 @@
     visibility: hidden;
 }
 
+.sprite-editor-preview-canvas.sprite-editor-preview-cursor--pan {
+    cursor: pan;
+}
+
+.sprite-editor-preview-canvas.sprite-editor-preview-cursor--zoom {
+    cursor: zoom;
+}
+
+.sprite-editor-preview-canvas.sprite-editor-preview-cursor--scale {
+    cursor: scale-arrow;
+}
+
+.sprite-editor-preview-canvas.sprite-editor-preview-cursor--rotate {
+    cursor: rotate-arrow;
+}
+
+.sprite-editor-preview-canvas.sprite-editor-preview-cursor--move {
+    cursor: move-arrow;
+}
+
 .sprite-editor-preview-canvas {
+    cursor: arrow;
     overflow: hidden;
 }
 
@@ -1118,4 +1139,35 @@
 
 .sprite-editor-user-settings-reset {
     align-self: flex-start;
+}
+.sprite-editor-normal-map-simple .sprite-editor-normal-map-advanced,
+.sprite-editor-normal-map-hidden {
+    display: none;
+}
+
+.sprite-editor-normal-map-heading {
+    -unity-font-style: bold;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(128, 128, 128, 0.3);
+}
+
+.sprite-editor-normal-map-hint {
+    white-space: normal;
+    opacity: 0.7;
+    margin-bottom: 4px;
+}
+
+.sprite-editor-normal-map-notice {
+    -unity-text-align: middle-left;
+    white-space: normal;
+    background-color: transparent;
+    border-width: 0;
+    opacity: 0.7;
+}
+
+.sprite-editor-normal-map-notice:hover {
+    opacity: 1;
 }

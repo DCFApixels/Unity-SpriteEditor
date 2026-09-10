@@ -180,8 +180,7 @@ namespace DCFApixels.SpriteEditor
                 ((evt.keyCode == KeyCode.Z && evt.shiftKey) || (evt.keyCode == KeyCode.Y && !evt.shiftKey));
             if (undo || redo)
             {
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 PerformHistory(redo);
                 return;
             }
@@ -198,16 +197,14 @@ namespace DCFApixels.SpriteEditor
         {
             if (evt.commandName != "Undo" && evt.commandName != "Redo")
                 return;
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
 
         private void OnExecuteCommand(ExecuteCommandEvent evt)
         {
             if (evt.commandName == "Undo" || evt.commandName == "Redo")
             {
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 PerformHistory(evt.commandName == "Redo");
                 return;
             }

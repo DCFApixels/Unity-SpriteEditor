@@ -46,7 +46,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (!owner.IsAreaSelectionTool || owner.compositor == null ||
                     !target.contentRect.Contains(evt.localPosition) || (evt.button != 0 && evt.button != 1)) return;
-                evt.PreventDefault(); evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 owner.Focus(); target.Focus();
                 if (evt.button == 1) { RemoveVertex(); return; }
                 if (!HasGesture)
@@ -88,7 +88,7 @@ namespace DCFApixels.SpriteEditor
                 Cancel();
                 if (!click) owner.ChangeAreaSelection(s => s.Rectangle(a, b, operation, tiled));
                 else if (operation == SelectionCombine.Replace) owner.ChangeAreaSelection(s => s.Clear());
-                evt.PreventDefault(); evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
             }
             internal void CompletePolygon()
             {

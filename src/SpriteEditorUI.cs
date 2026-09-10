@@ -11,6 +11,13 @@ namespace DCFApixels.SpriteEditor
     {
         private static StyleSheet splitViewStyles;
 
+        internal static void ConsumeEvent(EventBase evt)
+        {
+            var element = evt.currentTarget as VisualElement ?? evt.target as VisualElement;
+            element?.panel?.focusController?.IgnoreEvent(evt);
+            evt.StopImmediatePropagation();
+        }
+
         internal static bool ApplyWindowStyles(VisualElement root)
         {
             if (splitViewStyles == null)

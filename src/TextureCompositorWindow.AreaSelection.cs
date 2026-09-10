@@ -110,12 +110,12 @@ namespace DCFApixels.SpriteEditor
         private void ValidateAreaCommand(ValidateCommandEvent evt)
         {
             if (!CanHandleAreaCommand(evt.commandName, evt.target as VisualElement)) return;
-            evt.PreventDefault(); evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
         }
         private void ExecuteAreaCommand(ExecuteCommandEvent evt)
         {
             if (!CanHandleAreaCommand(evt.commandName, evt.target as VisualElement)) return;
-            evt.PreventDefault(); evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             if (evt.commandName == "Copy") CopyAreaSelection(false);
             else if (evt.commandName == "Paste") PasteAreaSelection();
             else ChangeAreaSelection(s => s.All());
@@ -170,7 +170,7 @@ namespace DCFApixels.SpriteEditor
                 else return false;
             }
             else return false;
-            evt.PreventDefault(); evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             return true;
         }
         private bool TrySelectLayerAlpha(VisualElement row, Layer layer, PointerDownEvent evt)
@@ -194,7 +194,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 finally { if (rendered != null) DestroyImmediate(rendered); }
             });
-            evt.PreventDefault(); evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             return true;
         }
         private void CopyAreaSelection(bool merged)

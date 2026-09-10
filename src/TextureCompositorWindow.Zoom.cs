@@ -20,6 +20,7 @@ namespace DCFApixels.SpriteEditor
             {
                 RefreshPreviewZoomReadout();
                 RefreshPreviewTransformTool();
+                RefreshPreviewPointerCursor();
             };
         }
 
@@ -113,19 +114,23 @@ namespace DCFApixels.SpriteEditor
                 pointerId = -1;
                 if (captured >= 0 && target.HasPointerCapture(captured)) target.ReleasePointer(captured);
                 selection.MarkDirtyRepaint();
+                if (captured >= 0) owner.RefreshPreviewPointerCursor();
             }
 
             private void OnCaptureOut(PointerCaptureOutEvent evt) { if (evt.pointerId == pointerId) Cancel(); }
             private void OnCancel(PointerCancelEvent evt) { if (evt.pointerId == pointerId) Cancel(); }
-            private void OnDetach(DetachFromPanelEvent evt) => Cancel();
+            private void OnDetach(DetachFromPanelEvent evt)
+            {
+                owner.ClearPreviewPointerCursor();
+                Cancel();
+            }
             private void OnGeometry(GeometryChangedEvent evt) => Cancel();
 
             private void OnDown(PointerDownEvent evt)
             {
                 if (IsDragging)
                 {
-                    evt.PreventDefault();
-                    evt.StopImmediatePropagation();
+                    SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
                 if (owner.compositor == null || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
@@ -140,9 +145,8 @@ namespace DCFApixels.SpriteEditor
                 zoomOut = evt.altKey;
                 pointerId = evt.pointerId;
                 target.CapturePointer(pointerId);
-                owner.toolkitPreviewCanvas.SetCursor(false, default, false);
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
+                SpriteEditorUI.ConsumeEvent(evt);
             }
 
             private void OnWheel(WheelEvent evt)
@@ -150,8 +154,7 @@ namespace DCFApixels.SpriteEditor
                 Vector2 point = target.WorldToLocal(evt.mousePosition);
                 if (owner.compositor == null || !target.contentRect.Contains(point) || evt.delta.y == 0f ||
                     float.IsNaN(evt.delta.y) || float.IsInfinity(evt.delta.y)) return;
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 if (IsDragging && !panning) Cancel();
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
@@ -174,6 +177,7 @@ namespace DCFApixels.SpriteEditor
                 Vector2 point = evt.localPosition;
                 if (panning) owner.toolkitPreviewCanvas.Pan(point - current);
                 current = point;
+                owner.UpdatePreviewCursor(point, evt.altKey);
                 selection.MarkDirtyRepaint();
                 evt.StopImmediatePropagation();
             }
@@ -199,8 +203,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 Cancel();
                 owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
             }
 
             private Rect SelectionRect()

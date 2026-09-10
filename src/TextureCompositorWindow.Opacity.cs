@@ -32,8 +32,7 @@ namespace DCFApixels.SpriteEditor
                 return false;
             if (evt.keyCode == KeyCode.None && evt.character >= '0' && evt.character <= '9')
             {
-                evt.PreventDefault();
-                evt.StopImmediatePropagation();
+                SpriteEditorUI.ConsumeEvent(evt);
                 return true;
             }
             int digit;
@@ -69,8 +68,7 @@ namespace DCFApixels.SpriteEditor
                 opacityDigitValue = layer.opacity;
                 opacityUndoGroup = group;
             }
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             return true;
         }
     }

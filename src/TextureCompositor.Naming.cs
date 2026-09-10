@@ -29,6 +29,7 @@ namespace DCFApixels.SpriteEditor
                 case OutlineLayer _: return "Outline";
                 case SDFLayer _: return "SDF";
                 case NormalMapLayer _: return "Normal Map";
+                case GaussianBlurLayer _: return "Gaussian Blur";
                 default: return ObjectNames.NicifyVariableName(layer.GetType().Name);
             }
         }

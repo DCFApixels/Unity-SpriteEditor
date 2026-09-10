@@ -390,11 +390,18 @@ namespace DCFApixels.SpriteEditor
 
         private RenderTexture RenderComposite(int outputWidth, int outputHeight, float scaleMultiplier)
         {
+            EffectRenderCache localCache = null;
+            if (effectCache == null)
+            {
+                localCache = effectCache = new EffectRenderCache();
+            }
             RenderTexture previous = RenderTexture.active;
-            BeginDiagnostics(outputWidth, outputHeight);
-            RenderTexture accumulator = GetClearRenderTexture(outputWidth, outputHeight);
+            RenderTexture accumulator = null;
             try
             {
+                localCache?.BeginFrame(this);
+                BeginDiagnostics(outputWidth, outputHeight);
+                accumulator = GetClearRenderTexture(outputWidth, outputHeight);
                 CompositeLayers(
                     layers,
                     ref accumulator,
@@ -408,13 +415,14 @@ namespace DCFApixels.SpriteEditor
             catch
             {
                 RenderTexture.active = previous;
-                RenderTexture.ReleaseTemporary(accumulator);
+                if (accumulator != null) RenderTexture.ReleaseTemporary(accumulator);
                 ReleaseDiagnostics();
                 throw;
             }
             finally
             {
                 RenderTexture.active = previous;
+                if (localCache != null) { localCache.Dispose(); effectCache = null; }
             }
         }
 
@@ -501,7 +509,7 @@ namespace DCFApixels.SpriteEditor
             finally { RenderTexture.ReleaseTemporary(content); }
         }
 
-        private RenderTexture RenderStandalone(
+        private RenderTexture RenderStandaloneUncached(
             List<Layer> container,
             int index,
             int outputWidth,
@@ -585,7 +593,7 @@ namespace DCFApixels.SpriteEditor
                     outputWidth,
                     outputHeight,
                     scaleMultiplier,
-                    renderStack, effect is NormalMapLayer);
+                    renderStack, effect is NormalMapLayer || effect is GaussianBlurLayer);
             }
 
             Layer target = FindLayer(effect.TargetLayerId);
@@ -595,7 +603,7 @@ namespace DCFApixels.SpriteEditor
 
             if (target is GroupLayer group)
                 return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
-                    effect is NormalMapLayer, includeDisabled: true);
+                    effect is NormalMapLayer || effect is GaussianBlurLayer, includeDisabled: true);
             if (!TryFindLayer(target, out List<Layer> targetContainer, out int targetIndex))
                 return null;
 
@@ -642,7 +650,7 @@ namespace DCFApixels.SpriteEditor
             GroupLayer group, int outputWidth, int outputHeight, float scaleMultiplier,
             HashSet<Layer> renderStack) => RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, false);
 
-        private RenderTexture RenderGroupEffectInput(
+        private RenderTexture RenderGroupEffectInputUncached(
             GroupLayer group,
             int outputWidth,
             int outputHeight,

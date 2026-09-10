@@ -2,7 +2,27 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
-## [Unreleased]
+## [0.7.2] - 2026-09-10
+
+### Added
+
+- Transform move and resize gestures lightly snap to canvas edges at a zoom-independent screen distance; hold Ctrl to bypass snapping while preserving Shift constraints.
+- Gaussian Blur effect layer with Previous/Specific layer or isolated group sources, a pixel radius, Transparent/Clamp/Repeat/Mirror edges, alpha-correct linear HDR filtering, Properties and agent API support.
+- Adaptive reduced-resolution Gaussian preview while editing, followed by full-quality preview refinement; saving, rasterization and exports use the full-quality algorithm.
+- Window-local, budgeted effect/source caching with alpha-only group storage, shared RGBA promotion, dependency invalidation and cached numeric-error masks. Derived textures never enter document serialization or Undo.
+
+### Changed
+
+- Preview cursors now match the active tool: outline-only Brush/Pencil, standard arrows for Fill/selection, a zoom cursor for Zoom and a hand for Transform or middle-button panning. Cursor changes remain local to the preview.
+- Transform handles show scale, rotation or pivot-move cursors in their existing hit areas and retain the action cursor throughout a drag; the rest of the preview keeps the hand cursor.
+- Pending preview requests are throttled rather than postponed by every settings change, allowing continuous slider previews.
+- Normal Map settings now offer Simple/Advanced views, semantic sections, generation guidance and an indication of modified hidden settings, without changing render parameters or Undo.
+
+### Fixed
+
+- Layer table headers stay above the scrolling list and remain aligned when the scrollbar appears.
+- Clipping-mask indicators now point downward toward the base layer.
+- Replaced obsolete UI Toolkit event cancellation calls with propagation and focus handling for consumed editor gestures, commands and shortcuts.
 
 ## [0.7.1] - 2026-09-10
 

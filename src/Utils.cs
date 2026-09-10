@@ -281,6 +281,8 @@ namespace DCFApixels.SpriteEditor
         private static Material previewChannelsMaterial;
         private static Material hdrMaterial;
         private static Material normalMapMaterial;
+        private static Material gaussianBlurMaterial;
+        private static Material effectCacheMaterial;
 
         static SpriteEditorMaterials()
         {
@@ -291,6 +293,8 @@ namespace DCFApixels.SpriteEditor
         public static Material Blend => GetOrCreate(ref blendMaterial, "Hidden/TextureCompositor/Blend");
         public static Material Hdr => GetOrCreate(ref hdrMaterial, "Hidden/TextureCompositor/Hdr");
         public static Material NormalMap => GetOrCreate(ref normalMapMaterial, "Hidden/TextureCompositor/NormalMap");
+        public static Material GaussianBlur => GetOrCreate(ref gaussianBlurMaterial, "Hidden/TextureCompositor/GaussianBlur");
+        public static Material EffectCache => GetOrCreate(ref effectCacheMaterial, "Hidden/TextureCompositor/EffectCache");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
         public static Material PreviewChannels => GetOrCreate(ref previewChannelsMaterial, "Hidden/TextureCompositor/PreviewChannels");
@@ -319,6 +323,10 @@ namespace DCFApixels.SpriteEditor
 
         private static void Dispose()
         {
+            if (gaussianBlurMaterial != null) UnityEngine.Object.DestroyImmediate(gaussianBlurMaterial);
+            gaussianBlurMaterial = null;
+            if (effectCacheMaterial != null) UnityEngine.Object.DestroyImmediate(effectCacheMaterial);
+            effectCacheMaterial = null;
             if (normalMapMaterial != null) UnityEngine.Object.DestroyImmediate(normalMapMaterial);
             normalMapMaterial = null;
             if (hdrMaterial != null) UnityEngine.Object.DestroyImmediate(hdrMaterial);

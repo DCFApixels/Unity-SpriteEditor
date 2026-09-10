@@ -98,8 +98,7 @@ namespace DCFApixels.SpriteEditor
                 !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
                 return false;
 
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             if (conversionPromptOpen) return true;
             conversionPromptOpen = true;
             try

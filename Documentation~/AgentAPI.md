@@ -134,13 +134,13 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`, `gaussianBlur`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
 - `move`: `index` is the insertion index **after removal** from the old container; omitted parent
   or `parent:""` moves to root. A group cannot move into itself or its descendants.
-- `target`: SDF/Outline/Normal Map only; default input Specific. Previous means the next sibling below the effect.
+- `target`: effect layers (SDF/Outline/Normal Map/Gaussian Blur); default input Specific. Previous means the next sibling below the effect.
   Specific targets can be groups, but cannot create a dependency cycle.
 - `stroke`: Drawing only, detailed below.
 
@@ -157,6 +157,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`) |
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
+| Gaussian Blur | `gaussianBlur`: `{ "radius": 8, "edges": "Transparent" }`; radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
@@ -193,6 +194,26 @@ The render command writes a clamped PNG copy. See [HDR behavior](HDR.md).
 Other settings of existing layers and all existing FX are preserved. API v1 does not author Shader FX,
 delete layers, duplicate/rasterize layers, resize an existing canvas or change gradient geometry.
 These remain available in the window. Use `enabled:false` to hide an unwanted layer non-destructively.
+
+### Gaussian Blur settings
+
+Use `type:"gaussianBlur"` and partial `settings.gaussianBlur` updates. `describe` exposes
+`gaussianBlurDefaults`; `inspect` returns both parameters. Protocol version remains 1.
+
+```json
+{"op":"add","type":"gaussianBlur","as":"blur","settings":{
+  "colorRange":"HDR","gaussianBlur":{"radius":32,"edges":"Repeat"}
+}}
+```
+
+Assign a stable source ID (or batch alias) with
+`{"op":"target","layer":"@blur","input":"Specific","target":"@source"}`.
+Radius is the finite kernel extent (three standard deviations) in original canvas pixels;
+0 bypasses filtering. Sources may be hidden. Groups are sampled against transparency without
+changing their Pass Through setting. Layer Transform, swizzle, clipping, opacity and blend settings
+apply normally to the effect. API rendering/saving uses the full-quality algorithm, never the main
+window's interactive approximation. Export to PSD rasterizes this effect.
+See [Gaussian Blur](GaussianBlur.md) for transparency, HDR and cache behavior.
 
 ### Normal Map settings
 

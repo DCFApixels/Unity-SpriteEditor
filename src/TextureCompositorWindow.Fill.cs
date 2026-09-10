@@ -75,8 +75,7 @@ namespace DCFApixels.SpriteEditor
             if (!IsPreviewFillEnabled || evt.button != 0 || evt.altKey || compositor == null)
                 return false;
             if (!PreviewContainsPaintPoint(evt.localPosition)) return false;
-            evt.PreventDefault();
-            evt.StopImmediatePropagation();
+            SpriteEditorUI.ConsumeEvent(evt);
             Focus();
             toolkitPreviewCanvas.Focus();
             DrawingLayer layer = (DrawingLayer)GetSelectedLayer();
