@@ -13,11 +13,11 @@ const text = file => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 const decode = value => value.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 const ignored = new Set(['.git', '.bundle', '.jekyll-cache', '.sass-cache', 'vendor', '_site']);
 
-function filesUnder(directory) {
+function filesUnder(directory, exclusions = ignored) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    if (ignored.has(entry.name)) return [];
+    if (exclusions.has(entry.name)) return [];
     const file = path.join(directory, entry.name);
-    return entry.isDirectory() ? filesUnder(file) : [file];
+    return entry.isDirectory() ? filesUnder(file, exclusions) : [file];
   });
 }
 
@@ -74,7 +74,7 @@ function checkSource() {
 function checkSite() {
   const output = path.join(source, '_site');
   if (!fs.existsSync(output)) throw new Error('Build the Jekyll site first.');
-  const htmlFiles = filesUnder(output).filter(file => file.endsWith('.html'));
+  const htmlFiles = filesUnder(output, new Set()).filter(file => file.endsWith('.html'));
   const baseurl = text(path.join(source, '_config.yml')).match(/^baseurl:\s*(.*)$/m)[1].trim();
   const origin = 'https://docs.invalid';
   const anchorCache = new Map();
@@ -101,7 +101,7 @@ function checkSite() {
   }
   const search = JSON.parse(text(path.join(output, 'assets/js/search-data.json')));
   const entries = Object.values(search);
-  const lunrFile = filesUnder(path.join(output, 'assets/js')).find(file => /lunr(?:\.min)?\.js$/.test(file));
+  const lunrFile = filesUnder(path.join(output, 'assets/js'), new Set()).find(file => /lunr(?:\.min)?\.js$/.test(file));
   if (!lunrFile) throw new Error('Generated Lunr library is missing.');
   const context = vm.createContext({ console });
   vm.runInContext(text(lunrFile), context);
