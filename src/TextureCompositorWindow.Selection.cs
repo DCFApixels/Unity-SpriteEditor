@@ -316,7 +316,7 @@ namespace DCFApixels.SpriteEditor
             footerDropTarget = null;
         }
 
-        private enum LayerFooterDropAction { Group, Delete, Duplicate }
+        private enum LayerFooterDropAction { Group, Delete, Duplicate, MergeCopy }
 
         private sealed class LayerFooterDropManipulator : PointerManipulator
         {
@@ -364,7 +364,8 @@ namespace DCFApixels.SpriteEditor
                 owner.ClearToolkitDropIndicator();
                 bool valid = TryGetLayers(out _);
                 DragAndDrop.visualMode = !valid ? DragAndDropVisualMode.Rejected :
-                    action == LayerFooterDropAction.Duplicate ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Move;
+                    action == LayerFooterDropAction.Duplicate || action == LayerFooterDropAction.MergeCopy
+                        ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Move;
                 owner.ClearFooterDropIndicator();
                 if (valid)
                 {
@@ -391,6 +392,8 @@ namespace DCFApixels.SpriteEditor
                 {
                     if (action == LayerFooterDropAction.Duplicate)
                         owner.DuplicateLayers(layers);
+                    else if (action == LayerFooterDropAction.MergeCopy)
+                        owner.MergeSelectedLayers(layers, keepSources: true);
                     else if (action == LayerFooterDropAction.Delete)
                         owner.DeleteLayers(layers);
                     else

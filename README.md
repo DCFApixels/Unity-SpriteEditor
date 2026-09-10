@@ -178,12 +178,29 @@ Unity settings or docking.
 <a id="layers"></a>
 ## Layers & groups
 
-**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Gaussian Blur · Shader Processor · Group.
+**Layer types:** File · Drawing · Color Fill · Gradient · Noise · Outline · SDF · Normal Map · Gaussian Blur · Shader Processor · Group.
 
 Drag textures from Project into Layers to place them between rows or inside a group.
 Dropping onto the Preview adds File layers at the top of the root list.
 The first texture assigned to an empty File layer gets **Original Aspect** automatically;
 replacing an existing source keeps its transform. Source assets are not modified.
+
+### Procedural noise
+
+Add **Noise Layer** for GPU-generated OpenSimplex2, OpenSimplex2S, Perlin, Value, Value Cubic or Cellular noise.
+Drag the **Scale**, **Offset** and other numeric labels, or use the sliders: the preview updates during editing,
+without rebuilding the settings panel or waiting for the gesture to finish. Seed, fractals and Domain Warp
+are stored as parameters, not full-size pixel snapshots.
+
+**Scale** is measured across the shorter canvas side; higher values give finer detail. **Offset** uses noise-space
+units. **Color Values** outputs display-oriented grayscale; **Linear Data** preserves raw 0–1 values for masks,
+height maps and channel packing. RGB contains the same scalar value and alpha is 1; use Swizzle and blending
+for channel assignment. Transform, clipping and Shader FX remain available.
+
+Generation runs directly at the requested render resolution. The existing normal preview limit is 512 px;
+full-resolution export uses the same coordinates and seed. There is no new low/high-resolution refinement stage
+or background animation. Ordinary tiled preview repeats the result; noise is not inherently seamless.
+Powered by FastNoiseLite HLSL; see [third-party notices](ThirdPartyNotices.md).
 
 ### Selection and organization
 
@@ -200,6 +217,7 @@ or use the footer:
 | Footer icon | Click | Drop selected layers |
 | :--- | :--- | :--- |
 | **+** | Add a layer. | Duplicate the selection. |
+| **Page +** | Create an empty Drawing layer above the active layer. | Merge the dragged layers/groups into a new Drawing layer, keeping the originals. |
 | **Folder** | Group selected layers. | Group the dragged selection. |
 | **Trash** | Delete selected layers. | Delete the dragged selection. |
 
@@ -274,7 +292,7 @@ results can change as with other partial merges.
 <summary>Layer names, opacity, and duplication details</summary>
 
 Each type has an independent document-local name counter: `Layer n` for Drawing, `File n`,
-`Color Fill n`, `Gradient n`, `Outline n`, `SDF n`, `Normal Map n`, `Gaussian Blur n`, and `Group n`.
+`Color Fill n`, `Gradient n`, `Noise n`, `Outline n`, `SDF n`, `Normal Map n`, `Gaussian Blur n`, and `Group n`.
 Duplicates retain the full name and append ` Copy n`, using a separate shared copy counter.
 Deleted numbers are not reused.
 

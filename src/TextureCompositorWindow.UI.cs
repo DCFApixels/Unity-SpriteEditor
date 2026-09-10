@@ -468,18 +468,26 @@ namespace DCFApixels.SpriteEditor
             toolkitLayerFooter.Clear();
             Button add = CreateLayerActionButton(
                 LayerActionIcon.Kind.Add, "Add layer. Drop layers here to duplicate them.", ShowAddMenuForSelection);
+            Button drawing = CreateLayerActionButton(
+                LayerActionIcon.Kind.AddDrawing,
+                "New Drawing Layer. Drop layers or groups here to create a merged Drawing copy; originals are kept.",
+                AddDrawingLayerForSelection);
+            drawing.name = "spriteEditorAddDrawingLayer";
             Button group = CreateLayerActionButton(
                 LayerActionIcon.Kind.Group, "Group selected layers", GroupSelectedLayer);
             Button delete = CreateLayerActionButton(
                 LayerActionIcon.Kind.Delete, "Delete selected layers", DeleteSelectedLayers);
+            drawing.AddToClassList("sprite-editor-layer-action--separated");
             group.AddToClassList("sprite-editor-layer-action--separated");
             delete.AddToClassList("sprite-editor-layer-action--separated");
             group.tooltip = "Group selected layers. You can also drop layers here.";
             delete.tooltip = "Delete selected layers. You can also drop layers here.";
             add.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Duplicate));
+            drawing.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.MergeCopy));
             group.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Group));
             delete.AddManipulator(new LayerFooterDropManipulator(this, LayerFooterDropAction.Delete));
             toolkitLayerFooter.Add(add);
+            toolkitLayerFooter.Add(drawing);
             toolkitLayerFooter.Add(group);
             toolkitLayerFooter.Add(delete);
             toolkitSettingsBindings.Add(() =>

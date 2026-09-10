@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     internal sealed class LayerActionIcon : VisualElement
     {
-        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha }
+        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha, AddDrawing }
 
         private readonly Kind kind;
 
@@ -45,6 +45,25 @@ namespace DCFApixels.SpriteEditor
                     painter.LineTo(new Vector2(8f, 13f));
                     painter.MoveTo(new Vector2(3f, 8f));
                     painter.LineTo(new Vector2(13f, 8f));
+                    break;
+                case Kind.AddDrawing:
+                    painter.lineWidth = 1.25f;
+                    painter.MoveTo(new Vector2(6f, 14f));
+                    painter.LineTo(new Vector2(2f, 14f));
+                    painter.LineTo(new Vector2(2f, 2f));
+                    painter.LineTo(new Vector2(10f, 2f));
+                    painter.LineTo(new Vector2(14f, 6f));
+                    painter.LineTo(new Vector2(14f, 7f));
+                    painter.MoveTo(new Vector2(10f, 2f));
+                    painter.LineTo(new Vector2(10f, 6f));
+                    painter.LineTo(new Vector2(14f, 6f));
+                    painter.Stroke();
+                    painter.lineWidth = 1.5f;
+                    painter.BeginPath();
+                    painter.MoveTo(new Vector2(11f, 8f));
+                    painter.LineTo(new Vector2(11f, 14f));
+                    painter.MoveTo(new Vector2(8f, 11f));
+                    painter.LineTo(new Vector2(14f, 11f));
                     break;
                 case Kind.Group:
                     painter.MoveTo(new Vector2(2f, 13f));

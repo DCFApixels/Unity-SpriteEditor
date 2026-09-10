@@ -90,6 +90,9 @@ namespace DCFApixels.SpriteEditor
                 case GradientLayer gradient:
                     GradientLayerEditorWindow.BuildFields(root, gradient, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;
+                case NoiseLayer noise:
+                    NoiseLayerEditorWindow.BuildFields(root, noise, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                    break;
                 case OutlineLayer outline:
                     OutlineLayerEditorWindow.BuildFields(root, outline, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);

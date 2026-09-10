@@ -134,7 +134,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `shaderProcessor`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
@@ -157,6 +157,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`) |
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
+| Noise | `noise`: partial procedural settings object described below |
 | Gaussian Blur | `gaussianBlur`: `{ "radius": 8, "edges": "Transparent" }`; radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
@@ -204,6 +205,44 @@ the external backdrop; isolated groups limit its scope. Processor is a clipping-
 The API can create/reorder it and edit its common settings, transform and Swizzle; it cannot author
 its Shader FX code in protocol v1. Add/edit FX through the window. No special target is assigned.
 Post FX is window-local presentation state and never changes API rendering, sampling or export.
+
+### Noise settings
+
+Use `type:"noise"` with partial `settings.noise` updates. `describe` exposes `noiseDefaults`,
+`noiseTypes`, `noiseFractals`, `noiseCellularDistances`, `noiseCellularReturns`, `noiseWarps`
+and `noiseEncodings`. `inspect` returns all generator parameters. No new operation or protocol version is required.
+
+```json
+{"op":"add","type":"noise","as":"height","settings":{"noise":{
+  "noiseType":"OpenSimplex2","seed":1337,"scale":8,"offset":[0,0],
+  "fractal":"FBm","octaves":3,"lacunarity":2,"gain":0.5,"encoding":"LinearData"
+}}}
+```
+
+| Setting | Values / limits |
+| :--- | :--- |
+| `noiseType` | OpenSimplex2, OpenSimplex2S, Cellular, Perlin, ValueCubic, Value |
+| `seed` | Signed 32-bit integer; passed to the shader as an integer, not a float |
+| `scale` | 0.01–1000 noise-space units across the shorter canvas side |
+| `offset` | `[x,y]`, each −10000–10000 noise-space units |
+| `fractal` | None, FBm, Ridged, PingPong |
+| `octaves`, `lacunarity`, `gain` | Integer 1–8; 1–4; 0–1 |
+| `weightedStrength`, `pingPongStrength` | 0–1; 0.01–8 |
+| `cellularDistance` | Euclidean, EuclideanSquared, Manhattan, Hybrid |
+| `cellularReturn` | CellValue, Distance, Distance2, Distance2Add, Distance2Sub, Distance2Mul, Distance2Div |
+| `cellularJitter` | 0–1 |
+| `warp`, `warpStrength` | None, OpenSimplex2, OpenSimplex2Reduced, BasicGrid; 0–100 noise-space units |
+| `encoding` | ColorValues (display grayscale) or LinearData (raw normalized scalar) |
+| `inverted` | Boolean |
+
+RGB repeats the normalized scalar; alpha is 1. Output is remapped from signed noise to 0–1 and clamped.
+For masks/channel packing, prefer LinearData and apply the existing Swizzle/blend settings.
+For a Normal Map or SDF source, add the effect above Noise and assign `Previous` or a specific target as usual.
+Domain Warp uses a single warp pass; noise fractal settings affect the subsequent noise evaluation.
+Generation runs on GPU at the requested resolution; it is not time-animated or automatically seamless.
+Seed and normalized coordinates are stable across preview/export sizes, but different GPUs may produce small
+floating-point differences. Saving stores the procedural parameters through existing document serialization;
+the usual baked output texture is still generated when required.
 
 ### Gaussian Blur settings
 

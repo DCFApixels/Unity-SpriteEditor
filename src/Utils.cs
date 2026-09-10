@@ -282,6 +282,7 @@ namespace DCFApixels.SpriteEditor
         private static Material hdrMaterial;
         private static Material normalMapMaterial;
         private static Material gaussianBlurMaterial;
+        private static Material noiseMaterial;
         private static Material effectCacheMaterial;
 
         static SpriteEditorMaterials()
@@ -294,6 +295,7 @@ namespace DCFApixels.SpriteEditor
         public static Material Hdr => GetOrCreate(ref hdrMaterial, "Hidden/TextureCompositor/Hdr");
         public static Material NormalMap => GetOrCreate(ref normalMapMaterial, "Hidden/TextureCompositor/NormalMap");
         public static Material GaussianBlur => GetOrCreate(ref gaussianBlurMaterial, "Hidden/TextureCompositor/GaussianBlur");
+        public static Material Noise => GetOrCreate(ref noiseMaterial, "Hidden/TextureCompositor/Noise");
         public static Material EffectCache => GetOrCreate(ref effectCacheMaterial, "Hidden/TextureCompositor/EffectCache");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
@@ -323,6 +325,8 @@ namespace DCFApixels.SpriteEditor
 
         private static void Dispose()
         {
+            if (noiseMaterial != null) UnityEngine.Object.DestroyImmediate(noiseMaterial);
+            noiseMaterial = null;
             if (gaussianBlurMaterial != null) UnityEngine.Object.DestroyImmediate(gaussianBlurMaterial);
             gaussianBlurMaterial = null;
             if (effectCacheMaterial != null) UnityEngine.Object.DestroyImmediate(effectCacheMaterial);
@@ -375,6 +379,7 @@ namespace DCFApixels.SpriteEditor
         protected Layer CurrentLayer => currentLayer;
         protected TextureCompositor Compositor => compositor;
         protected virtual string PreviewTitle => "Preview";
+        protected virtual bool ImmediatePreviewUpdates => false;
         protected abstract Type EditedLayerType { get; }
 
         protected static void OpenPropertiesWindow<T>(Layer layer, TextureCompositor owner)
@@ -458,6 +463,7 @@ namespace DCFApixels.SpriteEditor
 
         protected void RequestPreview(bool immediate = false)
         {
+            immediate |= ImmediatePreviewUpdates;
             previewRequested = true;
             previewAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
         }

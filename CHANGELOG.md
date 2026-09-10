@@ -4,6 +4,18 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-09-10
+
+### Added
+
+- A page-plus Layers footer button creates an empty Drawing layer on click or a merged Drawing copy of dropped layers/groups, keeping the originals and using existing merge Undo behavior.
+- Procedural Noise layers powered by FastNoiseLite HLSL v1.1.1: six algorithms, seeded fractals, cellular controls, domain warp, and color/data output. Parameters update GPU previews during numeric dragging without rebuilding controls; generation uses the requested resolution directly, with no new refinement stage.
+- Noise layer creation, partial settings, inspection and enum/default discovery through the agent API.
+
+### Changed
+
+- Shortened creation-menu labels by removing the Layer suffix, except for Drawing Layer.
+
 ## [0.7.4] - 2026-09-10
 
 ### Added

@@ -26,6 +26,7 @@ namespace DCFApixels.SpriteEditor
                 case DrawingLayer _: return "Layer";
                 case ColorFillLayer _: return "Color Fill";
                 case GradientLayer _: return "Gradient";
+                case NoiseLayer _: return "Noise";
                 case OutlineLayer _: return "Outline";
                 case SDFLayer _: return "SDF";
                 case NormalMapLayer _: return "Normal Map";

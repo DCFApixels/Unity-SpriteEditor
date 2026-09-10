@@ -30,7 +30,14 @@ namespace DCFApixels.SpriteEditor
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
-            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf", "normalMap", "gaussianBlur", "shaderProcessor");
+            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "noise", "outline", "sdf", "normalMap", "gaussianBlur", "shaderProcessor");
+            result["noiseDefaults"] = NoiseSnapshot(new NoiseLayer());
+            result["noiseTypes"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.NoiseType)));
+            result["noiseFractals"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.FractalType)));
+            result["noiseCellularDistances"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.CellularDistance)));
+            result["noiseCellularReturns"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.CellularReturn)));
+            result["noiseWarps"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.WarpType)));
+            result["noiseEncodings"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.OutputEncoding)));
             result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayer());
             result["gaussianBlurDefaults"] = GaussianBlurSnapshot(new GaussianBlurLayer());
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
@@ -148,6 +155,7 @@ namespace DCFApixels.SpriteEditor
                     }
                     if (layer is NormalMapLayer normal) settings["normalMap"] = NormalMapSnapshot(normal);
                     if (layer is GaussianBlurLayer gaussian) settings["gaussianBlur"] = GaussianBlurSnapshot(gaussian);
+                    if (layer is NoiseLayer noise) settings["noise"] = NoiseSnapshot(noise);
                     if (layer is GradientLayer gradient) entry["gradientKeys"] = GradientSnapshot(gradient.gradient);
                     layers.Add(entry);
                     if (layer is GroupLayer group) Collect(group.layers, layer.Id);
@@ -181,6 +189,7 @@ namespace DCFApixels.SpriteEditor
         {
             FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
             GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap",
+            NoiseLayer _ => "noise",
             GaussianBlurLayer _ => "gaussianBlur", ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name
         };
     }

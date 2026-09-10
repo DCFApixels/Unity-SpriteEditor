@@ -644,18 +644,31 @@ namespace DCFApixels.SpriteEditor
                 ShowAddMenu(compositor.layers, 0);
         }
 
+        private void AddDrawingLayerForSelection()
+        {
+            if (compositor == null) return;
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            Layer selected = GetSelectedLayer();
+            if (selected != null && compositor.TryFindLayer(selected, out List<Layer> container, out int index))
+                AddLayer(container, index, new DrawingLayer());
+            else
+                AddLayer(compositor.layers, 0, new DrawingLayer());
+        }
+
         private void ShowAddMenu(List<Layer> container, int insertionIndex)
         {
             GenericMenu menu = new GenericMenu();
             menu.AddItem(new GUIContent("Drawing Layer"), false, () => AddLayer(container, insertionIndex, new DrawingLayer()));
-            menu.AddItem(new GUIContent("File Layer"), false, () => AddLayer(container, insertionIndex, new FileLayer()));
-            menu.AddItem(new GUIContent("Color Fill Layer"), false, () => AddLayer(container, insertionIndex, new ColorFillLayer()));
-            menu.AddItem(new GUIContent("Gradient Layer"), false, () => AddLayer(container, insertionIndex, new GradientLayer()));
+            menu.AddItem(new GUIContent("File"), false, () => AddLayer(container, insertionIndex, new FileLayer()));
+            menu.AddItem(new GUIContent("Color Fill"), false, () => AddLayer(container, insertionIndex, new ColorFillLayer()));
+            menu.AddItem(new GUIContent("Gradient"), false, () => AddLayer(container, insertionIndex, new GradientLayer()));
+            menu.AddItem(new GUIContent("Noise"), false, () => AddLayer(container, insertionIndex, new NoiseLayer()));
             menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Outline Layer"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
-            menu.AddItem(new GUIContent("SDF Layer"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
-            menu.AddItem(new GUIContent("Normal Map Layer"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
-            menu.AddItem(new GUIContent("Gaussian Blur Layer"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
+            menu.AddItem(new GUIContent("Outline"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
+            menu.AddItem(new GUIContent("SDF"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
+            menu.AddItem(new GUIContent("Normal Map"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
+            menu.AddItem(new GUIContent("Gaussian Blur"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
             menu.AddItem(new GUIContent("Shader Processor"), false, () => AddLayer(container, insertionIndex, new ShaderProcessorLayer()));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
@@ -767,6 +780,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddInsideContextGroups(targets, () => new FileLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddInsideContextGroups(targets, () => new ColorFillLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddInsideContextGroups(targets, () => new GradientLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Noise Layer"), false, () => AddInsideContextGroups(targets, () => new NoiseLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
@@ -902,6 +916,9 @@ namespace DCFApixels.SpriteEditor
                 case GradientLayer gradientLayer:
                     GradientLayerEditorWindow.Open(gradientLayer, compositor);
                     break;
+                case NoiseLayer noiseLayer:
+                    NoiseLayerEditorWindow.Open(noiseLayer, compositor);
+                    break;
                 case OutlineLayer outlineLayer:
                     OutlineLayerEditorWindow.Open(outlineLayer, compositor);
                     break;
@@ -965,6 +982,7 @@ namespace DCFApixels.SpriteEditor
 
         private void RequestPreview(bool immediate = false)
         {
+            immediate |= GetSelectedLayer() is NoiseLayer;
             double requestedAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
             if (!previewRequested || requestedAt < previewAt)
                 previewAt = requestedAt;
