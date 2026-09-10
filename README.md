@@ -470,6 +470,11 @@ explicitly (**Specific**). Drag a layer onto **Target** to assign it; with a dra
 the active layer is used. This also works in separate Properties windows.
 Cross-document, self-referencing, and cyclic targets are rejected.
 
+Effect layers (Outline, SDF and Normal Map) can process hidden sources in both Previous and
+Specific modes. The source's eye toggle controls its own contribution to the composition, not
+its availability as an effect input. A hidden group still supplies its visible children;
+individually hidden children remain excluded. Source opacity and clipping behavior are unchanged.
+
 Group inputs combine visible descendants' alpha without isolating their color blending.
 Available distance metrics are **exact Euclidean EDT**, approximate Euclidean, Manhattan, and Chebyshev.
 Width, softness, and maximum distance use output pixels; processing uses Burst and Native Collections.

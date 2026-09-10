@@ -520,7 +520,8 @@ namespace DCFApixels.SpriteEditor
             if (layer == null || (!includeDisabled && !layer.enabled))
                 return null;
             if (layer is GroupLayer group)
-                return RenderGroupAlpha(group, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
+                    preserveColor: false, includeDisabled: includeDisabled);
 
             renderStack ??= new HashSet<Layer>();
             if (!renderStack.Add(layer))
@@ -589,12 +590,12 @@ namespace DCFApixels.SpriteEditor
 
             Layer target = FindLayer(effect.TargetLayerId);
             if (target == null ||
-                !target.enabled ||
                 !IsUsableEffectTarget(effect, effect.TargetLayerId))
                 return null;
 
             if (target is GroupLayer group)
-                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, effect is NormalMapLayer);
+                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
+                    effect is NormalMapLayer, includeDisabled: true);
             if (!TryFindLayer(target, out List<Layer> targetContainer, out int targetIndex))
                 return null;
 
@@ -604,7 +605,7 @@ namespace DCFApixels.SpriteEditor
                 outputWidth,
                 outputHeight,
                 scaleMultiplier,
-                renderStack);
+                renderStack, includeDisabled: true);
         }
 
         private RenderTexture RenderPreviousInput(
@@ -626,14 +627,15 @@ namespace DCFApixels.SpriteEditor
 
             Layer previous = container[previousIndex];
             if (previous is GroupLayer group)
-                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, preserveGroupColor);
+                return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
+                    preserveGroupColor, includeDisabled: true);
             return RenderStandalone(
                 container,
                 previousIndex,
                 outputWidth,
                 outputHeight,
                 scaleMultiplier,
-                renderStack);
+                renderStack, includeDisabled: true);
         }
 
         private RenderTexture RenderGroupAlpha(
@@ -645,9 +647,9 @@ namespace DCFApixels.SpriteEditor
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
-            HashSet<Layer> renderStack, bool preserveColor)
+            HashSet<Layer> renderStack, bool preserveColor, bool includeDisabled = false)
         {
-            if (group == null || !group.enabled)
+            if (group == null || (!includeDisabled && !group.enabled))
                 return null;
 
             renderStack ??= new HashSet<Layer>();

@@ -4,6 +4,16 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-09-10
+
+### Fixed
+
+- Effect layers can process hidden layers and groups in Previous and Specific modes, including hidden effect chains. Group child visibility, opacity, clipping and cycle guards remain unchanged.
+
+### Changed
+
+- Refined the Polygonal Lasso icon with a wider solid contour and a compact loop and tail.
+
 ## [0.7.0] - 2026-09-10
 
 ### Added

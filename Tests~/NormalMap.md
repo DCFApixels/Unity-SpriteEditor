@@ -14,7 +14,7 @@ from these checks. Run editor scripts only with permission for transient test ob
 ## Manual checks
 
 1. Add Normal Map above a height texture; test Previous and Specific, including Target drag/drop.
-   Missing/hidden/self/cyclic targets must behave like Outline/SDF. Try a nested group with colored
+   Hidden targets must still supply pixels; missing/self/cyclic targets remain invalid. Try a nested group with colored
    children: their RGB, not a uniform alpha union, must drive height.
 2. Switch Height Map/Texture and drag sliders/type numbers without losing focus. Check Undo/Redo,
    separate Properties windows, duplicate, conversion to Drawing and saved-document reopen.

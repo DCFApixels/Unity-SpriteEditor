@@ -237,7 +237,10 @@ Its Light Removal attenuates the broad band and may remove real relief too.
 
 A group source is rendered against transparency with its own descendants, opacity, swizzle and
 clipping, without the external backdrop. Existing Outline/SDF group-alpha semantics are unchanged.
-Missing, hidden and cyclic sources use the same rules as other targeted effects.
+Like other effect layers, Normal Map processes hidden sources: `enabled:false` hides a layer's
+own contribution, not its availability to Previous/Specific consumers. Hidden groups still
+respect their children's visibility. This also applies to chains of hidden effect layers.
+Opacity and clipping semantics are unchanged; missing and cyclic targets remain invalid.
 
 Keep the resulting normal layer at full opacity with Normal blend, identity swizzle and no color
 FX when exporting a normal texture. Color blending does not renormalize normals. Transform moves

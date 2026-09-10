@@ -302,15 +302,24 @@ namespace DCFApixels.SpriteEditor
             }
             private void DrawPolygonSelect(Painter2D painter)
             {
+                painter.lineCap = LineCap.Round;
                 painter.BeginPath();
-                painter.MoveTo(P(5, 5)); painter.LineTo(P(20, 8));
-                painter.LineTo(P(15, 19)); painter.LineTo(P(3, 16)); painter.ClosePath();
+                painter.MoveTo(P(14.8f, 16.3f));
+                painter.LineTo(P(5f, 13.5f));
+                painter.LineTo(P(8.7f, 10.3f));
+                painter.LineTo(P(2.5f, 7.1f));
+                painter.LineTo(P(11.2f, 2.7f));
+                painter.LineTo(P(21.3f, 6.8f));
+                painter.LineTo(P(15f, 16.4f));
                 painter.Stroke();
+
+                painter.lineCap = LineCap.Round;
                 painter.BeginPath();
-                painter.Arc(P(5, 5), contentRect.width * 2f / 24f, 0f, 360f);
-                painter.Fill();
-                painter.BeginPath();
-                painter.MoveTo(P(14, 19)); painter.BezierCurveTo(P(10, 22), P(18, 25), P(20, 20));
+                painter.MoveTo(P(15f, 16.4f));
+                painter.BezierCurveTo(P(12.2f, 15.7f), P(11.5f, 17.5f), P(13.4f, 18.1f));
+                painter.BezierCurveTo(P(15.5f, 18.8f), P(18f, 17.3f), P(15f, 16.4f));
+                painter.BezierCurveTo(P(14.4f, 18.1f), P(18.3f, 18.8f), P(16.9f, 20.4f));
+                painter.BezierCurveTo(P(16.3f, 21.1f), P(14.8f, 21.6f), P(13.3f, 21.6f));
                 painter.Stroke();
             }
 
