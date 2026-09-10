@@ -4,6 +4,13 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.9] - 2026-09-10
+
+### Changed
+
+- Post FX settings now open over the canvas without shifting or resizing the preview.
+- The settings panel fits its contents and scrolls when the window is too small to show all controls.
+
 ## [0.7.8] - 2026-09-10
 
 ### Changed

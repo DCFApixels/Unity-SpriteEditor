@@ -17,7 +17,7 @@ namespace DCFApixels.SpriteEditor
         private bool postFxDirty = true;
         private int postFxStateHash;
         private double nextPostFxCheck;
-        private VisualElement postFxDrawer;
+        private VisualElement postFxOverlay, postFxDrawer;
         private Button postFxTab, postFxButton;
         private HelpBox postFxStatus;
         private ColorField postFxBackgroundField;
@@ -27,24 +27,29 @@ namespace DCFApixels.SpriteEditor
 
         private Texture PreviewPresentationSource => postFxEnabled && postFxValid && postFxTexture != null ? postFxTexture : previewTexture;
 
-        private VisualElement BuildPostFxWorkspace(VisualElement preview)
+        private VisualElement BuildPostFxPreview(VisualElement preview)
         {
             postFxSettings ??= new PostFxPreviewSettings();
-            var workspace = new VisualElement();
-            workspace.style.minWidth = PreviewPaneMinWidth;
-            workspace.AddToClassList("sprite-editor-post-fx-workspace");
+            var workspace = new VisualElement { name = "previewWorkspace" };
+            workspace.AddToClassList("sprite-editor-preview-workspace");
             workspace.Add(preview);
+            postFxOverlay = new VisualElement { name = "postFxOverlay", pickingMode = PickingMode.Ignore };
+            postFxOverlay.AddToClassList("sprite-editor-post-fx-overlay");
+            workspace.Add(postFxOverlay);
+            var panel = new VisualElement { pickingMode = PickingMode.Ignore };
+            panel.AddToClassList("sprite-editor-post-fx-panel");
+            postFxOverlay.Add(panel);
             postFxTab = new Button(() => { postFxExpanded = !postFxExpanded; RefreshPostFxPanel(); })
                 { tooltip = "Show or hide post-processing settings. Closing this panel keeps Post FX enabled." };
             postFxTab.AddToClassList("sprite-editor-post-fx-tab");
-            workspace.Add(postFxTab);
+            panel.Add(postFxTab);
             postFxDrawer = new VisualElement();
             postFxDrawer.AddToClassList("sprite-editor-post-fx-drawer");
             postFxDrawer.Add(CreatePaneHeader("Post FX", "postFxTitle"));
             var scroll = new ScrollView(ScrollViewMode.Vertical);
             scroll.AddToClassList("sprite-editor-post-fx-settings");
             postFxDrawer.Add(scroll);
-            workspace.Add(postFxDrawer);
+            panel.Add(postFxDrawer);
             BuildPostFxFields(scroll);
             RefreshPostFxPanel();
             return workspace;
@@ -169,12 +174,9 @@ namespace DCFApixels.SpriteEditor
 
         private void RefreshPostFxPanel()
         {
-            if (postFxTab != null)
-            {
-                postFxTab.text = postFxExpanded ? "›" : "‹";
-                postFxTab.style.display = postFxEnabled ? DisplayStyle.Flex : DisplayStyle.None;
-            }
-            if (postFxDrawer != null) postFxDrawer.style.display = postFxEnabled && postFxExpanded ? DisplayStyle.Flex : DisplayStyle.None;
+            postFxOverlay?.EnableInClassList("sprite-editor-post-fx-overlay--hidden", !postFxEnabled);
+            if (postFxTab != null) postFxTab.text = postFxExpanded ? "›" : "‹";
+            postFxDrawer?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !postFxExpanded);
             postFxButton?.EnableInClassList("sprite-editor-channel-button--enabled", postFxEnabled);
             refreshPostFxFields?.Invoke();
             if (postFxStatus != null && !string.IsNullOrEmpty(postFxMessage))

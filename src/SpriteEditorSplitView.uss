@@ -314,27 +314,53 @@
     overflow: hidden;
 }
 
-.sprite-editor-post-fx-workspace {
-    flex-direction: row;
+.sprite-editor-preview-workspace {
+    flex-grow: 1;
+    flex-shrink: 1;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
 }
 
+.sprite-editor-post-fx-overlay {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    align-items: flex-end;
+}
+
+.sprite-editor-post-fx-panel {
+    flex-direction: row;
+    flex-shrink: 1;
+    min-height: 0;
+    max-width: 100%;
+}
+
 .sprite-editor-post-fx-drawer {
     width: 300px;
-    max-width: 85%;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
     min-height: 0;
     background-color: #383838;
-    border-left-width: 1px;
-    border-left-color: #191919;
+    border-width: 1px;
+    border-color: #191919;
+    border-radius: 3px;
+    overflow: hidden;
 }
 
 .sprite-editor-post-fx-settings {
-    flex-grow: 1;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: auto;
     min-height: 0;
     padding: 6px;
+}
+
+.sprite-editor-post-fx-overlay--hidden,
+.sprite-editor-post-fx-drawer--hidden {
+    display: none;
 }
 
 .sprite-editor-post-fx-settings .unity-base-field__label {
@@ -346,7 +372,7 @@
     width: 16px;
     height: 44px;
     flex-shrink: 0;
-    align-self: center;
+    align-self: flex-start;
     margin: 0;
     padding: 0;
     border-width: 1px;

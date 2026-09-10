@@ -17,7 +17,8 @@ This feature currently needs **URP 17.x with Universal Renderer**; other editing
 
 ## Choose the look
 
-Enable **Post FX** in the footer, then open the settings with the small arrow.
+Enable **Post FX** in the footer, then open the floating settings panel with the small arrow
+on the right of the canvas. Close it with the same arrow to see the image unobstructed.
 
 | Source | Use it to… |
 | :--- | :--- |

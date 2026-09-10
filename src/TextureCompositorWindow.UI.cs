@@ -121,9 +121,9 @@ namespace DCFApixels.SpriteEditor
             workspace.Add(split);
 
             toolkitPreviewPane = BuildToolkitPreviewPane();
-            toolkitPreviewPane.style.minWidth = 0f;
+            toolkitPreviewPane.style.minWidth = PreviewPaneMinWidth;
             toolkitPreviewPane.style.flexGrow = 1f;
-            split.Add(BuildPostFxWorkspace(toolkitPreviewPane));
+            split.Add(toolkitPreviewPane);
 
             VisualElement settingsPane = new VisualElement();
             settingsPane.style.minWidth = SettingsPaneMinWidth;
@@ -240,7 +240,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.RegisterCallback<PointerEnterEvent>(OnPreviewPointerEnter);
             toolkitPreviewCanvas.RegisterCallback<PointerLeaveEvent>(OnPreviewPointerLeave);
             toolkitPreviewCanvas.RegisterCallback<PointerCaptureOutEvent>(OnPreviewPointerCaptureOut);
-            pane.Add(toolkitPreviewCanvas);
+            pane.Add(BuildPostFxPreview(toolkitPreviewCanvas));
 
             pane.Add(BuildPreviewFooter());
             return pane;
