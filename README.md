@@ -801,6 +801,22 @@ The public C# API works without Pipeline. With Unity Pipeline installed, the opt
 - [API reference](Documentation~/AgentAPI.md) — operations, coordinates, limits, and full workflows.
 - [JSON examples](Documentation~/Examples) — starting requests.
 
+## Acknowledgements
+
+Thanks to the authors and maintainers of the libraries that help power Sprite Editor:
+
+- **[FastNoiseLite](https://github.com/Auburn/FastNoiseLite)** — Jordan Peck and contributors;
+  the HLSL implementation powers the Noise layer. [Included MIT license](ThirdPartyNotices.md#fastnoiselite).
+- **[Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json)** — James Newton-King and contributors;
+  JSON serialization for compositor documents and the agent API, provided through Unity's package.
+  [Included third-party licenses](Documentation~/Licenses/Newtonsoft-ThirdPartyNotices.md).
+- **[Unity Burst](https://docs.unity3d.com/Packages/com.unity.burst@1.8/manual/index.html)** and
+  **[Unity Collections](https://docs.unity3d.com/Packages/com.unity.collections@2.5/manual/index.html)** —
+  optimized CPU processing and native collections.
+
+See [Third-party notices](ThirdPartyNotices.md) for source versions and package license details.
+Third-party components retain their own licenses.
+
 <a id="community"></a>
 ## Community & license
 

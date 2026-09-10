@@ -829,6 +829,22 @@ Outline может остаться эффектом обводки по сни�
 - [Справочник API](Documentation~/AgentAPI.md) — операции, координаты, ограничения и полные сценарии.
 - [Примеры JSON](Documentation~/Examples) — стартовые запросы.
 
+## Благодарности
+
+Спасибо авторам и разработчикам библиотек, на которых основана часть возможностей Sprite Editor:
+
+- **[FastNoiseLite](https://github.com/Auburn/FastNoiseLite)** — Jordan Peck и участники проекта;
+  HLSL-реализация используется для генерации слоя Noise. [Приложенная лицензия MIT](ThirdPartyNotices.md#fastnoiselite).
+- **[Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json)** — James Newton-King и участники проекта;
+  JSON-сериализация документов композитора и API для агентов, подключённая через пакет Unity.
+  [Приложенные лицензии сторонних компонентов](Documentation~/Licenses/Newtonsoft-ThirdPartyNotices.md).
+- **[Unity Burst](https://docs.unity3d.com/Packages/com.unity.burst@1.8/manual/index.html)** и
+  **[Unity Collections](https://docs.unity3d.com/Packages/com.unity.collections@2.5/manual/index.html)** —
+  оптимизированные вычисления на CPU и нативные коллекции.
+
+Версии исходников и сведения о лицензиях пакетов собраны в [Third-party notices](ThirdPartyNotices.md).
+Сторонние компоненты сохраняют собственные лицензии.
+
 <a id="community"></a>
 ## Сообщество и лицензия
 
