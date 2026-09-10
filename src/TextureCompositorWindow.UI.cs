@@ -171,10 +171,11 @@ namespace DCFApixels.SpriteEditor
 
             toolkitSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
             toolkitSettingsScroll.name = "layer-list";
+            toolkitSettingsScroll.AddToClassList("sprite-editor-layer-list");
+            toolkitSettingsScroll.EnableInClassList("sprite-editor-layer-list--light", !EditorGUIUtility.isProSkin);
             toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
             toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
-            toolkitSettingsScroll.style.paddingBottom = 8f;
             layersPane.Add(toolkitSettingsScroll);
             ScrollView layerList = toolkitSettingsScroll;
             layerList.contentViewport.RegisterCallback<GeometryChangedEvent>(evt =>
@@ -575,23 +576,15 @@ namespace DCFApixels.SpriteEditor
                     AddToolkitLayerRows(expandedGroup.layers, depth + 1, root);
             }
 
-            root.Add(BuildContainerEndDropZone(layers, depth));
+            if (depth == 0)
+                root.Add(BuildContainerEndDropZone(layers, depth));
         }
 
         private VisualElement CreateToolkitLayerRow(Layer layer, int depth)
         {
-            VisualElement row = SpriteEditorUI.CreateRow();
+            VisualElement row = new VisualElement();
             row.userData = layer.Id;
-            row.style.height = ToolkitLayerRowHeight;
-            row.style.flexShrink = 0f;
-            row.style.marginBottom = 1f;
-            row.style.paddingLeft = 3f;
-            row.style.paddingRight = 3f;
             ApplyLayerSelectionStyle(row, layer.Id);
-            row.style.borderTopLeftRadius = 2f;
-            row.style.borderTopRightRadius = 2f;
-            row.style.borderBottomLeftRadius = 2f;
-            row.style.borderBottomRightRadius = 2f;
             VisualElement activeOutline = new VisualElement { pickingMode = PickingMode.Ignore };
             activeOutline.AddToClassList("sprite-editor-layer-active-outline");
             row.Add(activeOutline);
@@ -1317,11 +1310,6 @@ namespace DCFApixels.SpriteEditor
             activeDropElement.RemoveFromClassList("sprite-editor-layer-row--drop-before");
             activeDropElement.RemoveFromClassList("sprite-editor-layer-row--drop-after");
 
-            activeDropElement.style.borderTopWidth = 0f;
-            activeDropElement.style.borderRightWidth = 0f;
-            activeDropElement.style.borderBottomWidth = 0f;
-            activeDropElement.style.borderLeftWidth = 0f;
-            activeDropElement.style.marginLeft = activeDropMarginLeft;
             if (activeDropElement.userData is string layerId)
             {
                 activeDropElement.style.backgroundColor = StyleKeyword.Null;
@@ -1329,6 +1317,11 @@ namespace DCFApixels.SpriteEditor
             }
             else
             {
+                activeDropElement.style.borderTopWidth = 0f;
+                activeDropElement.style.borderRightWidth = 0f;
+                activeDropElement.style.borderBottomWidth = 0f;
+                activeDropElement.style.borderLeftWidth = 0f;
+                activeDropElement.style.marginLeft = activeDropMarginLeft;
                 activeDropElement.style.backgroundColor = Color.clear;
             }
             activeDropElement = null;
