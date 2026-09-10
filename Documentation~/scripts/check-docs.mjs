@@ -99,6 +99,8 @@ function checkSite() {
   const anchorCache = new Map();
   for (const file of htmlFiles) {
     const html = text(file);
+    if (process.env.GITHUB_SHA && !html.includes(`/assets/js/just-the-docs.js?v=${process.env.GITHUB_SHA}`))
+      fail(`${file}: main script is not revisioned`);
     const relative = path.relative(output, file).replaceAll('\\', '/').replace(/index\.html$/, '');
     const current = new URL(`${baseurl}/${relative}`, origin);
     for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {

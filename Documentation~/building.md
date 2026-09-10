@@ -45,6 +45,7 @@ both desktop and mobile widths after layout changes; source validation alone can
 The Documentation workflow builds on relevant main-branch changes and pull requests. Only main
 publishes. Set repository **Settings → Pages → Source → GitHub Actions** once.
 The deployment environment is `github-pages`. No workflow step invokes Unity or installs Unity packages.
+Published JS/CSS URLs include the deployment commit, so browsers revalidate theme assets after updates.
 
 Published URL: [dcfapixels.github.io/Unity-SpriteEditor](https://dcfapixels.github.io/Unity-SpriteEditor/).
 If the repository name or host changes, update `url` and `baseurl` in `_config.yml` and README links.
