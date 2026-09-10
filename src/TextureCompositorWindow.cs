@@ -746,6 +746,10 @@ namespace DCFApixels.SpriteEditor
                 menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
 
             menu.AddItem(new GUIContent("Group Selected"), false, () => GroupLayers(roots));
+            if (LayerSelectionOperations.CanApplyChannelPreset(targets.Count))
+                menu.AddItem(new GUIContent("Assign Channels", "Top to bottom. 1–3 layers: RGB with alpha 1 and upper-layer Add. 4 layers: RGBA Swizzle only, other channels zero."),
+                    false, () => ApplyContextChannelPreset(targets));
+            else menu.AddDisabledItem(new GUIContent("Assign Channels"));
             var clippingTargets = targets.FindAll(target => !(target is ShaderProcessorLayer));
             bool allClipped = clippingTargets.Count > 0 && clippingTargets.TrueForAll(target => target.clippingMask);
             if (clippingTargets.Count == 0) menu.AddDisabledItem(new GUIContent("Clipping Mask"));

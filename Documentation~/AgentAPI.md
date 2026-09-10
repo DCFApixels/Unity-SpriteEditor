@@ -163,7 +163,10 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
 Groups default to PassThrough; set `compositing:"Isolated"` to apply their own blend mode and ranges.
 Group opacity applies to the complete result, not separately to every child. Group transforms/FX are rejected.
-`swizzle` accepts `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1` as strings.
+`swizzle` accepts `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`, `R * A`, `G * A`, `B * A` as strings.
+Product names include spaces, matching `Describe`. All mappings read the original input RGBA:
+`["R * A","G * A","B * A","1"]` multiplies RGB by the input alpha and sets output alpha to 1.
+Selecting products does not change the compositor's blending convention or implicitly change output alpha.
 For example, `"swizzle":["B","G","R","A"]` exchanges red and blue;
 `["A","A","A","1"]` displays alpha as opaque grayscale. The default is `["R","G","B","A"]`.
 It runs after FX in linear working space and before Color Range and layer blending. Output alpha

@@ -23,6 +23,7 @@ Shader "Hidden/TextureCompositor/Hdr"
         float _UseSwizzle;
         float channel(float4 c, float source)
         {
+            if (source > 9.5) return (source < 10.5 ? c.r : source < 11.5 ? c.g : c.b) * c.a;
             if (source > 8.5) return 1.0;
             if (source > 7.5) return 0.0;
             bool invert = source > 3.5;

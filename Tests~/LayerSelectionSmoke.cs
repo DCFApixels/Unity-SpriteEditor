@@ -87,6 +87,52 @@ try
     Call("ApplyGroupMoves", plan, false);
     Check(Same(document.layers, group, a, b, nested, c, d, e), "Move out of multiple groups preserves anchors");
     Check(group.layers.Count == 0 && nested.layers.Count == 0, "All eligible children moved");
+    for (int count = 0; count <= 5; count++)
+    {
+        Check((bool)Call("CanApplyChannelPreset", count) == (count >= 1 && count <= 4), "Automatic channel preset selection limit");
+    }
+    document.layers = Layers(a,b,c,d,e);
+    foreach (var item in document.layers)
+    {
+        item.swizzle = default;
+        item.blendMode = DCFApixels.SpriteEditor.BlendMode.Multiply;
+        item.opacity = .42f;
+    }
+    Call("ApplyChannelPreset", document, Layers(e,c,a));
+    var rgb = Layers(a,c,e);
+    for (int index = 0; index < 3; index++)
+    {
+        for (int channel = 0; channel < 4; channel++)
+            Check((int)rgb[index].swizzle[channel] == (channel == 3 ? 9 : channel == index ? 10 : 8), "RGB routes each source R times A in tree order");
+        Check(rgb[index].blendMode == (index < 2 ? DCFApixels.SpriteEditor.BlendMode.Add : DCFApixels.SpriteEditor.BlendMode.Multiply), "Only upper selected layers change blending");
+        Check(rgb[index].opacity == .42f, "Preset preserves opacity");
+    }
+    Check(b.swizzle.IsIdentity && d.swizzle.IsIdentity, "Unselected layers remain unchanged");
+    string beforeInvalid = UnityEngine.JsonUtility.ToJson(document);
+    Call("ApplyChannelPreset", document, Layers(a,b,c,d,e));
+    Check(UnityEngine.JsonUtility.ToJson(document) == beforeInvalid, "Oversized selections cannot partially apply presets");
+    Call("ApplyChannelPreset", document, Layers(d,b,c,a));
+    var rgba = Layers(a,b,c,d);
+    for (int index = 0; index < 4; index++)
+        for (int channel = 0; channel < 4; channel++)
+            Check((int)rgba[index].swizzle[channel] == (channel == index ? 10 : 8), "RGBA routes source R times A to every assigned channel, including alpha");
+    Check(a.blendMode == DCFApixels.SpriteEditor.BlendMode.Add && b.blendMode == DCFApixels.SpriteEditor.BlendMode.Multiply,
+        "RGBA does not rewrite blending");
+    group.layers = Layers(a);
+    group.compositing = DCFApixels.SpriteEditor.GroupCompositing.PassThrough;
+    document.layers = Layers(group,b);
+    Call("ApplyChannelPreset", document, Layers(b,group));
+    Check(group.compositing == DCFApixels.SpriteEditor.GroupCompositing.Isolated && group.blendMode == DCFApixels.SpriteEditor.BlendMode.Add,
+        "RGB makes group Add effective");
+    Check(group.swizzle[0] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA && b.swizzle[1] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA,
+        "A selected group counts once and unselected descendants do not consume channels");
+    Call("ApplyChannelPreset", document, Layers(b,a,group));
+    Check(group.swizzle[0] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA && a.swizzle[1] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA &&
+        b.swizzle[2] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA, "Explicitly selected descendants count separately in tree order");
+    Check(group.swizzle[3] == DCFApixels.SpriteEditor.SwizzleChannel.One, "Three nested selections automatically use RGB");
+    Call("ApplyChannelPreset", document, Layers(b));
+    Check(b.swizzle[0] == DCFApixels.SpriteEditor.SwizzleChannel.RMultiplyA && b.swizzle[3] == DCFApixels.SpriteEditor.SwizzleChannel.One,
+        "Single selection automatically uses the first RGB channel");
     return new { success = true, checks };
 }
 finally { UnityEngine.Object.DestroyImmediate(document); }

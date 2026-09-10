@@ -2,6 +2,16 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [Unreleased]
+
+## [0.7.4] - 2026-09-10
+
+### Added
+
+- Up/Down arrow keys navigate visible layer rows with automatic scrolling, without intercepting field editing.
+- Swizzle offers R * A, G * A and B * A on every layer and group, using original input alpha with agent API support and compatible serialized channel IDs.
+- A single Assign Channels context command routes each layer's R * A into successive output channels: RGB for one to three selected layers (opaque alpha and upper-layer Add) or RGBA for four (Swizzle only), in top-to-bottom order with one Undo step; disabled above four selections.
+
 ## [0.7.3] - 2026-09-10
 
 ### Added

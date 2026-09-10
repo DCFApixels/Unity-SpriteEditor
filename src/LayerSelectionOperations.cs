@@ -4,6 +4,29 @@ namespace DCFApixels.SpriteEditor
 {
     internal static class LayerSelectionOperations
     {
+        internal static bool CanApplyChannelPreset(int count) => count > 0 && count <= 4;
+
+        internal static void ApplyChannelPreset(TextureCompositor document, List<Layer> selected)
+        {
+            var ordered = Collect(document.layers, new HashSet<Layer>(selected), false);
+            if (!CanApplyChannelPreset(ordered.Count)) return;
+            bool rgb = ordered.Count < 4;
+            for (int index = 0; index < ordered.Count; index++)
+            {
+                Layer layer = ordered[index];
+                var swizzle = new LayerSwizzle();
+                for (int channel = 0; channel < 4; channel++) swizzle[channel] = SwizzleChannel.Zero;
+                swizzle[index] = SwizzleChannel.RMultiplyA;
+                if (rgb) swizzle[3] = SwizzleChannel.One;
+                layer.swizzle = swizzle;
+                if (rgb && index < ordered.Count - 1)
+                {
+                    layer.blendMode = BlendMode.Add;
+                    if (layer is GroupLayer group) group.compositing = GroupCompositing.Isolated;
+                }
+            }
+        }
+
         internal static List<Layer> Collect(List<Layer> tree, HashSet<Layer> selected, bool rootsOnly)
         {
             var result = new List<Layer>();

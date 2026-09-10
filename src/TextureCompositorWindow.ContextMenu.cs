@@ -61,6 +61,13 @@ namespace DCFApixels.SpriteEditor
                 LayerSelectionOperations.Move(compositor, roots, direction, true));
         }
 
+        private void ApplyContextChannelPreset(List<Layer> targets)
+        {
+            if (!LayerSelectionOperations.CanApplyChannelPreset(targets.Count)) return;
+            ExecuteContextChange("Assign Channels", () =>
+                LayerSelectionOperations.ApplyChannelPreset(compositor, targets));
+        }
+
         private void MoveContextLayersAcrossGroups(List<Layer> roots, bool into)
         {
             ExecuteContextChange(into ? "Move Layers Into Groups" : "Move Layers Out Of Groups", () =>

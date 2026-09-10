@@ -161,7 +161,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     int source = values[channel].Type == JTokenType.String
                         ? System.Array.IndexOf(LayerSwizzle.Labels, (string)values[channel]) : -1;
-                    Require(source >= 0, "Invalid swizzle channel. Use R, G, B, A, 1-R, 1-G, 1-B, 1-A, 0 or 1.");
+                    Require(source >= 0, "Invalid swizzle channel. Use " + string.Join(", ", LayerSwizzle.Labels) + ".");
                     swizzle[channel] = (SwizzleChannel)source;
                 }
                 layer.swizzle = swizzle;

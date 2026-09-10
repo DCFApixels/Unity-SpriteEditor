@@ -937,6 +937,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (evt.button != 0 || pointerId >= 0 || !IsLayerDragArea(target, evt.target as VisualElement))
                     return;
+                owner.rootVisualElement.Focus();
                 if (evt.ctrlKey || evt.commandKey || evt.shiftKey)
                 {
                     owner.SelectLayerFromPointer(layer, evt, preserveSelection: true);
@@ -1698,6 +1699,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             if (HandleAreaSelectionKey(evt)) return;
+            if (HandleLayerNavigationKey(evt)) return;
 
             if (evt.keyCode == KeyCode.LeftAlt || evt.keyCode == KeyCode.RightAlt)
             {

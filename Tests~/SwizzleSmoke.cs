@@ -31,16 +31,31 @@ try
         "Missing serialized swizzle defaults to identity");
     UnityEngine.Color before = Pixel();
     for (int output = 0; output < 4; output++)
-    for (int source = 0; source < 10; source++)
+    for (int source = 0; source < System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.SwizzleChannel)).Length; source++)
     {
         layer.swizzle = Route(output, source);
         var clone = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>(UnityEngine.JsonUtility.ToJson(layer));
         Check(clone.swizzle[output] == (DCFApixels.SpriteEditor.SwizzleChannel)source, "Channel serialization round-trip");
         var expected = before;
-        expected[output] = source == 8 ? 0f : source == 9 ? 1f : source >= 4 ? 1f - before[source - 4] : before[source];
+        expected[output] = source >= 10 ? before[source - 10] * before.a : source == 8 ? 0f : source == 9 ? 1f : source >= 4 ? 1f - before[source - 4] : before[source];
         var actual = Pixel();
         if (expected.a == 0f) Check(Near(actual.a, 0f), "Zero alpha is transparent");
         else for (int c = 0; c < 4; c++) Check(Near(actual[c], expected[c]), "Swizzle output channel " + output + " source " + source);
+    }
+    foreach (float alpha in new[] { 0f, .25f, 1f })
+    {
+        layer.swizzle = default;
+        layer.color = new UnityEngine.Color(2f, .5f, .25f, alpha);
+        var original = Pixel();
+        var product = Route(0, 10);
+        product[1] = DCFApixels.SpriteEditor.SwizzleChannel.GMultiplyA;
+        product[2] = DCFApixels.SpriteEditor.SwizzleChannel.BMultiplyA;
+        product[3] = DCFApixels.SpriteEditor.SwizzleChannel.One;
+        layer.swizzle = product;
+        var actual = Pixel();
+        Check(Near(actual.a, 1f), "Product mapping can set output alpha independently");
+        for (int channel = 0; channel < 3; channel++)
+            Check(Near(actual[channel], original[channel] * alpha), "Products use original alpha, not remapped A");
     }
     layer.color = new UnityEngine.Color(2f, .5f, .25f, 1f);
     layer.swizzle = Route(0, 4);
@@ -66,6 +81,13 @@ try
     for (int c = 0; c < 4; c++) Check(Near(pass[c], restored[c]), "Identity restores Pass Through");
     document.layers.Remove(backdrop);
     layer.blendMode = DCFApixels.SpriteEditor.BlendMode.Normal;
+    layer.color = new UnityEngine.Color(.8f, .4f, .2f, .5f);
+    group.swizzle = default;
+    var groupBefore = Pixel();
+    group.swizzle = Route(0, 10);
+    var groupProduct = Pixel();
+    Check(Near(groupProduct.r, groupBefore.r * groupBefore.a), "Group RGB multiplies isolated source alpha");
+    Check(Near(groupProduct.a, groupBefore.a), "RGB product leaves group alpha unchanged");
     layer.color = UnityEngine.Color.red;
     group.swizzle = Route(3, 1);
     Check(Near(Pixel().a, 0f), "Group alpha is remapped");
@@ -93,7 +115,8 @@ try
     try { Check(raw.GetPixel(2, 2).r > .98f && raw.GetPixel(2, 2).b < .01f, "Conversion keeps swizzle unbaked for non-group layers"); }
     finally { UnityEngine.Object.DestroyImmediate(raw); }
     var description = DCFApixels.SpriteEditor.SpriteEditorApi.Describe();
-    Check(description.Contains("swizzleChannels") && description.Contains("1-A"), "Agent discovery includes swizzle choices");
+    Check(description.Contains("swizzleChannels") && description.Contains("1-A") &&
+        description.Contains("R * A") && description.Contains("G * A") && description.Contains("B * A"), "Agent discovery includes swizzle choices");
     return "Swizzle checks passed: " + checks;
 }
 finally { UnityEngine.Object.DestroyImmediate(document); }

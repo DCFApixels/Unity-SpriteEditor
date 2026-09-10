@@ -695,12 +695,27 @@ Replacing a standalone Texture2D asks for confirmation and preserves references.
 Other asset types and sub-assets are protected.
 
 **Swizzle** in Layer Settings remaps the four output channels of any layer or group.
-Each dropdown offers `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0` and `1`.
+Each dropdown offers `R`, `G`, `B`, `A`, `1-R`, `1-G`, `1-B`, `1-A`, `0`, `1`, `R * A`, `G * A` and `B * A`.
+Products use the original input alpha, regardless of the output A mapping; they do not change alpha automatically.
 The default `R G B A` leaves pixels unchanged. Remapping happens after FX in linear space,
 before Color Range and blending, and does not modify source pixels.
 A changed group swizzle isolates its children. Restoring `R G B A` restores the selected Pass Through
 mode when no clipping chain requires isolation. PSD export bakes swizzled pixels; for groups it also
 preserves the original children in a hidden folder.
+
+**Layer context menu → Assign Channels** applies presets to selected layers in top-to-bottom tree
+order, not selection-click order. One command automatically chooses the preset from the selection count.
+Groups count as layers; explicitly selected children count separately.
+
+- **RGB** (1–3 layers): routes each layer's `R * A` into output R, G, B in order, zeros other RGB channels and sets
+  output alpha to `1`. All but the bottom selected layer switch to Add; such groups also switch to
+  Isolated so Add takes effect. The bottom layer's blend and all layer opacities remain unchanged.
+- **RGBA** (4 layers): routes each layer's `R * A` into output R, G, B, A in order, zeroing all other channels. Changes
+  Swizzle only. RGB layers consequently have zero alpha and are skipped by ordinary blending;
+  this preset does not itself assemble a finished four-channel texture.
+
+The command is one Undo step and is disabled for more than four selected layers. Layers are not merged,
+reordered or moved between groups; surrounding layers and existing clipping still affect composition.
 
 The compositor uses **linear HDR** working pixels. Layer **Color Range** and **Blend Range** independently
 control bounded and extended behavior. Drawing starts in 8-bit storage and promotes to half-float for HDR;
@@ -729,6 +744,7 @@ Tool keys: `V` — No Tool · `T` — Transform · `M` — Rectangle Select · `
 | :--- | :--- |
 | `Ctrl+S` | Save / Save As. |
 | `Ctrl+Z` | Undo. |
+| `Up` / `Down` | Select the previous / next visible layer row; children of collapsed groups are skipped. |
 | `Ctrl+E` / `Ctrl+Alt+E` | Merge selected layers / create a merged copy. |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | Redo. |
 | `[` / `]` | Decrease / increase brush size. |

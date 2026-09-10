@@ -14,6 +14,58 @@ namespace DCFApixels.SpriteEditor
 
         private bool IsLayerSelected(string id) => id != null && selectedLayerIds.Contains(id);
 
+        private bool HandleLayerNavigationKey(KeyDownEvent evt)
+        {
+            if (evt.keyCode != KeyCode.UpArrow && evt.keyCode != KeyCode.DownArrow)
+                return false;
+            if (evt.ctrlKey || evt.commandKey || evt.altKey || evt.shiftKey || compositor == null)
+                return false;
+            if (IsLayerNavigationInput(evt.target as VisualElement) ||
+                IsLayerNavigationInput(rootVisualElement.panel?.focusController?.focusedElement as VisualElement))
+                return false;
+            if (activeLayerDrag != null || paintingLayer != null ||
+                (previewTransformManipulator != null && previewTransformManipulator.IsDragging) ||
+                (previewZoomManipulator != null && previewZoomManipulator.IsDragging))
+                return false;
+
+            SpriteEditorUI.ConsumeEvent(evt);
+            int index = FindAdjacentLayerIndex(evt.keyCode == KeyCode.UpArrow ? -1 : 1);
+            if (index < 0) return true;
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            SelectOnlyLayer(toolkitLayerTree[index].Layer.Id);
+            rootVisualElement.Focus();
+            RefreshToolkitInterface();
+            ScrollView scroll = toolkitLayerHierarchyRoot?.GetFirstAncestorOfType<ScrollView>();
+            if (scroll != null && index < toolkitLayerHierarchyRoot.childCount)
+                scroll.ScrollTo(toolkitLayerHierarchyRoot[index]);
+            return true;
+        }
+
+        private int FindAdjacentLayerIndex(int direction)
+        {
+            int current = -1;
+            for (int i = 0; i < toolkitLayerTree.Count; i++)
+                if (toolkitLayerTree[i].Layer != null && toolkitLayerTree[i].Layer.Id == selectedLayerId)
+                {
+                    current = i;
+                    break;
+                }
+            int next = current < 0 ? (direction > 0 ? 0 : toolkitLayerTree.Count - 1) : current + direction;
+            for (int i = next; i >= 0 && i < toolkitLayerTree.Count; i += direction)
+                if (toolkitLayerTree[i].Layer != null) return i;
+            return -1;
+        }
+
+        private static bool IsLayerNavigationInput(VisualElement element)
+        {
+            if (IsTextInputTarget(element)) return true;
+            for (VisualElement current = element; current != null; current = current.parent)
+                if (current.ClassListContains("unity-base-field") || current is IMGUIContainer)
+                    return true;
+            return false;
+        }
+
         private void SelectOnlyLayer(string id)
         {
             ResetOpacityEntry();
