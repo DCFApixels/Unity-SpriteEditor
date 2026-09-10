@@ -87,6 +87,7 @@ namespace DCFApixels.SpriteEditor
         internal ulong Stamp(Layer layer)
         {
             if (layer == null) return 1;
+            if (layer is ShaderProcessorLayer) return 0;
             if (stamps.TryGetValue(layer, out ulong ready)) return ready;
             if (!visiting.Add(layer)) return 0;
             try

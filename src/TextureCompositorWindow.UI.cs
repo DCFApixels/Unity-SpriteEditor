@@ -121,8 +121,9 @@ namespace DCFApixels.SpriteEditor
             workspace.Add(split);
 
             toolkitPreviewPane = BuildToolkitPreviewPane();
-            toolkitPreviewPane.style.minWidth = PreviewPaneMinWidth;
-            split.Add(toolkitPreviewPane);
+            toolkitPreviewPane.style.minWidth = 0f;
+            toolkitPreviewPane.style.flexGrow = 1f;
+            split.Add(BuildPostFxWorkspace(toolkitPreviewPane));
 
             VisualElement settingsPane = new VisualElement();
             settingsPane.style.minWidth = SettingsPaneMinWidth;
@@ -717,7 +718,7 @@ namespace DCFApixels.SpriteEditor
             int targetIndex = y <= 3f ? index - 1 : y >= row.layout.height - 3f ? index : -1;
             if (targetIndex < 0 || targetIndex + 1 >= container.Count) return false;
             Layer target = container[targetIndex];
-            if (target == null) return false;
+            if (target == null || target is ShaderProcessorLayer || container[targetIndex + 1] is ShaderProcessorLayer) return false;
             ExecuteContextChange("Change Clipping Mask", () => target.clippingMask = !target.clippingMask);
             return true;
         }
@@ -1402,7 +1403,7 @@ namespace DCFApixels.SpriteEditor
             bool transforming = IsPreviewTransformEnabled;
             toolkitPreviewCanvas.SetTiled(tiledPreview);
             toolkitPreviewCanvas.SetPencilCursor(previewTool == PreviewTool.Pencil);
-            toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : previewTexture,
+            toolkitPreviewCanvas.SetDocument(channelPreviewTexture != null ? (Texture)channelPreviewTexture : PreviewPresentationSource,
                 compositor.width, compositor.height,
                 IsPreviewBrushEnabled ? drawing : null, transforming,
                 IsPreviewPaintTool ? paintSettings : null);

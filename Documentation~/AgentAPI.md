@@ -134,7 +134,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`, `gaussianBlur`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
@@ -173,7 +173,7 @@ blending while swizzled, then resumes Pass Through when restored to identity and
 groups retain their chosen blend mode. `Describe` lists `swizzleChannels`; `Inspect` includes each
 layer's swizzle, including groups.
 
-`clippingMask` defaults to `false`. Set it to `true` on any layer or group to clip it to the
+`clippingMask` defaults to `false`. Set it to `true` on a non-Processor layer or group to clip it to the
 first non-clipping sibling below; consecutive clipped siblings share that base. The relationship
 is positional, never crosses a parent group, and updates after moves. A hidden, transparent or
 missing base hides the chain. The base's alpha is preserved and its opacity is applied once.
@@ -194,6 +194,13 @@ The render command writes a clamped PNG copy. See [HDR behavior](HDR.md).
 Other settings of existing layers and all existing FX are preserved. API v1 does not author Shader FX,
 delete layers, duplicate/rasterize layers, resize an existing canvas or change gradient geometry.
 These remain available in the window. Use `enabled:false` to hide an unwanted layer non-destructively.
+
+`shaderProcessor` processes the already-composited lower stack, with HDR ranges by default.
+Normal + Opacity interpolates before/after without accumulating alpha twice. Pass Through includes
+the external backdrop; isolated groups limit its scope. Processor is a clipping-chain boundary.
+The API can create/reorder it and edit its common settings, transform and Swizzle; it cannot author
+its Shader FX code in protocol v1. Add/edit FX through the window. No special target is assigned.
+Post FX is window-local presentation state and never changes API rendering, sampling or export.
 
 ### Gaussian Blur settings
 

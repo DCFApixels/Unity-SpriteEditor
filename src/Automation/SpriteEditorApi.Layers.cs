@@ -23,6 +23,7 @@ namespace DCFApixels.SpriteEditor
                     "outline" => new OutlineLayer(), "sdf" => new SDFLayer(),
                     "normalMap" => new NormalMapLayer(),
                     "gaussianBlur" => new GaussianBlurLayer(),
+                    "shaderProcessor" => new ShaderProcessorLayer(),
                     _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
                 };
                 string alias = Text(operation, "as");
@@ -145,6 +146,7 @@ namespace DCFApixels.SpriteEditor
             layer.layerName = Text(settings, "name", layer.layerName);
             layer.enabled = Bool(settings, "enabled", layer.enabled);
             layer.clippingMask = Bool(settings, "clippingMask", layer.clippingMask);
+            Require(!(layer is ShaderProcessorLayer) || !layer.clippingMask, "Shader Processor is a stack operation and cannot be a clipping layer.");
             layer.opacity = Number(settings, "opacity", layer.opacity, 0f, 1f);
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
             layer.colorRange = Enum(settings, "colorRange", layer.colorRange);

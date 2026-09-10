@@ -141,6 +141,12 @@ namespace DCFApixels.SpriteEditor
             previewExposure = 0f;
             colorSettingsExpanded = false;
             tiledPreview = false;
+            ReleasePostFx();
+            postFxEnabled = false;
+            postFxExpanded = true;
+            postFxSettings = new PostFxPreviewSettings();
+            postFxMessage = null;
+            postFxFailed = false;
             scrollPosition = Vector2.zero;
             SelectOnlyLayer(null);
             groupExpansion?.Clear();
@@ -220,6 +226,7 @@ namespace DCFApixels.SpriteEditor
             ReleaseEffectCache();
             toolkitPreviewCanvas?.ReleaseCheckerTexture();
             toolkitPreviewCanvas?.ReleaseToolCursor();
+            ReleasePostFx();
         }
 
         private void OnFocus()
@@ -229,6 +236,8 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewAppearanceChanged()
         {
+            postFxDirty = true;
+            postFxBackgroundField?.SetValueWithoutNotify(SpriteEditorUserSettings.PostFxBackground);
             toolkitPreviewCanvas?.RefreshCheckerColors();
             if (previewDebug)
             {
@@ -359,6 +368,7 @@ namespace DCFApixels.SpriteEditor
 
         private void Update()
         {
+            UpdatePostFx();
             RequestEffectRefinement();
             UpdateUnsavedChangesState();
             if (toolkitRefreshRequested)
@@ -646,6 +656,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("SDF Layer"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
             menu.AddItem(new GUIContent("Normal Map Layer"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
             menu.AddItem(new GUIContent("Gaussian Blur Layer"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
+            menu.AddItem(new GUIContent("Shader Processor"), false, () => AddLayer(container, insertionIndex, new ShaderProcessorLayer()));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
             menu.ShowAsContext();
@@ -661,6 +672,7 @@ namespace DCFApixels.SpriteEditor
                 insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
                 container.Insert(insertionIndex, layer);
                 compositor.NormalizeModel();
+                if (layer is ShaderProcessorLayer) compositor.AddEmbeddedShaderFX(layer);
                 SelectOnlyLayer(layer.Id);
                 if (layer is GroupLayer)
                     groupExpansion[layer.Id] = true;
@@ -734,11 +746,14 @@ namespace DCFApixels.SpriteEditor
                 menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
 
             menu.AddItem(new GUIContent("Group Selected"), false, () => GroupLayers(roots));
-            bool allClipped = targets.TrueForAll(target => target.clippingMask);
+            var clippingTargets = targets.FindAll(target => !(target is ShaderProcessorLayer));
+            bool allClipped = clippingTargets.Count > 0 && clippingTargets.TrueForAll(target => target.clippingMask);
+            if (clippingTargets.Count == 0) menu.AddDisabledItem(new GUIContent("Clipping Mask"));
+            else
             menu.AddItem(new GUIContent("Clipping Mask"), allClipped, () =>
                 ExecuteContextChange("Change Clipping Mask", () =>
                 {
-                    foreach (Layer target in targets)
+                    foreach (Layer target in clippingTargets)
                         if (compositor.TryFindLayer(target, out _, out _)) target.clippingMask = !allClipped;
                 }));
             if (targets.Exists(target => target is GroupLayer))
@@ -752,6 +767,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Gaussian Blur Layer"), false, () => AddInsideContextGroups(targets, () => new GaussianBlurLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Shader Processor"), false, () => AddInsideContextGroups(targets, () => new ShaderProcessorLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
                 menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
             }
@@ -894,6 +910,9 @@ namespace DCFApixels.SpriteEditor
                 case GaussianBlurLayer gaussian:
                     GaussianBlurLayerEditorWindow.Open(gaussian, compositor);
                     break;
+                case ShaderProcessorLayer processor:
+                    ShaderProcessorLayerEditorWindow.Open(processor, compositor);
+                    break;
             }
         }
 
@@ -968,6 +987,7 @@ namespace DCFApixels.SpriteEditor
                 previewTexture = compositor.RenderCachedPreview(maxSize, previewEffectCache, interactive, paintingLayer);
                 effectRefinementPending = interactive;
                 ApplyPreviewTextureFilter();
+                RenderPostFx();
                 UpdateChannelPreview();
             }
             catch (Exception exception)
@@ -996,6 +1016,8 @@ namespace DCFApixels.SpriteEditor
 
         private void ReleasePreview(bool keepChannelBuffer = false)
         {
+            postFxValid = false;
+            postFxDirty = true;
             toolkitPreviewCanvas?.ClearTexture();
             if (!keepChannelBuffer)
                 ReleaseChannelPreview();

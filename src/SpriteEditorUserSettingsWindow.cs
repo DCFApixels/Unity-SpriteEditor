@@ -10,6 +10,7 @@ namespace DCFApixels.SpriteEditor
         private ColorField checkerLight;
         private ColorField checkerDark;
         private ColorField invalidPixels;
+        private ColorField postFxBackground;
         private SliderInt checkerSize;
 
         internal static void Open()
@@ -49,6 +50,9 @@ namespace DCFApixels.SpriteEditor
             AddHeading(scroll, "Debug Preview");
             invalidPixels = AddColor(scroll, "Invalid Pixels", value => SpriteEditorUserSettings.InvalidPixels = value);
             invalidPixels.tooltip = "Display color for the accumulated numeric-error mask when Debug is enabled. Does not change image pixels or exports.";
+            AddHeading(scroll, "Post FX Preview");
+            postFxBackground = AddColor(scroll, "Background", value => SpriteEditorUserSettings.PostFxBackground = value);
+            postFxBackground.tooltip = "Opaque fill behind the composition before Post FX. Shared with the Post FX panel. Original alpha is still used for depth; document pixels and exports are unchanged.";
             var note = new Label("Saved for your user account. Applies to all Sprite Editor windows; documents and exports are unaffected.");
             note.AddToClassList("sprite-editor-user-settings-note");
             scroll.Add(note);
@@ -79,6 +83,7 @@ namespace DCFApixels.SpriteEditor
             checkerLight?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerLight);
             checkerDark?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerDark);
             invalidPixels?.SetValueWithoutNotify(SpriteEditorUserSettings.InvalidPixels);
+            postFxBackground?.SetValueWithoutNotify(SpriteEditorUserSettings.PostFxBackground);
             checkerSize?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerSize);
         }
     }

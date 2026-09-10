@@ -35,6 +35,20 @@ namespace DCFApixels.SpriteEditor
             var report = new PsdExportReport();
             var records = new List<PsdWriter.LayerRecord>();
             Collect(document, document.layers, records, report, new HashSet<Layer>(), new HashSet<uint>());
+            Layer processor = FindProcessor(document.layers);
+            if (processor != null)
+            {
+                // A stack processor is not an independent source-over layer in this format.
+                // Retain editable sources in a hidden folder and show one faithful composite.
+                records.Insert(0, new PsdWriter.LayerRecord { name = "</Group>", section = 3, visible = false });
+                records.Add(new PsdWriter.LayerRecord { name = "Source Layers", section = 1, visible = false,
+                    opacity = 255, blend = "norm", sectionBlend = "norm" });
+                records.Add(new PsdWriter.LayerRecord { name = "Processed Result", visible = true, opacity = 255,
+                    blend = "norm", openPixels = () => new Pixels(document.RenderPsdPixels(null), document.width, document.height) });
+                report.groupCount++;
+                report.layerCount++;
+                report.Note(processor, "Stack processing is baked into Processed Result. Original layers and folders are preserved in the hidden Source Layers folder.");
+            }
             if (records.Count > 32767) throw new InvalidOperationException("There are too many layers and folder dividers for PSD.");
             // A transparency-bearing layer record also identifies the merged alpha in an empty document.
             if (records.Count == 0)
@@ -68,6 +82,21 @@ namespace DCFApixels.SpriteEditor
             {
                 if (File.Exists(temporary)) File.Delete(temporary);
             }
+        }
+
+        private static Layer FindProcessor(List<Layer> layers)
+        {
+            if (layers == null) return null;
+            foreach (Layer layer in layers)
+            {
+                if (layer is ShaderProcessorLayer) return layer;
+                if (layer is GroupLayer group)
+                {
+                    Layer found = FindProcessor(group.layers);
+                    if (found != null) return found;
+                }
+            }
+            return null;
         }
 
         private static void Collect(TextureCompositor document, List<Layer> layers, List<PsdWriter.LayerRecord> records,

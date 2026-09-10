@@ -433,20 +433,27 @@ namespace DCFApixels.SpriteEditor
             int outputHeight,
             float scaleMultiplier,
             HashSet<Layer> renderStack,
-            HashSet<Layer> included = null)
+            HashSet<Layer> included = null, int firstIndex = 0)
         {
             if (sourceLayers == null)
                 return;
 
             // Data and UI are ordered top-to-bottom. Rendering therefore walks backwards.
-            for (int i = sourceLayers.Count - 1; i >= 0; i--)
+            for (int i = sourceLayers.Count - 1; i >= firstIndex; i--)
             {
                 Layer layer = sourceLayers[i];
+                if (layer is ShaderProcessorLayer processor)
+                {
+                    if (processor.enabled && processor.opacity > 0f && processor.blendMode != BlendMode.None &&
+                        (included == null || included.Contains(processor)))
+                        CompositeProcessor(processor, ref accumulator, outputWidth, outputHeight, scaleMultiplier, renderStack);
+                    continue;
+                }
                 // A chain is resolved before selection/visibility filtering: a hidden base
                 // still owns (and hides) its clipping layers. Orphans never render freely.
                 if (layer == null || layer.clippingMask) continue;
                 int top = i;
-                while (top > 0 && sourceLayers[top - 1] != null && sourceLayers[top - 1].clippingMask) top--;
+                while (top > firstIndex && sourceLayers[top - 1] != null && !(sourceLayers[top - 1] is ShaderProcessorLayer) && sourceLayers[top - 1].clippingMask) top--;
                 if (top < i)
                 {
                     CompositeClippingChain(sourceLayers, i, top, ref accumulator,
@@ -538,6 +545,11 @@ namespace DCFApixels.SpriteEditor
             RenderTexture input = null;
             try
             {
+                if (layer is ShaderProcessorLayer)
+                {
+                    input = GetClearRenderTexture(outputWidth, outputHeight);
+                    CompositeLayers(container, ref input, outputWidth, outputHeight, scaleMultiplier, renderStack, firstIndex: index + 1);
+                }
                 if (layer is TargetedLayerEffect effect)
                 {
                     input = RenderEffectInput(
@@ -832,6 +844,14 @@ namespace DCFApixels.SpriteEditor
                     if (LayerDependsOn(group.layers[i], soughtLayer, visited))
                         return true;
                 }
+                return false;
+            }
+
+            if (candidate is ShaderProcessorLayer)
+            {
+                if (TryFindLayer(candidate, out var siblings, out int processorIndex))
+                    for (int i = processorIndex + 1; i < siblings.Count; i++)
+                        if (LayerDependsOn(siblings[i], soughtLayer, visited)) return true;
                 return false;
             }
 

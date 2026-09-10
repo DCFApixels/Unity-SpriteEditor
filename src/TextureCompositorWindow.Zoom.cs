@@ -21,6 +21,7 @@ namespace DCFApixels.SpriteEditor
                 RefreshPreviewZoomReadout();
                 RefreshPreviewTransformTool();
                 RefreshPreviewPointerCursor();
+                if (postFxSettings != null && postFxSettings.linkDistanceToZoom) postFxDirty = true;
             };
         }
 

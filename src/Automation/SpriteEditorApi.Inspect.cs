@@ -30,7 +30,7 @@ namespace DCFApixels.SpriteEditor
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
-            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf", "normalMap", "gaussianBlur");
+            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "outline", "sdf", "normalMap", "gaussianBlur", "shaderProcessor");
             result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayer());
             result["gaussianBlurDefaults"] = GaussianBlurSnapshot(new GaussianBlurLayer());
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
@@ -181,7 +181,7 @@ namespace DCFApixels.SpriteEditor
         {
             FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
             GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap",
-            GaussianBlurLayer _ => "gaussianBlur", _ => layer.GetType().Name
+            GaussianBlurLayer _ => "gaussianBlur", ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name
         };
     }
 }

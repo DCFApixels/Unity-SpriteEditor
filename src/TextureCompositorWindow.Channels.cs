@@ -35,6 +35,7 @@ namespace DCFApixels.SpriteEditor
             VisualElement channels = new VisualElement();
             channels.AddToClassList("sprite-editor-preview-channels");
             footer.Add(channels);
+            channels.Add(BuildPostFxButton());
             channels.Add(SpriteEditorColorInputs.CreateToggleControl());
             var exposure = new FloatField("EV") { value = previewExposure, tooltip = "Preview exposure only, in stops. Does not affect painting, fill sampling or export." };
             exposure.AddToClassList("sprite-editor-preview-exposure");
@@ -191,7 +192,7 @@ namespace DCFApixels.SpriteEditor
             RenderTexture previous = RenderTexture.active;
             try
             {
-                Graphics.Blit(previewTexture, channelPreviewTexture, material);
+                Graphics.Blit(PreviewPresentationSource, channelPreviewTexture, material);
             }
             finally
             {

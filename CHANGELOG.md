@@ -2,6 +2,24 @@
 
 All notable changes to Sprite Editor are documented in this file.
 
+## [0.7.3] - 2026-09-10
+
+### Added
+
+- Shader Processor layers apply embedded Shader FX, transforms and Swizzle to the lower composite, with alpha-correct effect opacity, group scope and agent layer-type support.
+- Optional URP 17.x Post FX preview with Scene View, Game Camera and Volume Profile sources, a collapsible drawer, synthetic Solid/Alpha Height/Alpha Mask depth and optional zoom-linked distance.
+- Shared background color in User Settings and the Post FX drawer, applied as an opaque bottom fill before processing while retaining original alpha for depth. Post FX does not alter source cameras, profiles, document pixels or exports.
+- Post FX background mode selects Solid Color or a shader-generated Checkerboard using shared user colors and cell size, stable across Live Quality changes and independent of the original alpha-derived depth.
+- Post FX uses an isolated opaque game-camera surface for Renderer Features, including Full Screen Pass and SSAO, with demand-driven Depth/Depth Normals/Color passes and alpha-relief world normals. Renderer Feature/material changes invalidate the preview; temporal AO filtering is disabled on the owned stack.
+
+### Changed
+
+- PSDs containing stack processors show a baked composite and preserve the original hierarchy in a hidden Source Layers folder.
+
+### Fixed
+
+- Scene View Post FX no longer inherits an editor-stage culling mask that excludes the isolated preview surface.
+
 ## [0.7.2] - 2026-09-10
 
 ### Added

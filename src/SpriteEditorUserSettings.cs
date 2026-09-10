@@ -10,6 +10,13 @@ namespace DCFApixels.SpriteEditor
         private const string DarkKey = "DCFApixels.SpriteEditor.Preview.CheckerDark";
         private const string ErrorKey = "DCFApixels.SpriteEditor.Preview.InvalidPixels";
         private const string SizeKey = "DCFApixels.SpriteEditor.Preview.CheckerSize";
+        private const string PostFxBackgroundKey = "DCFApixels.SpriteEditor.Preview.PostFxBackground";
+        private static Color? postFxBackground = Load(PostFxBackgroundKey);
+        internal static Color PostFxBackground
+        {
+            get => postFxBackground ?? Color.black;
+            set => Save(PostFxBackgroundKey, ref postFxBackground, value);
+        }
         internal const int DefaultCheckerSize = 16;
         internal const int MinimumCheckerSize = 1;
         internal const int MaximumCheckerSize = 128;
@@ -77,6 +84,8 @@ namespace DCFApixels.SpriteEditor
             EditorPrefs.DeleteKey(DarkKey);
             EditorPrefs.DeleteKey(ErrorKey);
             EditorPrefs.DeleteKey(SizeKey);
+            EditorPrefs.DeleteKey(PostFxBackgroundKey);
+            postFxBackground = null;
             checkerSize = DefaultCheckerSize;
             checkerLight = checkerDark = invalidPixels = null;
             Changed?.Invoke();

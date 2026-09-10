@@ -10,10 +10,10 @@ namespace DCFApixels.SpriteEditor
         internal static int FindClippingBaseIndex(List<Layer> container, int index)
         {
             if (container == null || index < 0 || index >= container.Count ||
-                container[index] == null || !container[index].clippingMask) return -1;
+                container[index] == null || container[index] is ShaderProcessorLayer || !container[index].clippingMask) return -1;
             for (int i = index + 1; i < container.Count; i++)
             {
-                if (container[i] == null) return -1;
+                if (container[i] == null || container[i] is ShaderProcessorLayer) return -1;
                 if (!container[i].clippingMask) return i;
             }
             return -1;

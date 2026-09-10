@@ -74,6 +74,10 @@ namespace DCFApixels.SpriteEditor
 
             switch (layer)
             {
+                case ShaderProcessorLayer processor:
+                    SpriteEditorUI.AddHelpBox(root, "Processes the composited layers below. Normal blends between the original and processed image using Opacity. In a Pass Through group, the external backdrop is included. Add or edit Shader FX below.", HelpBoxMessageType.Info);
+                    SpriteEditorUI.AddTextureTransform(root, processor, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                    break;
                 case DrawingLayer drawing:
                     DrawingLayerEditorWindow.BuildFields(root, drawing, compositor, ApplyToolkitChange, toolkitInspectorBindings);
                     break;

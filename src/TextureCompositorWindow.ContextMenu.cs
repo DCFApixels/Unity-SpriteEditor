@@ -101,6 +101,7 @@ namespace DCFApixels.SpriteEditor
                         }
                     }
                     group.layers.Insert(0, layer);
+                    if (layer is ShaderProcessorLayer) compositor.AddEmbeddedShaderFX(layer);
                     created.Add(layer);
                     groupExpansion[group.Id] = true;
                     if (layer is GroupLayer) groupExpansion[layer.Id] = true;

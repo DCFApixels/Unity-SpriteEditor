@@ -178,7 +178,7 @@ Unity settings or docking.
 <a id="layers"></a>
 ## Layers & groups
 
-**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Gaussian Blur · Group.
+**Layer types:** File · Drawing · Color Fill · Gradient · Outline · SDF · Normal Map · Gaussian Blur · Shader Processor · Group.
 
 Drag textures from Project into Layers to place them between rows or inside a group.
 Dropping onto the Preview adds File layers at the top of the root list.
@@ -596,6 +596,59 @@ document; parameter edits do not regenerate shaders.
 Save As and layer duplication copy embedded FX independently.
 
 </details>
+
+### Shader Processor
+
+Add **Shader Processor** to process the already-composited image **below its position**.
+Its embedded Shader FX editor uses the same `ApplyFX` / `SampleInput` interface and `#include` support
+as other layers. Transform, Swizzle and chained modifiers apply to this input; Gaussian Blur remains
+an independent, targeted effect layer.
+
+With **Normal**, Opacity interpolates the original and processed result in premultiplied linear light;
+at 100% the result replaces the input, including alpha. Other blend modes combine the result with the
+input. Both ranges default to HDR. Hide the Processor to bypass it.
+
+In a Pass Through group it sees the external backdrop too. An isolated group confines processing to
+its own children. Standalone previews, rasterization and effect targets evaluate the lower siblings
+against transparency. Processors are clipping-chain boundaries, not clipping layers or bases.
+PSD export bakes the composite and retains original layers in a hidden **Source Layers** folder.
+
+### Post FX preview
+
+The **Post FX** footer button enables presentation-only post-processing. Its arrow opens a settings
+drawer beside the layer panes; closing the drawer leaves processing enabled. Painting, eyedropper,
+fill sampling, saved textures and exports continue using the unprocessed composition.
+
+- **Scene View** inherits the active scene view's post-processing switch and volume selection.
+- **Game Camera** inherits a chosen camera's settings and volumes; an empty field uses MainCamera.
+- **Profile** evaluates a selected Volume Profile with manually controlled camera parameters.
+- **Solid** uses constant depth; **Alpha Height** maps alpha 1 to Distance and alpha 0 to
+  Distance + Depth Range; **Alpha Mask** places alpha below Threshold at the far plane. Invert
+  reverses alpha before mapping. Depth comes from original alpha, not the displayed channel mask.
+- **Background → Mode** selects **Solid Color** (default) or **Checkerboard**, both opaque underlays
+  before processing. The solid color is shared with **User Settings → Post FX Preview**. Checkerboard
+  uses the transparency checker colors and cell size from User Settings; cells are measured in canvas
+  pixels, zoom with the image and remain stable across Live Quality changes. Soft edges blend with
+  the selected background; the original alpha still controls synthetic depth.
+- **Link to Zoom** optionally changes simulated distance. **Animate** refreshes time-varying effects
+  up to 8 fps; otherwise changes invalidate the preview and volume settings are checked periodically.
+
+The optional adapter currently supports **URP 17.x with Universal Renderer**. No URP installation is
+required to use the editor or Shader Processor. Unsupported pipelines/renderers show a notice and
+the original preview. The isolated opaque surface runs through the selected **Universal Renderer's
+active Renderer Features**, including Full Screen Pass and SSAO. Depth and world-space normals
+describe the same alpha relief; SSAO can read either Depth or Depth Normals. Color copies, depth
+textures and normal passes are scheduled by URP only when a feature, post-effect or rendering mode
+requests them. The ordinary opaque depth attachment is still needed. Disabling Post FX stops these
+preview passes and releases editor-owned resources; URP can retain its shared resource pools.
+
+This is a synthetic surface, not a copy of the scene: no scene geometry, lighting or camera stacks
+are rendered, and scene-object filters may exclude it. Features must declare their texture inputs
+and support offscreen cameras. Projection can be inherited or overridden; the pipeline's render
+scale applies. TAA, Motion Blur and AO temporal filtering are skipped; STP is unsupported and shows
+the original preview with a notice. Other features depending on motion history, real geometry,
+lighting or material buffers are not guaranteed. Existing cameras, profiles and project settings
+are never edited. Renderer Feature and referenced material edits also invalidate the preview.
 
 <a id="saving"></a>
 ## Saving & export
