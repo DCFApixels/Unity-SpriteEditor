@@ -605,7 +605,7 @@ namespace DCFApixels.SpriteEditor
                     outputWidth,
                     outputHeight,
                     scaleMultiplier,
-                    renderStack, effect is NormalMapLayer || effect is GaussianBlurLayer);
+                    renderStack, effect.RequiresColorInput);
             }
 
             Layer target = FindLayer(effect.TargetLayerId);
@@ -615,7 +615,7 @@ namespace DCFApixels.SpriteEditor
 
             if (target is GroupLayer group)
                 return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
-                    effect is NormalMapLayer || effect is GaussianBlurLayer, includeDisabled: true);
+                    effect.RequiresColorInput, includeDisabled: true);
             if (!TryFindLayer(target, out List<Layer> targetContainer, out int targetIndex))
                 return null;
 

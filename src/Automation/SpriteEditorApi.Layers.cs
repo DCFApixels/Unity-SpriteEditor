@@ -24,6 +24,7 @@ namespace DCFApixels.SpriteEditor
                     "outline" => new OutlineLayer(), "sdf" => new SDFLayer(),
                     "normalMap" => new NormalMapLayer(),
                     "gaussianBlur" => new GaussianBlurLayer(),
+                    "motionBlur" => new MotionBlurLayer(),
                     "shaderProcessor" => new ShaderProcessorLayer(),
                     _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
                 };
@@ -127,7 +128,7 @@ namespace DCFApixels.SpriteEditor
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
-                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "noise");
+                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "motionBlur", "noise");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
@@ -139,6 +140,7 @@ namespace DCFApixels.SpriteEditor
                     key == "metric" && (layer is SDFLayer || layer is OutlineLayer) ||
                     key == "normalMap" && layer is NormalMapLayer ||
                     key == "gaussianBlur" && layer is GaussianBlurLayer ||
+                    key == "motionBlur" && layer is MotionBlurLayer ||
                     key == "noise" && layer is NoiseLayer ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition") && layer is OutlineLayer ||
                     (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer is SDFLayer ||
@@ -184,6 +186,8 @@ namespace DCFApixels.SpriteEditor
                 SetNormalMap(normal, Obj(settings["normalMap"], "normalMap"));
             if (layer is GaussianBlurLayer gaussian && settings["gaussianBlur"] != null)
                 SetGaussianBlur(gaussian, Obj(settings["gaussianBlur"], "gaussianBlur"));
+            if (layer is MotionBlurLayer motion && settings["motionBlur"] != null)
+                SetMotionBlur(motion, Obj(settings["motionBlur"], "motionBlur"));
             if (layer is NoiseLayer noise && settings["noise"] != null)
                 SetNoise(noise, Obj(settings["noise"], "noise"));
             if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(drawing, Obj(settings["brush"], "brush"));

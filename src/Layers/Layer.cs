@@ -245,5 +245,6 @@ namespace DCFApixels.SpriteEditor
         }
 
         internal sealed override bool RequiresInput => true;
+        internal virtual bool RequiresColorInput => false;
     }
 }

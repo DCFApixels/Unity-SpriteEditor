@@ -41,6 +41,7 @@ namespace DCFApixels.SpriteEditor
         public bool ignoreTransparent = true;
 
         public override string ToString() => "Normal Map";
+        internal override bool RequiresColorInput => true;
 
         internal override RenderTexture Render(in LayerRenderContext context)
         {

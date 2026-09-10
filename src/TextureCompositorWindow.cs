@@ -669,6 +669,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("SDF"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
             menu.AddItem(new GUIContent("Normal Map"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
             menu.AddItem(new GUIContent("Gaussian Blur"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
+            menu.AddItem(new GUIContent("Motion Blur"), false, () => AddLayer(container, insertionIndex, new MotionBlurLayer()));
             menu.AddItem(new GUIContent("Shader Processor"), false, () => AddLayer(container, insertionIndex, new ShaderProcessorLayer()));
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
@@ -785,6 +786,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Gaussian Blur Layer"), false, () => AddInsideContextGroups(targets, () => new GaussianBlurLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Motion Blur"), false, () => AddInsideContextGroups(targets, () => new MotionBlurLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Shader Processor"), false, () => AddInsideContextGroups(targets, () => new ShaderProcessorLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
                 menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
@@ -930,6 +932,9 @@ namespace DCFApixels.SpriteEditor
                     break;
                 case GaussianBlurLayer gaussian:
                     GaussianBlurLayerEditorWindow.Open(gaussian, compositor);
+                    break;
+                case MotionBlurLayer motion:
+                    MotionBlurLayerEditorWindow.Open(motion, compositor);
                     break;
                 case ShaderProcessorLayer processor:
                     ShaderProcessorLayerEditorWindow.Open(processor, compositor);

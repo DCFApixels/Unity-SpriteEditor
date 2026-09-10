@@ -134,13 +134,13 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `shaderProcessor`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `motionBlur`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
 - `move`: `index` is the insertion index **after removal** from the old container; omitted parent
   or `parent:""` moves to root. A group cannot move into itself or its descendants.
-- `target`: effect layers (SDF/Outline/Normal Map/Gaussian Blur); default input Specific. Previous means the next sibling below the effect.
+- `target`: effect layers (SDF/Outline/Normal Map/Gaussian Blur/Motion Blur); default input Specific. Previous means the next sibling below the effect.
   Specific targets can be groups, but cannot create a dependency cycle.
 - `stroke`: Drawing only, detailed below.
 
@@ -159,6 +159,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | Normal Map | `normalMap`: partial settings object described below |
 | Noise | `noise`: partial procedural settings object described below |
 | Gaussian Blur | `gaussianBlur`: `{ "radius": 8, "edges": "Transparent" }`; radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
+| Motion Blur | `motionBlur`: `{ "mode": "Linear", "strength": 1, "distance": 16, "angle": 0, "arc": 15, "center": [0.5, 0.5], "direction": "Centered", "edges": "Transparent" }`; [parameters](#motion-blur-settings) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
@@ -263,6 +264,36 @@ changing their Pass Through setting. Layer Transform, swizzle, clipping, opacity
 apply normally to the effect. API rendering/saving uses the full-quality algorithm, never the main
 window's interactive approximation. Export to PSD rasterizes this effect.
 See [Gaussian Blur](GaussianBlur.md) for transparency, HDR and cache behavior.
+
+### Motion Blur settings
+
+Use `type:"motionBlur"` and partial `settings.motionBlur` updates. `describe` exposes
+`motionBlurDefaults`, `motionBlurModes`, `motionBlurDirections` and `motionBlurEdges`;
+`inspect` returns every setting. Protocol version remains 1.
+
+| Field | Values / meaning |
+| --- | --- |
+| `mode` | `Linear` (default) or `Circular` |
+| `strength` | 0–4, default 1 (UI 0–400%); below 1 mixes with the original; above 1 increases translucent trail density without changing RGB brightness or length; fully opaque pixels stay unchanged |
+| `distance` | 0–512 original canvas pixels; default 16; used by Linear |
+| `angle` | −180–180 degrees; default 0; 0 points right, positive turns counterclockwise; Linear |
+| `arc` | 0–360 degrees of rotation; default 15; Circular |
+| `center` | `[x,y]`, each 0–1; bottom-left origin, default `[0.5,0.5]`; Circular |
+| `direction` | `Centered` (default), `Forward`, `Backward`; Forward follows Angle or rotates counterclockwise |
+| `edges` | `Transparent` (default), `Clamp`, `Repeat`, `Mirror` |
+
+```json
+{"op":"add","type":"motionBlur","as":"motion","settings":{
+  "colorRange":"HDR","motionBlur":{"mode":"Circular","arc":25,"center":[0.4,0.6],"direction":"Centered","edges":"Transparent"}
+}}
+```
+
+Assign the source with `{"op":"target","layer":"@motion","input":"Specific","target":"@source"}`.
+Previous uses the sibling below. Hidden sources and isolated group color are supported, just as
+for Gaussian Blur. Zero Distance (Linear) or Arc (Circular) bypasses filtering. Inactive-mode
+settings are retained when switching modes. Transform, swizzle, clipping, opacity and blend
+settings use the normal effect-layer paths. API rendering uses full quality; PSD rasterizes the effect.
+See [Motion Blur](MotionBlur.md) for sampling, alpha, quality and memory details.
 
 ### Normal Map settings
 

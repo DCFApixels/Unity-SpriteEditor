@@ -57,6 +57,18 @@ try
     var normal=new DCFApixels.SpriteEditor.NormalMapLayer {inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
     document.layers.Insert(0,normal);Normalize();Same(Fresh(),Render(),.003f,"Normal Map shares color source");
     document.layers.Remove(normal);
+    var motion=new DCFApixels.SpriteEditor.MotionBlurLayer {distance=8,inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
+    document.layers.Insert(0,motion);Normalize();
+    Same(Fresh(),Render(),.003f,"Motion Blur shares isolated RGBA source");
+    hits=Hits();Render();Check(Hits()>hits,"Motion Blur cache hit");
+    motion.mode=DCFApixels.SpriteEditor.MotionBlurLayer.BlurMode.Circular;motion.arc=45;
+    Same(Fresh(),Render(),.003f,"Motion Blur mode invalidation");
+    motion.center=new UnityEngine.Vector2(.2f,.8f);
+    Same(Fresh(),Render(),.003f,"Motion Blur center invalidation");
+    motion.strength=2;
+    Same(Fresh(),Render(),.003f,"Motion Blur strength invalidation");
+    Render(true);Same(Fresh(),Render(),.003f,"Motion Blur refines after interactive rendering");
+    document.layers.Remove(motion);
     file.opacity=.3f;Same(Fresh(),Render(),.003f,"Child opacity invalidation");
     group.opacity=.4f;Same(Fresh(),Render(),.003f,"Group opacity invalidation");
     input[32*64+32]=new UnityEngine.Color(0,3,0,1);texture.SetPixels(input);texture.Apply(false,false);

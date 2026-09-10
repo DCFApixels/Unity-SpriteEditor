@@ -4,6 +4,14 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-09-10
+
+### Added
+
+- Motion Blur effect layer with Linear and Circular modes, distance/angle or arc/center controls, centered or directional trails, and Transparent/Clamp/Repeat/Mirror edges.
+- Motion Blur Strength (0–400%): alpha-correct original/blur mixing below 100% and denser translucent trails above 100%, preserving trail length and RGB brightness; exposed in Properties and the agent API.
+- Alpha-correct linear HDR GPU filtering, reduced interactive previews, shared effect/group caching, Properties controls, and complete Motion Blur agent API settings and discovery.
+
 ## [0.7.5] - 2026-09-10
 
 ### Added

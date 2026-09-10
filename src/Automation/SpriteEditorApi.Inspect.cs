@@ -30,7 +30,7 @@ namespace DCFApixels.SpriteEditor
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
-            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "noise", "outline", "sdf", "normalMap", "gaussianBlur", "shaderProcessor");
+            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "noise", "outline", "sdf", "normalMap", "gaussianBlur", "motionBlur", "shaderProcessor");
             result["noiseDefaults"] = NoiseSnapshot(new NoiseLayer());
             result["noiseTypes"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.NoiseType)));
             result["noiseFractals"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.FractalType)));
@@ -40,6 +40,10 @@ namespace DCFApixels.SpriteEditor
             result["noiseEncodings"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.OutputEncoding)));
             result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayer());
             result["gaussianBlurDefaults"] = GaussianBlurSnapshot(new GaussianBlurLayer());
+            result["motionBlurDefaults"] = MotionBlurSnapshot(new MotionBlurLayer());
+            result["motionBlurModes"] = new JArray(System.Enum.GetNames(typeof(MotionBlurLayer.BlurMode)));
+            result["motionBlurDirections"] = new JArray(System.Enum.GetNames(typeof(MotionBlurLayer.MotionDirection)));
+            result["motionBlurEdges"] = new JArray(System.Enum.GetNames(typeof(MotionBlurLayer.EdgeMode)));
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
             result["tilingModes"] = new JArray(System.Enum.GetNames(typeof(TransformTilingMode)));
             result["filterModes"] = new JArray(System.Enum.GetNames(typeof(LayerFilterMode)));
@@ -155,6 +159,7 @@ namespace DCFApixels.SpriteEditor
                     }
                     if (layer is NormalMapLayer normal) settings["normalMap"] = NormalMapSnapshot(normal);
                     if (layer is GaussianBlurLayer gaussian) settings["gaussianBlur"] = GaussianBlurSnapshot(gaussian);
+                    if (layer is MotionBlurLayer motion) settings["motionBlur"] = MotionBlurSnapshot(motion);
                     if (layer is NoiseLayer noise) settings["noise"] = NoiseSnapshot(noise);
                     if (layer is GradientLayer gradient) entry["gradientKeys"] = GradientSnapshot(gradient.gradient);
                     layers.Add(entry);
@@ -190,7 +195,7 @@ namespace DCFApixels.SpriteEditor
             FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
             GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap",
             NoiseLayer _ => "noise",
-            GaussianBlurLayer _ => "gaussianBlur", ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name
+            GaussianBlurLayer _ => "gaussianBlur", MotionBlurLayer _ => "motionBlur", ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name
         };
     }
 }

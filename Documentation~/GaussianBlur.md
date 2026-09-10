@@ -35,7 +35,7 @@ children can still interact with the external backdrop there. The effect does no
 Group transforms and modifiers remain unsupported, as before.
 
 Outline and SDF retain their established grayscale-coverage group source, including when SDF selects
-a non-alpha channel. Normal Map and Gaussian Blur request RGBA. Both source representations use the
+a non-alpha channel. Normal Map, Gaussian Blur and Motion Blur request RGBA. Both source representations use the
 same composite alpha, so adding a color consumer does not change an existing Outline/SDF result.
 
 ## Cache ownership and memory

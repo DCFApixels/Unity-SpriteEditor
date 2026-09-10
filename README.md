@@ -45,7 +45,7 @@ texture in one asset — export a separate image only when you need one.
 | Painting | Brush and eraser, straight lines, flood fill, and RGBA channel masks. |
 | Patterns | Rotatable mirror symmetry, rows, grids, and radial repetition with boundary clipping. |
 | Transforms | On-canvas handles, movable snapping pivot, source aspect ratio, tiling, and filtering. |
-| Effects | Outline, SDF, Normal Map, Gaussian Blur, blend modes, and embedded Shader FX with editable HLSL. |
+| Effects | Outline, SDF, Normal Map, Gaussian Blur, Motion Blur, blend modes, and embedded Shader FX with editable HLSL. |
 | Output | Editable documents with Texture2D/Sprite output; layered PSD, PNG, JPEG, TGA, EXR, and Texture2D export. |
 | Automation | C# and JSON APIs, optional CLI commands, and an agent guide. |
 
@@ -178,7 +178,7 @@ Unity settings or docking.
 <a id="layers"></a>
 ## Layers & groups
 
-**Layer types:** File · Drawing · Color Fill · Gradient · Noise · Outline · SDF · Normal Map · Gaussian Blur · Shader Processor · Group.
+**Layer types:** File · Drawing · Color Fill · Gradient · Noise · Outline · SDF · Normal Map · Gaussian Blur · Motion Blur · Shader Processor · Group.
 
 Drag textures from Project into Layers to place them between rows or inside a group.
 Dropping onto the Preview adds File layers at the top of the root list.
@@ -292,7 +292,7 @@ results can change as with other partial merges.
 <summary>Layer names, opacity, and duplication details</summary>
 
 Each type has an independent document-local name counter: `Layer n` for Drawing, `File n`,
-`Color Fill n`, `Gradient n`, `Noise n`, `Outline n`, `SDF n`, `Normal Map n`, `Gaussian Blur n`, and `Group n`.
+`Color Fill n`, `Gradient n`, `Noise n`, `Outline n`, `SDF n`, `Normal Map n`, `Gaussian Blur n`, `Motion Blur n`, and `Group n`.
 Duplicates retain the full name and append ` Copy n`, using a separate shared copy counter.
 Deleted numbers are not reused.
 
@@ -488,7 +488,7 @@ explicitly (**Specific**). Drag a layer onto **Target** to assign it; with a dra
 the active layer is used. This also works in separate Properties windows.
 Cross-document, self-referencing, and cyclic targets are rejected.
 
-Effect layers (Outline, SDF, Normal Map and Gaussian Blur) can process hidden sources in both Previous and
+Effect layers (Outline, SDF, Normal Map, Gaussian Blur and Motion Blur) can process hidden sources in both Previous and
 Specific modes. The source's eye toggle controls its own contribution to the composition, not
 its availability as an effect input. A hidden group still supplies its visible children;
 individually hidden children remain excluded. Source opacity and clipping behavior are unchanged.
@@ -513,6 +513,24 @@ Save, export and conversion use the full-quality algorithm; PSD stores the resul
 The main window shares a bounded cache of effect results and group sources, separate from Undo.
 See [rendering and cache details](Documentation~/GaussianBlur.md) and
 [agent settings](Documentation~/AgentAPI.md#gaussian-blur-settings).
+
+### Motion Blur
+
+Add **Motion Blur** and choose a **Previous** or **Specific** source, including a hidden layer or
+an isolated group. **Linear** uses Distance (0–512 canvas pixels) and Angle; **Circular** uses
+Arc (0–360 degrees) and a normalized Center, with `(0.5, 0.5)` at the canvas center.
+Circular follows a rotation arc, not a zoom toward the center.
+
+**Strength** (0–400%, default 100%) mixes with the original below 100%; above 100%, it makes
+translucent trails denser without changing their length or color brightness. Fully opaque areas
+are unchanged above 100%. At 0%, the effect returns the original image.
+
+**Direction** selects Centered, Forward or Backward. Forward follows the linear angle or turns
+counterclockwise around the circular center. **Edges** offers Transparent, Clamp, Repeat and Mirror.
+Like Gaussian Blur, filtering respects transparency and HDR, uses the shared effect cache and
+refines the main preview after editing. Large circular arcs have a bounded sampling cost and can
+show discrete traces on fine details. PSD export rasterizes the result.
+See [rendering details](Documentation~/MotionBlur.md) and [agent settings](Documentation~/AgentAPI.md#motion-blur-settings).
 
 ### Normal Map
 

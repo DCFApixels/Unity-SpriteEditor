@@ -31,6 +31,7 @@ namespace DCFApixels.SpriteEditor
                 case SDFLayer _: return "SDF";
                 case NormalMapLayer _: return "Normal Map";
                 case GaussianBlurLayer _: return "Gaussian Blur";
+                case MotionBlurLayer _: return "Motion Blur";
                 case ShaderProcessorLayer _: return "Shader Processor";
                 default: return ObjectNames.NicifyVariableName(layer.GetType().Name);
             }

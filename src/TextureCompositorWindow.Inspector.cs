@@ -109,6 +109,10 @@ namespace DCFApixels.SpriteEditor
                     GaussianBlurLayerEditorWindow.BuildFields(root, gaussian, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
+                case MotionBlurLayer motion:
+                    MotionBlurLayerEditorWindow.BuildFields(root, motion, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                        AddToolkitInspectorEffectTarget);
+                    break;
             }
             LayerColorSettingsView.Build(root, layer, ApplyToolkitChange, toolkitInspectorBindings,
                 colorSettingsExpanded, value => colorSettingsExpanded = value, compositor);

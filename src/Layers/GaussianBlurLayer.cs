@@ -12,6 +12,7 @@ namespace DCFApixels.SpriteEditor
         public EdgeMode edges;
 
         public override string ToString() => "Gaussian Blur";
+        internal override bool RequiresColorInput => true;
 
         internal override RenderTexture Render(in LayerRenderContext context)
         {

@@ -64,7 +64,7 @@ namespace DCFApixels.SpriteEditor
                 RequireEntry(layer, "effect");
                 Layer input = Input(effect);
                 if (input is GroupLayer) RequireEntry(input, "group");
-                if (effect is NormalMapLayer || effect is GaussianBlurLayer) colorSources.Add(input);
+                if (effect.RequiresColorInput) colorSources.Add(input);
                 VisitRequired(input);
             }
             if (layer.clippingMask) VisitRequired(document.GetClippingBase(layer));
