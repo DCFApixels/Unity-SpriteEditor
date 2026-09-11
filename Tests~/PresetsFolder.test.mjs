@@ -20,3 +20,18 @@ assert.ok(settings.includes('EditorPrefs.DeleteKey(PresetsFolderKey);\n         
 for (const forbidden of ['Directory.CreateDirectory', 'Directory.Delete', 'Directory.Move', 'File.Delete', 'File.Move', 'AssetDatabase.', 'Application.dataPath'])
   assert.ok(!(settings + ui).includes(forbidden), forbidden);
 console.log('Preset folder preference/UI/source checks passed (Unity not executed).');
+
+assert.ok(settings.includes('EditorPrefs.GetBool(ShowMantaKey, true)'));
+assert.ok(settings.includes('EditorPrefs.SetBool(ShowMantaKey, value)'));
+assert.ok(previewReset.includes('EditorPrefs.DeleteKey(ShowMantaKey)'));
+assert.ok(previewReset.includes('showManta = true;'));
+assert.ok(ui.includes('new Toggle("Clean Preview Background")'));
+assert.ok(ui.includes('cleanBackground?.SetValueWithoutNotify(!SpriteEditorUserSettings.ShowManta)'));
+assert.ok(ui.includes('SpriteEditorUserSettings.ShowManta = !evt.newValue'));
+assert.ok(ui.includes('TextureCompositorWindow.ConfirmResetEditorSettings(this)'));
+const editor = read('src/TextureCompositorWindow.cs');
+assert.ok(!editor.includes('menu.AddItem(new GUIContent("Reset WhimTex Settings…")'));
+assert.match(editor, /OnPreviewAppearanceChanged\(\)\s*\{\s*toolkitPreviewCanvas\?\.RefreshBackdropVisibility\(\)/);
+const preview = read('src/TextureCompositorWindow.UI.cs');
+assert.match(preview, /Add\(backdrop\);\s*RefreshBackdropVisibility\(\);/);
+assert.ok(preview.includes('backdrop.EnableInClassList("sprite-editor-preview-backdrop--hidden", !SpriteEditorUserSettings.ShowManta)'));

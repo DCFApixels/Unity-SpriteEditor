@@ -1507,6 +1507,8 @@ namespace DCFApixels.SpriteEditor
             if (toolkitPreviewCanvas == null || compositor == null)
                 return;
 
+            bool hasLayers = HasPreviewLayers;
+            toolkitPreviewCanvas.SetCanvasVisible(hasLayers);
             DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
             ApplyPreviewTextureFilter();
             RefreshPreviewQualityControl();
@@ -1566,7 +1568,8 @@ namespace DCFApixels.SpriteEditor
                 }
                 else
                 {
-                    toolkitPreviewFooter.text = previewTexture != null
+                    toolkitPreviewFooter.text = !hasLayers ? "Add a layer to start"
+                        : previewTexture != null
                         ? (tiledPreview ? "Tiled canvas • seamless brush and eraser • auto refresh" : "Transparent canvas • auto refresh")
                         : "Rendering preview…";
                 }
@@ -1933,6 +1936,7 @@ namespace DCFApixels.SpriteEditor
         private sealed class SpritePreviewElement : VisualElement
         {
             private readonly PreviewViewport viewport;
+            private readonly Image backdrop;
             private readonly VisualElement checker;
             private Texture2D checkerTexture;
             private Texture2D transparentCursorTexture;
@@ -1952,6 +1956,7 @@ namespace DCFApixels.SpriteEditor
             private bool transformMode;
             private Vector2 cursorPosition;
             private bool tiled;
+            private bool canvasVisible = true;
             private Rect presentationRect;
 
             public Rect ImageRect { get; private set; }
@@ -1968,7 +1973,19 @@ namespace DCFApixels.SpriteEditor
                     ? new Color(0.08f, 0.08f, 0.08f, 1f)
                     : new Color(0.58f, 0.58f, 0.58f, 1f);
 
+                backdrop = new Image
+                {
+                    image = SpriteEditorBranding.PreviewBackdrop,
+                    scaleMode = ScaleMode.ScaleToFit,
+                    pickingMode = PickingMode.Ignore,
+                    focusable = false
+                };
+                backdrop.AddToClassList("sprite-editor-preview-backdrop");
+                Add(backdrop);
+                RefreshBackdropVisibility();
+
                 checker = new VisualElement { pickingMode = PickingMode.Ignore };
+                checker.AddToClassList("sprite-editor-preview-surface");
                 checker.style.position = Position.Absolute;
                 checker.style.backgroundColor = EditorGUIUtility.isProSkin
                     ? new Color(0.26f, 0.26f, 0.26f, 1f)
@@ -1985,10 +2002,12 @@ namespace DCFApixels.SpriteEditor
                     pickingMode = PickingMode.Ignore
                 };
                 image.style.position = Position.Absolute;
+                image.AddToClassList("sprite-editor-preview-surface");
                 Add(image);
 
                 tiledImage = new VisualElement { pickingMode = PickingMode.Ignore };
                 tiledImage.AddToClassList("sprite-editor-tiled-image");
+                tiledImage.AddToClassList("sprite-editor-preview-surface");
                 tiledImage.generateVisualContent += DrawTiledImage;
                 Add(tiledImage);
 
@@ -1999,7 +2018,27 @@ namespace DCFApixels.SpriteEditor
                 pencilCursorElement = new PencilCursorElement();
                 overlay.Add(pencilCursorElement);
 
-                RegisterCallback<GeometryChangedEvent>(_ => UpdateImageLayout());
+                RegisterCallback<GeometryChangedEvent>(_ =>
+                {
+                    UpdateBackdropLayout();
+                    UpdateImageLayout();
+                });
+            }
+
+            public void RefreshBackdropVisibility()
+            {
+                backdrop.EnableInClassList("sprite-editor-preview-backdrop--hidden", !SpriteEditorUserSettings.ShowManta);
+            }
+
+            private void UpdateBackdropLayout()
+            {
+                Rect bounds = contentRect;
+                float size = Mathf.Min(bounds.width * 1.15f, bounds.height * 1.30f);
+                if (size <= 0f || float.IsNaN(size) || float.IsInfinity(size)) return;
+                PositionElement(backdrop, new Rect(
+                    bounds.xMin - size * 0.22f,
+                    bounds.yMax - size * 0.72f,
+                    size, size));
             }
 
             public void SetToolCursor(PreviewTool tool, bool hide, bool panning, MouseCursor transformCursor = MouseCursor.Pan)
@@ -2036,6 +2075,15 @@ namespace DCFApixels.SpriteEditor
                 toolCursorHidden = false;
                 if (transparentCursorTexture != null) UnityEngine.Object.DestroyImmediate(transparentCursorTexture);
                 transparentCursorTexture = null;
+            }
+
+            public void SetCanvasVisible(bool visible)
+            {
+                if (canvasVisible == visible) return;
+                canvasVisible = visible;
+                EnableInClassList("sprite-editor-preview-canvas--empty", !visible);
+                if (visible) viewport.Reset();
+                UpdateImageLayout(true);
             }
 
             public void SetTiled(bool enabled)
@@ -2095,18 +2143,21 @@ namespace DCFApixels.SpriteEditor
 
             public void ZoomAt(Vector2 point, float scale)
             {
+                if (!canvasVisible) return;
                 viewport.ZoomAt(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, point, scale);
                 UpdateImageLayout();
             }
 
             public void Frame(Rect region)
             {
+                if (!canvasVisible) return;
                 viewport.Frame(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, region);
                 UpdateImageLayout();
             }
 
             public void Pan(Vector2 delta)
             {
+                if (!canvasVisible) return;
                 viewport.Pan(contentRect, new Vector2(documentWidth, documentHeight), ImageRect, delta);
                 UpdateImageLayout();
             }

@@ -30,6 +30,11 @@ https://github.com/DCFApixels/WhimTex.git
 
 Double-click the saved asset to continue editing. You do not need to export it first.
 
+Dropping a texture into an empty document sets the canvas size to that texture's dimensions in Unity.
+The same happens when you add **File** as the only layer and assign its first **Source Texture**.
+Later texture replacements leave the canvas size unchanged. When dropping several textures at once,
+the first one sets the size.
+
 ## Find your way around
 
 The canvas is on the left. **Layers** is the list on the right; **Layer Settings** above it
@@ -51,6 +56,7 @@ Pan by holding the mouse wheel and dragging. Scroll to zoom; **Fit** shows the w
 ## Make the workspace comfortable
 
 **Window tab ⋮ → User Settings…** lets you change the transparency checkerboard's colors
-and size. **Reset WhimTex Settings…** restores the workspace preferences without deleting your documents.
+and size, or enable **Clean Preview Background** to hide the background logo. At the bottom of this settings window,
+**Reset WhimTex Settings…** restores the workspace preferences after confirmation, without deleting your documents or preset files.
 
 To keep a layer's settings in a separate window, use **layer ⋮ → Properties**.

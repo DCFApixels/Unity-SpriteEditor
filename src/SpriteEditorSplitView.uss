@@ -210,6 +210,14 @@
     display: flex;
 }
 
+.sprite-editor-preview-canvas--empty > .sprite-editor-preview-surface {
+    display: none;
+}
+
+.sprite-editor-preview-backdrop--hidden {
+    display: none;
+}
+
 .sprite-editor-post-fx-field--hidden,
 .sprite-editor-preview-image--hidden {
     display: none;
@@ -328,6 +336,11 @@
 .sprite-editor-preview-canvas {
     cursor: arrow;
     overflow: hidden;
+}
+
+.sprite-editor-preview-backdrop {
+    position: absolute;
+    opacity: 0.035;
 }
 
 .sprite-editor-preview-workspace {

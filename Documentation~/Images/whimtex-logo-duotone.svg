@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">WhimTex manta — two-tone</title>
+  <desc id="desc">White WhimTex manta with charcoal eyes, bold separating contours and a soft surrounding shadow. Transparent background; editable vector shapes.</desc>
+  <defs>
+    <radialGradient id="center-shadow">
+      <stop offset="0" stop-color="#202124" stop-opacity="0.55"/>
+      <stop offset="0.4" stop-color="#202124" stop-opacity="0.42"/>
+      <stop offset="0.7" stop-color="#202124" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#202124" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="halo-shadow" filterUnits="userSpaceOnUse" x="-64" y="-64" width="1382" height="1382" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18" result="halo-blur"/>
+      <feOffset in="halo-blur" dx="0" dy="10" result="halo-alpha"/>
+      <feFlood flood-color="#202124" flood-opacity="0.75" result="halo-color"/>
+      <feComposite in="halo-color" in2="halo-alpha" operator="in" result="halo"/>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <path id="outline" d="M390 466 C373 420 362 377 372 339 C378 315 391 293 406 283 C418 275 430 280 440 290 C458 307 455 330 461 350 C466 369 478 380 495 379 C504 379 508 375 516 370 C544 350 571 341 599 333 C615 321 621 307 614 293 C606 277 582 258 573 244 C560 225 567 210 583 204 C605 195 631 204 650 213 C694 232 728 272 759 315 C786 335 815 344 852 345 C919 347 974 320 1019 277 C1053 245 1079 203 1109 201 C1151 196 1178 234 1191 272 C1207 317 1200 353 1200 385 C1199 420 1187 459 1171 493 C1155 535 1144 577 1120 618 C1090 673 1055 713 1015 753 C967 802 915 846 861 909 C834 941 795 960 754 944 C722 933 699 930 671 934 C619 940 591 943 548 937 C447 924 351 878 261 838 C223 820 192 810 158 806 C125 801 101 802 81 784 C53 762 45 738 51 708 C59 666 94 632 135 613 C203 583 283 583 340 542 C370 520 389 496 390 466 Z"/>
+    <clipPath id="bodyClip"><use href="#outline"/></clipPath>
+  </defs>
+  <ellipse id="background-shadow" cx="670" cy="680" rx="550" ry="440" fill="url(#center-shadow)"/>
+  <g id="artwork" filter="url(#halo-shadow)">
+  <path id="curled-tail" fill="#ffffff" d="M754 943 C779 969 789 1000 777 1033 C765 1064 746 1081 716 1091 C698 1097 681 1103 682 1117 C684 1137 718 1129 738 1122 C804 1097 839 1043 852 987 C858 961 860 935 861 907 Z"/>
+  <use href="#outline" fill="#ffffff"/>
+  <g clip-path="url(#bodyClip)">
+    <path id="left-wing" fill="#ffffff" d="M390 466 C412 554 474 615 539 687 C601 755 651 825 695 894 L775 966 L38 879 L22 554 Z"/>
+    <path id="left-wing-tip" fill="#ffffff" d="M390 461 C405 544 355 618 285 659 C219 699 157 699 91 773 L64 799 L15 748 L26 602 L339 498 Z"/>
+    <path id="right-wing" fill="#ffffff" d="M760 315 C825 384 882 446 908 536 C937 633 930 719 900 807 C887 847 873 884 861 909 L1127 760 L1230 439 L1217 164 L1047 160 Z"/>
+    <path id="right-wing-tip" fill="#ffffff" d="M760 315 C825 393 903 446 1003 446 C1116 449 1189 400 1201 322 L1222 198 L1091 145 L845 276 Z"/>
+    <path id="left-underside" fill="#ffffff" d="M80 784 C106 740 172 710 241 710 C350 706 462 762 553 808 C604 834 650 861 695 894 C720 912 738 928 757 945 L745 984 L39 970 Z"/>
+    <path id="left-underside-fold" fill="#ffffff" d="M80 784 C106 740 172 710 241 710 C350 706 462 762 553 808 C572 818 590 828 608 838 C531 815 481 815 429 823 C368 831 316 842 259 835 C184 829 115 811 80 784 Z"/>
+    <path id="right-underside" fill="#ffffff" d="M1200 324 C1191 406 1140 449 1083 493 C1003 555 957 623 932 697 C909 766 887 849 861 909 L963 902 L1227 644 Z"/>
+    <path id="right-underside-fold" fill="#ffffff" d="M1200 324 C1191 406 1140 449 1083 493 C1003 555 957 623 932 697 C970 636 1013 606 1067 570 C1136 525 1172 490 1189 429 C1200 391 1203 353 1200 324 Z"/>
+    <path id="left-head-fin-fold" fill="#ffffff" d="M432 283 C459 299 454 330 461 350 C466 369 478 380 495 379 C504 379 509 375 516 370 L457 422 C437 442 420 412 419 390 C418 366 433 348 441 328 C449 309 445 295 432 283 Z"/>
+    <path id="right-head-fin-fold" fill="#ffffff" d="M568 232 C581 251 602 257 626 261 C654 266 677 283 684 302 C688 313 684 321 673 323 C646 327 623 327 599 333 C615 321 621 307 614 293 C606 277 582 258 573 244 Z"/>
+  </g>
+  <g id="segment-contours" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g clip-path="url(#bodyClip)" stroke="#202124" stroke-width="12.24">
+      <path id="left-underside-seam" d="M80 784 C106 740 172 710 241 710 C350 706 462 762 553 808 C604 834 650 861 695 894 C720 912 738 928 757 945"/>
+      <path id="right-underside-seam" d="M1200 324 C1191 406 1140 449 1083 493 C1003 555 957 623 932 697 C909 766 887 849 861 909"/>
+      <path id="left-head-fin-seam" d="M432 283 C445 295 449 309 441 328 C433 348 418 366 419 390 C420 412 437 442 457 422 L516 370"/>
+      <path id="right-head-fin-seam" d="M568 232 C581 251 602 257 626 261 C654 266 677 283 684 302 C688 313 684 321 673 323 C646 327 623 327 599 333"/>
+      <path id="left-body-seam" stroke-width="22.032" d="M390 466 C412 554 474 615 539 687 C601 755 651 825 695 894 C720 912 738 928 754 944"/>
+      <path id="right-body-seam" stroke-width="22.032" d="M760 315 C825 384 882 446 908 536 C937 633 930 719 900 807 C887 847 873 884 861 909"/>
+    </g>
+    <path id="tail-join-seam" d="M754 944 C795 960 834 941 861 909" stroke="#202124" stroke-width="22.032"/>
+    <g id="outer-contour" stroke="#202124" stroke-width="22.032">
+      <use href="#outline"/>
+      <path id="tail-outer-contour" d="M754 943 C779 969 789 1000 777 1033 C765 1064 746 1081 716 1091 C698 1097 681 1103 682 1117 C684 1137 718 1129 738 1122 C804 1097 839 1043 852 987 C858 961 860 935 861 907"/>
+    </g>
+  </g>
+  <g id="face">
+    <ellipse id="left-eye" cx="502" cy="459.5" rx="26.7" ry="31.4" transform="rotate(14 502 459.5)" fill="#202124"/>
+    <ellipse id="right-eye" cx="721.8" cy="365.8" rx="32.6" ry="23.6" transform="rotate(34 721.8 365.8)" fill="#202124"/>
+    <ellipse cx="502.2" cy="440.3" rx="6.8" ry="6.1" fill="#ffffff"/>
+    <ellipse cx="713.2" cy="350.8" rx="6.3" ry="5.7" fill="#ffffff"/>
+  </g>
+  </g>
+</svg>

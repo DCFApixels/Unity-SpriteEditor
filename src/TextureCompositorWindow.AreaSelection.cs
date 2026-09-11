@@ -71,7 +71,7 @@ namespace DCFApixels.SpriteEditor
         }
         private void ChangeAreaSelection(Action<CanvasSelection> action)
         {
-            if (compositor == null) return;
+            if (!HasPreviewLayers) return;
             areaSelectionManipulator?.Cancel();
             FinishPaintingStroke();
             FinishPreviewTransform();
@@ -199,7 +199,7 @@ namespace DCFApixels.SpriteEditor
         }
         private void CopyAreaSelection(bool merged)
         {
-            if (compositor == null) return;
+            if (!HasPreviewLayers) return;
             areaSelectionManipulator?.Cancel();
             FinishPaintingStroke(); FinishPreviewTransform();
             Texture2D rendered = null;

@@ -22,3 +22,9 @@ for (const [file, size, padding] of outputs) {
     .toFile(path.join(docs, file));
   console.log(`${file}: ${size} × ${size}, transparent PNG from the approved SVG`);
 }
+
+await sharp(path.join(docs, 'Images/whimtex-logo-duotone.svg'), { density: 144 })
+  .resize(1024, 1024)
+  .png()
+  .toFile(path.join(docs, '../src/WhimTexPreviewBackdrop.png'));
+console.log('../src/WhimTexPreviewBackdrop.png: 1024 × 1024, original duotone framing and shadows');

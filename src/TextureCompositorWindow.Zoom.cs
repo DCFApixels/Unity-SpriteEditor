@@ -53,6 +53,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ChangePreviewZoom(bool fit)
         {
+            if (!HasPreviewLayers) return;
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             FinishPaintingStroke();
@@ -134,7 +135,7 @@ namespace DCFApixels.SpriteEditor
                     SpriteEditorUI.ConsumeEvent(evt);
                     return;
                 }
-                if (owner.compositor == null || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
+                if (!owner.HasPreviewLayers || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
                     !target.contentRect.Contains(evt.localPosition)) return;
                 owner.CancelPreviewEyedropper();
                 owner.FinishPreviewTransform();
@@ -153,7 +154,7 @@ namespace DCFApixels.SpriteEditor
             private void OnWheel(WheelEvent evt)
             {
                 Vector2 point = target.WorldToLocal(evt.mousePosition);
-                if (owner.compositor == null || !target.contentRect.Contains(point) || evt.delta.y == 0f ||
+                if (!owner.HasPreviewLayers || !target.contentRect.Contains(point) || evt.delta.y == 0f ||
                     float.IsNaN(evt.delta.y) || float.IsInfinity(evt.delta.y)) return;
                 SpriteEditorUI.ConsumeEvent(evt);
                 if (IsDragging && !panning) Cancel();

@@ -9,7 +9,7 @@ var hdr = new Texture2D(2, 2, TextureFormat.RGBAHalf, false, true);
 var otherHdr = new Texture2D(2, 2, TextureFormat.RGBAFloat, false, true);
 var standard = new Texture2D(2, 2, TextureFormat.RGBA32, false);
 int checks = 0;
-void Assign(Texture2D texture) => assign.Invoke(layer, new object[] { texture, null });
+void Assign(Texture2D texture) => assign.Invoke(layer, new object[] { texture, null, false });
 void Check(LayerColorRange color, LayerBlendRange blend, string label)
 {
     checks++;

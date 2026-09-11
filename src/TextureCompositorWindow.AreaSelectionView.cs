@@ -44,7 +44,7 @@ namespace DCFApixels.SpriteEditor
             }
             private void Down(PointerDownEvent evt)
             {
-                if (!owner.IsAreaSelectionTool || owner.compositor == null ||
+                if (!owner.IsAreaSelectionTool || !owner.HasPreviewLayers ||
                     !target.contentRect.Contains(evt.localPosition) || (evt.button != 0 && evt.button != 1)) return;
                 SpriteEditorUI.ConsumeEvent(evt);
                 owner.Focus(); target.Focus();

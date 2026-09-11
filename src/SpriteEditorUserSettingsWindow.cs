@@ -13,6 +13,7 @@ namespace DCFApixels.SpriteEditor
         private ColorField postFxBackground;
         private SliderInt checkerSize;
         private TextField presetsFolder;
+        private Toggle cleanBackground;
 
         internal static void Open()
         {
@@ -38,6 +39,14 @@ namespace DCFApixels.SpriteEditor
             root.AddToClassList("sprite-editor-user-settings");
             var scroll = new ScrollView();
             root.Add(scroll);
+            AddHeading(scroll, "Preview Background");
+            cleanBackground = new Toggle("Clean Preview Background")
+            {
+                tooltip = "Hide the logo on the preview background. Does not affect your image or exports."
+            };
+            cleanBackground.AddToClassList("sprite-editor-user-settings-color");
+            cleanBackground.RegisterValueChangedCallback(evt => SpriteEditorUserSettings.ShowManta = !evt.newValue);
+            scroll.Add(cleanBackground);
             AddHeading(scroll, "Transparency Checkerboard");
             checkerLight = AddColor(scroll, "Light Squares", value => SpriteEditorUserSettings.CheckerLight = value);
             checkerDark = AddColor(scroll, "Dark Squares", value => SpriteEditorUserSettings.CheckerDark = value);
@@ -93,6 +102,14 @@ namespace DCFApixels.SpriteEditor
             var folderNote = new Label("Shared across projects. Brush presets are stored in the Brushes subfolder. Changing the path does not move files.");
             folderNote.AddToClassList("sprite-editor-user-settings-note");
             scroll.Add(folderNote);
+            AddHeading(scroll, "Reset Settings");
+            var resetAll = new Button(() => TextureCompositorWindow.ConfirmResetEditorSettings(this))
+            {
+                text = "Reset WhimTex Settings…",
+                tooltip = "Restore all WhimTex preferences and workspace settings. Asks for confirmation; documents and preset files are preserved."
+            };
+            resetAll.AddToClassList("sprite-editor-user-settings-reset");
+            scroll.Add(resetAll);
             RefreshValues();
         }
 
@@ -121,6 +138,7 @@ namespace DCFApixels.SpriteEditor
 
         private void RefreshValues()
         {
+            cleanBackground?.SetValueWithoutNotify(!SpriteEditorUserSettings.ShowManta);
             checkerLight?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerLight);
             checkerDark?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerDark);
             invalidPixels?.SetValueWithoutNotify(SpriteEditorUserSettings.InvalidPixels);

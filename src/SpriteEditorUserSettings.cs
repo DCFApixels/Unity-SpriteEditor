@@ -11,6 +11,7 @@ namespace DCFApixels.SpriteEditor
         private const string DarkKey = "DCFApixels.SpriteEditor.Preview.CheckerDark";
         private const string ErrorKey = "DCFApixels.SpriteEditor.Preview.InvalidPixels";
         private const string SizeKey = "DCFApixels.SpriteEditor.Preview.CheckerSize";
+        private const string ShowMantaKey = "DCFApixels.SpriteEditor.Preview.ShowManta";
         private const string PostFxBackgroundKey = "DCFApixels.SpriteEditor.Preview.PostFxBackground";
         private const string PresetsFolderKey = "DCFApixels.SpriteEditor.PresetsFolder";
         internal static string DefaultPresetsFolder => Path.Combine(
@@ -72,6 +73,19 @@ namespace DCFApixels.SpriteEditor
 
         internal static event Action Changed;
 
+        private static bool showManta = EditorPrefs.GetBool(ShowMantaKey, true);
+        internal static bool ShowManta
+        {
+            get => showManta;
+            set
+            {
+                if (showManta == value) return;
+                showManta = value;
+                EditorPrefs.SetBool(ShowMantaKey, value);
+                Changed?.Invoke();
+            }
+        }
+
         internal static int CheckerSize
         {
             get => checkerSize;
@@ -131,6 +145,8 @@ namespace DCFApixels.SpriteEditor
 
         internal static void ResetPreviewAppearance()
         {
+            EditorPrefs.DeleteKey(ShowMantaKey);
+            showManta = true;
             EditorPrefs.DeleteKey(LightKey);
             EditorPrefs.DeleteKey(DarkKey);
             EditorPrefs.DeleteKey(ErrorKey);

@@ -134,7 +134,7 @@ namespace DCFApixels.SpriteEditor
                         {
                             FileLayer layer = new FileLayer();
                             layer.layerName = owner.compositor.AllocateLayerName(layer);
-                            layer.AssignSourceTexture(texture, owner.compositor);
+                            layer.AssignSourceTexture(texture, owner.compositor, initializeCanvas: true);
                             container.Insert(index++, layer);
                             owner.compositor.NormalizeModel();
                             owner.ActivateSelectedLayer(layer.Id);

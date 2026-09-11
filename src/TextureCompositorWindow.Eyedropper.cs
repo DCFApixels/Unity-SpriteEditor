@@ -6,7 +6,7 @@ namespace DCFApixels.SpriteEditor
     public sealed partial class TextureCompositorWindow
     {
         private PreviewEyedropperManipulator previewEyedropper;
-        private bool CanUsePreviewEyedropper => IsPreviewPaintTool || previewTool == PreviewTool.Fill;
+        private bool CanUsePreviewEyedropper => HasPreviewLayers && (IsPreviewPaintTool || previewTool == PreviewTool.Fill);
 
         private void CancelPreviewEyedropper() => previewEyedropper?.Cancel();
 

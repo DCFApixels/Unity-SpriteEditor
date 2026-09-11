@@ -6,6 +6,18 @@ namespace DCFApixels.SpriteEditor
     internal static class SpriteEditorBranding
     {
         private static Texture2D icon;
+        private static Texture2D previewBackdrop;
+
+        internal static Texture2D PreviewBackdrop
+        {
+            get
+            {
+                if (previewBackdrop == null)
+                    previewBackdrop = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                        AssetDatabase.GUIDToAssetPath("a693463e898e46f089f96a27a27c7451"));
+                return previewBackdrop;
+            }
+        }
 
         internal static Texture2D Icon
         {

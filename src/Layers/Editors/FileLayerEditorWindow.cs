@@ -31,7 +31,7 @@ namespace DCFApixels.SpriteEditor
             texture.SetValueWithoutNotify(layer.sourceTexture);
             bindings.Track(texture, () => (UnityEngine.Object)layer.sourceTexture);
             texture.RegisterValueChangedCallback(evt =>
-                applyChange("Change Source Texture", () => layer.AssignSourceTexture(evt.newValue as Texture2D, compositor)));
+                applyChange("Change Source Texture", () => layer.AssignSourceTexture(evt.newValue as Texture2D, compositor, initializeCanvas: true)));
             root.Add(texture);
         }
     }

@@ -27,6 +27,16 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Button previewPolygonSelectButton;
 
         private bool IsPreviewPaintTool => previewTool == PreviewTool.Brush || previewTool == PreviewTool.Pencil;
+        private bool HasPreviewLayers
+        {
+            get
+            {
+                if (compositor != null && compositor.layers != null)
+                    foreach (Layer layer in compositor.layers)
+                        if (layer != null) return true;
+                return false;
+            }
+        }
         private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
         private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
 
@@ -116,6 +126,11 @@ namespace DCFApixels.SpriteEditor
 
         private bool HandlePaintConversionPrompt(PointerDownEvent evt)
         {
+            if (!HasPreviewLayers)
+            {
+                SpriteEditorUI.ConsumeEvent(evt);
+                return true;
+            }
             bool painting = IsPreviewPaintTool && (evt.button == 0 || evt.button == 1);
             bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
             if ((!painting && !filling) || evt.altKey || compositor == null ||
@@ -228,33 +243,35 @@ namespace DCFApixels.SpriteEditor
         private void RefreshPreviewToolToolbar()
         {
             RefreshPostFxPanel();
-            Layer selected = GetSelectedLayer();
-            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.RectangleSelect);
-            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.PolygonSelect);
-            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
-            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
-            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
-            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Zoom);
-            previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.None);
+            bool hasLayers = HasPreviewLayers;
+            PreviewTool displayedTool = previewTool;
+            Layer selected = hasLayers ? GetSelectedLayer() : null;
+            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.RectangleSelect);
+            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.PolygonSelect);
+            previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", !hasLayers);
+            previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", !hasLayers);
+            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--unavailable", !hasLayers);
+            previewZoomButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Zoom);
+            previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.None);
             if (previewBrushButton != null)
             {
                 previewBrushButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
-                previewBrushButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Brush);
+                previewBrushButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Brush);
             }
             if (previewPencilButton != null)
             {
                 previewPencilButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
-                previewPencilButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Pencil);
+                previewPencilButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Pencil);
             }
             if (previewTransformButton != null)
             {
                 previewTransformButton.EnableInClassList("sprite-editor-tool-button--unavailable", selected == null || selected.IsGroup);
-                previewTransformButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Transform);
+                previewTransformButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Transform);
             }
             if (previewFillButton != null)
             {
                 previewFillButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
-                previewFillButton.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.Fill);
+                previewFillButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Fill);
             }
         }
 

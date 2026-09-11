@@ -87,11 +87,9 @@ namespace DCFApixels.SpriteEditor
         public void AddItemsToMenu(GenericMenu menu)
         {
             menu.AddItem(new GUIContent("User Settings…"), false, SpriteEditorUserSettingsWindow.Open);
-            menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Reset WhimTex Settings…"), false, ConfirmResetEditorSettings);
         }
 
-        private void ConfirmResetEditorSettings()
+        internal static void ConfirmResetEditorSettings(EditorWindow notificationWindow)
         {
             if (!EditorUtility.DisplayDialog(
                 "Reset WhimTex Settings",
@@ -120,7 +118,7 @@ namespace DCFApixels.SpriteEditor
             SpriteEditorUserSettings.Reset();
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
-            ShowNotification(new GUIContent("WhimTex settings reset."));
+            notificationWindow?.ShowNotification(new GUIContent("WhimTex settings reset."));
         }
 
         private void ResetEditorWindowSettings()
@@ -258,6 +256,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewAppearanceChanged()
         {
+            toolkitPreviewCanvas?.RefreshBackdropVisibility();
             postFxDirty = true;
             postFxBackgroundField?.SetValueWithoutNotify(SpriteEditorUserSettings.PostFxBackground);
             toolkitPreviewCanvas?.RefreshCheckerColors();
