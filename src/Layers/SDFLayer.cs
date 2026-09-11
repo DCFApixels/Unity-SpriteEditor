@@ -20,6 +20,8 @@ namespace DCFApixels.SpriteEditor
         public float maxDistanceNormalization;
         public Gradient gradient = GradientUtility.Create(GradientUtility.WhiteToBlack);
 
+        internal override bool RequiresColorInput => sourceChannel != SourceChannel.Alpha;
+
         internal override RenderTexture Render(in LayerRenderContext context)
         {
             if (context.input == null)
@@ -217,7 +219,7 @@ namespace DCFApixels.SpriteEditor
                 NativeArrayOptions.UninitializedMemory);
             try
             {
-                if (metric == DistanceMetric.EuclideanExact)
+                if (metric == DistanceMetric.EuclideanExact || metric == DistanceMetric.EuclideanAntialiased)
                 {
                     ComputeExactSignedDistance(
                         input,
@@ -227,7 +229,8 @@ namespace DCFApixels.SpriteEditor
                         width,
                         height,
                         threshold,
-                        sourceChannel);
+                        sourceChannel,
+                        metric == DistanceMetric.EuclideanAntialiased);
                 }
                 else
                 {
@@ -299,7 +302,8 @@ namespace DCFApixels.SpriteEditor
             int width,
             int height,
             byte threshold,
-            int sourceChannel)
+            int sourceChannel,
+            bool antialiased)
         {
             int threadCount = JobsUtility.ThreadIndexCount;
             int maximumLineLength = math.max(width, height);
@@ -348,9 +352,43 @@ namespace DCFApixels.SpriteEditor
                     FillDistanceJob fillJob = new FillDistanceJob
                     {
                         output = output,
-                        value = hasObject ? -math.sqrt(maximumSquaredDistance) : math.sqrt(maximumSquaredDistance)
+                        value = (hasObject ? -1f : 1f) * (antialiased ? 1e10f : math.sqrt(maximumSquaredDistance))
                     };
                     fillJob.Schedule(output.Length, 128).Complete();
+                    return;
+                }
+
+                if (antialiased)
+                {
+                    ContourCrossingsJob crossings = new ContourCrossingsJob
+                    {
+                        input = input, output = temporary, threshold = threshold, sourceChannel = sourceChannel,
+                        lineLength = width, lineStride = 1, lineStartStride = width,
+                        largeValue = maximumSquaredDistance * 4f + 1f
+                    };
+                    JobHandle horizontalSeeds = crossings.Schedule(height, 1);
+                    ExactDistanceTransformPassJob transform = new ExactDistanceTransformPassJob
+                    {
+                        input = temporary, output = output, vertices = vertices, boundaries = boundaries,
+                        scratchLineLength = maximumLineLength,
+                        lineLength = height, lineStride = width, lineStartStride = 1
+                    };
+                    JobHandle horizontalField = transform.Schedule(width, 1, horizontalSeeds);
+                    crossings.lineLength = height;
+                    crossings.lineStride = width;
+                    crossings.lineStartStride = 1;
+                    JobHandle verticalSeeds = crossings.Schedule(width, 1, horizontalField);
+                    transform.output = distanceToBackground;
+                    transform.lineLength = width;
+                    transform.lineStride = 1;
+                    transform.lineStartStride = width;
+                    JobHandle verticalField = transform.Schedule(height, 1, verticalSeeds);
+                    FinalizeContourDistanceJob finalizeContour = new FinalizeContourDistanceJob
+                    {
+                        input = input, output = output, other = distanceToBackground,
+                        threshold = threshold, sourceChannel = sourceChannel
+                    };
+                    finalizeContour.Schedule(output.Length, 128, verticalField).Complete();
                     return;
                 }
 
@@ -541,6 +579,59 @@ namespace DCFApixels.SpriteEditor
     }
 
     [BurstCompile]
+    internal struct ContourCrossingsJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Color32> input;
+        [NativeDisableParallelForRestriction] public NativeArray<float> output;
+        public int lineLength, lineStride, lineStartStride;
+        public int sourceChannel;
+        public byte threshold;
+        public float largeValue;
+
+        public void Execute(int lineIndex)
+        {
+            int start = lineIndex * lineStartStride;
+            for (int direction = 0; direction < 2; direction++)
+            {
+                int step = direction == 0 ? 1 : -1;
+                int first = direction == 0 ? 0 : lineLength - 1;
+                float nearest = -1e10f;
+                for (int q = first; q >= 0 && q < lineLength; q += step)
+                {
+                    int index = start + q * lineStride;
+                    int previous = q - step;
+                    if (previous >= 0 && previous < lineLength)
+                    {
+                        float a = DistanceFieldSource.Value(input[start + previous * lineStride], sourceChannel);
+                        float b = DistanceFieldSource.Value(input[index], sourceChannel);
+                        if ((a > threshold) != (b > threshold))
+                            nearest = previous + step * (threshold - a) / (b - a);
+                    }
+                    float delta = q - nearest;
+                    float squared = math.min(largeValue, delta * delta);
+                    output[index] = direction == 0 ? squared : math.min(output[index], squared);
+                }
+            }
+        }
+    }
+
+    [BurstCompile]
+    internal struct FinalizeContourDistanceJob : IJobParallelFor
+    {
+        [ReadOnly] public NativeArray<Color32> input;
+        [ReadOnly] public NativeArray<float> other;
+        public NativeArray<float> output;
+        public int sourceChannel;
+        public byte threshold;
+
+        public void Execute(int index)
+        {
+            float distance = math.sqrt(math.min(output[index], other[index]));
+            output[index] = DistanceFieldSource.IsObject(input[index], sourceChannel, threshold) ? -distance : distance;
+        }
+    }
+
+    [BurstCompile]
     internal struct FillDistanceJob : IJobParallelFor
     {
         [WriteOnly] public NativeArray<float> output;
@@ -631,6 +722,11 @@ namespace DCFApixels.SpriteEditor
     {
         public static bool IsObject(Color32 color, int sourceChannel, byte threshold)
         {
+            return Value(color, sourceChannel) > threshold;
+        }
+
+        public static float Value(Color32 color, int sourceChannel)
+        {
             float value;
             switch (sourceChannel)
             {
@@ -650,7 +746,7 @@ namespace DCFApixels.SpriteEditor
                     value = color.a;
                     break;
             }
-            return value > threshold;
+            return value;
         }
     }
 }

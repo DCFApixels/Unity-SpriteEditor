@@ -28,6 +28,7 @@ namespace DCFApixels.SpriteEditor
             addEffectTarget(root, layer);
 
             EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
+            metric.tooltip = "Euclidean Antialiased follows the 50% alpha contour, including soft edges. Euclidean Exact uses a hard silhouette.";
             bindings.Track(metric, () => (Enum)layer.metric);
             metric.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Algorithm",
@@ -48,6 +49,7 @@ namespace DCFApixels.SpriteEditor
             root.Add(width);
 
             FloatField softness = SpriteEditorUI.ConfigureField(new FloatField("Softness (px)"));
+            softness.tooltip = "Softens both edges of the outline. Zero keeps a crisp, antialiased edge; Width controls the band independently.";
             softness.SetValueWithoutNotify(layer.outlineSoftness);
             bindings.Track(softness, () => layer.outlineSoftness);
             softness.RegisterValueChangedCallback(evt => applyChange(
@@ -61,6 +63,29 @@ namespace DCFApixels.SpriteEditor
                 "Change Outline Position",
                 () => layer.outlinePosition = (OutlineLayer.OutlinePosition)evt.newValue));
             root.Add(position);
+
+            FloatField offset = SpriteEditorUI.ConfigureField(new FloatField("Offset (px)"));
+            offset.tooltip = "Moves the outline without changing its width. Negative moves inward; positive moves outward.";
+            offset.SetValueWithoutNotify(layer.outlineOffset);
+            bindings.Track(offset, () => layer.outlineOffset);
+            offset.RegisterValueChangedCallback(evt => applyChange(
+                "Change Outline Offset", () => layer.outlineOffset = evt.newValue));
+            root.Add(offset);
+
+            Toggle fill = SpriteEditorUI.ConfigureField(new Toggle("Fill Center"));
+            fill.SetValueWithoutNotify(layer.fillCenter);
+            bindings.Track(fill, () => layer.fillCenter);
+            fill.RegisterValueChangedCallback(evt => applyChange(
+                "Change Outline Fill", () => layer.fillCenter = evt.newValue));
+            fill.tooltip = "Fills the inside of the outline. Place this effect below its source to use it as a backing silhouette.";
+            root.Add(fill);
+
+            ColorField fillColor = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new ColorField("Fill Color"), bindings, () => layer.fillColor));
+            fillColor.RegisterValueChangedCallback(evt => applyChange(
+                "Change Outline Fill Color", () => layer.fillColor = evt.newValue));
+            fillColor.SetEnabled(layer.fillCenter);
+            bindings.Add(() => fillColor.SetEnabled(layer.fillCenter));
+            root.Add(fillColor);
         }
     }
 }

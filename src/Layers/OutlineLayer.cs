@@ -14,6 +14,9 @@ namespace DCFApixels.SpriteEditor
         public Color outlineColor = Color.white;
         public float outlineWidth = 4f;
         public float outlineSoftness = 1f;
+        public float outlineOffset;
+        public bool fillCenter;
+        public Color fillColor = Color.white;
         public OutlinePosition outlinePosition = OutlinePosition.Outside;
 
         internal override RenderTexture Render(in LayerRenderContext context)
@@ -53,7 +56,13 @@ namespace DCFApixels.SpriteEditor
                     output = outputPixels,
                     outlineWidth = Mathf.Max(0f, outlineWidth / context.scaleMultiplier),
                     outlineSoftness = Mathf.Max(0f, outlineSoftness / context.scaleMultiplier),
+                    outlineOffset = outlineOffset / context.scaleMultiplier,
+                    fillCenter = fillCenter,
+                    fillColor = HdrUtility.Decode(fillColor),
                     outlineColor = HdrUtility.Decode(outlineColor),
+                    antialiasedDistance = metric == DistanceMetric.EuclideanAntialiased,
+                    width = context.width,
+                    height = context.height,
                     outlinePosition = (int)outlinePosition
                 };
                 job.Schedule(outputPixels.Length, 128).Complete();
@@ -92,48 +101,51 @@ namespace DCFApixels.SpriteEditor
         public NativeArray<Color> output;
         public float outlineWidth;
         public float outlineSoftness;
+        public float outlineOffset;
+        public bool fillCenter;
+        public Color fillColor;
         public Color outlineColor;
         public int outlinePosition;
+        public bool antialiasedDistance;
+        public int width, height;
 
         public void Execute(int index)
         {
             float distance = signedDistances[index];
-            float range = outlinePosition == (int)OutlineLayer.OutlinePosition.Center
-                ? outlineWidth * 0.5f
-                : outlineWidth;
-            float edgeDistance;
-            bool insideRange;
-
-            if (outlinePosition == (int)OutlineLayer.OutlinePosition.Outside)
+            if (!antialiasedDistance)
+                distance = math.sign(distance) * math.max(0f, math.abs(distance) - 0.5f);
+            float lower = outlinePosition == (int)OutlineLayer.OutlinePosition.Outside ? 0f
+                : outlinePosition == (int)OutlineLayer.OutlinePosition.Inside ? -outlineWidth : -outlineWidth * 0.5f;
+            lower += outlineOffset;
+            float upper = lower + outlineWidth;
+            float pixelSpan = 1f;
+            if (antialiasedDistance)
             {
-                edgeDistance = distance;
-                insideRange = distance > 0f && distance <= range;
+                int x = index % width;
+                int y = index / width;
+                float dx = math.max(x > 0 ? math.abs(distance - signedDistances[index - 1]) : 0f,
+                    x + 1 < width ? math.abs(distance - signedDistances[index + 1]) : 0f);
+                float dy = math.max(y > 0 ? math.abs(distance - signedDistances[index - width]) : 0f,
+                    y + 1 < height ? math.abs(distance - signedDistances[index + width]) : 0f);
+                pixelSpan = math.max(1f, dx + dy);
             }
-            else if (outlinePosition == (int)OutlineLayer.OutlinePosition.Inside)
+            float transition = math.max(pixelSpan, outlineSoftness);
+            float inner = 1f - math.saturate((distance - lower) / transition + 0.5f);
+            float outer = 1f - math.saturate((distance - upper) / transition + 0.5f);
+            float borderAlpha = (outer - inner) * outlineColor.a;
+            if (!fillCenter)
             {
-                edgeDistance = -distance;
-                insideRange = distance < 0f && -distance <= range;
+                output[index] = new Color(outlineColor.r, outlineColor.g, outlineColor.b, borderAlpha);
+                return;
             }
-            else
-            {
-                edgeDistance = math.abs(distance);
-                insideRange = edgeDistance <= range;
-            }
-
-            float alpha = 0f;
-            if (insideRange)
-            {
-                float softness = math.min(outlineSoftness, range);
-                alpha = softness <= 0f
-                    ? 1f
-                    : math.saturate((range - edgeDistance) / softness);
-            }
+            float centerAlpha = inner * fillColor.a;
+            float alpha = borderAlpha + centerAlpha;
 
             output[index] = new Color(
-                outlineColor.r,
-                outlineColor.g,
-                outlineColor.b,
-                outlineColor.a * alpha);
+                alpha > 0f ? (outlineColor.r * borderAlpha + fillColor.r * centerAlpha) / alpha : outlineColor.r,
+                alpha > 0f ? (outlineColor.g * borderAlpha + fillColor.g * centerAlpha) / alpha : outlineColor.g,
+                alpha > 0f ? (outlineColor.b * borderAlpha + fillColor.b * centerAlpha) / alpha : outlineColor.b,
+                alpha);
         }
     }
 }

@@ -187,13 +187,30 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | File | `source` (already imported Texture2D path in Assets or Packages) |
 | Color | `color` (`[r,g,b,a]`, encoded RGB -107..107, alpha 0..1) |
 | Drawing | `brush` (partial brush settings below) |
-| Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`) |
+| Outline | `color`, `metric`, `outlineWidth`, `outlineSoftness` (0..16384), `outlinePosition` (`Outside`, `Inside`, `Center`), `outlineOffset` (-16384..16384), `fillCenter` (bool), `fillColor` (`[r,g,b,a]`) |
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
 | Noise | `noise`: partial procedural settings object described below |
 | Gaussian Blur | `gaussianBlur`: `{ "radius": 8, "edges": "Transparent" }`; radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
 | Motion Blur | `motionBlur`: `{ "mode": "Linear", "strength": 1, "distance": 16, "angle": 0, "arc": 15, "center": [0.5, 0.5], "direction": "Centered", "edges": "Transparent" }`; [parameters](#motion-blur-settings) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
+
+SDF/Outline `metric` accepts `EuclideanExact` (default), `EuclideanApproximate`, `Manhattan`,
+`Chebyshev` and `EuclideanAntialiased`. The latter interpolates threshold crossings between horizontal/vertical
+neighboring samples and measures distance to the closest crossing point. It approximates the continuous contour
+between those points; it does not treat a wide translucent transition as subpixel coverage.
+`threshold` selects the SDF contour; Outline uses threshold 128. In this mode a uniform source with no crossing has no border.
+Existing metric numeric IDs 0–3 remain stable; `EuclideanAntialiased` is 4 and is reported by capabilities/inspect.
+Outline filters both band edges, including at zero softness, and supports fractional widths. `outlineOffset`
+translates the band in canvas pixels (negative inward, positive outward), without changing its width.
+`fillCenter` defaults to false. When enabled, the region inside the band's inner edge uses `fillColor`
+(default white; same encoded RGB/alpha contract as `color`). Fill and border share complementary coverage,
+so opaque colors do not create a translucent seam. Zero width removes only the border, not the enabled fill.
+The source's interior holes remain holes. This is an ordinary effect layer: place it below an explicitly targeted
+source for a backing silhouette; above the source it can cover the original image.
+PSD exports filled/offset/antialiased outlines as pixels rather than a native stroke style.
+For SDF on a group, Alpha requests coverage only; Red/Green/Blue/Luminance request the group's RGBA result.
+Changing SDF Source Channel therefore also changes the group's source-cache requirement.
 
 Discover blend modes, ranges, group compositing and distance metrics with `sprite_editor_describe`.
 Groups default to PassThrough; set `compositing:"Isolated"` to apply their own blend mode and ranges.
@@ -371,7 +388,8 @@ Texture mode uses differences between smoothed height bands, not geometry or mat
 Its Light Removal attenuates the broad band and may remove real relief too.
 
 A group source is rendered against transparency with its own descendants, opacity, swizzle and
-clipping, without the external backdrop. Existing Outline/SDF group-alpha semantics are unchanged.
+clipping, without the external backdrop. Outline and Alpha-source SDF use group coverage;
+SDF with Red/Green/Blue/Luminance uses the group's color result.
 Like other effect layers, Normal Map processes hidden sources: `enabled:false` hides a layer's
 own contribution, not its availability to Previous/Specific consumers. Hidden groups still
 respect their children's visibility. This also applies to chains of hidden effect layers.

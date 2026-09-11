@@ -41,7 +41,8 @@ namespace DCFApixels.SpriteEditor
         EuclideanExact = 0,
         EuclideanApproximate = 1,
         Manhattan = 2,
-        Chebyshev = 3
+        Chebyshev = 3,
+        EuclideanAntialiased = 4
     }
 
     public enum EffectInputMode

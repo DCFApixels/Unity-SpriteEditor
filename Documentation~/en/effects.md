@@ -47,6 +47,22 @@ Use **SDF** when you want a gradual transition based on distance from the shape.
 Use the gradient to color it. The distance algorithm changes the character of corners and diagonals:
 Euclidean gives rounded distances, while Manhattan and Chebyshev give more angular results.
 
+For a source with smooth, partially transparent edges, choose **Distance Algorithm → Euclidean Antialiased**
+in either SDF or Outline. Outline follows the 50% alpha edge, even across a broad soft transition;
+SDF uses its **Threshold** setting. Areas that never reach that threshold do not form a silhouette.
+Keep **Euclidean Exact** for a hard-threshold silhouette or pixel masks.
+
+Outline supports fractional widths. **Softness = 0** keeps a crisp, smoothed edge;
+increasing Softness feathers both sides without changing the Width setting.
+**Offset (px)** moves the border without changing its width: negative moves inward, positive outward.
+Try a small negative offset if the border looks detached from a soft source.
+
+Enable **Fill Center** for a solid shape instead of a hollow border. **Color** sets the border color;
+**Fill Color** sets the center color and opacity independently. To back a soft drawing with a solid silhouette,
+place Outline below the drawing and set its Input to that specific layer. Above the drawing, the fill covers it.
+The fill follows the contour, not the source's original soft transparency. Holes in the source remain holes.
+For SDF, **Source Channel** can use Alpha, an individual RGB channel or Luminance, including when the source is a group.
+
 ## Gaussian Blur
 
 Increase **Radius** for a softer image. Start small for edge cleanup;

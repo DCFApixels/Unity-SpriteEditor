@@ -164,6 +164,9 @@ namespace DCFApixels.SpriteEditor
                         settings["outlineWidth"] = outline.outlineWidth;
                         settings["outlineSoftness"] = outline.outlineSoftness;
                         settings["outlinePosition"] = outline.outlinePosition.ToString();
+                        settings["outlineOffset"] = outline.outlineOffset;
+                        settings["fillCenter"] = outline.fillCenter;
+                        settings["fillColor"] = Json(outline.fillColor);
                     }
                     if (layer is SDFLayer sdf)
                     {

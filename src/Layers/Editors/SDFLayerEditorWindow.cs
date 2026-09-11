@@ -29,6 +29,7 @@ namespace DCFApixels.SpriteEditor
             addEffectTarget(root, layer);
 
             EnumField metric = SpriteEditorUI.ConfigureField(new EnumField("Distance Algorithm", layer.metric));
+            metric.tooltip = "Euclidean Antialiased locates the Threshold contour between pixels, including soft edges. Euclidean Exact keeps a hard threshold; useful for pixel masks.";
             bindings.Track(metric, () => (Enum)layer.metric);
             metric.RegisterValueChangedCallback(evt => applyChange(
                 "Change SDF Algorithm",

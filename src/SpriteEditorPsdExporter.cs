@@ -208,7 +208,8 @@ namespace DCFApixels.SpriteEditor
         }
 
         private static bool CanExportOutline(OutlineLayer layer, bool modifiers) =>
-            !modifiers && layer.transform.IsIdentity() && layer.outlineWidth > 0f && layer.outlineWidth <= 250f &&
+            !modifiers && !layer.fillCenter && layer.outlineOffset == 0f &&
+            layer.transform.IsIdentity() && layer.outlineWidth > 0f && layer.outlineWidth <= 250f &&
             (layer.metric == DistanceMetric.EuclideanExact || layer.metric == DistanceMetric.EuclideanApproximate);
 
         private static bool CanExportGradient(GradientLayer layer, bool modifiers)

@@ -132,7 +132,7 @@ namespace DCFApixels.SpriteEditor
         private static void SetLayer(TextureCompositor document, Layer layer, JObject settings)
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
-                "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "sourceChannel", "threshold",
+                "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "outlineOffset", "fillCenter", "fillColor", "sourceChannel", "threshold",
                 "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "motionBlur", "noise");
             foreach (var property in settings.Properties())
             {
@@ -147,7 +147,8 @@ namespace DCFApixels.SpriteEditor
                     key == "gaussianBlur" && layer is GaussianBlurLayer ||
                     key == "motionBlur" && layer is MotionBlurLayer ||
                     key == "noise" && layer is NoiseLayer ||
-                    (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition") && layer is OutlineLayer ||
+                    (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition" ||
+                     key == "outlineOffset" || key == "fillCenter" || key == "fillColor") && layer is OutlineLayer ||
                     (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer is SDFLayer ||
                     key == "gradient" && (layer is GradientLayer || layer is SDFLayer));
                 Require(valid, key + " is not supported by " + TypeName(layer) + " layers.");
@@ -202,6 +203,9 @@ namespace DCFApixels.SpriteEditor
                 outline.outlineWidth = Number(settings, "outlineWidth", outline.outlineWidth, 0f, 16384f);
                 outline.outlineSoftness = Number(settings, "outlineSoftness", outline.outlineSoftness, 0f, 16384f);
                 outline.outlinePosition = Enum(settings, "outlinePosition", outline.outlinePosition);
+                outline.outlineOffset = Number(settings, "outlineOffset", outline.outlineOffset, -16384f, 16384f);
+                outline.fillCenter = Bool(settings, "fillCenter", outline.fillCenter);
+                if (settings["fillColor"] != null) outline.fillColor = Color(settings["fillColor"]);
                 if (settings["color"] != null) outline.outlineColor = Color(settings["color"]);
             }
             if (layer is SDFLayer sdf)
