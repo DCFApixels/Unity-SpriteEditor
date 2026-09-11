@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -49,7 +50,8 @@ namespace DCFApixels.SpriteEditor
         {
             ["apiVersion"] = ProtocolVersion, ["success"] = false,
             ["errorCode"] = exception is SpriteEditorApiException api ? api.Code : exception is JsonException ? "invalid_json" : "operation_failed",
-            ["error"] = exception.Message, ["applied"] = false, ["saved"] = false
+            ["error"] = exception.Message,
+            ["applied"] = exception is SpriteEditorApiException failed && failed.Code == "rollback_failed", ["saved"] = false
         };
 
         private static JObject Success() => new JObject { ["apiVersion"] = ProtocolVersion, ["success"] = true };
@@ -59,6 +61,8 @@ namespace DCFApixels.SpriteEditor
             Keys(request, "apiVersion", "assetPath", "create", "width", "height", "expectedRevision", "dryRun", "save", "operations");
             Require(Int(request, "apiVersion", 0, 0, int.MaxValue) == ProtocolVersion, "apiVersion must be 1.");
             string path = AssetPath(Text(request, "assetPath"), ".asset");
+            Require(!liveJobs.Values.Any(j => j.editing && j.state == "pending" && j.document != null &&
+                string.Equals(AssetDatabase.GetAssetPath(j.document), path, StringComparison.OrdinalIgnoreCase)), "This document has a live edit lock. Use its live job or release the lock first.", "layer_locked");
             bool create = Bool(request, "create");
             bool dryRun = Bool(request, "dryRun");
             bool save = Bool(request, "save", true);

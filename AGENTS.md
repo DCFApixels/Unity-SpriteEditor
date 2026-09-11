@@ -8,9 +8,19 @@ For requests to create or edit **Sprite Editor compositor assets**, use the edit
 `DCFApixels.SpriteEditor.SpriteEditorApi`, not generated Unity YAML or simulated mouse clicks.
 This guidance is for authoring images; ordinary plugin source-code tasks do not require running it.
 
-Read [Documentation~/AgentAPI.md](Documentation~/AgentAPI.md) for command syntax, JSON operations,
+For path-based asset authoring, read [Documentation~/AgentAPI.md](Documentation~/AgentAPI.md) for command syntax, JSON operations,
 coordinates, safety/Undo semantics and complete workflows. Examples live in
 [Documentation~/Examples](Documentation~/Examples).
+
+For work in an **already open window**, including unsaved documents and selected-region edits, first read
+the portable [live-editing skill](Skills~/sprite-editor-live/SKILL.md). Its fast-start contract allows
+`sprite_editor_begin` to reserve and capture context in one call, before full inspection or prompt preparation.
+Read [Documentation~/LiveAgentAPI.md](Documentation~/LiveAgentAPI.md) for subsequent steps or advanced options.
+Reserve a named layer before lengthy generation;
+preserve user edits to its placement/name/visibility. Choose the sampled source from the user's request.
+Live image completion inserts owned Drawing pixels directly, without importing a separate File source.
+For inline shader authoring, use live `fx` requests; do not create a separate shader file by default.
+Acquire `sprite_editor_lock` for FX/settings edits on an existing layer and release it on completion or abandonment.
 
 - Discover `sprite_editor_*` commands on the intended running Editor. Always pass the explicit
   Unity project path. The Pipeline adapter is optional; direct C# API calls work without it.
@@ -21,7 +31,8 @@ coordinates, safety/Undo semantics and complete workflows. Examples live in
   The API does not generate images or download URLs.
 - Prefer File layers and nondestructive transforms. Drawing strokes are useful for touch-ups,
   masks and simple procedural marks, not a substitute for an image-generation tool.
-- Inspect before editing an existing document. Use stable layer IDs and the returned revision;
+- Inspect before a path-based batch edits an existing document. Live reservations capture the required
+  context atomically and do not require a full inspection first. Use stable layer IDs and the returned revision;
   use `@aliases` for newly added layers within a batch. Do not identify layers by display names.
 - Validate unfamiliar batches with `dryRun:true`. Check the API's `success`, not only the CLI
   process/transport result. Unknown fields and unsupported settings are errors.

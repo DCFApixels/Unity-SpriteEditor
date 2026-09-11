@@ -11,9 +11,11 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private bool layerFxExpanded;
         [NonSerialized] private ScrollView toolkitLayerSettingsScroll;
         [NonSerialized] private Label toolkitLayerSettingsTitle;
+        [NonSerialized] private Button toolkitLayerGuidButton;
         [NonSerialized] private Layer toolkitInspectorLayer;
         [NonSerialized] private TextureCompositor toolkitInspectorDocument;
         [NonSerialized] private bool toolkitInspectorBuilt;
+        [NonSerialized] private bool toolkitInspectorLocked;
         [NonSerialized] private EffectTargetSettingsView toolkitInspectorEffectTarget;
         [NonSerialized] private LayerShaderFXView toolkitInspectorShaderFX;
         private readonly SpriteEditorUI.ValueBindings toolkitInspectorBindings = new SpriteEditorUI.ValueBindings();
@@ -34,18 +36,27 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             Layer selected = GetSelectedLayer();
+            bool locked = SpriteEditorApi.IsLayerContentLocked(compositor, selected);
             string title = selected == null ? "Layer Settings" : selected.layerName;
             if (toolkitLayerSettingsTitle != null && toolkitLayerSettingsTitle.text != title)
                 toolkitLayerSettingsTitle.text = title;
+            if (toolkitLayerGuidButton != null)
+            {
+                toolkitLayerGuidButton.SetEnabled(selected != null);
+                toolkitLayerGuidButton.tooltip = selected == null
+                    ? "Select a layer to copy its GUID."
+                    : selected.Id;
+            }
             // Rebind only when selection/document identity changes (including Undo replacement).
             // Normal value changes must preserve text editing, pointer capture and scroll position.
             if (!toolkitInspectorBuilt || !ReferenceEquals(toolkitInspectorLayer, selected) ||
-                toolkitInspectorDocument != compositor)
+                toolkitInspectorDocument != compositor || toolkitInspectorLocked != locked)
             {
                 ResetToolkitLayerInspector();
                 toolkitInspectorBuilt = true;
                 toolkitInspectorLayer = selected;
                 toolkitInspectorDocument = compositor;
+                toolkitInspectorLocked = locked;
                 toolkitLayerSettingsScroll.Clear();
                 toolkitLayerSettingsScroll.scrollOffset = Vector2.zero;
                 BuildToolkitLayerInspector(toolkitLayerSettingsScroll, selected);
@@ -63,6 +74,25 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
+            if (layer is PendingLayer pending)
+            {
+                var status = new HelpBox(SpriteEditorApi.LiveReservationStatus(pending), HelpBoxMessageType.Info);
+                root.Add(status);
+                toolkitInspectorBindings.Add(() => status.text = SpriteEditorApi.LiveReservationStatus(pending));
+                var cancel = new Button(() => SpriteEditorApi.CancelLiveReservation(compositor, pending)) { text = "Cancel Generation" };
+                root.Add(cancel);
+                return;
+            }
+
+            if (SpriteEditorApi.IsLayerContentLocked(compositor, layer))
+            {
+                root.Add(new HelpBox("The agent is editing this layer. You can rename, hide or move it. Cancel the edit to unlock its settings.", HelpBoxMessageType.Info));
+                root.Add(new Button(() => SpriteEditorApi.CancelLayerEdit(compositor, layer)) { text = "Cancel Agent Edit" });
+                var settings = new VisualElement();
+                root.Add(settings);
+                settings.SetEnabled(false);
+                root = settings;
+            }
             toolkitInspectorShaderFX = SpriteEditorUI.BuildLayerInspectorSections(root, layer, compositor,
                 ApplyToolkitChange, toolkitInspectorBindings, properties => BuildToolkitLayerProperties(properties, layer),
                 colorSettingsExpanded, value => colorSettingsExpanded = value,

@@ -221,6 +221,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            SpriteEditorApi.CloseLiveSession(agentSessionId);
             ReleaseBrushStrokePreview();
             EditorApplication.delayCall -= RestoreBrushTipAfterReload;
             EditorApplication.projectChanged -= RestoreBrushTipAfterReload;
@@ -247,6 +248,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnFocus()
         {
+            RecordAgentFocus();
             SuppressUnityShortcuts();
             RestoreBrushTipAfterReload();
         }
@@ -535,7 +537,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ClearDrawingLayer(DrawingLayer layer)
         {
-            if (layer == null || compositor == null)
+            if (layer == null || compositor == null || SpriteEditorApi.IsLayerContentLocked(compositor, layer))
                 return;
             if (lineAnchorLayer == layer)
                 lineAnchorLayer = null;
@@ -780,6 +782,23 @@ namespace DCFApixels.SpriteEditor
                 menu.AddDisabledItem(new GUIContent("Move Out Of Group"));
 
             menu.AddItem(new GUIContent("Group Selected"), false, () => GroupLayers(roots));
+            if (roots.Exists(SpriteEditorApi.ContainsReservation))
+            {
+                menu.AddSeparator(string.Empty);
+                menu.AddDisabledItem(new GUIContent("Content reserved for agent"));
+                foreach (var locked in targets)
+                    if (SpriteEditorApi.IsLayerContentLocked(compositor, locked))
+                    {
+                        menu.AddItem(new GUIContent("Cancel Agent Edit"), false, () =>
+                        {
+                            foreach (var target in targets) SpriteEditorApi.CancelLayerEdit(compositor, target);
+                        });
+                        break;
+                    }
+                menu.AddItem(new GUIContent("Delete / Cancel Generation"), false, () => DeleteLayers(roots));
+                menu.ShowAsContext();
+                return;
+            }
             if (LayerSelectionOperations.CanApplyChannelPreset(targets.Count))
                 menu.AddItem(new GUIContent("Assign Channels", "Top to bottom. 1–3 layers: RGB with alpha 1 and upper-layer Add. 4 layers: RGBA Swizzle only, other channels zero."),
                     false, () => ApplyContextChannelPreset(targets));
@@ -792,7 +811,8 @@ namespace DCFApixels.SpriteEditor
                 ExecuteContextChange("Change Clipping Mask", () =>
                 {
                     foreach (Layer target in clippingTargets)
-                        if (compositor.TryFindLayer(target, out _, out _)) target.clippingMask = !allClipped;
+                        if (!SpriteEditorApi.IsLayerContentLocked(compositor, target) &&
+                            compositor.TryFindLayer(target, out _, out _)) target.clippingMask = !allClipped;
                 }));
             if (targets.Exists(target => target is GroupLayer))
             {
@@ -849,6 +869,8 @@ namespace DCFApixels.SpriteEditor
 
         private void ConvertLayersToDrawing(List<Layer> layers, bool applyTransform, bool groupConfirmed = false)
         {
+            if (layers.Exists(SpriteEditorApi.ContainsReservation))
+            { ShowNotification(new GUIContent("Finish or cancel generation before converting these layers.")); return; }
             FinishPreviewTransform();
             FinishPaintingStroke();
             if (compositor == null || layers.Count == 0)
@@ -1098,6 +1120,7 @@ namespace DCFApixels.SpriteEditor
             ClearLayerDragData();
             lineAnchorLayer = null;
             TextureCompositor previous = compositor;
+            if (agentSessionDocument != next) SpriteEditorApi.CloseLiveSession(agentSessionId);
             StopLiveOutput();
             ReleaseEffectCache();
             ResetAreaSelection();
@@ -1192,6 +1215,8 @@ namespace DCFApixels.SpriteEditor
                     DestroyImmediate(copy);
                 return false;
             }
+            SpriteEditorApi.TransferLiveDocument(agentSessionId, compositor, copy);
+            agentSessionDocument = copy;
             SetCompositor(copy);
             Selection.activeObject = copy.OutputTexture;
             EditorGUIUtility.PingObject(copy.OutputTexture);

@@ -115,7 +115,7 @@ namespace DCFApixels.SpriteEditor
 
         private void Change(string name, Action change)
         {
-            if (owner == null || !owner.TryFindLayer(layer, out _, out _))
+            if (owner == null || !owner.TryFindLayer(layer, out _, out _) || SpriteEditorApi.IsLayerContentLocked(owner, layer))
                 return;
             applyChange(name, change);
             Refresh();

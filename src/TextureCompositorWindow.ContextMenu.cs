@@ -64,6 +64,7 @@ namespace DCFApixels.SpriteEditor
         private void ApplyContextChannelPreset(List<Layer> targets)
         {
             if (!LayerSelectionOperations.CanApplyChannelPreset(targets.Count)) return;
+            if (targets.Exists(target => SpriteEditorApi.IsLayerContentLocked(compositor, target))) return;
             ExecuteContextChange("Assign Channels", () =>
                 LayerSelectionOperations.ApplyChannelPreset(compositor, targets));
         }

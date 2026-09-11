@@ -13,6 +13,7 @@ namespace DCFApixels.SpriteEditor
                 container[index] == null || container[index] is ShaderProcessorLayer || !container[index].clippingMask) return -1;
             for (int i = index + 1; i < container.Count; i++)
             {
+                if (container[i] is PendingLayer) continue;
                 if (container[i] == null || container[i] is ShaderProcessorLayer) return -1;
                 if (!container[i].clippingMask) return i;
             }
@@ -30,8 +31,9 @@ namespace DCFApixels.SpriteEditor
         internal bool IsGroupIsolatedByClipping(GroupLayer group)
         {
             if (group.clippingMask) return true;
-            return TryFindLayer(group, out var container, out int index) && index > 0 &&
-                container[index - 1] != null && container[index - 1].clippingMask;
+            if (!TryFindLayer(group, out var container, out int index)) return false;
+            do { index--; } while (index >= 0 && container[index] is PendingLayer);
+            return index >= 0 && container[index] != null && container[index].clippingMask;
         }
 
         private static bool IsClippingSourceVisible(Layer layer) => layer != null && layer.enabled && layer.opacity > 0f &&

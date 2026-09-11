@@ -95,6 +95,13 @@ namespace DCFApixels.SpriteEditor
                     effect.PersistEmbedded(this);
         }
 
+        internal void AdoptAgentShaderFX(ShaderFX effect, string undoName)
+        {
+            if (effect == null || effect.EmbeddedOwner != this || embeddedShaderFX.Contains(effect)) return;
+            effect.RegisterCreatedCopyUndo(undoName);
+            embeddedShaderFX.Add(effect);
+        }
+
         internal void RemoveUnusedEmbeddedShaderFX()
         {
             if (Undo.isProcessing)
@@ -167,19 +174,28 @@ namespace DCFApixels.SpriteEditor
             return RenderComposite(previewWidth, previewHeight, scaleMultiplier);
         }
 
-        internal RenderTexture RenderLayerPreview(Layer layer, int maxSize)
+        internal RenderTexture RenderLayerPreview(Layer layer, int maxSize) =>
+            RenderLayerPreviewCore(layer, maxSize, false, false);
+
+        internal RenderTexture RenderAgentLayerPreview(Layer layer, int maxSize) =>
+            RenderLayerPreviewCore(layer, maxSize, true, true);
+
+        private RenderTexture RenderLayerPreviewCore(Layer layer, int maxSize, bool includeDisabled, bool preserveGroupColor)
         {
             if (layer == null || !TryFindLayer(layer, out List<Layer> container, out int index))
                 return null;
 
             GetPreviewDimensions(maxSize, out int previewWidth, out int previewHeight, out float scaleMultiplier);
+            if (preserveGroupColor && layer is GroupLayer group)
+                return RenderGroupEffectInput(group, previewWidth, previewHeight, scaleMultiplier,
+                    new HashSet<Layer>(), preserveColor: true, includeDisabled: includeDisabled);
             return RenderStandalone(
                 container,
                 index,
                 previewWidth,
                 previewHeight,
                 scaleMultiplier,
-                new HashSet<Layer>());
+                new HashSet<Layer>(), includeDisabled: includeDisabled);
         }
 
         internal Layer FindLayer(string id)
@@ -258,7 +274,7 @@ namespace DCFApixels.SpriteEditor
         internal bool IsUsableEffectTarget(TargetedLayerEffect consumer, string targetId)
         {
             Layer target = FindLayer(targetId);
-            return target != null && !LayerDependsOn(target, consumer, new HashSet<Layer>());
+            return target != null && !(target is PendingLayer) && !LayerDependsOn(target, consumer, new HashSet<Layer>());
         }
 
         internal bool HasUsableEffectInput(
@@ -270,7 +286,13 @@ namespace DCFApixels.SpriteEditor
                 return false;
             if (effect.inputMode == EffectInputMode.Specific)
                 return IsUsableEffectTarget(effect, effect.TargetLayerId);
-            return container != null && index + 1 < container.Count && container[index + 1] != null;
+            return container != null && NextContentLayer(container, index) < container.Count;
+        }
+
+        private static int NextContentLayer(List<Layer> container, int index)
+        {
+            do { index++; } while (index < container.Count && (container[index] == null || container[index] is PendingLayer));
+            return index;
         }
 
         internal void NormalizeModel()
@@ -440,6 +462,19 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             // Data and UI are ordered top-to-bottom. Rendering therefore walks backwards.
+            if (sourceLayers.Exists(layer => layer is PendingLayer))
+            {
+                var content = new List<Layer>(sourceLayers.Count);
+                int start = 0;
+                for (int n = 0; n < sourceLayers.Count; n++)
+                    if (!(sourceLayers[n] is PendingLayer))
+                    {
+                        if (n < firstIndex) start++;
+                        content.Add(sourceLayers[n]);
+                    }
+                sourceLayers = content;
+                firstIndex = start;
+            }
             for (int i = sourceLayers.Count - 1; i >= firstIndex; i--)
             {
                 Layer layer = sourceLayers[i];
@@ -642,7 +677,7 @@ namespace DCFApixels.SpriteEditor
             float scaleMultiplier,
             HashSet<Layer> renderStack, bool preserveGroupColor)
         {
-            int previousIndex = currentIndex + 1;
+            int previousIndex = NextContentLayer(container, currentIndex);
             if (previousIndex >= container.Count)
                 return null;
 
@@ -798,7 +833,7 @@ namespace DCFApixels.SpriteEditor
             for (int i = 0; i < sourceLayers.Count; i++)
             {
                 Layer candidate = sourceLayers[i];
-                if (candidate == null)
+                if (candidate == null || candidate is PendingLayer)
                     continue;
 
                 bool isGroup = candidate is GroupLayer;
@@ -865,9 +900,9 @@ namespace DCFApixels.SpriteEditor
                 input = FindLayer(effect.TargetLayerId);
             }
             else if (TryFindLayer(effect, out List<Layer> container, out int index) &&
-                     index + 1 < container.Count)
+                     NextContentLayer(container, index) < container.Count)
             {
-                input = container[index + 1];
+                input = container[NextContentLayer(container, index)];
             }
 
             return LayerDependsOn(input, soughtLayer, visited);

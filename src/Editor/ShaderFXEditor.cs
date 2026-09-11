@@ -67,6 +67,7 @@ namespace DCFApixels.SpriteEditor
             root.Add(diagnostics);
             apply.clicked += () =>
             {
+                if (SpriteEditorApi.IsShaderFXContentLocked(effect)) return;
                 root.Focus();
                 serializedObject.ApplyModifiedProperties();
                 effect.Apply();
@@ -109,6 +110,10 @@ namespace DCFApixels.SpriteEditor
                     effect.NotifyValuesChanged();
             });
             root.Bind(serializedObject);
+            void RefreshLock() => root.SetEnabled(!SpriteEditorApi.IsShaderFXContentLocked(effect));
+            root.RegisterCallback<AttachToPanelEvent>(_ => { SpriteEditorApi.LiveEditLocksChanged -= RefreshLock; SpriteEditorApi.LiveEditLocksChanged += RefreshLock; RefreshLock(); });
+            root.RegisterCallback<DetachFromPanelEvent>(_ => SpriteEditorApi.LiveEditLocksChanged -= RefreshLock);
+            RefreshLock();
             RefreshStatus();
             return root;
         }

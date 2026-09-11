@@ -95,6 +95,54 @@ namespace DCFApixels.SpriteEditor
             return effect;
         }
 
+        internal static ShaderFX CreateAgentDraft(TextureCompositor owner, string source, List<ShaderFXParameter> values)
+        {
+            var effect = CreateInstance<ShaderFX>();
+            effect.name = "Shader FX";
+            effect.embeddedOwner = owner;
+            effect.hideFlags = HideFlags.HideAndDontSave;
+            effect.code = source;
+            effect.parameters = values;
+            return effect;
+        }
+
+        internal void ApplyAgentDraft()
+        {
+            Shader candidate = null;
+            Material test = null;
+            try
+            {
+                string source = ShaderFXSourceBuilder.Build(this, SourcePath);
+                candidate = ShaderUtil.CreateShaderAsset(source, true);
+                if (candidate == null) throw new InvalidOperationException("Unity could not create the shader.");
+                candidate.hideFlags = HideFlags.HideAndDontSave;
+                test = new Material(candidate) { hideFlags = HideFlags.HideAndDontSave };
+                if (test.passCount > 0) ShaderUtil.CompilePass(test, 0, true);
+                var messages = new StringBuilder();
+                bool errors = false;
+                foreach (ShaderMessage message in ShaderUtil.GetShaderMessages(candidate))
+                {
+                    errors |= message.severity == ShaderCompilerMessageSeverity.Error;
+                    messages.AppendLine($"{message.severity}: {message.file}:{message.line}: {message.message}");
+                }
+                if (errors || !candidate.isSupported || test.passCount == 0)
+                    throw new InvalidOperationException(messages.Length > 0 ? messages.ToString() : "Shader is unsupported on this graphics device.");
+                compiledShader = candidate;
+                candidate = null;
+                appliedCode = code;
+                appliedSource = source;
+                appliedParameters = new List<ShaderFXParameter>();
+                foreach (var parameter in parameters) appliedParameters.Add(parameter.Copy());
+                diagnostics = messages.Length > 0 ? messages.ToString() : "Applied successfully.";
+                lastApplyFailed = false;
+            }
+            finally
+            {
+                if (test != null) DestroyImmediate(test);
+                if (candidate != null) DestroyImmediate(candidate);
+            }
+        }
+
         internal ShaderFX CloneForDocument(TextureCompositor owner)
         {
             ShaderFX copy = Instantiate(this);
@@ -153,6 +201,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void SetDraftCode(string value)
         {
+            if (SpriteEditorApi.IsShaderFXContentLocked(this)) return;
             code = value ?? string.Empty;
             EditorUtility.SetDirty(this);
             MarkDraftChanged();
@@ -255,6 +304,7 @@ namespace DCFApixels.SpriteEditor
 
         internal bool Apply()
         {
+            if (SpriteEditorApi.IsShaderFXContentLocked(this)) return false;
             Shader candidate = null;
             Material candidateMaterial = null;
             try

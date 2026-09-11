@@ -147,8 +147,25 @@ namespace DCFApixels.SpriteEditor
 
             VisualElement layerSettingsPane = new VisualElement();
             layerSettingsPane.AddToClassList("sprite-editor-layer-settings-pane");
-            toolkitLayerSettingsTitle = CreatePaneHeader("Layer Settings", "selectedLayerTitle");
-            layerSettingsPane.Add(toolkitLayerSettingsTitle);
+            var layerSettingsHeader = new VisualElement();
+            layerSettingsHeader.AddToClassList("sprite-editor-pane-header");
+            layerSettingsHeader.AddToClassList("sprite-editor-layer-settings-header");
+            layerSettingsHeader.EnableInClassList("sprite-editor-pane-header--light", !EditorGUIUtility.isProSkin);
+            toolkitLayerSettingsTitle = new Label("Layer Settings") { name = "selectedLayerTitle", enableRichText = false };
+            toolkitLayerSettingsTitle.AddToClassList("sprite-editor-layer-settings-title");
+            layerSettingsHeader.Add(toolkitLayerSettingsTitle);
+            toolkitLayerGuidButton = new Button(() =>
+            {
+                Layer selected = GetSelectedLayer();
+                if (selected != null)
+                {
+                    GUIUtility.systemCopyBuffer = selected.Id;
+                    ShowNotification(new GUIContent("Layer GUID copied to clipboard."));
+                }
+            }) { name = "copyLayerGuid", text = "GUID" };
+            toolkitLayerGuidButton.AddToClassList("sprite-editor-layer-guid-copy");
+            layerSettingsHeader.Add(toolkitLayerGuidButton);
+            layerSettingsPane.Add(layerSettingsHeader);
             settingsSplit.Add(layerSettingsPane);
 
             toolkitLayerSettingsScroll = new ScrollView(ScrollViewMode.Vertical);
@@ -738,7 +755,7 @@ namespace DCFApixels.SpriteEditor
             int targetIndex = y <= 3f ? index - 1 : y >= row.layout.height - 3f ? index : -1;
             if (targetIndex < 0 || targetIndex + 1 >= container.Count) return false;
             Layer target = container[targetIndex];
-            if (target == null || target is ShaderProcessorLayer || container[targetIndex + 1] is ShaderProcessorLayer) return false;
+            if (target == null || SpriteEditorApi.IsLayerContentLocked(compositor, target) || target is ShaderProcessorLayer || container[targetIndex + 1] is ShaderProcessorLayer) return false;
             ExecuteContextChange("Change Clipping Mask", () => target.clippingMask = !target.clippingMask);
             return true;
         }
@@ -792,6 +809,11 @@ namespace DCFApixels.SpriteEditor
             blend.AddToClassList("sprite-editor-layer-blend");
             blend.AddToClassList("sprite-editor-layer-multi-edit");
             row.Add(blend);
+            toolkitLayerBindings.Add(() =>
+            {
+                bool editable = !SpriteEditorApi.IsLayerContentLocked(compositor, group);
+                opacity.SetEnabled(editable); blend.SetEnabled(editable);
+            });
             row.Add(CreateLayerMenuButton(() => ShowLayerContextMenu(group, container, index)));
             RegisterToolkitLayerDrop(row, group, container, index, depth);
             return row;
@@ -842,6 +864,21 @@ namespace DCFApixels.SpriteEditor
             blend.AddToClassList("sprite-editor-layer-blend");
             blend.RegisterValueChangedCallback(evt => ApplySelectedBlend(layer, (BlendMode)evt.newValue));
             row.Add(blend);
+
+            if (layer is PendingLayer pending)
+            {
+                opacity.SetEnabled(false);
+                blend.SetEnabled(false);
+                var status = new Label("…") { pickingMode = PickingMode.Ignore };
+                status.AddToClassList("sprite-editor-layer-agent-status");
+                nameCell.Add(status);
+                toolkitLayerBindings.Add(() => status.tooltip = SpriteEditorApi.LiveReservationStatus(pending));
+            }
+            else toolkitLayerBindings.Add(() =>
+            {
+                bool editable = !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
+                opacity.SetEnabled(editable); blend.SetEnabled(editable);
+            });
 
             if (layer is TargetedLayerEffect effect)
             {
@@ -1362,7 +1399,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (GetSelectedLayer() is DrawingLayer drawing) ClearDrawingLayer(drawing);
             }, 46f);
-            toolkitHeaderBindings.Add(() => clear.SetEnabled(GetSelectedLayer() is DrawingLayer));
+            toolkitHeaderBindings.Add(() => clear.SetEnabled(GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)));
             toolkitPreviewActions.Add(clear);
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();

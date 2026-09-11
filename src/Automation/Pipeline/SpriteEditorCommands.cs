@@ -6,6 +6,33 @@ namespace DCFApixels.SpriteEditor
 {
     public static class SpriteEditorCommands
     {
+        [CliCommand("sprite_editor_begin", "Create a named reservation and capture context in one call. Mutates the open document; use only for requested content creation or edits. No automatic save.", MainThreadRequired = true)]
+        public static JObject Begin(
+            [CliArg("requestId", "Caller-generated UUID; reuse identical arguments for retries", Required = true)] string requestId,
+            [CliArg("name", "Reserved layer name")] string name = "Generating…",
+            [CliArg("source", "none, merged, or layer (active layer unless sourceLayerId is supplied)")] string source = "none",
+            [CliArg("area", "canvas or selection")] string area = "canvas",
+            [CliArg("sessionId", "Optional explicit session; otherwise the only open, currently focused, or last-focused document")] string sessionId = null,
+            [CliArg("sourceLayerId", "Optional stable source layer ID")] string sourceLayerId = null,
+            [CliArg("selectionMode", "strict clips to selection; guide allows output outside it within the captured crop")] string selectionMode = "strict",
+            [CliArg("padding", "Selection context pixels, 0..4096; -1 uses default (strict: 32, guide: 128)")] int padding = -1)
+            => JObject.Parse(SpriteEditorApi.LiveBegin(requestId, name, source, area, sessionId, sourceLayerId, selectionMode, padding));
+
+        [CliCommand("sprite_editor_lock", "Reserve an existing layer for inline FX/settings editing; keeps rendering unchanged. No automatic save.", MainThreadRequired = true)]
+        public static JObject Lock(
+            [CliArg("requestId", "Caller-generated unique ID; reuse identical arguments for retries", Required = true)] string requestId,
+            [CliArg("layerId", "Existing layer GUID", Required = true)] string layerId,
+            [CliArg("sessionId", "Optional explicit open document")] string sessionId = null,
+            [CliArg("expectedRevision", "Optional layer contentRevision from inspection")] string expectedRevision = null)
+            => JObject.Parse(SpriteEditorApi.LiveLock(requestId, layerId, sessionId, expectedRevision));
+
+        [CliCommand("sprite_editor_sessions", "List open Sprite Editor documents, including unsaved documents, with live session IDs.", MainThreadRequired = true)]
+        public static JObject Sessions() => JObject.Parse(SpriteEditorApi.LiveSessions());
+
+        [CliCommand("sprite_editor_live", "Reserve, preview or complete an agent layer in an open document using a JSON request file.", MainThreadRequired = true)]
+        public static JObject Live([CliArg("requestPath", "Absolute path to a live-edit JSON request file", Required = true)] string requestPath)
+            => JObject.Parse(SpriteEditorApi.LiveFile(requestPath));
+
         [CliCommand("sprite_editor_describe", "Describe Sprite Editor's agent API, operations, enums and limits.", MainThreadRequired = true)]
         public static JObject Describe() => JObject.Parse(SpriteEditorApi.Describe());
 

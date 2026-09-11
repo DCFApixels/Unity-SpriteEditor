@@ -178,7 +178,8 @@ namespace DCFApixels.SpriteEditor
             FinishPaintingStroke();
             ApplyToolkitChange(undoName, () =>
             {
-                foreach (Layer layer in targets) change(layer);
+                foreach (Layer layer in targets)
+                    if (!(layer is PendingLayer) && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)) change(layer);
             });
         }
 
@@ -226,6 +227,8 @@ namespace DCFApixels.SpriteEditor
 
         private void DuplicateLayers(List<Layer> layers)
         {
+            if (layers.Exists(SpriteEditorApi.ContainsReservation))
+            { ShowNotification(new GUIContent("Finish or cancel generation before duplicating these layers.")); return; }
             FinishPreviewTransform();
             FinishPaintingStroke();
             Layer active = GetSelectedLayer();
@@ -283,6 +286,8 @@ namespace DCFApixels.SpriteEditor
 
         private void MergeSelectedLayers(List<Layer> layers, bool keepSources)
         {
+            if (layers.Exists(SpriteEditorApi.ContainsReservation))
+            { ShowNotification(new GUIContent("Finish or cancel generation before merging these layers.")); return; }
             FinishPreviewTransform();
             FinishPaintingStroke();
             if (compositor == null || layers.Count == 0) return;

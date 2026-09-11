@@ -20,6 +20,8 @@ permalink: /reference/agentapi/
 </details>
 
 The API edits the same model and uses the same renderer, brush and save path as the window.
+For reservations, generation and selected-region edits in an open (possibly unsaved) document,
+use the [live editing API](LiveAgentAPI.md). The path-based batch contract below remains unchanged.
 No Sprite Editor window or active selection is required. It creates ordinary compositor `.asset`
 files, with their layers, owned Drawing textures, baked Texture2D and Sprite subassets, and Project preview.
 
@@ -223,15 +225,16 @@ Setting Drawing `colorRange:"HDR"` promotes storage. Standard does not downgrade
 Only use compact when the user asks to discard HDR precision. Inspect reports `storageFormat`.
 Colors retain the encoded RGB convention; rendering and EXR/Texture2D output are linear HDR.
 The render command writes a clamped PNG copy. See [HDR behavior](HDR.md).
-Other settings of existing layers and all existing FX are preserved. API v1 does not author Shader FX,
+Other settings of existing layers and all existing FX are preserved. The path-based batch API does not author Shader FX,
 delete layers, duplicate/rasterize layers, resize an existing canvas or change gradient geometry.
 These remain available in the window. Use `enabled:false` to hide an unwanted layer non-destructively.
 
 `shaderProcessor` processes the already-composited lower stack, with HDR ranges by default.
 Normal + Opacity interpolates before/after without accumulating alpha twice. Pass Through includes
 the external backdrop; isolated groups limit its scope. Processor is a clipping-chain boundary.
-The API can create/reorder it and edit its common settings, transform and Swizzle; it cannot author
-its Shader FX code in protocol v1. Add/edit FX through the window. No special target is assigned.
+The batch API can create/reorder it and edit its common settings, transform and Swizzle.
+The [live editing API](LiveAgentAPI.md#inline-shader-fx) can author inline Shader FX code and parameters
+in open documents, including unsaved ones. No separate shader asset or special layer target is needed.
 Post FX is window-local presentation state and never changes API rendering, sampling or export.
 
 ### Noise settings

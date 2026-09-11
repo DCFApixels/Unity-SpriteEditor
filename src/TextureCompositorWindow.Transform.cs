@@ -12,7 +12,7 @@ namespace DCFApixels.SpriteEditor
         private PreviewTransformManipulator previewTransformManipulator;
 
         private bool IsPreviewTransformEnabled => previewTool == PreviewTool.Transform &&
-            GetSelectedLayer() is Layer layer && !layer.IsGroup;
+            GetSelectedLayer() is Layer layer && !layer.IsGroup && !SpriteEditorApi.ContainsReservation(layer);
 
         private void BuildPreviewTransformTool()
         {

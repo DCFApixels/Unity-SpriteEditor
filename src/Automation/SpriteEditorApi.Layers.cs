@@ -52,6 +52,11 @@ namespace DCFApixels.SpriteEditor
             }
 
             Layer layer = Resolve(document, Text(operation, "layer"), aliases);
+            if (layer is PendingLayer)
+            {
+                Require(op == "move" || op == "set", "Reserved layers only support moving, renaming and visibility changes.", "layer_locked");
+                if (op == "set") Keys(Obj(operation["settings"], "settings"), "name", "enabled");
+            }
             switch (op)
             {
                 case "compact":

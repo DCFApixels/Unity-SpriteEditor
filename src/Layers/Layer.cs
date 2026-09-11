@@ -59,6 +59,13 @@ namespace DCFApixels.SpriteEditor
 
         internal void AssignNewId() => id = Guid.NewGuid().ToString("N");
 
+        internal void AdoptReservation(PendingLayer reservation)
+        {
+            id = reservation.Id;
+            layerName = reservation.layerName;
+            enabled = reservation.enabled;
+        }
+
         internal void EnsureId(HashSet<string> usedIds)
         {
             if (string.IsNullOrEmpty(id) || usedIds.Contains(id))

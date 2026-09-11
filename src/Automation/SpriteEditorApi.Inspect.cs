@@ -57,6 +57,15 @@ namespace DCFApixels.SpriteEditor
                 ["layers"] = 1024, ["drawingPixels"] = 67108864, ["strokePoints"] = 4096, ["strokeStamps"] = 100000, ["strokeCoveragePixels"] = 250000000 };
             result["editing"] = "Inspect before editing; expectedRevision is mandatory on existing documents. Use @aliases within a batch. New documents require save=true. dryRun validates without drawing or saving. Save failure may leave partial asset I/O: inspect before retrying.";
             result["reference"] = "Documentation~/AgentAPI.md";
+            result["liveEditing"] = new JObject {
+                ["fastBegin"] = "sprite_editor_begin / SpriteEditorApi.LiveBegin(requestId, name, source, area, sessionId, sourceLayerId, selectionMode, padding)",
+                ["selectionModes"] = new JArray("strict", "guide"),
+                ["sessions"] = "sprite_editor_sessions / SpriteEditorApi.LiveSessions()",
+                ["execute"] = "sprite_editor_live / SpriteEditorApi.LiveFile(requestPath)",
+                ["operations"] = new JArray("inspect", "begin", "fork", "lock", "unlock", "status", "render", "preview", "complete", "fail", "cancel"),
+                ["inlineShaderFX"] = true,
+                ["lock"] = "sprite_editor_lock / SpriteEditorApi.LiveLock(requestId, layerId, sessionId, expectedRevision)",
+                ["reference"] = "Documentation~/LiveAgentAPI.md" };
             return result;
         });
 
@@ -86,7 +95,7 @@ namespace DCFApixels.SpriteEditor
             Collect(document.layers, null);
             return new JObject
             {
-                ["assetPath"] = path, ["guid"] = AssetDatabase.AssetPathToGUID(path),
+                ["assetPath"] = path, ["guid"] = string.IsNullOrEmpty(path) ? "" : AssetDatabase.AssetPathToGUID(path),
                 ["revision"] = Revision(document), ["width"] = document.width, ["height"] = document.height,
                 ["dirty"] = EditorUtility.IsDirty(document), ["hasOutputTexture"] = document.OutputTexture != null,
                 ["hasOutputSprite"] = document.OutputSprite != null, ["layers"] = layers
@@ -100,6 +109,15 @@ namespace DCFApixels.SpriteEditor
                     if (layer == null) continue;
                     JObject settings = new JObject { ["name"] = layer.layerName, ["enabled"] = layer.enabled };
                     var entry = new JObject { ["id"] = layer.Id, ["type"] = TypeName(layer), ["parent"] = parent, ["index"] = i, ["settings"] = settings };
+                    entry["fx"] = LiveFxSnapshot(layer, document);
+                    entry["contentRevision"] = LiveLayerRevision(layer);
+                    entry["contentLocked"] = IsLayerContentLocked(document, layer);
+                    if (layer is PendingLayer pending)
+                    {
+                        entry["jobId"] = pending.jobId;
+                        entry["contentLocked"] = true;
+                        entry["status"] = LiveReservationStatus(pending);
+                    }
                     settings["opacity"] = layer.opacity;
                     settings["clippingMask"] = layer.clippingMask;
                     entry["clippingBaseId"] = document.GetClippingBase(layer)?.Id;
@@ -210,7 +228,7 @@ namespace DCFApixels.SpriteEditor
 
         private static string TypeName(Layer layer) => layer switch
         {
-            FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
+            PendingLayer _ => "pending", FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
             GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap",
             NoiseLayer _ => "noise",
             GaussianBlurLayer _ => "gaussianBlur", MotionBlurLayer _ => "motionBlur", ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name

@@ -4,6 +4,22 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-11
+
+### Added
+
+- Live agent editing of open compositor documents, including unsaved work, with named placeholder layers and preserved user changes to their names, visibility and placement.
+- Generated Drawing layers, parameter-based layers, selected-region edits, trial previews and shared-context reservations for multiple results.
+- Inline Shader FX and Shader Processor authoring through the live API, with editable parameters and shader diagnostics, without separate shader files.
+- Temporary content locks for agent edits to existing layers, with manual cancellation and conflict protection.
+- A compact layer GUID copy button with tooltip and confirmation, a portable live-editing skill, bilingual guides and regression checks.
+
+### Changed
+
+- Generated images retain their source resolution and fit the requested region through Transform.
+- Selection-based generation supports strict masks or placement guides that allow details beyond the selection.
+- Automatic document targeting falls back to the most recently focused Sprite Editor window when no window currently has focus.
+
 ## [0.7.11] - 2026-09-11
 
 ### Added

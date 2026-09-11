@@ -27,8 +27,8 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Button previewPolygonSelectButton;
 
         private bool IsPreviewPaintTool => previewTool == PreviewTool.Brush || previewTool == PreviewTool.Pencil;
-        private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer;
-        private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer;
+        private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
+        private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
 
         private void ApplyPreviewTextureFilter()
         {
@@ -119,7 +119,7 @@ namespace DCFApixels.SpriteEditor
             bool painting = IsPreviewPaintTool && (evt.button == 0 || evt.button == 1);
             bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
             if ((!painting && !filling) || evt.altKey || compositor == null ||
-                !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer)
+                !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer && !SpriteEditorApi.IsLayerContentLocked(compositor, GetSelectedLayer()))
                 return false;
 
             SpriteEditorUI.ConsumeEvent(evt);
@@ -128,6 +128,11 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 Layer layer = GetSelectedLayer();
+                if (layer != null && SpriteEditorApi.ContainsReservation(layer))
+                {
+                    ShowNotification(new GUIContent("This layer is reserved for the agent."));
+                    return true;
+                }
                 if (layer == null)
                 {
                     EditorUtility.DisplayDialog("No Layer Selected", "Select a layer before painting or filling.", "OK");

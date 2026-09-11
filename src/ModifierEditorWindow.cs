@@ -37,18 +37,23 @@ namespace DCFApixels.SpriteEditor
         private void OnEnable()
         {
             TextureCompositor.Changed += OnCompositorChanged;
+            SpriteEditorApi.LiveEditLocksChanged += RefreshAgentLock;
         }
 
         private void OnDisable()
         {
             TextureCompositor.Changed -= OnCompositorChanged;
+            SpriteEditorApi.LiveEditLocksChanged -= RefreshAgentLock;
         }
 
         public void CreateGUI()
         {
             interfaceBuilt = false;
             RefreshInterface();
+            RefreshAgentLock();
         }
+
+        private void RefreshAgentLock() => rootVisualElement.SetEnabled(!SpriteEditorApi.IsLayerContentLocked(compositor, layer));
 
         private void Update()
         {
@@ -253,7 +258,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ApplyChange(string undoName, Action change)
         {
-            if (compositor == null || change == null)
+            if (compositor == null || change == null || SpriteEditorApi.IsLayerContentLocked(compositor, layer))
                 return;
 
             Undo.RecordObject(compositor, undoName);

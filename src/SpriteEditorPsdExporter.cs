@@ -107,7 +107,7 @@ namespace DCFApixels.SpriteEditor
             for (int i = layers.Count - 1; i >= 0; i--)
             {
                 Layer layer = layers[i];
-                if (layer == null) continue;
+                if (layer == null || layer is PendingLayer) continue;
                 if (!visited.Add(layer)) throw new InvalidOperationException("The layer tree contains a cycle or shared layer instance.");
                 bool orphanClipping = layer.clippingMask && document.GetClippingBase(layer) == null;
                 if (orphanClipping) report.Note(layer, "Clipping has no base in this group; exported hidden to preserve its invisible result.");
