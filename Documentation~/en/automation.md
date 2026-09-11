@@ -77,7 +77,7 @@ canvas or selected region, so fitting a large image does not discard its detail.
 
 ## Connect an agent
 
-Give the agent the repository's [agent instructions](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/AGENTS.md).
+Give the agent the repository's [agent instructions](https://github.com/DCFApixels/WhimTex/blob/main/AGENTS.md).
 They explain how to use WhimTex in your Unity project.
 
 Command syntax and integration setup are kept in the separate

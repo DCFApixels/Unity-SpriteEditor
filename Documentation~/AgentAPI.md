@@ -532,14 +532,14 @@ appropriately and keep batches focused. The API executes on the main thread; it 
 
 ## Verification
 
-[Tests~/AgentApiSmoke.cs](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/Tests~/AgentApiSmoke.cs) is an opt-in C# eval-file smoke test. After the
+[Tests~/AgentApiSmoke.cs](https://github.com/DCFApixels/WhimTex/blob/main/Tests~/AgentApiSmoke.cs) is an opt-in C# eval-file smoke test. After the
 user compiles the plugin, run it through an available `eval_file` bridge on the intended project.
 It uses a new uniquely named folder under Assets and retains its fixtures for inspection; it does
 not edit existing documents. It verifies create/inspect, aspect/transform, preflight rejection,
 revision conflict, painting, Undo/Redo, save and output subassets. See the test's result for its path.
 Do not run it when the project's rules prohibit creating test assets.
 
-[Tests~/DrawingPatternSmoke.cs](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/Tests~/DrawingPatternSmoke.cs) is a separate opt-in eval-file
+[Tests~/DrawingPatternSmoke.cs](https://github.com/DCFApixels/WhimTex/blob/main/Tests~/DrawingPatternSmoke.cs) is a separate opt-in eval-file
 regression test for mutually exclusive Mirror/Repeat modes, legacy migration, movable mirror centers,
 source stamps under the cursor and JSON round-trips. It creates no assets or GPU resources; run only
 after the user has compiled the updated plugin. It does not replace visual painting checks.

@@ -396,6 +396,6 @@ reservations by session and layer ID:
 
 ## Agent guidance
 
-The portable skill is [Skills~/sprite-editor-live/SKILL.md](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/Skills~/sprite-editor-live/SKILL.md).
+The portable skill is [Skills~/sprite-editor-live/SKILL.md](https://github.com/DCFApixels/WhimTex/blob/main/Skills~/sprite-editor-live/SKILL.md).
 It describes intent-based source selection, reservation ownership and recovery without requiring
 an embedded chat UI or a separate model integration inside Unity.

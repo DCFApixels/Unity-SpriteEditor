@@ -23,10 +23,10 @@ From the repository's `Documentation~` directory:
 bundle install
 node scripts/check-docs.mjs source
 bundle exec just-the-docs rake search:init
-bundle exec jekyll serve --baseurl /Unity-SpriteEditor --host 127.0.0.1
+bundle exec jekyll serve --baseurl /WhimTex --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4000/Unity-SpriteEditor/`. Search initialization creates a generated theme file;
+Open `http://127.0.0.1:4000/WhimTex/`. Search initialization creates a generated theme file;
 it is intentionally ignored by Git. Build output, caches and installed gems are not Unity assets.
 
 ## Production checks
@@ -54,7 +54,7 @@ publishes. Set repository **Settings → Pages → Source → GitHub Actions** o
 The deployment environment is `github-pages`. No workflow step invokes Unity or installs Unity packages.
 Published JS/CSS URLs include the deployment commit, so browsers revalidate theme assets after updates.
 
-Published URL: [dcfapixels.github.io/Unity-SpriteEditor](https://dcfapixels.github.io/Unity-SpriteEditor/).
+Published URL: [dcfapixels.github.io/WhimTex](https://dcfapixels.github.io/WhimTex/).
 If the repository name or host changes, update `url` and `baseurl` in `_config.yml` and README links.
 
 ## Editing pages

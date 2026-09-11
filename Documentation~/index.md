@@ -41,5 +41,5 @@ Game Post FX preview is optional and currently needs URP 17.x with Universal Ren
 Other editing tools do not require a render pipeline package.
 
 Creating an integration or writing shader code? The separate [technical reference](reference.md) is for developers.
-See the [changelog](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/CHANGELOG.md)
+See the [changelog](https://github.com/DCFApixels/WhimTex/blob/main/CHANGELOG.md)
 for changes and [acknowledgements](credits.md) for third-party sources and licenses.

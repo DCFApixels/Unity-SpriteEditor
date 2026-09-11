@@ -17,7 +17,7 @@ next_page: "ru/layers.md"
 выбери **Install package from git URL** и вставь:
 
 ```text
-https://github.com/DCFApixels/Unity-SpriteEditor.git
+https://github.com/DCFApixels/WhimTex.git
 ```
 
 ## Первое изображение

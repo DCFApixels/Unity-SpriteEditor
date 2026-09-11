@@ -17,7 +17,7 @@ Requires **Unity 6 or newer**. Open **Window → Package Management → Package 
 choose **Install package from git URL**, and paste:
 
 ```text
-https://github.com/DCFApixels/Unity-SpriteEditor.git
+https://github.com/DCFApixels/WhimTex.git
 ```
 
 ## Make your first image

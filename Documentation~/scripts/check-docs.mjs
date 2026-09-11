@@ -60,8 +60,15 @@ function checkSource() {
   for (const file of [...markdown, path.join(repository, 'README.md'), path.join(repository, 'README-RU.md')]) {
     const content = text(file).replace(/^```[^\n]*\n[\s\S]*?^```\s*$/gm, '');
     if (/^```/m.test(content)) fail(`${file}: unclosed code fence`);
-    const links = [...content.matchAll(/\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g)].map(m => m[1]);
+    const links = [
+      ...[...content.matchAll(/\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g)].map(m => m[1]),
+      ...[...content.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(m => m[1])
+    ];
     for (const link of links) {
+      if (link.includes('{{')) continue; // Liquid paths are checked in generated HTML.
+      const github = link.match(/^https:\/\/github\.com\/DCFApixels\/WhimTex\/(?:blob|tree)\/main\/([^#?]+)/);
+      if (github && !fs.existsSync(path.resolve(repository, decodeURIComponent(github[1]))))
+        fail(`${file}: missing repository link target ${link}`);
       if (/^(?:[a-z]+:|#|\/\/)/i.test(link)) continue;
       const pathname = decodeURIComponent(link.split('#')[0]);
       if (!fs.existsSync(path.resolve(path.dirname(file), pathname))) fail(`${file}: missing source link ${link}`);
@@ -96,7 +103,7 @@ function checkSite() {
   const htmlFiles = filesUnder(output, new Set()).filter(file => file.endsWith('.html'));
   const baseurl = text(path.join(source, '_config.yml')).match(/^baseurl:\s*(.*)$/m)[1].trim();
   const siteOrigin = text(path.join(source, '_config.yml')).match(/^url:\s*(.*)$/m)[1].trim();
-  const origin = 'https://docs.invalid';
+  const origin = siteOrigin; // Also validate absolute canonical, language and sitemap links.
   const anchorCache = new Map();
   for (const file of htmlFiles) {
     const html = text(file);

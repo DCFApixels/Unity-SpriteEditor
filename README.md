@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="package.json"><img alt="Package version" src="https://img.shields.io/github/package-json/v/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
-  <a href="LICENSE.md"><img alt="License: MIT" src="https://img.shields.io/github/license/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="package.json"><img alt="Package version" src="https://img.shields.io/github/package-json/v/DCFApixels/WhimTex?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="LICENSE.md"><img alt="License: MIT" src="https://img.shields.io/github/license/DCFApixels/WhimTex?color=3984c6&amp;style=for-the-badge"></a>
   <a href="#installation"><img alt="Unity 6 or newer" src="https://img.shields.io/badge/Unity-6%2B-383838?logo=unity&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
   <a href="https://discord.gg/kqmJjExuCf"><img alt="Join Discord" src="https://img.shields.io/badge/Discord-JOIN-6473c8?logo=discord&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
 </p>
@@ -20,7 +20,7 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#shortcuts">Shortcuts</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="https://github.com/DCFApixels/Unity-SpriteEditor/issues">Report an issue</a>
+  <a href="https://github.com/DCFApixels/WhimTex/issues">Report an issue</a>
 </p>
 
 ---
@@ -53,7 +53,7 @@ and enable **Live Update** to see edits in your scene; export a separate image o
 **Unity 6 (`6000.0`) or newer.** In Package Manager, choose **Install package from git URL**:
 
 ```text
-https://github.com/DCFApixels/Unity-SpriteEditor.git
+https://github.com/DCFApixels/WhimTex.git
 ```
 
 [Installation details](Documentation~/en/getting-started.md).
@@ -83,8 +83,8 @@ only when you need a separate file. Save your changes to update the image used i
 <a id="automation"></a>
 ## Documentation
 
-**[Read the documentation →](https://dcfapixels.github.io/Unity-SpriteEditor/en/)** ·
-[Русская версия](https://dcfapixels.github.io/Unity-SpriteEditor/ru/)
+**[Read the documentation →](https://dcfapixels.github.io/WhimTex/en/)** ·
+[Русская версия](https://dcfapixels.github.io/WhimTex/ru/)
 
 The guide follows the editing workflow, from the first canvas to painting, effects and export:
 
@@ -123,7 +123,7 @@ Third-party components retain their own licenses.
 ## Community & license
 
 Questions or ideas? Join **[Discord · RU / EN](https://discord.gg/kqmJjExuCf)**.
-For bugs, open a [GitHub issue](https://github.com/DCFApixels/Unity-SpriteEditor/issues)
+For bugs, open a [GitHub issue](https://github.com/DCFApixels/WhimTex/issues)
 with your Unity version and reproduction steps.
 
 Distributed under the **[MIT License](LICENSE.md)**.

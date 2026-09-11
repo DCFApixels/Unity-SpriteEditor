@@ -2,8 +2,8 @@ title: WhimTex
 tagline: Unity Sprite Editor & Texture Editor
 description: WhimTex is a free Unity sprite editor and texture editor for quick touch-ups, VFX textures, procedural noise and layered painting directly inside Unity.
 url: https://dcfapixels.github.io
-baseurl: /Unity-SpriteEditor
-repository: DCFApixels/Unity-SpriteEditor
+baseurl: /WhimTex
+repository: DCFApixels/WhimTex
 theme: just-the-docs
 permalink: pretty
 color_scheme: sprite
@@ -33,7 +33,7 @@ back_to_top: false
 gh_edit_link: false
 aux_links:
   GitHub:
-    - https://github.com/DCFApixels/Unity-SpriteEditor
+    - https://github.com/DCFApixels/WhimTex
   Discord:
     - https://discord.gg/kqmJjExuCf
 

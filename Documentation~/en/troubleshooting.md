@@ -63,4 +63,4 @@ See [Post FX](post-fx.md).
 ## Still stuck?
 
 Include the package and Unity versions, steps to reproduce the problem and, if possible,
-a small document you can share in a [bug report](https://github.com/DCFApixels/Unity-SpriteEditor/issues).
+a small document you can share in a [bug report](https://github.com/DCFApixels/WhimTex/issues).

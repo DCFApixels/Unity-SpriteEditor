@@ -11,7 +11,8 @@ All notable changes to WhimTex are documented in this file.
 - Renamed the product to WhimTex across the editor window, menus, settings, messages, package display name, PSD application metadata and EN/RU documentation.
 - Focused the introduction on quick texture touch-ups, VFX masks and small sprite workflows inside Unity.
 - Added descriptive search metadata, language links and a sitemap to the documentation website.
-- Preserved package, API, command, shader and preference identifiers, document compatibility and existing installation/documentation URLs.
+- Preserved package, API, command, shader and preference identifiers and document compatibility.
+- Renamed the GitHub repository to `DCFApixels/WhimTex` and updated installation, documentation and badge links. The documentation website now uses `/WhimTex/`.
 
 ## [0.8.0] - 2026-09-11
 

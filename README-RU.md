@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="package.json"><img alt="Версия пакета" src="https://img.shields.io/github/package-json/v/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
-  <a href="LICENSE.md"><img alt="Лицензия MIT" src="https://img.shields.io/github/license/DCFApixels/Unity-SpriteEditor?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="package.json"><img alt="Версия пакета" src="https://img.shields.io/github/package-json/v/DCFApixels/WhimTex?color=3984c6&amp;style=for-the-badge"></a>
+  <a href="LICENSE.md"><img alt="Лицензия MIT" src="https://img.shields.io/github/license/DCFApixels/WhimTex?color=3984c6&amp;style=for-the-badge"></a>
   <a href="#installation"><img alt="Unity 6 или новее" src="https://img.shields.io/badge/Unity-6%2B-383838?logo=unity&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
   <a href="https://discord.gg/kqmJjExuCf"><img alt="Присоединиться к Discord" src="https://img.shields.io/badge/Discord-JOIN-6473c8?logo=discord&amp;logoColor=ffffff&amp;style=for-the-badge"></a>
 </p>
@@ -20,7 +20,7 @@
   <a href="#quick-start">Быстрый старт</a> ·
   <a href="#shortcuts">Горячие клавиши</a> ·
   <a href="CHANGELOG.md">История изменений</a> ·
-  <a href="https://github.com/DCFApixels/Unity-SpriteEditor/issues">Сообщить об ошибке</a>
+  <a href="https://github.com/DCFApixels/WhimTex/issues">Сообщить об ошибке</a>
 </p>
 
 ---
@@ -54,7 +54,7 @@
 **Unity 6 (`6000.0`) или новее.** В Package Manager выбери **Install package from git URL**:
 
 ```text
-https://github.com/DCFApixels/Unity-SpriteEditor.git
+https://github.com/DCFApixels/WhimTex.git
 ```
 
 [Подробности установки](Documentation~/ru/getting-started.md).
@@ -84,8 +84,8 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 <a id="automation"></a>
 ## Документация
 
-**[Открыть документацию →](https://dcfapixels.github.io/Unity-SpriteEditor/ru/)** ·
-[English](https://dcfapixels.github.io/Unity-SpriteEditor/en/)
+**[Открыть документацию →](https://dcfapixels.github.io/WhimTex/ru/)** ·
+[English](https://dcfapixels.github.io/WhimTex/en/)
 
 Руководство идёт по рабочему процессу — от первого холста к рисованию, эффектам и экспорту:
 
@@ -124,7 +124,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 ## Сообщество и лицензия
 
 Есть вопрос или идея? Заходи в **[Discord · RU / EN](https://discord.gg/kqmJjExuCf)**.
-Для ошибок создай [GitHub issue](https://github.com/DCFApixels/Unity-SpriteEditor/issues)
+Для ошибок создай [GitHub issue](https://github.com/DCFApixels/WhimTex/issues)
 с версией Unity и шагами воспроизведения.
 
 Распространяется под **[лицензией MIT](LICENSE.md)**.

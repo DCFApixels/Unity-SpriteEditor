@@ -1,8 +1,9 @@
 # WhimTex asset authoring
 
 WhimTex is the public product name. The package ID `com.dcfa_pixels.sprite-editor`,
-`DCFApixels.SpriteEditor` namespace, `sprite_editor_*` commands, persisted identifiers and
-existing repository/documentation URLs are compatibility contracts, not branding to rename.
+`DCFApixels.SpriteEditor` namespace, `sprite_editor_*` commands and persisted identifiers
+are compatibility contracts, not branding to rename. The canonical repository is
+`DCFApixels/WhimTex`; documentation is hosted at `https://dcfapixels.github.io/WhimTex/`.
 
 When adding or updating third-party code or libraries, acknowledge the project and link its
 upstream source in both READMEs. Preserve original copyright headers, include the applicable
@@ -59,6 +60,6 @@ Acquire `sprite_editor_lock` for FX/settings edits on an existing layer and rele
   when they affect the result, compatibility or loss of editable work. Ordinary Undo shortcuts belong
   in the shortcuts page. Keep programming contracts in the separate technical reference, not the guides.
 - Update the matching `Documentation~/en/` and `Documentation~/ru/` user-guide pages for feature changes.
-  Keep the shared English API contract in `Documentation~/AgentAPI.md` accurate; preserve existing URLs.
+  Keep the shared English API contract in `Documentation~/AgentAPI.md` accurate; preserve page paths.
 - Follow `Documentation~/building.md` for website validation. Jekyll builds are documentation-only;
   they do not authorize a Unity build, compilation or asset reimport.

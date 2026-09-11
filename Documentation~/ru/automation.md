@@ -81,7 +81,7 @@ GUID есть также у групп и заглушек генерации.
 
 ## Подключить агента
 
-Передай агенту [инструкцию из репозитория](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/AGENTS.md).
+Передай агенту [инструкцию из репозитория](https://github.com/DCFApixels/WhimTex/blob/main/AGENTS.md).
 Она объясняет, как работать со WhimTex в твоём Unity-проекте.
 
 Команды и настройка интеграции вынесены в отдельный
