@@ -24,6 +24,7 @@ namespace DCFApixels.SpriteEditor
         public float brushSize = 32f;
         [Range(0f, 1f)] public float brushHardness = 0.8f;
         [Range(MinimumBrushSpacing, MaximumBrushSpacing)] public float brushSpacing = DefaultBrushSpacing;
+        [SerializeField, HideInInspector] internal BrushDynamics brushDynamics;
         public FillSampleMode fillSampleMode = FillSampleMode.CurrentLayer;
         public bool fillContiguous = true;
         [Range(0, 255)] public int fillTolerance = 32;
@@ -189,6 +190,12 @@ namespace DCFApixels.SpriteEditor
 
         internal void BeginStroke(Vector2 sourceUv)
         {
+            ReleaseAdvancedStroke();
+            brushSpacingState = default;
+            brushRandomState = 0;
+            brushStampIndex = 0;
+            brushDirection = 0f;
+            brushTintPrepared = false;
             strokeWrapCanvas = false;
             strokeRepeatShapeAnchor = sourceUv;
             clipStrokeToInitialShape =
@@ -208,6 +215,7 @@ namespace DCFApixels.SpriteEditor
 
         internal void EndStroke()
         {
+            ReleaseAdvancedStroke();
             clipStrokeToInitialShape = false;
             strokeWrapCanvas = false;
         }
@@ -286,7 +294,8 @@ namespace DCFApixels.SpriteEditor
         internal PaintStrokeParameters GetStrokeParameters(bool erase)
         {
             NormalizeSettings();
-            return new PaintStrokeParameters(brushColor, brushSize, brushHardness, brushSpacing, erase);
+            brushDynamics?.Normalize();
+            return new PaintStrokeParameters(brushColor, brushSize, brushHardness, brushSpacing, erase, dynamics: brushDynamics);
         }
 
         internal void PaintPoint(Vector2 sourceUv, int outputWidth, int outputHeight, PaintStrokeParameters parameters)
@@ -303,7 +312,7 @@ namespace DCFApixels.SpriteEditor
             PaintStrokeParameters parameters)
         {
             Color color = parameters.Color;
-            if (color.a <= 0f)
+            if (color.a <= 0f || parameters.Dynamics != null && (parameters.Dynamics.opacity <= 0f || parameters.Dynamics.flow <= 0f))
                 return;
             if (parameters.WrapCanvas && !TiledCanvasUtility.IsInvertible(transform))
                 return;
@@ -319,14 +328,15 @@ namespace DCFApixels.SpriteEditor
                 (toSourceUv.y - fromSourceUv.y) * outputHeight);
             float distance = pixelDelta.magnitude;
             int steps = distance > 0f ? Mathf.Max(1, Mathf.CeilToInt(distance / parameters.SpacingPixels)) : 0;
-            int firstStep = includeStart ? 0 : 1;
             if (parameters.WrapCanvas && steps > 0)
             {
                 int copies = UsesRepeatedPattern ? repeatCount : 1;
                 if (repeatMode == PaintRepeatMode.Grid) copies *= repeatSecondaryCount;
                 if (UsesMirrorPattern && mirrorAcrossVerticalAxis) copies *= 2;
                 if (UsesMirrorPattern && mirrorAcrossHorizontalAxis) copies *= 2;
-                double coverage = Math.Max(1d, copies * (double)Mathf.Min(parameters.Size, outputWidth) * Mathf.Min(parameters.Size, outputHeight));
+                float maxStampSize = parameters.Size * (1f + (parameters.Dynamics?.sizeJitter ?? 0f));
+                if (parameters.Dynamics?.CanRotateTip == true) maxStampSize *= Mathf.Sqrt(2f);
+                double coverage = Math.Max(1d, copies * (double)Mathf.Min(maxStampSize, outputWidth) * Mathf.Min(maxStampSize, outputHeight));
                 int sampleBudget = Mathf.Clamp((int)Math.Min(8192d, 64000000d / coverage), 1, 8192);
                 steps = Mathf.Min(steps, sampleBudget);
             }
@@ -335,33 +345,33 @@ namespace DCFApixels.SpriteEditor
             segmentStamps.Clear();
             if (parameters.PixelPerfect)
                 BuildPencilSegment(fromSourceUv, toSourceUv, outputWidth, outputHeight, includeStart, parameters, steps);
-            else for (int step = firstStep; step <= steps; step++)
-            {
-                float t = steps <= 0 ? 0f : (float)step / steps;
-                Vector2 point = Vector2.Lerp(fromSourceUv, toSourceUv, t);
-                if (!parameters.OverlapsCanvas(point, outputWidth, outputHeight)) continue;
-                if (parameters.WrapCanvas)
-                    point = TiledCanvasUtility.CanonicalSource(point, transform, outputWidth, outputHeight);
-                BuildPatternStamps(point, outputWidth, outputHeight);
-                segmentStamps.AddRange(patternStamps);
-            }
+            else BuildBrushSegment(fromSourceUv, toSourceUv, outputWidth, outputHeight, includeStart, parameters,
+                distance, parameters.WrapCanvas ? Mathf.Max(1, steps + 1) : 8192);
+
+            BrushDynamics dynamics = parameters.Dynamics;
+            bool isolatedStroke = dynamics != null && dynamics.NeedsStrokeBuffer(parameters.Erase);
+            bool stampBlend = dynamics != null && dynamics.BlendsEachStamp(parameters.Erase);
+            if (isolatedStroke && segmentStamps.Count > 0) EnsureAdvancedStroke(surface, stampBlend);
+            color.a *= dynamics != null ? dynamics.flow : 1f;
 
             PaintBrushRenderer.Draw(
-                surface,
+                isolatedStroke ? advancedStroke : surface,
                 segmentStamps,
                 parameters.Size,
                 parameters.Hardness,
                 parameters.PixelPerfect,
                 parameters.Shape,
                 color,
-                parameters.Erase,
+                parameters.Erase && !isolatedStroke,
                 outputWidth,
                 outputHeight,
                 patternCenter,
                 parameters.WrapCanvas,
                 transform,
                 colorRange == LayerColorRange.Standard,
-                HdrUtility.IsHdr(pixels), parameters.SelectionMask);
+                !isolatedStroke && HdrUtility.IsHdr(pixels), parameters.SelectionMask, dynamics, parameters.StandardColorInputs,
+                stampBlend, blendRange == LayerBlendRange.HDR);
+            if (isolatedStroke && segmentStamps.Count > 0) CompositeAdvancedStroke(surface, parameters);
         }
 
         private void BuildPencilSegment(Vector2 from, Vector2 to, int width, int height,
@@ -895,6 +905,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ReleasePaintSurface()
         {
+            ReleaseAdvancedStroke();
             if (paintSurface == null)
                 return;
             paintSurface.Release();
@@ -909,6 +920,10 @@ namespace DCFApixels.SpriteEditor
 
         internal struct PaintStamp : IEquatable<PaintStamp>
         {
+            public float size;
+            public float rotation;
+            public int flip;
+            public Color color;
             public Vector2 center;
             public int clipMode;
             public Vector4 clipRect;
@@ -943,7 +958,7 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private static class PaintBrushRenderer
+        private static partial class PaintBrushRenderer
         {
             private static readonly int ColorId = Shader.PropertyToID("_Color");
             private static readonly int HardnessId = Shader.PropertyToID("_Hardness");
@@ -965,7 +980,8 @@ namespace DCFApixels.SpriteEditor
                 int outputHeight,
                 Vector2 patternCenter,
                 bool wrapCanvas,
-                TextureTransform transform, bool standard, bool hdrStorage, Texture selectionMask = null)
+                TextureTransform transform, bool standard, bool hdrStorage, Texture selectionMask = null, BrushDynamics dynamics = null,
+                bool standardColorInputs = false, bool stampBlend = false, bool hdrBlend = false)
             {
                 if (target == null || stamps == null || stamps.Count == 0)
                     return;
@@ -973,6 +989,28 @@ namespace DCFApixels.SpriteEditor
                 Material material = SpriteEditorMaterials.PaintBrush;
                 if (material == null)
                     return;
+
+                bool variation = dynamics != null && dynamics.PerStamp;
+                Texture2D tip = dynamics?.tip;
+                bool textured = tip != null;
+                if (variation && !textured) material.EnableKeyword("BRUSH_DYNAMICS");
+                else material.DisableKeyword("BRUSH_DYNAMICS");
+                if (textured) material.EnableKeyword("BRUSH_TEXTURE");
+                else material.DisableKeyword("BRUSH_TEXTURE");
+                material.SetTexture("_BrushTip", textured ? tip : Texture2D.whiteTexture);
+                material.SetFloat("_TipChannel", dynamics != null ? (int)dynamics.tipChannel : 0f);
+                bool sdfGradient = !pixelPerfect && dynamics != null && dynamics.UsesSdfGradient;
+                material.SetFloat("_TipSdf", sdfGradient ? 1f : 0f);
+                material.SetTexture("_BrushSdfGradient", sdfGradient
+                    ? GetBrushSdfGradient(dynamics, standardColorInputs) : Texture2D.whiteTexture);
+                material.SetFloat("_TipStandard", standard ? 1f : 0f);
+                material.SetFloat("_StampBlendEnabled", stampBlend ? 1f : 0f);
+                material.SetFloat("_StampBlendMode", dynamics != null ? (int)dynamics.blend : 0f);
+                material.SetFloat("_HdrBlend", hdrBlend ? 1f : 0f);
+                float tipExtent = textured ? Mathf.Max(tip.width, tip.height) : 1f;
+                material.SetVector("_TipAspect", textured ? new Vector4(tip.width / tipExtent, tip.height / tipExtent, 0f, 0f) : Vector4.one);
+                material.SetFloat("_TipDecode", textured && tip.isDataSRGB && QualitySettings.activeColorSpace == ColorSpace.Gamma ? 1f : 0f);
+                material.SetFloat("_TipEncodeMask", textured && tip.isDataSRGB && QualitySettings.activeColorSpace == ColorSpace.Linear ? 1f : 0f);
 
                 float radiusX = sizePixels / Mathf.Max(1f, outputWidth) * 0.5f;
                 float radiusY = sizePixels / Mathf.Max(1f, outputHeight) * 0.5f;
@@ -1019,7 +1057,14 @@ namespace DCFApixels.SpriteEditor
                 RenderTexture snapshot = null;
                 try
                 {
-                    if (standard && hdrStorage && !erase)
+                    if (stampBlend)
+                    {
+                        snapshot = RenderTexture.GetTemporary(target.descriptor);
+                        snapshot.filterMode = FilterMode.Point;
+                        snapshot.wrapMode = TextureWrapMode.Clamp;
+                        material.SetTexture("_Backdrop", snapshot);
+                    }
+                    else if (standard && hdrStorage && !erase)
                     {
                         snapshot = HdrUtility.Temporary(target.width, target.height);
                         Graphics.Blit(target, snapshot);
@@ -1030,45 +1075,78 @@ namespace DCFApixels.SpriteEditor
                     try
                     {
                         GL.LoadOrtho();
-                        for (int pass = snapshot != null ? 0 : 1; pass < 2; pass++)
+                        for (int pass = snapshot != null && !stampBlend ? 0 : 1; pass < 2; pass++)
                         {
                             material.SetFloat("_PrepareStandard", pass == 0 ? 1f : 0f);
                             material.SetFloat(SourceBlendId, pass == 0 || !erase ? 1f : 0f);
-                            material.SetFloat(DestinationBlendId, pass == 0 ? 0f : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                            material.SetFloat(DestinationBlendId, pass == 0 || stampBlend ? 0f : (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
                             if (!material.SetPass(0))
                                 return;
 
-                            GL.Begin(GL.QUADS);
+                            bool explicitVertices = variation || textured || stampBlend;
+                            if (explicitVertices && !stampBlend) BeginBrushMesh();
+                            else if (!explicitVertices) GL.Begin(GL.QUADS);
                             try
                             {
                                 for (int i = 0; i < stamps.Count; i++)
                                 {
                                     PaintStamp stamp = stamps[i];
-                                    if (wrapCanvas)
+                                    float dabSize = variation ? stamp.size : sizePixels;
+                                    if (variation || textured || stampBlend)
                                     {
-                                        DrawWrappedStamp(stamp, radiusX, radiusY, transform, outputWidth, outputHeight);
-                                        continue;
+                                        Color dabColor = color;
+                                        if (variation)
+                                        {
+                                            Color encoded = stamp.color;
+                                            encoded.a *= dynamics.flow;
+                                            dabColor = HdrUtility.DecodePaintColor(encoded);
+                                            if (standard) dabColor = HdrUtility.Saturate(dabColor);
+                                        }
+                                        meshColor = new Vector3(dabColor.r, dabColor.g, dabColor.b);
+                                        meshStamp = new Vector4(dabSize, dabColor.a, stamp.rotation, stamp.flip);
                                     }
-                                    Rect brushRect = new Rect(
-                                        stamp.center.x - radiusX,
-                                        stamp.center.y - radiusY,
-                                        radiusX * 2f,
-                                        radiusY * 2f);
-                                    if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
-                                        brushRect.yMax <= 0f || brushRect.yMin >= 1f)
+                                    float dabRadiusX = variation ? dabSize / outputWidth * .5f : radiusX;
+                                    float dabRadiusY = variation ? dabSize / outputHeight * .5f : radiusY;
+                                    if (textured && stamp.rotation != 0f)
                                     {
-                                        continue;
+                                        float extent = Mathf.Abs(Mathf.Cos(stamp.rotation)) + Mathf.Abs(Mathf.Sin(stamp.rotation));
+                                        dabRadiusX *= extent;
+                                        dabRadiusY *= extent;
                                     }
+                                    if (stampBlend) BeginBrushMesh();
+                                    try
+                                    {
+                                        if (wrapCanvas)
+                                        {
+                                            DrawWrappedStamp(stamp, dabRadiusX, dabRadiusY, transform, outputWidth, outputHeight);
+                                            continue;
+                                        }
+                                        Rect brushRect = new Rect(
+                                            stamp.center.x - dabRadiusX,
+                                            stamp.center.y - dabRadiusY,
+                                            dabRadiusX * 2f,
+                                            dabRadiusY * 2f);
+                                        if (brushRect.xMax <= 0f || brushRect.xMin >= 1f ||
+                                            brushRect.yMax <= 0f || brushRect.yMin >= 1f)
+                                        {
+                                            continue;
+                                        }
 
-                                    DrawVertex(brushRect.xMin, brushRect.yMin, 0f, 0f, stamp);
-                                    DrawVertex(brushRect.xMin, brushRect.yMax, 0f, 1f, stamp);
-                                    DrawVertex(brushRect.xMax, brushRect.yMax, 1f, 1f, stamp);
-                                    DrawVertex(brushRect.xMax, brushRect.yMin, 1f, 0f, stamp);
+                                        DrawVertex(brushRect.xMin, brushRect.yMin, 0f, 0f, stamp);
+                                        DrawVertex(brushRect.xMin, brushRect.yMax, 0f, 1f, stamp);
+                                        DrawVertex(brushRect.xMax, brushRect.yMax, 1f, 1f, stamp);
+                                        DrawVertex(brushRect.xMax, brushRect.yMin, 1f, 0f, stamp);
+                                    }
+                                    finally
+                                    {
+                                        if (stampBlend) EndBrushMesh(target, material, snapshot);
+                                    }
                                 }
                             }
                             finally
                             {
-                                GL.End();
+                                if (explicitVertices && !stampBlend) EndBrushMesh(target, material);
+                                else if (!explicitVertices) GL.End();
                             }
                         }
                     }
@@ -1081,6 +1159,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     RenderTexture.active = previous;
                     material.SetFloat("_PrepareStandard", 0f);
+                    material.SetFloat("_StampBlendEnabled", 0f);
                     material.SetTexture("_Backdrop", null);
                     if (snapshot != null) RenderTexture.ReleaseTemporary(snapshot);
                 }
@@ -1125,6 +1204,11 @@ namespace DCFApixels.SpriteEditor
 
             private static void DrawVertex(float x, float y, float brushU, float brushV, PaintStamp stamp, int tileMode = 0)
             {
+                if (writingBrushMesh)
+                {
+                    AddBrushMeshVertex(x, y, brushU, brushV, stamp, tileMode);
+                    return;
+                }
                 GL.MultiTexCoord2(0, brushU, brushV);
                 GL.MultiTexCoord2(1, stamp.clipRect.x, stamp.clipRect.y);
                 GL.MultiTexCoord2(2, stamp.clipRect.z, stamp.clipRect.w);

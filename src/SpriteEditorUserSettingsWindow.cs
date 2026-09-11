@@ -12,6 +12,7 @@ namespace DCFApixels.SpriteEditor
         private ColorField invalidPixels;
         private ColorField postFxBackground;
         private SliderInt checkerSize;
+        private TextField presetsFolder;
 
         internal static void Open()
         {
@@ -56,10 +57,45 @@ namespace DCFApixels.SpriteEditor
             var note = new Label("Saved for your user account. Applies to all Sprite Editor windows; documents and exports are unaffected.");
             note.AddToClassList("sprite-editor-user-settings-note");
             scroll.Add(note);
-            var reset = new Button(SpriteEditorUserSettings.Reset) { text = "Reset Preview Appearance" };
+            var reset = new Button(SpriteEditorUserSettings.ResetPreviewAppearance) { text = "Reset Preview Appearance" };
             reset.AddToClassList("sprite-editor-user-settings-reset");
             scroll.Add(reset);
+            AddHeading(scroll, "Presets");
+            var folderRow = new VisualElement();
+            folderRow.AddToClassList("sprite-editor-user-settings-folder-row");
+            presetsFolder = new TextField("Presets Folder")
+            {
+                isDelayed = true,
+                tooltip = "Absolute path to the shared preset library. Saved in EditorPrefs for this user, independently of the project. Changing this path does not move or delete files."
+            };
+            presetsFolder.AddToClassList("sprite-editor-user-settings-folder");
+            presetsFolder.RegisterValueChangedCallback(evt => SetPresetsFolder(evt.newValue));
+            folderRow.Add(presetsFolder);
+            var browse = new Button(() =>
+            {
+                string current = SpriteEditorUserSettings.PresetsFolder;
+                string selected = EditorUtility.OpenFolderPanel("Choose Presets Folder",
+                    System.IO.Directory.Exists(current) ? current : System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), string.Empty);
+                if (!string.IsNullOrEmpty(selected)) SetPresetsFolder(selected);
+            }) { text = "…", tooltip = "Choose presets folder" };
+            browse.AddToClassList("sprite-editor-user-settings-folder-button");
+            folderRow.Add(browse);
+            var defaultFolder = new Button(SpriteEditorUserSettings.ResetPresetsFolder)
+                { text = "↺", tooltip = "Use the default presets folder. Existing files are left untouched." };
+            defaultFolder.AddToClassList("sprite-editor-user-settings-folder-button");
+            folderRow.Add(defaultFolder);
+            scroll.Add(folderRow);
+            var folderNote = new Label("Shared across projects. Brush presets are stored in the Brushes subfolder. Changing the path does not move files.");
+            folderNote.AddToClassList("sprite-editor-user-settings-note");
+            scroll.Add(folderNote);
             RefreshValues();
+        }
+
+        private void SetPresetsFolder(string path)
+        {
+            if (!SpriteEditorUserSettings.TrySetPresetsFolder(path, out string error))
+                EditorUtility.DisplayDialog("Presets Folder", error, "OK");
+            presetsFolder.SetValueWithoutNotify(SpriteEditorUserSettings.PresetsFolder);
         }
 
         private static void AddHeading(VisualElement parent, string text)
@@ -85,6 +121,7 @@ namespace DCFApixels.SpriteEditor
             invalidPixels?.SetValueWithoutNotify(SpriteEditorUserSettings.InvalidPixels);
             postFxBackground?.SetValueWithoutNotify(SpriteEditorUserSettings.PostFxBackground);
             checkerSize?.SetValueWithoutNotify(SpriteEditorUserSettings.CheckerSize);
+            presetsFolder?.SetValueWithoutNotify(SpriteEditorUserSettings.PresetsFolder);
         }
     }
 }

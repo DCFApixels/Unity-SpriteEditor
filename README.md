@@ -98,6 +98,8 @@ The guide follows the editing workflow, from the first canvas to painting, effec
 
 Thanks to the authors and maintainers of the libraries that help power Sprite Editor:
 
+- **[Sobol direction numbers](https://web.maths.unsw.edu.au/~fkuo/sobol/)** — Frances Kuo and Stephen Joe;
+  evenly distributed brush variation. [Included license](ThirdPartyNotices.md#sobol-direction-numbers).
 - **[FastNoiseLite](https://github.com/Auburn/FastNoiseLite)** — Jordan Peck and contributors;
   the HLSL implementation powers the Noise layer. [Included MIT license](ThirdPartyNotices.md#fastnoiselite).
 - **[Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json)** — James Newton-King and contributors;

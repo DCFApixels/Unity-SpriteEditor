@@ -26,9 +26,6 @@ namespace DCFApixels.SpriteEditor
 
         private static readonly Color DropIndicatorColor = new Color(0.20f, 0.58f, 0.95f, 1f);
         private static readonly Color GroupDropHighlightColor = new Color(0.20f, 0.58f, 0.95f, 0.22f);
-        private static readonly GUIContent BrushSpacingContent = new GUIContent(
-            "Step",
-            "Distance between brush stamps as a percentage of brush size. Larger values are faster and produce a dotted stroke.");
         private static readonly GUIContent LivePreviewQualityContent = new GUIContent(
             "Live Quality",
             "Resolution used while painting. 100% disables downscaling; lower values make effect-heavy previews faster.");
@@ -99,7 +96,7 @@ namespace DCFApixels.SpriteEditor
                 "Reset Sprite Editor Settings",
                 "Reset panel sizes, scrolling, selection, foldouts, RGBA channels and preview tool state in all open " +
                 "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
-                "Shared brush, color, fill and preview appearance settings will also be reset. " +
+                "Shared brush, color, fill, preview appearance settings and the presets folder path will also be reset. Preset files will not be deleted. " +
                 "Open documents (including unsaved work), layers, textures and Shader FX " +
                 "will be preserved. Unity settings and window docking will not change. " +
                 "This settings reset cannot be undone.",
@@ -127,6 +124,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ResetEditorWindowSettings()
         {
+            StopLiveOutput();
             CancelPreviewEyedropper();
             Undo.ClearUndo(this);
             CancelPreviewZoomGesture();
@@ -146,6 +144,7 @@ namespace DCFApixels.SpriteEditor
             ReleasePostFx();
             postFxEnabled = false;
             postFxExpanded = true;
+            brushesExpanded = false;
             postFxSettings = new PostFxPreviewSettings();
             postFxMessage = null;
             postFxFailed = false;
@@ -155,7 +154,9 @@ namespace DCFApixels.SpriteEditor
             previewTool = PreviewTool.None;
             previewSettingsTool = PreviewTool.None;
             previewTransformReturnTool = PreviewTool.None;
+            paintSettings?.ReleasePresetTip();
             paintSettings = new PaintToolSettings();
+            selectedBrushPreset = selectedBrushPresetSnapshot = null;
             lineAnchorLayer = null;
             hasLastPaintingUv = false;
             paintingShiftHeld = false;
@@ -195,12 +196,17 @@ namespace DCFApixels.SpriteEditor
             previewExposure = 0f;
             LoadPreviewToolSettings();
             LoadPaintToolSettings();
+            EditorApplication.delayCall += RestoreBrushTipAfterReload;
+            EditorApplication.projectChanged += RestoreBrushTipAfterReload;
             minSize = new Vector2(640f, 420f);
             groupExpansion = new Dictionary<string, bool>();
             paintingPreviewScale = ClampPaintingPreviewScale(
                 EditorPrefs.GetFloat(PaintingPreviewScalePrefKey, DefaultPaintingPreviewScale));
             TextureCompositor.Changed += OnCompositorChanged;
             SpriteEditorUserSettings.Changed += OnPreviewAppearanceChanged;
+            AssemblyReloadEvents.beforeAssemblyReload += StopLiveOutput;
+            EditorApplication.quitting += StopLiveOutput;
+            EditorApplication.projectChanged += OnLiveOutputProjectChanged;
 
             if (compositor == null)
                 SetCompositor(CreateTemporaryCompositor());
@@ -215,14 +221,22 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            ReleaseBrushStrokePreview();
+            EditorApplication.delayCall -= RestoreBrushTipAfterReload;
+            EditorApplication.projectChanged -= RestoreBrushTipAfterReload;
+            StopLiveOutput();
             CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             RestoreUnityShortcuts();
             FinishPaintingStroke();
             ResetAreaSelection();
+            paintSettings?.ReleasePresetTip();
             TextureCompositor.Changed -= OnCompositorChanged;
             SpriteEditorUserSettings.Changed -= OnPreviewAppearanceChanged;
+            AssemblyReloadEvents.beforeAssemblyReload -= StopLiveOutput;
+            EditorApplication.quitting -= StopLiveOutput;
+            EditorApplication.projectChanged -= OnLiveOutputProjectChanged;
             ClearLayerDragData();
             ReleasePreview();
             ReleaseEffectCache();
@@ -234,6 +248,7 @@ namespace DCFApixels.SpriteEditor
         private void OnFocus()
         {
             SuppressUnityShortcuts();
+            RestoreBrushTipAfterReload();
         }
 
         private void OnPreviewAppearanceChanged()
@@ -257,6 +272,7 @@ namespace DCFApixels.SpriteEditor
 
         private void UpdateUnsavedChangesState()
         {
+            RefreshLiveOutputButton();
             hasUnsavedChanges = compositor != null &&
                 (HasDocumentChanges() || paintingLayer != null ||
                  previewTransformManipulator != null && previewTransformManipulator.IsDragging);
@@ -280,6 +296,7 @@ namespace DCFApixels.SpriteEditor
         {
             FinishPreviewTransform();
             FinishPaintingStroke();
+            StopLiveOutput();
             temporaryDocumentDirty = false;
             base.DiscardChanges();
         }
@@ -510,6 +527,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ClearLayerDragData()
         {
+            layerDragAutoScroll?.Stop();
             ClearFooterDropIndicator();
             activeLayerDrag?.Cancel();
             ClearDraggedLayerReference();
@@ -1008,14 +1026,15 @@ namespace DCFApixels.SpriteEditor
 
             try
             {
-                int maxSize = previewTool == PreviewTool.Pencil
+                bool interactive = EffectsAreInteractive;
+                int maxSize = previewTool == PreviewTool.Pencil || liveOutputEnabled && !interactive
                     ? Mathf.Max(compositor.width, compositor.height)
                     : paintingLayer != null ? GetPaintingPreviewMaxSize() : PreviewMaxSize;
                 previewEffectCache ??= new EffectRenderCache();
-                bool interactive = EffectsAreInteractive;
                 previewTexture = compositor.RenderCachedPreview(maxSize, previewEffectCache, interactive, paintingLayer);
                 effectRefinementPending = interactive;
                 ApplyPreviewTextureFilter();
+                PublishLiveOutput();
                 RenderPostFx();
                 UpdateChannelPreview();
             }
@@ -1079,6 +1098,7 @@ namespace DCFApixels.SpriteEditor
             ClearLayerDragData();
             lineAnchorLayer = null;
             TextureCompositor previous = compositor;
+            StopLiveOutput();
             ReleaseEffectCache();
             ResetAreaSelection();
             compositor = next;

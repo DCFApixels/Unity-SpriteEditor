@@ -23,7 +23,8 @@ you can save, discard them or cancel closing.
 The saved asset is ready to use as a **texture**.
 Expand it in Project to use **Output Sprite**. Double-click it to continue editing.
 
-Unity shows the **last saved image**. Save again after editing the document or changing a linked texture.
+Unity normally shows the **last saved image**. Enable [Live Update](preview.md#see-your-paint-on-a-model)
+to see edits on a model before saving. Save again to keep changes to the document or a linked texture.
 File layers keep their links to source textures; keep those sources in the project.
 
 ## Choose an export format

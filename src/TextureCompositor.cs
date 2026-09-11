@@ -56,6 +56,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnDisable()
         {
+            StopLiveOutput();
             ReleaseLayerResources(layers);
             ReleaseDiagnostics();
         }
@@ -731,7 +732,7 @@ namespace DCFApixels.SpriteEditor
                     material.SetFloat("_HdrBlend", blendRange == LayerBlendRange.HDR ? 1f : 0f);
                     material.SetFloat("_Opacity", Mathf.Clamp01(opacity));
                     material.SetFloat("_PreserveAlpha", preserveAlpha ? 1f : 0f);
-                    Graphics.Blit(accumulator, result, material);
+                    Graphics.Blit(accumulator, result, material, 0);
                 }
                 result = FinishStage(result);
             }

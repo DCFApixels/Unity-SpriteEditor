@@ -34,6 +34,9 @@ coordinates, safety/Undo semantics and complete workflows. Examples live in
 
 ## Documentation maintenance
 
+- Brush terminology: **procedural brush** has no tip texture; **textured brush** uses a tip texture.
+  In Russian use **процедурная кисть** and **текстурная кисть**. Use these names consistently in UI and documentation.
+
 - Keep README files concise: introduction, installation, quick start and links to the guide.
 - Write the EN/RU user guides for artists: lead with the desired visual result, where to click,
   and how controls change the image. Omit rendering/storage/cache internals, Undo implementation

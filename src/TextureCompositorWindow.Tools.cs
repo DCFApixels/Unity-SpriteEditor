@@ -55,6 +55,7 @@ namespace DCFApixels.SpriteEditor
 
         private void LoadPaintToolSettings()
         {
+            paintSettings?.ReleasePresetTip();
             paintSettings ??= new PaintToolSettings();
             try
             {
@@ -65,19 +66,42 @@ namespace DCFApixels.SpriteEditor
             {
                 paintSettings = new PaintToolSettings();
             }
+            paintSettings.dynamics ??= new BrushDynamics();
+            paintSettings.dynamics.Normalize();
+            paintSettings.dynamics.tip = null;
+            paintSettings.TryRestoreBrushTip();
+        }
+
+        private void RestoreBrushTipAfterReload()
+        {
+            brushStrokePreviewDirty = true;
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall -= RestoreBrushTipAfterReload;
+                EditorApplication.delayCall += RestoreBrushTipAfterReload;
+                return;
+            }
+            if (paintSettings == null || !paintSettings.TryRestoreBrushTip()) return;
+            brushSettingsBindings?.Refresh();
+            UpdateToolkitPreviewPresentation();
         }
 
         private void ApplyPaintToolChange(Action change)
         {
             FinishPaintingStroke();
             change();
+            paintSettings.dynamics.Normalize();
             SavePaintToolSettings();
             toolkitHeaderBindings.Refresh();
+            brushSettingsBindings?.Refresh();
             UpdateToolkitPreviewPresentation();
+            RefreshBrushPresetButton();
         }
 
         private void SavePaintToolSettings()
         {
+            brushStrokePreviewDirty = true;
+            paintSettings.RememberBrushTip();
             EditorPrefs.SetString(PaintToolSettingsPrefKey, JsonUtility.ToJson(paintSettings));
         }
 
@@ -198,6 +222,7 @@ namespace DCFApixels.SpriteEditor
 
         private void RefreshPreviewToolToolbar()
         {
+            RefreshPostFxPanel();
             Layer selected = GetSelectedLayer();
             previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.RectangleSelect);
             previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", previewTool == PreviewTool.PolygonSelect);

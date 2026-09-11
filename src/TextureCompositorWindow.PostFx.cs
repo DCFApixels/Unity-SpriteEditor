@@ -39,10 +39,20 @@ namespace DCFApixels.SpriteEditor
             var panel = new VisualElement { pickingMode = PickingMode.Ignore };
             panel.AddToClassList("sprite-editor-post-fx-panel");
             postFxOverlay.Add(panel);
-            postFxTab = new Button(() => { postFxExpanded = !postFxExpanded; RefreshPostFxPanel(); })
+            var tabs = new VisualElement { pickingMode = PickingMode.Ignore };
+            tabs.AddToClassList("sprite-editor-preview-drawer-tabs");
+            panel.Add(tabs);
+            BuildBrushTab(tabs);
+            postFxTab = new Button(() =>
+            {
+                postFxExpanded = !postFxExpanded;
+                if (postFxExpanded) brushesExpanded = false;
+                RefreshPostFxPanel();
+            })
                 { tooltip = "Show or hide post-processing settings. Closing this panel keeps Post FX enabled." };
             postFxTab.AddToClassList("sprite-editor-post-fx-tab");
-            panel.Add(postFxTab);
+            tabs.Add(postFxTab);
+            BuildBrushDrawer(panel);
             postFxDrawer = new VisualElement();
             postFxDrawer.AddToClassList("sprite-editor-post-fx-drawer");
             postFxDrawer.Add(CreatePaneHeader("Post FX", "postFxTitle"));
@@ -61,7 +71,11 @@ namespace DCFApixels.SpriteEditor
             {
                 postFxEnabled = !postFxEnabled;
                 if (!postFxEnabled) ReleasePostFx();
-                else postFxDirty = true;
+                else
+                {
+                    postFxDirty = true;
+                    if (postFxExpanded) brushesExpanded = false;
+                }
                 RefreshPostFxPanel();
                 if (postFxEnabled) RenderPostFx();
                 UpdateChannelPreview();
@@ -174,9 +188,17 @@ namespace DCFApixels.SpriteEditor
 
         private void RefreshPostFxPanel()
         {
-            postFxOverlay?.EnableInClassList("sprite-editor-post-fx-overlay--hidden", !postFxEnabled);
+            bool brushAvailable = previewTool == PreviewTool.Brush;
+            if (!brushAvailable) brushesExpanded = false;
+            if (brushesExpanded) postFxExpanded = false;
+            postFxOverlay?.EnableInClassList("sprite-editor-post-fx-overlay--hidden", !postFxEnabled && !brushAvailable);
+            brushTab?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !brushAvailable);
+            if (brushTab != null) brushTab.text = brushesExpanded ? "›" : "‹";
+            brushDrawer?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !brushAvailable || !brushesExpanded);
+            SetBrushStrokePreviewActive(brushAvailable && brushesExpanded);
+            postFxTab?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !postFxEnabled);
             if (postFxTab != null) postFxTab.text = postFxExpanded ? "›" : "‹";
-            postFxDrawer?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !postFxExpanded);
+            postFxDrawer?.EnableInClassList("sprite-editor-post-fx-drawer--hidden", !postFxEnabled || !postFxExpanded);
             postFxButton?.EnableInClassList("sprite-editor-channel-button--enabled", postFxEnabled);
             refreshPostFxFields?.Invoke();
             if (postFxStatus != null && !string.IsNullOrEmpty(postFxMessage))

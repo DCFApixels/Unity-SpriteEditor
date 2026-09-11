@@ -15,6 +15,8 @@ namespace DCFApixels.SpriteEditor
         internal readonly bool PixelPerfect;
         internal readonly PencilShape Shape;
         internal readonly Texture SelectionMask;
+        internal readonly BrushDynamics Dynamics;
+        internal readonly bool StandardColorInputs;
 
         internal static Vector2 SnapPencilCenter(Vector2 uv, int width, int height, float size)
         {
@@ -46,10 +48,12 @@ namespace DCFApixels.SpriteEditor
             SelectionMask = mask;
             PixelPerfect = source.PixelPerfect;
             Shape = source.Shape;
+            Dynamics = source.Dynamics;
+            StandardColorInputs = source.StandardColorInputs;
         }
 
         internal PaintStrokeParameters(Color color, float size, float hardness, float spacing, bool erase,
-            bool pixelPerfect = false, PencilShape shape = PencilShape.Circle)
+            bool pixelPerfect = false, PencilShape shape = PencilShape.Circle, BrushDynamics dynamics = null, bool standardColorInputs = false)
         {
             Color = color;
             Size = pixelPerfect ? Mathf.Clamp(Mathf.Round(size), 1f, 4096f) : Mathf.Max(1f, size);
@@ -61,6 +65,8 @@ namespace DCFApixels.SpriteEditor
             SelectionMask = null;
             PixelPerfect = pixelPerfect;
             Shape = shape;
+            Dynamics = pixelPerfect ? null : dynamics;
+            StandardColorInputs = standardColorInputs;
         }
     }
 }

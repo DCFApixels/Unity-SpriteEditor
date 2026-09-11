@@ -4,6 +4,23 @@ All notable changes to Sprite Editor are documented in this file.
 
 ## [Unreleased]
 
+## [0.7.11] - 2026-09-11
+
+### Added
+
+- Live texture output updates for saved compositor assets, with a compact record-style toggle and stable material references.
+- A Brushes drawer with texture tips, opacity, flow, spacing, scatter distribution, size and angle variation, direction-based rotation, random tint, Random/Sobol sampling and probabilistic texture flips.
+- Procedural Hardness/SDF Gradient modes and gradient-mapped textured SDF brushes, with a live stroke preview and manual preview scale.
+- Per Stroke and Per Stamp blend application, including interaction between overlapping stamps within one stroke.
+- Portable brush presets with embedded tip textures, a shared configurable preset folder and a Brushes subfolder.
+- Agent API support, bilingual guides and opt-in regression checks for the new brush controls.
+
+### Fixed
+
+- Layer-list auto-scroll while dragging layers.
+- Brush tip references now survive editor reloads, including texture subassets and preset-loaded tips.
+- Textured brush stamps use explicit mesh attributes for reliable GPU vertex transport.
+
 ## [0.7.10] - 2026-09-10
 
 ### Changed

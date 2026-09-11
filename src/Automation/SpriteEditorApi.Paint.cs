@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using UnityEditor;
 using UnityEngine;
 using static DCFApixels.SpriteEditor.AgentJson;
 
@@ -6,10 +7,45 @@ namespace DCFApixels.SpriteEditor
 {
     public static partial class SpriteEditorApi
     {
-        private static void SetBrush(DrawingLayer layer, JObject brush)
+        private static void SetBrush(TextureCompositor document, DrawingLayer layer, JObject brush)
         {
-            Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "mirrorAngle", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary");
+            Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "mirrorAngle", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary",
+                "opacity", "flow", "scatter", "scatterBias", "sizeJitter", "angleJitter", "angleOffset", "flipX", "flipY", "rotationMode", "randomAlgorithm", "tintGradient", "tip", "tipChannel", "tipSdf", "proceduralMode", "tipGradient", "blend", "blendApplication", "seed");
             layer.NormalizeSettings();
+            BrushDynamics dynamics = layer.brushDynamics ??= new BrushDynamics();
+            dynamics.Normalize();
+            dynamics.opacity = Number(brush, "opacity", dynamics.opacity, 0f, 1f);
+            dynamics.flow = Number(brush, "flow", dynamics.flow, 0f, 1f);
+            dynamics.scatter = Number(brush, "scatter", dynamics.scatter, 0f, 4f);
+            dynamics.scatterBias = Number(brush, "scatterBias", dynamics.scatterBias, -1f, 1f);
+            dynamics.sizeJitter = Number(brush, "sizeJitter", dynamics.sizeJitter, 0f, 1f);
+            dynamics.angleJitter = Number(brush, "angleJitter", dynamics.angleJitter, 0f, 180f);
+            dynamics.angleOffset = Number(brush, "angleOffset", dynamics.angleOffset, -180f, 180f);
+            dynamics.flipX = Number(brush, "flipX", dynamics.flipX, 0f, 1f);
+            dynamics.flipY = Number(brush, "flipY", dynamics.flipY, 0f, 1f);
+            dynamics.rotationMode = Enum(brush, "rotationMode", dynamics.rotationMode);
+            dynamics.randomAlgorithm = Enum(brush, "randomAlgorithm", dynamics.randomAlgorithm);
+            if (brush["tintGradient"] != null) dynamics.tintGradient = ReadGradient(brush["tintGradient"]);
+            dynamics.tipChannel = Enum(brush, "tipChannel", dynamics.tipChannel);
+            dynamics.tipSdf = Bool(brush, "tipSdf", dynamics.tipSdf);
+            dynamics.proceduralMode = Enum(brush, "proceduralMode", dynamics.proceduralMode);
+            if (brush["tipGradient"] != null) dynamics.tipGradient = ReadGradient(brush["tipGradient"]);
+            dynamics.blend = Enum(brush, "blend", dynamics.blend);
+            dynamics.blendApplication = Enum(brush, "blendApplication", dynamics.blendApplication);
+            Require(dynamics.blend != BlendMode.Overwrite && dynamics.blend != BlendMode.None, "Brush blend must be a color blend mode, not Overwrite or None.");
+            dynamics.seed = Int(brush, "seed", dynamics.seed, 1, int.MaxValue);
+            if (brush["tip"] != null)
+            {
+                if (brush["tip"].Type == JTokenType.Null) dynamics.tip = null;
+                else
+                {
+                    string path = ReadAssetPath(Text(brush, "tip"));
+                    var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                    Require(texture != null, "No imported Texture2D at " + path + ".", "texture_not_found");
+                    Require(!ReferenceEquals(TextureCompositor.FindDocument(texture), document), "A document cannot use its own output as a brush tip.");
+                    dynamics.tip = texture;
+                }
+            }
             if (brush["color"] != null) layer.brushColor = Color(brush["color"]);
             layer.brushSize = Number(brush, "size", layer.brushSize, 1f, 4096f);
             layer.brushHardness = Number(brush, "hardness", layer.brushHardness, 0f, 1f);
@@ -33,7 +69,7 @@ namespace DCFApixels.SpriteEditor
 
         private static void Paint(TextureCompositor document, DrawingLayer layer, JObject operation, bool execute)
         {
-            if (operation["brush"] != null) SetBrush(layer, Obj(operation["brush"], "brush"));
+            if (operation["brush"] != null) SetBrush(document, layer, Obj(operation["brush"], "brush"));
             Require(operation["points"] is JArray points && points.Count >= 1 && points.Count <= 4096, "A stroke needs 1..4096 [x,y] points.");
             JArray values = (JArray)operation["points"];
             string space = Text(operation, "space", "canvasPixels");
@@ -61,7 +97,9 @@ namespace DCFApixels.SpriteEditor
             if (layer.UsesMirrorPattern && layer.mirrorAcrossVerticalAxis) copies *= 2;
             if (layer.UsesMirrorPattern && layer.mirrorAcrossHorizontalAxis) copies *= 2;
             Require(stamps * copies <= 100000d, "Stroke exceeds the 100,000 stamp budget. Increase spacing or split/simplify the stroke.", "resource_limit");
-            double area = System.Math.Min(parameters.Size, document.width) * System.Math.Min(parameters.Size, document.height);
+            double maxSize = parameters.Size * (1d + (parameters.Dynamics?.sizeJitter ?? 0f));
+            if (parameters.Dynamics?.CanRotateTip == true) maxSize *= System.Math.Sqrt(2d);
+            double area = System.Math.Min(maxSize, document.width) * System.Math.Min(maxSize, document.height);
             Require(stamps * copies * area <= 250000000d, "Stroke exceeds the brush coverage budget. Reduce repetitions, size or point count.", "resource_limit");
             if (!execute || parameters.Color.a <= 0f) return;
             layer.PrepareStroke(document.width, document.height, UndoName);

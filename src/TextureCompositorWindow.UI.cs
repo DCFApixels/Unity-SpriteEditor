@@ -174,6 +174,7 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.AddToClassList("sprite-editor-layer-list");
             toolkitSettingsScroll.EnableInClassList("sprite-editor-layer-list--light", !EditorGUIUtility.isProSkin);
             toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
+            toolkitSettingsScroll.AddManipulator(layerDragAutoScroll = new LayerDragAutoScrollManipulator(this, toolkitSettingsScroll));
             toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
             layersPane.Add(toolkitSettingsScroll);
@@ -1393,38 +1394,10 @@ namespace DCFApixels.SpriteEditor
             size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
                 () => paintSettings.brushSize = Mathf.Max(1f, evt.newValue)));
             brushRow.Add(size);
-            brushRow.Add(CreateCompactLabel("Hard", 32f));
-            Slider hardness = new Slider(0f, 1f) { value = paintSettings.brushHardness };
-            hardness.style.flexGrow = 1f;
-            hardness.style.minWidth = 42f;
-            Label hardnessValue = CreateCompactLabel($"{paintSettings.brushHardness * 100f:0}%", 38f);
-            toolkitHeaderBindings.Track(hardness, () => paintSettings.brushHardness);
-            toolkitHeaderBindings.Add(() => hardnessValue.text = $"{paintSettings.brushHardness * 100f:0}%");
-            hardness.RegisterValueChangedCallback(evt =>
-            {
-                hardnessValue.text = $"{evt.newValue * 100f:0}%";
-                ApplyPaintToolChange(() => paintSettings.brushHardness = Mathf.Clamp01(evt.newValue));
-            });
-            brushRow.Add(hardness);
-            brushRow.Add(hardnessValue);
-            FloatField spacing = CompactField(new FloatField("Step"), 72f);
-            spacing.tooltip = BrushSpacingContent.tooltip;
-            spacing.labelElement.style.width = 30f;
-            spacing.labelElement.style.minWidth = 30f;
-            spacing.labelElement.style.flexShrink = 0f;
-            spacing.SetValueWithoutNotify(paintSettings.brushSpacing * 100f);
-            toolkitHeaderBindings.Track(spacing, () => paintSettings.brushSpacing * 100f);
-            spacing.RegisterValueChangedCallback(evt =>
-            {
-                float clampedPercent = Mathf.Clamp(
-                    evt.newValue,
-                    DrawingLayer.MinimumBrushSpacing * 100f,
-                    DrawingLayer.MaximumBrushSpacing * 100f);
-                ApplyPaintToolChange(
-                    () => paintSettings.brushSpacing = clampedPercent * 0.01f);
-            });
-            brushRow.Add(spacing);
-            brushRow.Add(CreateCompactLabel("%", 14f));
+            AddBrushHeaderPercent(brushRow, "Opacity", () => paintSettings.dynamics.opacity,
+                v => paintSettings.dynamics.opacity = v, "Opacity (%): maximum strength of one stroke. Release and start a new stroke to build up further.");
+            AddBrushHeaderPercent(brushRow, "Flow", () => paintSettings.dynamics.flow,
+                v => paintSettings.dynamics.flow = v, "Flow (%): strength of each stamp. Overlapping stamps build up within the stroke.");
             toolkitPreviewHeader.Add(brushRow);
         }
 
@@ -1606,6 +1579,7 @@ namespace DCFApixels.SpriteEditor
             if (layer == null ||
                 !TryMapPreviewToLayerUv(position, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv, allowOutside: true)) return false;
             paintingLayer = layer;
+            if (previewTool == PreviewTool.Brush) paintSettings.dynamics.seed = Environment.TickCount;
             bool connect = shift && ReferenceEquals(lineAnchorLayer, layer) &&
                            lineAnchorCanvasSize == new Vector2Int(compositor.width, compositor.height);
             Vector2 originUv = connect ? lineAnchorUv : startUv;

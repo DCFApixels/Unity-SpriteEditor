@@ -190,7 +190,7 @@ namespace DCFApixels.SpriteEditor
                 SetMotionBlur(motion, Obj(settings["motionBlur"], "motionBlur"));
             if (layer is NoiseLayer noise && settings["noise"] != null)
                 SetNoise(noise, Obj(settings["noise"], "noise"));
-            if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(drawing, Obj(settings["brush"], "brush"));
+            if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(document, drawing, Obj(settings["brush"], "brush"));
             if (layer is OutlineLayer outline)
             {
                 outline.metric = Enum(settings, "metric", outline.metric);

@@ -38,6 +38,7 @@ Click a row to select it. Hold `Ctrl` to select several layers or `Shift` to sel
 The **last selected layer is active**: this is the layer you paint on and edit in Layer Settings.
 
 Drag a row's thumbnail, empty space, name, opacity field or eye to move the selected layers.
+Hold the dragged layers near the top or bottom edge of the list to scroll to layers outside the visible area.
 In the name and opacity fields, drag up or down to move layers; drag left or right to select text.
 While a field is focused for editing, dragging only selects text; leave the field to move layers from it again.
 Dragging from a field cancels its unconfirmed input; dragging the eye does not toggle visibility.

@@ -23,6 +23,11 @@ The API edits the same model and uses the same renderer, brush and save path as 
 No Sprite Editor window or active selection is required. It creates ordinary compositor `.asset`
 files, with their layers, owned Drawing textures, baked Texture2D and Sprite subassets, and Project preview.
 
+The window's optional **Live Update** publishes preview pixels to the existing output texture on the GPU
+without changing its asset reference or CPU pixel data. It is not an API autosave mode: use `save` to persist
+changes, and `render` to obtain current pixels rather than reading `OutputTexture.GetPixels()` during live
+preview. Disabling live output restores the saved image; preview EV, channel display and Post FX are excluded.
+
 ## Connecting
 
 Use a running Unity Editor in Edit Mode. The plugin's optional adapter supports
@@ -433,6 +438,25 @@ Color alpha zero leaves no mark, including for the eraser; eraser strength other
 | `size` | 1..4096 |
 | `hardness` | 0..1 |
 | `spacing` | 0.01..4, fraction of brush size (0.16 = 16%) |
+| `opacity` | 0..1, default 1; caps the complete stroke, not individual stamps |
+| `flow` | 0..1, default 1; multiplies each stamp's alpha before accumulation |
+| `scatter` | 0..4, default 0; random disk radius in brush diameters |
+| `scatterBias` | −1..1, default 0 (UI −100..100). Negative concentrates centers near the stroke; positive near the scatter disk edge. With uniform sample `u`, normalized radius is `u^(0.5 * 2^(-4 * scatterBias))`; zero preserves `sqrt(u)`, uniform by area. Applies to Random and Sobol without consuming extra random values; ignored when scatter is zero |
+| `sizeJitter` | 0..1, default 0; size multiplier sampled from 1−jitter to 1+jitter, minimum one pixel |
+| `rotationMode` | `Fixed` (default) or `StrokeDirection`. For texture tips, adds the source-pixel-space segment angle before jitter; +X is zero, +Y is +90°. Stationary points retain the last direction; a new stroke starts at zero. Scatter does not affect direction. Ignored without a tip texture |
+| `angleOffset` | −180..180 counterclockwise degrees, default 0; constant offset added to `rotationMode` before `angleJitter`. Ignored without a tip texture |
+| `angleJitter` | 0..180 degrees, default 0; offset sampled from −jitter to +jitter per stamp, added after `rotationMode` and `angleOffset`. Ignored without a tip texture |
+| `flipX`, `flipY` | 0..1, default 0; per-stamp horizontal/vertical reflection probabilities in tip-local axes, before rotation. 0 never flips, 1 always flips; intermediate probabilities sample each axis separately. Ignored without a texture tip. Symmetry copies share the chosen flips |
+| `randomAlgorithm` | `Random` (default) or `Sobol`; controls scatter, size, angle, tint and flip sampling. Sobol uses seven fixed dimensions (scatter angle/radius, size, angle, tint, flip X/Y) and a seeded digital shift; enabling tint or flips does not perturb scatter. The sample index continues across stroke segments, including clipped stamps, and resets per stroke; symmetry copies share a sample |
+| `tintGradient` | 2..8 ordered `{time, color}` stops, like a Gradient layer; default opaque white. Differing RGB or alpha keys trigger random sampling per stamp; identical keys give a constant multiplier without consuming random samples. Reset by supplying two opaque-white stops |
+| `tip` | Imported Texture2D asset path, or null for a procedural brush. The document's own output is rejected. Does not change texture import settings |
+| `tipChannel` | `Alpha` (default), `Luminance`, `InvertedLuminance`, `Color`. Ordinary tips use alpha for coverage, optionally multiplied by luminance/inverted luminance. Color also multiplies painting RGB by the tip RGB |
+| `proceduralMode` | `Hardness` (default) or `SdfGradient`. Used only when `tip` is null; independent of textured `tipSdf`. Procedural SDF coordinate is `1 − radius`, where radius is distance from stamp center divided by half the brush Size: edge 0, center 1. Pixels outside the circular tip are discarded. Uses the shared `tipGradient`, including its RGB and alpha; Pencil ignores this mode |
+| `tipSdf` | Boolean, default false. For a textured brush, remap the selected field through `tipGradient`. Alpha and Color use alpha as distance, without multiplying the original alpha again; luminance modes remap brightness then multiply by original alpha. Higher field values are inside. Ignored without a texture tip |
+| `tipGradient` | 2..8 ordered `{time, color}` stops. Default white with alpha 0 at 0.4 and alpha 1 at 0.6. Shared by procedural SdfGradient and textured SDF modes. Distance 0..1 addresses the gradient: RGB multiplies brush/tint RGB, alpha supplies coverage. Replaces `tipThreshold`; hardness no longer affects SDF. Inspect returns `tipGradientKeys` (separate colors/alphas). A cached 1024×1 linear RGBAHalf premultiplied LUT, clamped and mip-filtered, approximates the gradient on GPU. Editor Standard input mode removes key intensity without changing stored values; API strokes always use supplied values |
+| `blend` | Layer BlendMode names except `Overwrite` and `None`; default `Normal`. Application is controlled by `blendApplication`; ignored for erase |
+| `blendApplication` | `Stroke` (default) or `Stamp`. Stroke blends accumulated source-over stamps against the pre-stroke layer. Stamp blends each stamp against the evolving layer, so earlier stamps participate. Flow affects each stamp; Opacity interpolates the pre-stroke and fully accumulated results once in premultiplied linear space, without feeding that interpolation into subsequent stamps. Normal and erase retain the existing equivalent fast paths. Symmetry stamps are applied in their generated order; periodic copies of one stamp share its backdrop |
+| `seed` | Integer 1..2147483647, default 1; repeatable random sequence, restarted per stroke |
 | `mirrorX`, `mirrorY` | Vertical/horizontal axis reflection respectively; used only with `repeat:"Mirror"` |
 | `center` | Bottom-left UV, each component 0..1 |
 | `repeat` | `None`, `Mirror`, `Horizontal`, `Vertical`, `Grid`, `Radial` (mutually exclusive) |
@@ -443,6 +467,19 @@ Color alpha zero leaves no mark, including for the eraser; eraser strength other
 | `boundary` | `Continue`, `Clip` |
 
 For simple symmetry, set `repeat:"Mirror"` and at least one of `mirrorX`/`mirrorY` to true.
+
+Stamp spacing carries across pointer segments; adding more points on the same straight path
+does not add more stamps. Random variations are shared by symmetry copies of each stamp.
+Opacity applies once per API stroke; separate strokes can build past that limit.
+Texture tips preserve their aspect ratio; size is the longest side. Hardness controls procedural brushes in Hardness mode only;
+SDF uses its gradient. SDF fields use the normalized 0–1 range. Luminance is measured
+in source-encoded RGB for sRGB textures, preserving the threshold between Gamma and Linear projects.
+Pencil ignores all advanced dynamics and texture-tip settings.
+Inspect returns the brush's gradient as `tintGradientKeys.colors` / `tintGradientKeys.alphas`;
+write it using the `tintGradient` stop array above.
+
+For example, `"brush":{"size":40,"spacing":0.8,"opacity":0.6,"flow":0.2,"scatter":0.5,"sizeJitter":0.3,"seed":123}`
+creates repeatable scattered stamps with a 60% stroke-opacity cap.
 Mirror axis choices are retained but ignored in other modes. `center` affects Mirror and Radial;
 `elements` and `boundary` apply only to Horizontal, Vertical, Grid and Radial.
 For reflected radial sectors, use `repeat:"Radial", elements:"AlternateMirror"`.

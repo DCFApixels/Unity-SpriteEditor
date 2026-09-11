@@ -3,6 +3,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
     Properties
     {
         _Color ("Linear brush RGBA", Vector) = (1, 1, 1, 1)
+        _BrushTip ("Brush Tip", 2D) = "white" {}
         _SrcBlend ("Source Blend", Float) = 1
         _DstBlend ("Destination Blend", Float) = 10
     }
@@ -21,7 +22,12 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 3.0
+            #pragma multi_compile_local __ BRUSH_DYNAMICS BRUSH_TEXTURE
             #include "UnityCG.cginc"
+            #include "HdrColor.cginc"
+            float _HdrBlend;
+            #include "ColorBlend.cginc"
+            float _StampBlendEnabled, _StampBlendMode;
 
             struct appdata
             {
@@ -31,6 +37,10 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 float2 clipMax : TEXCOORD2;
                 float3 clipData : TEXCOORD3;
                 float3 tileData : TEXCOORD4;
+                #if defined(BRUSH_DYNAMICS) || defined(BRUSH_TEXTURE)
+                float3 color : TEXCOORD5;
+                float4 size : TEXCOORD6;
+                #endif
             };
 
             struct v2f
@@ -42,9 +52,20 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 float2 clipMax : TEXCOORD3;
                 float3 clipData : TEXCOORD4;
                 float3 tileData : TEXCOORD5;
+                #if defined(BRUSH_DYNAMICS) || defined(BRUSH_TEXTURE)
+                float4 color : TEXCOORD6;
+                float4 shape : TEXCOORD7;
+                #endif
             };
 
             float4 _Color;
+            sampler2D _BrushTip;
+            float4 _BrushTip_TexelSize;
+            float2 _TipAspect;
+            float _TipChannel, _TipDecode, _TipEncodeMask, _TipStandard;
+            float _TipSdf;
+            sampler2D _BrushSdfGradient;
+            float4 _BrushSdfGradient_TexelSize;
             sampler2D _Backdrop;
             sampler2D _SelectionMask;
             float _UseSelection, _SelectionWrap;
@@ -59,6 +80,12 @@ Shader "Hidden/TextureCompositor/PaintBrush"
             float3 _SourceToDocumentX;
             float3 _SourceToDocumentY;
             float _BrushSize;
+
+            float4 SdfTipGradient(float value)
+            {
+                float u = saturate(value) * (1.0 - _BrushSdfGradient_TexelSize.x) + .5 * _BrushSdfGradient_TexelSize.x;
+                return tex2D(_BrushSdfGradient, float2(u, .5));
+            }
 
             float PencilDistance(float2 delta)
             {
@@ -115,6 +142,10 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 output.clipMax = input.clipMax;
                 output.clipData = input.clipData;
                 output.tileData = input.tileData;
+                #if defined(BRUSH_DYNAMICS) || defined(BRUSH_TEXTURE)
+                output.color = float4(input.color, input.size.y);
+                output.shape = float4(input.size.x, cos(input.size.z), sin(input.size.z), input.size.w);
+                #endif
                 return output;
             }
 
@@ -138,9 +169,20 @@ Shader "Hidden/TextureCompositor/PaintBrush"
 
             float4 frag(v2f input) : SV_Target
             {
+                float4 color = _Color;
+                float brushSize = _BrushSize;
+                #if defined(BRUSH_DYNAMICS) || defined(BRUSH_TEXTURE)
+                color = input.color;
+                brushSize = input.shape.x;
+                #endif
                 bool tiled = input.tileData.z > 0.5;
                 float2 clipUv = input.canvasUv;
                 float2 brushDelta = (input.brushUv - 0.5) * 2.0;
+                float extent = 1.0;
+                #if defined(BRUSH_TEXTURE)
+                extent = abs(input.shape.y) + abs(input.shape.z);
+                brushDelta *= extent;
+                #endif
                 if (tiled)
                 {
                     float3 source = float3(input.canvasUv, 1.0);
@@ -151,11 +193,11 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                     {
                         // Overlapping copies share one owner, so a single stamp cannot
                         // accumulate extra opacity where its wrapped footprints meet.
-                        float2 ownership = nearest - (input.brushUv - 0.5) * _BrushSize;
+                        float2 ownership = nearest - (input.brushUv - 0.5) * brushSize * extent;
                         if (dot(ownership, ownership) > 0.0001) discard;
                     }
                     clipUv = input.tileData.xy + nearest / _CanvasSize;
-                    brushDelta = nearest * (2.0 / _BrushSize);
+                    brushDelta = nearest * (2.0 / brushSize);
                 }
                 if (input.clipData.x > 0.5 && input.clipData.x < 1.5)
                 {
@@ -189,6 +231,38 @@ Shader "Hidden/TextureCompositor/PaintBrush"
 
                 float radius = length(brushDelta);
                 float coverage;
+                #if defined(BRUSH_TEXTURE)
+                brushDelta = float2(input.shape.y * brushDelta.x + input.shape.z * brushDelta.y,
+                    -input.shape.z * brushDelta.x + input.shape.y * brushDelta.y);
+                float flipY = step(1.5, input.shape.w);
+                float flipX = input.shape.w - 2.0 * flipY;
+                brushDelta *= 1.0 - 2.0 * float2(flipX, flipY);
+                float2 tipUv = brushDelta / _TipAspect * 0.5 + 0.5;
+                if (any(tipUv < 0.0) || any(tipUv > 1.0)) discard;
+                tipUv = clamp(tipUv, _BrushTip_TexelSize.xy * .5, 1.0 - _BrushTip_TexelSize.xy * .5);
+                float4 tip = tex2D(_BrushTip, tipUv);
+                float tipValue = tip.a;
+                float tipOpacity = 1.0;
+                if (_TipChannel > 0.5 && _TipChannel < 2.5)
+                {
+                    float3 maskColor = _TipEncodeMask > .5 ? SpriteEncode(tip.rgb) : tip.rgb;
+                    float value = saturate(dot(maskColor, float3(.2126, .7152, .0722)));
+                    tipValue = _TipChannel > 1.5 ? 1.0 - value : value;
+                    tipOpacity = tip.a;
+                }
+                coverage = tipValue * tipOpacity;
+                if (_TipSdf > .5)
+                {
+                    float4 gradient = SdfTipGradient(tipValue);
+                    coverage = gradient.a * tipOpacity;
+                    color.rgb *= gradient.rgb / max(gradient.a, .00001);
+                }
+                if (_TipChannel > 2.5)
+                {
+                    color.rgb *= _TipDecode > .5 ? SpriteDecode(tip.rgb) : tip.rgb;
+                }
+                color.rgb = _TipStandard > .5 ? saturate(color.rgb) : clamp(color.rgb, -65504.0, 65504.0);
+                #else
                 if (_PencilShape > 0.5)
                 {
                     if (_PencilShape > 2.5) radius = abs(brushDelta.x) + abs(brushDelta.y);
@@ -199,9 +273,20 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 else
                 {
                     if (radius > 1.0) discard;
-                    float inner = min(saturate(_Hardness), 0.9999);
-                    coverage = 1.0 - smoothstep(inner, 1.0, radius);
+                    if (_TipSdf > .5)
+                    {
+                        float4 gradient = SdfTipGradient(1.0 - radius);
+                        coverage = gradient.a;
+                        color.rgb *= gradient.rgb / max(gradient.a, .00001);
+                        color.rgb = _TipStandard > .5 ? saturate(color.rgb) : clamp(color.rgb, -65504.0, 65504.0);
+                    }
+                    else
+                    {
+                        float inner = min(saturate(_Hardness), 0.9999);
+                        coverage = 1.0 - smoothstep(inner, 1.0, radius);
+                    }
                 }
+                #endif
                 if (_UseSelection > 0.5)
                 {
                     float3 source = float3(input.canvasUv, 1.0);
@@ -210,14 +295,17 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                     else if (any(uv < 0.0) || any(uv >= 1.0)) discard;
                     coverage *= tex2D(_SelectionMask, uv).r;
                 }
-                float alpha = saturate(_Color.a * coverage);
+                float alpha = saturate(color.a * coverage);
                 if (alpha <= 0.0) discard;
                 if (_PrepareStandard > 0.5)
                 {
                     float4 before = tex2D(_Backdrop, input.canvasUv);
                     return float4(clamp(before.rgb, 0.0, before.a), before.a);
                 }
-                return float4(_Color.rgb * alpha, alpha);
+                float4 stamp = float4(color.rgb * alpha, alpha);
+                if (_StampBlendEnabled > .5)
+                    return CompositeBrushPixel(tex2D(_Backdrop, input.canvasUv), stamp, 1.0, _StampBlendMode, 0.0, _TipStandard);
+                return stamp;
             }
             ENDCG
         }

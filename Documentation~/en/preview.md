@@ -31,6 +31,21 @@ Save and export still use full resolution.
 
 Pencil always shows crisp pixels at full quality, so you can place individual pixels accurately.
 
+## See your paint on a model
+
+1. Save the compositor and assign its texture asset to your model's material.
+2. Turn on **Live Update** (the circle button) in the preview footer, next to **Post FX**.
+3. Paint or adjust layers: objects using that texture update in Scene View.
+
+The material keeps its texture reference when you toggle Live Update or close Sprite Editor.
+Turning it off or closing without saving restores the last saved image. Press **Save** or `Ctrl+S`
+to keep your edits; **Save As** creates a different asset and does not redirect existing materials.
+
+Live Update shows the composition without EV, channel-display masks, Debug or preview Post FX.
+While editing it uses preview quality, then refines the result when you stop.
+If you resize the canvas, the live image fits the saved texture size until you save again.
+Live Update starts off when you open the window and turns off when you switch documents or reload scripts.
+
 ## Check brightness and channels
 
 **EV** changes the viewing exposure, not the image itself. Keep it at **0** for the normal view.

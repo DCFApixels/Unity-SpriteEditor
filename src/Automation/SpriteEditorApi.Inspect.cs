@@ -180,15 +180,33 @@ namespace DCFApixels.SpriteEditor
             return new JObject { ["colors"] = colors, ["alphas"] = alphas };
         }
 
-        private static JObject BrushSnapshot(DrawingLayer layer) => new JObject
+        private static JObject BrushSnapshot(DrawingLayer layer)
         {
-            ["color"] = Json(layer.brushColor), ["size"] = layer.brushSize, ["hardness"] = layer.brushHardness,
-            ["spacing"] = layer.brushSpacing, ["mirrorX"] = layer.mirrorAcrossVerticalAxis, ["mirrorY"] = layer.mirrorAcrossHorizontalAxis,
-            ["center"] = Json(layer.patternCenter), ["repeat"] = layer.repeatMode.ToString(), ["repeatCount"] = layer.repeatCount,
-            ["radialStartAngle"] = layer.radialStartAngle,
-            ["mirrorAngle"] = layer.mirrorAngle,
-            ["repeatSecondaryCount"] = layer.repeatSecondaryCount, ["elements"] = layer.repeatElementMode.ToString(), ["boundary"] = layer.repeatBoundaryMode.ToString()
-        };
+            BrushDynamics dynamics = layer.brushDynamics ?? new BrushDynamics();
+            return new JObject
+            {
+                ["opacity"] = dynamics.opacity, ["flow"] = dynamics.flow, ["scatter"] = dynamics.scatter,
+                ["scatterBias"] = dynamics.scatterBias,
+                ["sizeJitter"] = dynamics.sizeJitter,
+                ["angleJitter"] = dynamics.angleJitter,
+                ["flipX"] = dynamics.flipX, ["flipY"] = dynamics.flipY,
+                ["angleOffset"] = dynamics.angleOffset,
+                ["rotationMode"] = dynamics.rotationMode.ToString(),
+                ["randomAlgorithm"] = dynamics.randomAlgorithm.ToString(),
+                ["tintGradientKeys"] = GradientSnapshot(dynamics.tintGradient),
+                ["tip"] = dynamics.tip != null ? AssetDatabase.GetAssetPath(dynamics.tip) : null,
+                ["tipChannel"] = dynamics.tipChannel.ToString(), ["blend"] = dynamics.blend.ToString(), ["seed"] = dynamics.seed,
+                ["tipSdf"] = dynamics.tipSdf, ["tipGradientKeys"] = GradientSnapshot(dynamics.tipGradient),
+                ["proceduralMode"] = dynamics.proceduralMode.ToString(),
+                ["blendApplication"] = dynamics.blendApplication.ToString(),
+                ["color"] = Json(layer.brushColor), ["size"] = layer.brushSize, ["hardness"] = layer.brushHardness,
+                ["spacing"] = layer.brushSpacing, ["mirrorX"] = layer.mirrorAcrossVerticalAxis, ["mirrorY"] = layer.mirrorAcrossHorizontalAxis,
+                ["center"] = Json(layer.patternCenter), ["repeat"] = layer.repeatMode.ToString(), ["repeatCount"] = layer.repeatCount,
+                ["radialStartAngle"] = layer.radialStartAngle,
+                ["mirrorAngle"] = layer.mirrorAngle,
+                ["repeatSecondaryCount"] = layer.repeatSecondaryCount, ["elements"] = layer.repeatElementMode.ToString(), ["boundary"] = layer.repeatBoundaryMode.ToString()
+            };
+        }
 
         private static string TypeName(Layer layer) => layer switch
         {

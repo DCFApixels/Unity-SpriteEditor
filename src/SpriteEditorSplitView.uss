@@ -354,6 +354,64 @@
     max-width: 100%;
 }
 
+.sprite-editor-preview-drawer-tabs {
+    flex-shrink: 0;
+}
+
+.sprite-editor-brush-spacing-info {
+    font-size: 10px;
+    opacity: 0.65;
+    margin-bottom: 6px;
+}
+
+.sprite-editor-brush-section-header {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.15);
+    margin: 6px 0 4px 0;
+    padding: 2px 2px 2px 6px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-brush-section-title {
+    flex-grow: 1;
+    min-width: 0;
+    margin: 0;
+    -unity-font-style: bold;
+}
+
+.sprite-editor-brush-section-reset {
+    width: 20px;
+    height: 18px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.sprite-editor-brush-tint-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.sprite-editor-brush-tint-row > .sprite-editor-brush-tint-gradient {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sprite-editor-brush-tint-row > .sprite-editor-brush-tint-reset {
+    width: 20px;
+    height: 18px;
+    flex-shrink: 0;
+    margin: 0 2px 0 2px;
+    padding: 0;
+}
+
+.sprite-editor-brush-strength > .unity-base-field__label {
+    width: 44px;
+    min-width: 44px;
+    flex-shrink: 0;
+}
+
 .sprite-editor-post-fx-drawer {
     width: 300px;
     flex-shrink: 1;
@@ -364,6 +422,45 @@
     border-color: #191919;
     border-radius: 3px;
     overflow: hidden;
+}
+
+.sprite-editor-brush-stroke-preview {
+    height: 96px;
+    flex-shrink: 0;
+    margin: 0 6px 6px 6px;
+    border-width: 1px;
+    border-color: #252525;
+    border-radius: 3px;
+    background-color: #292929;
+    overflow: hidden;
+}
+
+.sprite-editor-brush-preset-row {
+    flex-direction: row;
+    flex-shrink: 0;
+    margin: 4px 4px 0 4px;
+}
+
+.sprite-editor-brush-preset-picker {
+    flex-grow: 1;
+    min-width: 0;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sprite-editor-brush-preset-save {
+    flex-shrink: 0;
+}
+
+.sprite-editor-brush-preview-scale {
+    flex-shrink: 0;
+    margin: 0 6px 6px 6px;
+}
+
+.sprite-editor-brush-preview-scale > .unity-base-field__label {
+    min-width: 110px;
+    width: 110px;
 }
 
 .sprite-editor-post-fx-settings {
@@ -408,6 +505,38 @@
 .unity-button.sprite-editor-channel-button.sprite-editor-post-fx-button {
     width: 52px;
     min-width: 52px;
+}
+
+.unity-button.sprite-editor-channel-button.sprite-editor-live-output-button {
+    align-items: center;
+    justify-content: center;
+}
+
+.sprite-editor-live-output-indicator {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-color: #89898b;
+    border-radius: 6px;
+}
+
+.sprite-editor-live-output-disc {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    background-color: #89898b;
+}
+
+.sprite-editor-live-output-button.sprite-editor-channel-button--enabled > .sprite-editor-live-output-indicator {
+    border-color: #dedee0;
+}
+
+.sprite-editor-live-output-button.sprite-editor-channel-button--enabled .sprite-editor-live-output-disc {
+    background-color: #f07860;
 }
 
 .sprite-editor-zoom-settings {
@@ -1165,6 +1294,12 @@
     display: none;
 }
 
+.sprite-editor-preview-footer--compact .sprite-editor-preview-channels {
+    flex-wrap: wrap;
+    height: auto;
+    max-width: 100%;
+}
+
 .unity-button.sprite-editor-channel-button {
     --channel-fill: #6a6a6e;
     --channel-hover: #79797d;
@@ -1309,6 +1444,33 @@
     min-width: 50px;
 }
 
+.sprite-editor-user-settings-folder-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.sprite-editor-user-settings-folder {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.sprite-editor-user-settings-folder > .unity-base-field__label {
+    min-width: 100px;
+    width: 100px;
+}
+
+.sprite-editor-user-settings-folder > .unity-base-field__input {
+    min-width: 0;
+}
+
+.sprite-editor-user-settings-folder-button {
+    width: 24px;
+    flex-shrink: 0;
+    margin-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
 .sprite-editor-user-settings-note {
     white-space: normal;
     margin-top: 12px;
@@ -1351,5 +1513,8 @@
     opacity: 1;
 }
 .sprite-editor-hidden {
+    display: none;
+}
+.sprite-editor-brush-setting--hidden {
     display: none;
 }

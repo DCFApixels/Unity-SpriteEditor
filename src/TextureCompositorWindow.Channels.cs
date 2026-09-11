@@ -28,13 +28,14 @@ namespace DCFApixels.SpriteEditor
             footer.AddToClassList("sprite-editor-preview-footer");
             footer.Add(BuildPreviewQualityControl());
             footer.RegisterCallback<GeometryChangedEvent>(evt =>
-                footer.EnableInClassList("sprite-editor-preview-footer--compact", evt.newRect.width < 460f));
+                footer.EnableInClassList("sprite-editor-preview-footer--compact", evt.newRect.width < 560f));
             toolkitPreviewFooter = new Label();
             toolkitPreviewFooter.AddToClassList("sprite-editor-preview-status");
             footer.Add(toolkitPreviewFooter);
             VisualElement channels = new VisualElement();
             channels.AddToClassList("sprite-editor-preview-channels");
             footer.Add(channels);
+            channels.Add(BuildLiveOutputButton());
             channels.Add(BuildPostFxButton());
             channels.Add(SpriteEditorColorInputs.CreateToggleControl());
             var exposure = new FloatField("EV") { value = previewExposure, tooltip = "Preview exposure only, in stops. Does not affect painting, fill sampling or export." };
