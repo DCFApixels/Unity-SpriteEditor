@@ -31,7 +31,7 @@ next_page: "en/automation.md"
 | Shortcut | Action |
 | :--- | :--- |
 | `[` / `]` · `X` | Resize brush/pencil · swap colors. |
-| `Alt`-click/drag with Brush, Pencil or Fill | Sample the primary color. |
+| Hold `Alt`, click/drag with Brush, Pencil or Fill | Pick a visible color anywhere on screen; release `Alt` to return to the tool. |
 | `RMB` with Brush/Pencil | Temporarily erase. |
 | `Shift`-drag / `Shift`-click while painting | Axis line / connect endpoints. |
 | `Ctrl`-click a thumbnail/group arrow | Select alpha. |

@@ -45,6 +45,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private bool unifiedPatternMode;
 
         [NonSerialized] private RenderTexture paintSurface;
+        [NonSerialized] private bool paintSurfaceDirty;
         [NonSerialized] private List<Vector2> symmetryPoints;
         [NonSerialized] private List<PaintStamp> patternStamps;
         [NonSerialized] private HashSet<PaintStamp> patternStampSet;
@@ -354,6 +355,7 @@ namespace DCFApixels.SpriteEditor
             if (isolatedStroke && segmentStamps.Count > 0) EnsureAdvancedStroke(surface, stampBlend);
             color.a *= dynamics != null ? dynamics.flow : 1f;
 
+            paintSurfaceDirty |= segmentStamps.Count > 0;
             PaintBrushRenderer.Draw(
                 isolatedStroke ? advancedStroke : surface,
                 segmentStamps,
@@ -480,6 +482,7 @@ namespace DCFApixels.SpriteEditor
                 RenderTexture.active = straight;
                 pixels.ReadPixels(new Rect(0f, 0f, straight.width, straight.height), 0, 0, false);
                 pixels.Apply(false, false);
+                paintSurfaceDirty = false;
                 pixels.name = GetTextureName();
                 if (AssetDatabase.Contains(pixels))
                     EditorUtility.SetDirty(pixels);
@@ -547,6 +550,13 @@ namespace DCFApixels.SpriteEditor
                 UnityEngine.Object.DestroyImmediate(pixels);
                 pixels = null;
             }
+        }
+
+        internal void ReleasePaintResources()
+        {
+            if (paintSurfaceDirty)
+                SyncSurfaceToTexture();
+            ReleasePaintSurface();
         }
 
         private RenderTexture EnsurePaintSurface(int fallbackWidth, int fallbackHeight)
@@ -906,6 +916,7 @@ namespace DCFApixels.SpriteEditor
         private void ReleasePaintSurface()
         {
             ReleaseAdvancedStroke();
+            paintSurfaceDirty = false;
             if (paintSurface == null)
                 return;
             paintSurface.Release();

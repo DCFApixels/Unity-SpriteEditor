@@ -57,12 +57,13 @@ namespace DCFApixels.SpriteEditor
         private void OnDisable()
         {
             StopLiveOutput();
-            ReleaseLayerResources(layers);
+            ReleaseLayerResources(layers, preserveDrawingPixels: true);
             ReleaseDiagnostics();
         }
 
         private void OnDestroy()
         {
+            ReleaseLayerResources(layers);
             foreach (ShaderFX effect in embeddedShaderFX)
                 if (effect != null && effect.EmbeddedOwner == this && !AssetDatabase.Contains(effect))
                     DestroyImmediate(effect);
@@ -1016,7 +1017,7 @@ namespace DCFApixels.SpriteEditor
             return false;
         }
 
-        private static void ReleaseLayerResources(List<Layer> sourceLayers)
+        private static void ReleaseLayerResources(List<Layer> sourceLayers, bool preserveDrawingPixels = false)
         {
             if (sourceLayers == null)
                 return;
@@ -1025,9 +1026,12 @@ namespace DCFApixels.SpriteEditor
                 Layer layer = sourceLayers[i];
                 if (layer == null)
                     continue;
-                layer.ReleaseTransientResources();
+                if (preserveDrawingPixels && layer is DrawingLayer drawing)
+                    drawing.ReleasePaintResources();
+                else
+                    layer.ReleaseTransientResources();
                 if (layer is GroupLayer group)
-                    ReleaseLayerResources(group.layers);
+                    ReleaseLayerResources(group.layers, preserveDrawingPixels);
             }
         }
 

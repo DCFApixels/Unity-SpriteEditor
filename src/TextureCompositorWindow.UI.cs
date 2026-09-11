@@ -2112,7 +2112,8 @@ namespace DCFApixels.SpriteEditor
                     transparentCursorTexture = new Texture2D(16, 16, TextureFormat.RGBA32, false)
                     {
                         name = "WhimTex Transparent Cursor",
-                        hideFlags = HideFlags.HideAndDontSave
+                        hideFlags = HideFlags.HideAndDontSave,
+                        alphaIsTransparency = true
                     };
                     transparentCursorTexture.SetPixels32(new Color32[16 * 16]);
                     transparentCursorTexture.Apply(false, false);

@@ -277,7 +277,7 @@ namespace DCFApixels.SpriteEditor
         private void UpdateUnsavedChangesState()
         {
             RefreshLiveOutputButton();
-            hasUnsavedChanges = compositor != null &&
+            hasUnsavedChanges = HasPreviewLayers &&
                 (HasDocumentChanges() || paintingLayer != null ||
                  previewTransformManipulator != null && previewTransformManipulator.IsDragging);
             saveChangesMessage = "Save this WhimTex document before closing?\n\n" +
@@ -290,7 +290,7 @@ namespace DCFApixels.SpriteEditor
 
         public override void SaveChanges()
         {
-            if (compositor != null && !SaveAsAsset())
+            if (HasPreviewLayers && !SaveAsAsset())
                 return;
             temporaryDocumentDirty = false;
             base.SaveChanges();
@@ -309,7 +309,7 @@ namespace DCFApixels.SpriteEditor
         {
             ClearPreviewPointerCursor();
             areaSelectionManipulator?.Cancel();
-            CancelPreviewEyedropper();
+            if (!OwnsScreenEyedropper) CancelPreviewEyedropper();
             CancelPreviewZoomGesture();
             ResetOpacityEntry();
             FinishPreviewTransform();
@@ -1143,7 +1143,7 @@ namespace DCFApixels.SpriteEditor
         private bool ResolveUnsavedTemporaryDocument()
         {
             PrepareDocumentSave();
-            if (!HasDocumentChanges())
+            if (!HasPreviewLayers || !HasDocumentChanges())
                 return true;
 
             int choice = EditorUtility.DisplayDialogComplex(

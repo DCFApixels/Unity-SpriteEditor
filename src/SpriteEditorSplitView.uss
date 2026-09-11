@@ -848,16 +848,36 @@
     flex-shrink: 1;
 }
 
-.sprite-editor-eyedropper-cursor {
+.sprite-editor-eyedropper-lens {
     position: absolute;
     left: 0;
     top: 0;
-    width: 28px;
-    height: 28px;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
+    background-color: #202020;
+    border-width: 1px;
+    border-color: #777777;
+    border-radius: 3px;
 }
 
-.sprite-editor-eyedropper-cursor--hidden {
-    visibility: hidden;
+.sprite-editor-eyedropper-sample {
+    position: absolute;
+    left: 50%;
+    margin-left: -44px;
+    top: 3px;
+    width: 88px;
+    height: 88px;
+}
+
+.sprite-editor-eyedropper-swatch {
+    position: absolute;
+    left: 50%;
+    margin-left: -44px;
+    width: 88px;
+    top: 95px;
+    height: 16px;
 }
 
 .sprite-editor-pencil-cursor {

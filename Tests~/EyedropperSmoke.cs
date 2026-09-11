@@ -1,68 +1,56 @@
-// Opt-in eval after manual compilation. Temporary GPU textures only; no windows, preferences or asset writes.
+// Opt-in after manual compilation. Pure CPU helpers only; no screen capture, windows, preferences or asset writes.
 var windowType = typeof(DCFApixels.SpriteEditor.TextureCompositorWindow);
 const System.Reflection.BindingFlags Hidden = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
-var map = windowType.GetMethod("PreviewSamplePixel", Hidden);
-var read = windowType.GetMethod("ReadPreviewSampleColor", Hidden);
-var hdr = windowType.Assembly.GetType("DCFApixels.SpriteEditor.HdrUtility", true);
-var decode = hdr.GetMethod("Decode", Hidden);
+var sample = windowType.GetMethod("PreviewScreenSample", Hidden);
+var place = windowType.GetMethod("PreviewEyedropperLensRect", Hidden);
 int checks = 0;
 void Check(bool value, string message)
 {
     if (!value) throw new System.Exception(message);
     checks++;
 }
-var image = new UnityEngine.Rect(100, 50, 200, 100);
-UnityEngine.Vector2Int Pixel(float x, float y, bool tiled) =>
-    (UnityEngine.Vector2Int)map.Invoke(null, new object[] { new UnityEngine.Vector2(x, y), image, 8, 4, tiled });
-Check(Pixel(101, 51, false) == new UnityEngine.Vector2Int(0, 3), "Top-left pixel and flipped vertical axis");
-Check(Pixel(299, 149, false) == new UnityEngine.Vector2Int(7, 0), "Bottom-right pixel");
-Check(Pixel(300, 50, false) == new UnityEngine.Vector2Int(7, 3), "Canvas boundary clamp");
-for (int y = 0; y < 4; y++)
-for (int x = 0; x < 8; x++)
-for (int row = -2; row <= 2; row++)
-for (int column = -2; column <= 2; column++)
-    Check(Pixel(100 + (x + .5f) * 25 + column * 200,
-        50 + (3 - y + .5f) * 25 + row * 100, true) == new UnityEngine.Vector2Int(x, y),
-        "Repeated tiles map to the same source pixel");
-
-var previous = UnityEngine.RenderTexture.active;
-bool previousSrgbWrite = UnityEngine.GL.sRGBWrite;
-foreach (bool full in new[] { false, true })
+foreach (int side in new[] { 1, 3, 11 })
 {
-    var source = UnityEngine.RenderTexture.GetTemporary(2, 2, 0,
-        full ? UnityEngine.RenderTextureFormat.ARGBFloat : UnityEngine.RenderTextureFormat.ARGBHalf,
-        UnityEngine.RenderTextureReadWrite.Linear);
-    var format = full ? UnityEngine.TextureFormat.RGBAFloat : UnityEngine.TextureFormat.RGBAHalf;
-    var texture = new UnityEngine.Texture2D(2, 2, format, false, true);
-    var pixel = new UnityEngine.Texture2D(1, 1, format, false, true);
-    var values = new[] { new UnityEngine.Color(.18f, .4f, .8f, .25f),
-        new UnityEngine.Color(4f, 2f, .5f, .75f), UnityEngine.Color.clear,
-        new UnityEngine.Color(-.1f, .01f, .5f, 1f) };
-    try
+    var pixels = new UnityEngine.Color[side * side];
+    var expected = new UnityEngine.Color(.15f, .6f, .9f, 1f);
+    pixels[(side / 2) * side + side / 2] = expected;
+    foreach (float alpha in new[] { 0f, .25f, 1f })
     {
-        texture.SetPixels(values);
-        texture.Apply();
-        UnityEngine.GL.sRGBWrite = false;
-        UnityEngine.Graphics.Blit(texture, source);
-        UnityEngine.RenderTexture.active = previous;
-        for (int i = 0; i < values.Length; i++)
-        {
-            var encoded = (UnityEngine.Color)read.Invoke(null,
-                new object[] { source, pixel, new UnityEngine.Vector2Int(i % 2, i / 2) });
-            var linear = (UnityEngine.Color)decode.Invoke(null, new object[] { encoded });
-            for (int channel = 0; channel < 4; channel++)
-                Check(System.Math.Abs(linear[channel] - values[i][channel]) < .003f,
-                    "Sample preserves linear RGB, HDR and alpha: " + full + "/" + i + "/" + channel);
-            Check(UnityEngine.RenderTexture.active == previous, "Readback restores active render target");
-        }
-    }
-    finally
-    {
-        UnityEngine.RenderTexture.active = previous;
-        UnityEngine.GL.sRGBWrite = previousSrgbWrite;
-        UnityEngine.RenderTexture.ReleaseTemporary(source);
-        UnityEngine.Object.DestroyImmediate(texture);
-        UnityEngine.Object.DestroyImmediate(pixel);
+        var result = (UnityEngine.Color)sample.Invoke(null, new object[] { pixels, side, alpha });
+        Check(result.r == expected.r && result.g == expected.g && result.b == expected.b, "Screen RGB is not re-encoded");
+        Check(result.a == alpha, "Brush alpha is preserved");
     }
 }
-return "Eyedropper checks passed: " + checks;
+foreach (var bounds in new[] {
+    new UnityEngine.Rect(0, 0, 200, 96), new UnityEngine.Rect(0, 0, 1200, 900),
+    new UnityEngine.Rect(-1920, 0, 1920, 1080), new UnityEngine.Rect(1920, -1440, 2560, 1440)
+})
+for (int y = 0; y < 5; y++)
+for (int x = 0; x < 5; x++)
+{
+    var point = new UnityEngine.Vector2(bounds.x + bounds.width * x / 5f, bounds.y + bounds.height * y / 5f);
+    var rect = (UnityEngine.Rect)place.Invoke(null, new object[] { point, bounds });
+    Check(!rect.Overlaps(new UnityEngine.Rect(point.x - 7f, point.y - 7f, 14f, 14f)), "Magnifier stays clear of the source pixels");
+}
+foreach (var bounds in new[] { new UnityEngine.Rect(0, 0, 1920, 1080), new UnityEngine.Rect(-1920, -400, 1920, 1080) })
+{
+    for (int dx = -3; dx <= 3; dx++)
+    {
+        var point = bounds.center + new UnityEngine.Vector2(dx, 0);
+        var rect = (UnityEngine.Rect)place.Invoke(null, new object[] { point, bounds });
+        Check(rect.position - point == new UnityEngine.Vector2(24, 24), "Offset stays fixed across the monitor center");
+    }
+}
+const System.Reflection.BindingFlags InstanceHidden = System.Reflection.BindingFlags.Instance |
+    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+var viewType = typeof(UnityEditor.EditorWindow).Assembly.GetType("UnityEditor.GUIView");
+Check(typeof(UnityEditor.EditorWindow).GetField("m_Parent", InstanceHidden) != null, "Editor view accessor is available");
+Check(viewType?.GetMethod("StealMouseCapture", InstanceHidden) != null, "Desktop mouse capture is available");
+Check(viewType?.GetMethod("SetEyeDropperOpen", InstanceHidden) != null, "Desktop eyedropper flag is available");
+Check(viewType?.GetProperty("window", InstanceHidden) != null, "Capture view container is available");
+var containerType = typeof(UnityEditor.EditorWindow).Assembly.GetType("UnityEditor.ContainerWindow");
+Check(containerType?.GetMethod("SetInvisible", InstanceHidden) != null, "Native capture window can be hidden independently of the lens");
+Check(typeof(UnityEditor.EditorGUIUtility).GetMethod("SetCurrentViewCursor", Hidden) != null, "Native cursor setter is available");
+var mousePosition = typeof(UnityEditor.Editor).GetMethod("GetCurrentMousePosition", Hidden);
+Check(mousePosition != null && mousePosition.ReturnType == typeof(UnityEngine.Vector2), "Independent desktop pointer reader is available");
+return "Screen eyedropper CPU/API availability checks passed: " + checks + "; desktop input capture not exercised.";

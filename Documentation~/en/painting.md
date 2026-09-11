@@ -118,7 +118,10 @@ backup to a different name ending in `.sebrush`.
 
 
 The first color swatch is the painting color; `X` swaps the two swatches.
-Hold `Alt` and click or drag to pick a color from the image.
+Hold `Alt` in WhimTex to use the screen eyedropper; the outlined center pixel in its magnifier is the color you'll pick.
+Click or drag with the left mouse button to pick, then release `Alt` to return to your tool.
+You can sample across the screen, including other Unity windows and other applications. The eyedropper picks the visible color,
+including Post FX, EV and the transparency checkerboard, rather than the original HDR value. Brush alpha stays unchanged.
 With Brush or Pencil, hold the right mouse button to erase, or choose erasing in the tool options.
 
 Brush and fill settings follow you between layers. [Symmetry](symmetry.md) is set separately for each Drawing layer.

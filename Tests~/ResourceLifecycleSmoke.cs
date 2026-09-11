@@ -43,6 +43,10 @@ for (int mode = 0; mode < 3; mode++)
     try
     {
         Check(!window.hasUnsavedChanges, "A new untouched document has no close warning");
+        document.width = 32;
+        Call(document, "MarkChanged");
+        Call(window, "UpdateUnsavedChangesState");
+        Check(!window.hasUnsavedChanges, "Canvas changes without layers do not enable the close warning");
         DCFApixels.SpriteEditor.Layer root = Drawing(Color.red);
         if (mode == 2)
             root = new DCFApixels.SpriteEditor.GroupLayer { layers = new List<DCFApixels.SpriteEditor.Layer> { root,
@@ -55,8 +59,12 @@ for (int mode = 0; mode < 3; mode++)
         Call(window, "DeleteLayers", new List<DCFApixels.SpriteEditor.Layer> { root });
         End(group);
         Check(document.layers.Count == 0, "Deletion removes the root");
+        Call(window, "UpdateUnsavedChangesState");
+        Check(!window.hasUnsavedChanges, "Deleting the last layer removes the close warning");
         Undo.PerformUndo();
         Check(document.layers.Count == 1 && document.layers[0].Id == id, "Undo restores the root identity");
+        Call(window, "UpdateUnsavedChangesState");
+        Check(window.hasUnsavedChanges, "Undo restoring a layer restores the close warning");
         DCFApixels.SpriteEditor.DrawingLayer restored = mode == 2 ? (DCFApixels.SpriteEditor.DrawingLayer)((DCFApixels.SpriteEditor.GroupLayer)document.layers[0]).layers[0]
             : (DCFApixels.SpriteEditor.DrawingLayer)document.layers[0];
         Check(Pixels(restored) != null && Pixels(restored).GetPixel(0, 0).r > 0.99f, "Undo restores temporary pixels");

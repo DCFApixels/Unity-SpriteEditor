@@ -19,6 +19,8 @@ Export only when you need a separate image file.
 Press `Ctrl+S`. The first save asks for a location; later saves update the same file.
 **Save As** makes a separate copy. If you close a document with changes,
 you can save, discard them or cancel closing.
+Documents with no layers close or switch without a save prompt, even after deleting the last layer.
+You can still save an empty document manually.
 
 The saved asset is ready to use as a **texture**.
 Expand it in Project to use **Output Sprite**. Double-click it to continue editing.
