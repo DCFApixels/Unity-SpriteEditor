@@ -136,7 +136,7 @@ var paint = Batch("[{\"op\":\"stroke\",\"layer\":\"" + inkId + "\",\"brush\":{\"
 Ok(DCFApixels.SpriteEditor.SpriteEditorApi.ExecuteJson(paint.ToString()));
 Check(Pixel("paint", 44, 56).g > 0.9f, "API brush paints a second stroke");
 UnityEditor.Undo.PerformUndo();
-Check(Pixel("undo-paint", 44, 56).a < 0.01f, "Undo restores pixels without a Sprite Editor window");
+Check(Pixel("undo-paint", 44, 56).a < 0.01f, "Undo restores pixels without a WhimTex window");
 UnityEditor.Undo.PerformRedo();
 Check(Pixel("redo-paint", 44, 56).g > 0.9f, "Redo restores drawing pixels");
 

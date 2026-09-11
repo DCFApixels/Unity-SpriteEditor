@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
-    [CreateAssetMenu(fileName = "TextureCompositor", menuName = "Sprite Editor/Texture Compositor")]
+    [CreateAssetMenu(fileName = "TextureCompositor", menuName = "WhimTex/Texture Compositor")]
     public sealed partial class TextureCompositor : ScriptableObject, ISerializationCallbackReceiver
     {
         private const int MinimumOutputSize = 1;

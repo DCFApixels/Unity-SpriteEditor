@@ -8,7 +8,11 @@ lang: en
 permalink: /reference/agentapi/
 ---
 
-# Sprite Editor: agent API v1
+# WhimTex: agent API v1
+
+WhimTex retains the package ID `com.dcfa_pixels.sprite-editor`, the `DCFApixels.SpriteEditor`
+namespace and all `sprite_editor_*` commands. The 0.9.0 product rename does not change the API
+version, document format, shader identifiers or saved user preferences.
 {: .no_toc }
 
 <details markdown="1">
@@ -22,7 +26,7 @@ permalink: /reference/agentapi/
 The API edits the same model and uses the same renderer, brush and save path as the window.
 For reservations, generation and selected-region edits in an open (possibly unsaved) document,
 use the [live editing API](LiveAgentAPI.md). The path-based batch contract below remains unchanged.
-No Sprite Editor window or active selection is required. It creates ordinary compositor `.asset`
+No WhimTex window or active selection is required. It creates ordinary compositor `.asset`
 files, with their layers, owned Drawing textures, baked Texture2D and Sprite subassets, and Project preview.
 
 The window's optional **Live Update** publishes preview pixels to the existing output texture on the GPU
@@ -506,7 +510,7 @@ The validator caps estimated replicated stamps at 100,000 per stroke, covered br
   **not filesystem transactions**. Empty directories or copied files can remain after I/O failures.
 - Saving rebakes output. Undo restores editing state, but an already saved/baked output must be
   saved again after Undo/Redo. Use a new revision and an empty operation list to save without dialogs.
-- `save:false` edits are in memory and visible to an open Sprite Editor; they are not a persisted output.
+- `save:false` edits are in memory and visible to an open WhimTex; they are not a persisted output.
 - A revision includes serialized state, drawing pixels, modifier state and saved asset dependencies.
   It is an opaque optimistic-concurrency token, not a portable version-control ID. Re-inspect after
   Undo, save, import or domain reload. Do not cache it across sessions.

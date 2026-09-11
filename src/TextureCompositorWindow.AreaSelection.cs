@@ -55,7 +55,7 @@ namespace DCFApixels.SpriteEditor
             bool compact = SystemInfo.SupportsTextureFormat(TextureFormat.R8);
             areaSelectionTexture = new Texture2D(selection.Width, selection.Height, compact ? TextureFormat.R8 : TextureFormat.RGBA32, false, true)
             {
-                name = "Sprite Editor selection", hideFlags = HideFlags.HideAndDontSave,
+                name = "WhimTex selection", hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp
             };
             if (compact) areaSelectionTexture.LoadRawTextureData(selection.Coverage);
@@ -224,7 +224,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 areaClipboard = new AreaClipboard { pixels = copy, region = region,
                     canvas = new Vector2Int(selection.Width, selection.Height) };
-                ShowNotification(new GUIContent("Copied to Sprite Editor clipboard"));
+                ShowNotification(new GUIContent("Copied to WhimTex clipboard"));
             }
             catch (Exception exception) { ShowNotification(new GUIContent("Copy failed: " + exception.Message)); }
             finally { if (rendered != null) DestroyImmediate(rendered); }

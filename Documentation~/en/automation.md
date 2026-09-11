@@ -12,7 +12,7 @@ next_page: "en/troubleshooting.md"
 # Automation
 
 An agent can help assemble a document: add images as layers, arrange them, apply effects
-or make simple painted marks. You can then open the result in Sprite Editor and continue by hand.
+or make simple painted marks. You can then open the result in WhimTex and continue by hand.
 
 ## What to ask for
 
@@ -29,7 +29,7 @@ Check the result visually, especially after merging layers or applying effects.
 
 ## Work together in an open document
 
-You can ask an external agent to work in the document currently open in Sprite Editor:
+You can ask an external agent to work in the document currently open in WhimTex:
 
 > Add a moon on a new Drawing layer in the open document.
 
@@ -49,8 +49,8 @@ Layer Settings to regain editing immediately. Other layers remain available.
 
 The agent can reserve a layer and capture the current context in one step. If your request needs
 several results, it can create additional placeholders using the same initial selection and image.
-With several Sprite Editor windows open, the current window is preferred. If you have switched to
-another application or Unity window, the last-focused Sprite Editor window is used instead.
+With several WhimTex windows open, the current window is preferred. If you have switched to
+another application or Unity window, the last-focused WhimTex window is used instead.
 
 The agent chooses whether to sample a particular layer or the visible composition based on what
 you ask. Mention a specific layer when that distinction matters. Region edits use the selection
@@ -78,7 +78,7 @@ canvas or selected region, so fitting a large image does not discard its detail.
 ## Connect an agent
 
 Give the agent the repository's [agent instructions](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/AGENTS.md).
-They explain how to use Sprite Editor in your Unity project.
+They explain how to use WhimTex in your Unity project.
 
 Command syntax and integration setup are kept in the separate
 [API reference](../AgentAPI.md), with [examples](../Examples/index.md).

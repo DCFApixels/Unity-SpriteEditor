@@ -314,7 +314,7 @@ namespace DCFApixels.SpriteEditor
             Shader shader = Shader.Find(shaderName);
             if (shader == null)
             {
-                Debug.LogError($"SpriteEditor shader '{shaderName}' was not found.");
+                Debug.LogError($"WhimTex shader '{shaderName}' was not found.");
                 return null;
             }
 

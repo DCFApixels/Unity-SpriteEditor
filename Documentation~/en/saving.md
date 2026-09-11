@@ -50,5 +50,5 @@ PSD keeps the layer names, order, groups, visibility, opacity and supported blen
 Compatible color fills, gradients and outlines remain editable.
 Other effects become pixels, and some blend modes can look different.
 
-Read the export notes if the result differs. Keep the original Sprite Editor document
+Read the export notes if the result differs. Keep the original WhimTex document
 so you can still change all effects and their sources later.

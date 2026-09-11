@@ -1,5 +1,6 @@
 ---
 title: "English"
+description: "Learn WhimTex, the Unity sprite editor and texture editor for quick painting, VFX masks, procedural noise, layered textures and live scene updates."
 nav_order: 1
 lang: "en"
 permalink: "/en/"
@@ -9,11 +10,12 @@ has_toc: false
 next_page: "en/getting-started.md"
 ---
 
-# User guide
+# WhimTex user guide
 
 Read from first document to final export, or jump directly to the tool you need.
 
-Start with an image, arrange its layers, paint the details and save the result for your project.
+Use WhimTex as a Unity texture editor for quick fixes and VFX textures, or as a sprite editor
+for small game graphics. Start with an image, arrange its layers, paint the details and save the result.
 Control names in this guide match the labels in the editor.
 
 - [Start here](getting-started.md)

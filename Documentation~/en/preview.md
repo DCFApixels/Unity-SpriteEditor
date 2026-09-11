@@ -37,7 +37,7 @@ Pencil always shows crisp pixels at full quality, so you can place individual pi
 2. Turn on **Live Update** (the circle button) in the preview footer, next to **Post FX**.
 3. Paint or adjust layers: objects using that texture update in Scene View.
 
-The material keeps its texture reference when you toggle Live Update or close Sprite Editor.
+The material keeps its texture reference when you toggle Live Update or close WhimTex.
 Turning it off or closing without saving restores the last saved image. Press **Save** or `Ctrl+S`
 to keep your edits; **Save As** creates a different asset and does not redirect existing materials.
 

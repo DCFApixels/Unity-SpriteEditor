@@ -103,7 +103,7 @@ namespace DCFApixels.SpriteEditor
             if (session != null) return LiveWindow(session);
             var windows = Resources.FindObjectsOfTypeAll<TextureCompositorWindow>()
                 .Where(w => w.AgentDocument != null).ToArray();
-            Require(windows.Length > 0, "Open a Sprite Editor document first.", "session_required");
+            Require(windows.Length > 0, "Open a WhimTex document first.", "session_required");
             if (windows.Length == 1) return windows[0];
             var focused = windows.FirstOrDefault(w => EditorWindow.focusedWindow == w);
             if (focused != null) return focused;

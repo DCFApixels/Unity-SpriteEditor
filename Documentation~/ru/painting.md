@@ -3,6 +3,7 @@ title: "Кисть, карандаш и заливка"
 parent: "Русский"
 nav_order: 4
 lang: "ru"
+description: "Рисуй текстуры в Unity кистью, карандашом и заливкой WhimTex. Текстурные кисти, градиенты, разброс и пресеты для быстрых правок и масок VFX."
 permalink: "/ru/painting/"
 alternate: "en/painting.md"
 previous_page: "ru/transform.md"

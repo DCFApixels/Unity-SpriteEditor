@@ -77,7 +77,7 @@ namespace DCFApixels.SpriteEditor
             catch (Exception exception)
             {
                 Debug.LogException(exception, this);
-                EditorUtility.DisplayDialog("Sprite Editor save failed", exception.Message, "OK");
+                EditorUtility.DisplayDialog("WhimTex save failed", exception.Message, "OK");
                 return false;
             }
         }

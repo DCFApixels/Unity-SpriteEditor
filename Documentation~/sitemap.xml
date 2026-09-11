@@ -1,0 +1,11 @@
+---
+layout: null
+permalink: /sitemap.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% assign public_pages = site.pages | sort: 'url' %}
+{% for entry in public_pages %}{% if entry.title and entry.search_exclude != true %}
+  <url><loc>{{ entry.url | absolute_url | xml_escape }}</loc></url>
+{% endif %}{% endfor %}
+</urlset>

@@ -141,19 +141,19 @@ namespace DCFApixels.SpriteEditor
             scene = EditorSceneManager.NewPreviewScene();
             try
             {
-                var cameraObject = new GameObject("Sprite Editor Post FX Camera") { hideFlags = HideFlags.HideAndDontSave };
+                var cameraObject = new GameObject("WhimTex Post FX Camera") { hideFlags = HideFlags.HideAndDontSave };
                 SceneManager.MoveGameObjectToScene(cameraObject, scene);
                 camera = cameraObject.AddComponent<Camera>();
                 camera.enabled = false;
                 camera.scene = scene;
                 data = cameraObject.AddComponent<UniversalAdditionalCameraData>();
                 material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-                mesh = new Mesh { name = "Sprite Editor Post FX Surface", hideFlags = HideFlags.HideAndDontSave };
+                mesh = new Mesh { name = "WhimTex Post FX Surface", hideFlags = HideFlags.HideAndDontSave };
                 mesh.vertices = new[] { new Vector3(-1,-1,0), new Vector3(-1,1,0), new Vector3(1,1,0), new Vector3(1,-1,0) };
                 mesh.uv = new[] { new Vector2(0,0), new Vector2(0,1), new Vector2(1,1), new Vector2(1,0) };
                 mesh.triangles = new[] { 0,1,2,0,2,3 };
                 mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 100000f);
-                var surface = new GameObject("Sprite Editor Post FX Surface") { hideFlags = HideFlags.HideAndDontSave };
+                var surface = new GameObject("WhimTex Post FX Surface") { hideFlags = HideFlags.HideAndDontSave };
                 SceneManager.MoveGameObjectToScene(surface, scene);
                 surface.AddComponent<MeshFilter>().sharedMesh = mesh;
                 var renderer = surface.AddComponent<MeshRenderer>();

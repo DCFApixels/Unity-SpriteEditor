@@ -178,7 +178,7 @@ namespace DCFApixels.SpriteEditor
                 channelPreviewTexture = new RenderTexture(previewTexture.width, previewTexture.height, 0,
                     RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default)
                 {
-                    name = "Sprite Editor Channel Preview",
+                    name = "WhimTex Channel Preview",
                     hideFlags = HideFlags.HideAndDontSave,
                     wrapMode = TextureWrapMode.Clamp
                 };

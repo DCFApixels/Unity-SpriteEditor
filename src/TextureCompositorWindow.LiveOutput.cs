@@ -57,7 +57,7 @@ namespace DCFApixels.SpriteEditor
                 compositor.StopLiveOutput();
                 RefreshLiveOutputButton();
                 ShowNotification(new GUIContent("Live Update unavailable. See Console for details."));
-                Debug.LogWarning("Sprite Editor Live Update: " + exception.Message, compositor);
+                Debug.LogWarning("WhimTex Live Update: " + exception.Message, compositor);
             }
         }
 

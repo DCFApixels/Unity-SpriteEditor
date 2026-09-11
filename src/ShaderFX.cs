@@ -35,7 +35,7 @@ namespace DCFApixels.SpriteEditor
         }
     }
 
-    [CreateAssetMenu(fileName = "New Shader FX", menuName = "Sprite Editor/Shader FX")]
+    [CreateAssetMenu(fileName = "New Shader FX", menuName = "WhimTex/Shader FX")]
     public sealed class ShaderFX : ScriptableObject, ISerializationCallbackReceiver
     {
         [SerializeField, TextArea(12, 40)] private string code =

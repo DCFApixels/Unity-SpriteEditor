@@ -319,7 +319,7 @@ namespace DCFApixels.SpriteEditor
             };
             toolkitDocumentField.style.flexGrow = 1f;
             toolkitDocumentField.style.minWidth = 140f;
-            toolkitDocumentField.tooltip = "A Sprite Editor document or its generated texture/sprite. Double-click the saved asset in Project to edit its layers.";
+            toolkitDocumentField.tooltip = "A WhimTex document or its generated texture/sprite. Double-click the saved asset in Project to edit its layers.";
             toolkitSettingsBindings.Track(toolkitDocumentField,
                 () => compositor.OutputTexture != null ? (UnityEngine.Object)compositor.OutputTexture : compositor);
             toolkitDocumentField.RegisterValueChangedCallback(evt =>
@@ -2021,7 +2021,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     transparentCursorTexture = new Texture2D(16, 16, TextureFormat.RGBA32, false)
                     {
-                        name = "Sprite Editor Transparent Cursor",
+                        name = "WhimTex Transparent Cursor",
                         hideFlags = HideFlags.HideAndDontSave
                     };
                     transparentCursorTexture.SetPixels32(new Color32[16 * 16]);
@@ -2148,7 +2148,7 @@ namespace DCFApixels.SpriteEditor
                 if (checkerTexture != null) return;
                 checkerTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
                 {
-                    name = "Sprite Editor Checkerboard",
+                    name = "WhimTex Checkerboard",
                     hideFlags = HideFlags.HideAndDontSave,
                     filterMode = FilterMode.Point,
                     wrapMode = TextureWrapMode.Repeat

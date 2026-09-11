@@ -1,9 +1,12 @@
 ---
 name: sprite-editor-live
-description: Create generated images, parameter layers or inline Shader FX, and edit selected regions or lock existing layers for edits in an open Unity Sprite Editor document. Use the live API while the user continues editing; not for modifying plugin source code.
+description: Create generated images, parameter layers or inline Shader FX, and edit selected regions or lock existing layers for edits in an open WhimTex document. Use the live API while the user continues editing; not for modifying plugin source code.
 ---
 
-# Live Sprite Editor editing
+# Live WhimTex editing
+
+WhimTex retains the `sprite_editor_*` command names and `DCFApixels.SpriteEditor` API namespace.
+The skill ID remains `sprite-editor-live` so existing installations keep working.
 
 Use the installed `Packages/com.dcfa_pixels.sprite-editor` package. This skill contains the complete
 fast-start contract below. Read `Documentation~/LiveAgentAPI.md` for completion, previews, advanced
@@ -25,7 +28,7 @@ unity command sprite_editor_begin --requestId 'NEW-UUID' --name 'Balcony' --sour
 ```
 
 Generate a unique requestId before calling. Reuse the exact arguments on a transport retry.
-The command selects the only open document, or the currently focused Sprite Editor window when
+The command selects the only open document, or the currently focused WhimTex window when
 several are open. Only if none is focused, it falls back to the most recently focused open window.
 Absent or tied focus history fails without writing; then list sessions and ask which document.
 An explicit `--sessionId` pins a known document. Never substitute a different project or document.

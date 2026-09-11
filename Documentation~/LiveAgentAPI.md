@@ -29,7 +29,7 @@ arguments for retries. Optional arguments: `name` (Generating…), `source` (non
 a new layer at root index 0; use JSON `begin` for other placement or replacePixels. Direct equivalent:
 `SpriteEditorApi.LiveBegin(requestId, name, source, area, sessionId, sourceLayerId, selectionMode, padding)`.
 
-With no sessionId, begin uses the only open document or the currently focused Sprite Editor window.
+With no sessionId, begin uses the only open document or the currently focused WhimTex window.
 Only when multiple windows are open and none currently has focus, it falls back to the open window
 with the highest `focusOrder`. Each OnFocus advances a shared counter; window orders survive script
 reload, and the counter resumes above restored orders. API reads do not change focus history.

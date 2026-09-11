@@ -72,7 +72,7 @@ namespace DCFApixels.SpriteEditor
         private static TextureCompositor Load(string path)
         {
             TextureCompositor document = TextureCompositor.FindDocument(AssetDatabase.LoadMainAssetAtPath(path));
-            Require(document != null, "No Sprite Editor document at " + path, "document_not_found");
+            Require(document != null, "No WhimTex document at " + path, "document_not_found");
             return document;
         }
 

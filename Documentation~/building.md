@@ -40,6 +40,13 @@ The checks cover local source links, language counterparts, navigation metadata,
 asset links, fragment targets and an indexed page from each language. Inspect the actual site at
 both desktop and mobile widths after layout changes; source validation alone cannot prove visual quality.
 
+The theme's SEO tag supplies titles, descriptions, canonical URLs and Open Graph metadata.
+`head_custom.html` adds reciprocal language links and application metadata on the landing page;
+`sitemap.xml` lists public guide pages without generated timestamps. Keep the metadata descriptive
+of real editing workflows. Technical references remain accessible through links but are not in the sitemap.
+The checks also validate these generated tags and sitemap targets. Search-engine indexing and ranking
+are external to the deployment; do not promise a position or a date for search results.
+
 ## GitHub Pages
 
 The Documentation workflow builds on relevant main-branch changes and pull requests. Only main

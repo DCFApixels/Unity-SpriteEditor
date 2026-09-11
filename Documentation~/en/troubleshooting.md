@@ -45,7 +45,7 @@ Tiled shows the seams; it does not automatically make every source seamless.
 
 ## Unity shows an older image
 
-Click **Save** in Sprite Editor after editing, including after changing a linked texture.
+Click **Save** in WhimTex after editing, including after changing a linked texture.
 Unity uses the last saved result. Preview-only Post FX does not appear in that texture.
 
 ## Painting feels slow

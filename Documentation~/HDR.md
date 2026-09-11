@@ -70,7 +70,7 @@ retain signed HDR. Alpha is never gamma-converted.
 ## Drawing storage and editing
 
 The **HDR** button beside **EV** in the preview footer sets the color and gradient picker mode globally
-for Sprite Editor, including brush/fill colors, layer properties and Shader FX color parameters.
+for WhimTex, including brush/fill colors, layer properties and Shader FX color parameters.
 It defaults to off (Standard) and persists between sessions. Standard shows a bounded color representation and
 uses that same representation for new brush/fill operations. RGB above 1 is divided by its largest
 component, preserving encoded RGB proportions; negative components are displayed as zero. Alpha is
@@ -80,7 +80,7 @@ Switching modes never rewrites stored colors: returning to HDR restores their fu
 Explicitly editing a color or gradient in Standard replaces that value with the edited bounded value.
 Existing layer rendering, pixels, layer ranges and exports are untouched by the picker preference.
 The agent API uses its explicit colors independently of this UI preference. The preference is outside
-document Undo and is restored by **Reset Sprite Editor Settings**. Open fields update without rebuilding
+document Undo and is restored by **Reset WhimTex Settings**. Open fields update without rebuilding
 their UI or sending value-change events.
 
 New Standard Drawing layers store RGBA32 (4 bytes/pixel). Selecting HDR promotes owned pixels to

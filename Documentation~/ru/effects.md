@@ -4,6 +4,7 @@ parent: "Русский"
 has_children: true
 nav_order: 7
 lang: "ru"
+description: "Создавай эффекты текстур в WhimTex внутри Unity. Применяй обводку, SDF, Normal Map, Gaussian Blur и Motion Blur к слоям и группам, сохраняя исходники."
 permalink: "/ru/effects/"
 alternate: "en/effects.md"
 previous_page: "ru/symmetry.md"

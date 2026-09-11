@@ -77,25 +77,25 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private float paintingPreviewScale;
         [NonSerialized] private bool ownsUnityShortcutSuppression;
 
-        [MenuItem("Window/Sprite Editor")]
+        [MenuItem("Window/WhimTex")]
         public static void ShowWindow()
         {
-            GetWindow<TextureCompositorWindow>("Sprite Editor");
+            GetWindow<TextureCompositorWindow>("WhimTex");
         }
 
         public void AddItemsToMenu(GenericMenu menu)
         {
             menu.AddItem(new GUIContent("User Settings…"), false, SpriteEditorUserSettingsWindow.Open);
             menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Reset Sprite Editor Settings…"), false, ConfirmResetEditorSettings);
+            menu.AddItem(new GUIContent("Reset WhimTex Settings…"), false, ConfirmResetEditorSettings);
         }
 
         private void ConfirmResetEditorSettings()
         {
             if (!EditorUtility.DisplayDialog(
-                "Reset Sprite Editor Settings",
+                "Reset WhimTex Settings",
                 "Reset panel sizes, scrolling, selection, foldouts, RGBA channels and preview tool state in all open " +
-                "Sprite Editor windows, and remove the saved Live Quality preference?\n\n" +
+                "WhimTex windows, and remove the saved Live Quality preference?\n\n" +
                 "Shared brush, color, fill, preview appearance settings and the presets folder path will also be reset. Preset files will not be deleted. " +
                 "Open documents (including unsaved work), layers, textures and Shader FX " +
                 "will be preserved. Unity settings and window docking will not change. " +
@@ -119,7 +119,7 @@ namespace DCFApixels.SpriteEditor
             SpriteEditorUserSettings.Reset();
             foreach (TextureCompositorWindow window in windows)
                 window.ResetEditorWindowSettings();
-            ShowNotification(new GUIContent("Sprite Editor settings reset."));
+            ShowNotification(new GUIContent("WhimTex settings reset."));
         }
 
         private void ResetEditorWindowSettings()
@@ -173,7 +173,7 @@ namespace DCFApixels.SpriteEditor
             if (target == null)
                 return;
 
-            TextureCompositorWindow window = GetWindow<TextureCompositorWindow>("Sprite Editor");
+            TextureCompositorWindow window = GetWindow<TextureCompositorWindow>("WhimTex");
             if (window.compositor != target)
             {
                 if (!window.ResolveUnsavedTemporaryDocument())
@@ -193,6 +193,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
+            titleContent = new GUIContent("WhimTex");
             previewExposure = 0f;
             LoadPreviewToolSettings();
             LoadPaintToolSettings();
@@ -278,7 +279,7 @@ namespace DCFApixels.SpriteEditor
             hasUnsavedChanges = compositor != null &&
                 (HasDocumentChanges() || paintingLayer != null ||
                  previewTransformManipulator != null && previewTransformManipulator.IsDragging);
-            saveChangesMessage = "Save this Sprite Editor document before closing?\n\n" +
+            saveChangesMessage = "Save this WhimTex document before closing?\n\n" +
                 "Save opens Save As to choose a file. Discard closes without saving. Cancel keeps the window open.";
             RefreshDocumentSaveControls();
         }
@@ -384,7 +385,7 @@ namespace DCFApixels.SpriteEditor
             if (shortcutSuppressionWarningLogged)
                 return;
             shortcutSuppressionWarningLogged = true;
-            Debug.LogWarning($"Sprite Editor could not isolate Unity shortcuts: {details}");
+            Debug.LogWarning($"WhimTex could not isolate Unity shortcuts: {details}");
         }
 
         private void Update()
@@ -1145,7 +1146,7 @@ namespace DCFApixels.SpriteEditor
                 return true;
 
             int choice = EditorUtility.DisplayDialogComplex(
-                "Unsaved Sprite Editor document",
+                "Unsaved WhimTex document",
                 "Save the current compositor before replacing it?",
                 "Save As",
                 "Don't Save",
@@ -1202,7 +1203,7 @@ namespace DCFApixels.SpriteEditor
             {
                 DestroyImmediate(copy);
                 Debug.LogException(exception);
-                EditorUtility.DisplayDialog("Sprite Editor Save As failed", exception.Message, "OK");
+                EditorUtility.DisplayDialog("WhimTex Save As failed", exception.Message, "OK");
                 return false;
             }
             copy.CloneDrawingLayerTextures();

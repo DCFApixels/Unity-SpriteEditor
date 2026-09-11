@@ -1,0 +1,31 @@
+{% if page.alternate %}
+  {% assign translation = site.pages | where: "path", page.alternate | first %}
+  {% if translation %}
+<link rel="alternate" hreflang="{{ page.lang }}" href="{{ page.url | absolute_url }}">
+<link rel="alternate" hreflang="{{ translation.lang }}" href="{{ translation.url | absolute_url }}">
+  {% endif %}
+{% endif %}
+<link rel="sitemap" type="application/xml" href="{{ '/sitemap.xml' | absolute_url }}">
+{% if page.url == '/' %}
+<link rel="alternate" hreflang="en" href="{{ '/en/' | absolute_url }}">
+<link rel="alternate" hreflang="ru" href="{{ '/ru/' | absolute_url }}">
+<link rel="alternate" hreflang="x-default" href="{{ '/' | absolute_url }}">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": {{ site.title | jsonify }},
+  "url": {{ '/' | absolute_url | jsonify }},
+  "description": {{ site.description | jsonify }},
+  "applicationCategory": "DesignApplication",
+  "applicationSubCategory": "Unity sprite editor and texture editor",
+  "softwareRequirements": "Unity Editor 6 (6000.0) or newer",
+  "license": "https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/LICENSE.md",
+  "author": { "@type": "Person", "name": "DCFApixels", "url": "https://github.com/DCFApixels" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+{% endif %}
+{% if page.url == '/en/' or page.url == '/ru/' %}
+<link rel="alternate" hreflang="x-default" href="{{ '/' | absolute_url }}">
+{% endif %}

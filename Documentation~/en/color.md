@@ -3,6 +3,7 @@ title: "Color, HDR and channels"
 parent: "English"
 nav_order: 11
 lang: "en"
+description: "Edit HDR textures and pack RGBA channels in Unity with WhimTex. Inspect individual channels, configure Swizzle and control layer color and blend ranges."
 permalink: "/en/color/"
 alternate: "ru/color.md"
 previous_page: "en/preview.md"

@@ -54,7 +54,7 @@ namespace DCFApixels.SpriteEditor
                 };
                 staging = new RenderTexture(descriptor)
                 {
-                    name = "Sprite Editor Live Output",
+                    name = "WhimTex Live Output",
                     hideFlags = HideFlags.HideAndDontSave,
                     filterMode = target.filterMode,
                     wrapMode = TextureWrapMode.Clamp

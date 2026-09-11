@@ -44,7 +44,7 @@ You can use a hidden layer as the shape.
 | `Ctrl+Shift+C` | Copy what is visible in that area across all layers. |
 | `Ctrl+V` | Paste onto a new Drawing layer. |
 
-Without a selection, copy uses the whole canvas. You can paste between Sprite Editor windows.
+Without a selection, copy uses the whole canvas. You can paste between WhimTex windows.
 On a canvas of the same size, the copy keeps its position; on a different-sized canvas, it is centered.
 
 A selection stays active when you change tools or layers. It is not saved with the document.

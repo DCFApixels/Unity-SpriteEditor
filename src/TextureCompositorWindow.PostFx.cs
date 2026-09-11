@@ -248,7 +248,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     ReleasePostFxTexture();
                     postFxTexture = new RenderTexture(previewTexture.width, previewTexture.height, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
-                        { name = "Sprite Editor Post FX Preview", hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+                        { name = "WhimTex Post FX Preview", hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
                     postFxTexture.Create();
                 }
                 postFxTexture.filterMode = previewTexture.filterMode;

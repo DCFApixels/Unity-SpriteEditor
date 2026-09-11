@@ -14,7 +14,7 @@ namespace DCFApixels.SpriteEditor
     public static partial class SpriteEditorApi
     {
         public const int ProtocolVersion = 1;
-        private const string UndoName = "Sprite Editor API Batch";
+        private const string UndoName = "WhimTex API Batch";
         private const long MaxCanvasPixels = 16777216;
 
         public static string ExecuteFile(string requestPath)
@@ -224,7 +224,7 @@ namespace DCFApixels.SpriteEditor
             foreach (string name in new[] { "Blend", "Transform", "PaintBrush", "AlphaConversion" })
             {
                 Shader shader = Shader.Find("Hidden/TextureCompositor/" + name);
-                Require(shader != null && shader.isSupported, "Required Sprite Editor shader is unavailable: " + name, "graphics_unavailable");
+                Require(shader != null && shader.isSupported, "Required WhimTex shader is unavailable: " + name, "graphics_unavailable");
             }
         }
 

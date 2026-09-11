@@ -13,7 +13,7 @@ The following checks require interaction and are not covered by that script:
 2. Choose Save, then cancel the Save As file dialog. The editor window must stay
    open with its unsaved-state indicator. Retry with a valid path: verify the
    document can be reopened with its pixels and layers.
-3. Choose Discard when closing an unsaved document. Reopen Sprite Editor: it must
+3. Choose Discard when closing an unsaved document. Reopen WhimTex: it must
    start with a fresh document. Closing an untouched new document must not prompt.
 4. Start another unsaved document and try New or switching to an existing asset.
    Cancel must retain the current document. Save As cancellation must do the same.

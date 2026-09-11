@@ -79,7 +79,7 @@ namespace DCFApixels.SpriteEditor
                 w.Section(() =>
                 {
                     w.U32(1); w.Byte(1);
-                    w.Unicode("Sprite Editor"); w.Unicode("Sprite Editor"); w.U32(1);
+                    w.Unicode("WhimTex"); w.Unicode("WhimTex"); w.U32(1);
                 }, 2);
             });
 

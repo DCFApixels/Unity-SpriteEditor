@@ -10,5 +10,5 @@ After user-triggered compilation, verify in User Settings:
 4. Cancel Browse: the value stays unchanged. Relative paths and existing files are rejected;
    a not-yet-created absolute directory is allowed, but no directory is created by this setting.
 5. Clear the field or press ↺: default path returns without moving/deleting files.
-6. Reset Preview Appearance preserves the folder; Reset Sprite Editor Settings restores
+6. Reset Preview Appearance preserves the folder; Reset WhimTex Settings restores
    the default folder and leaves existing files untouched.

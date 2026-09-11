@@ -1,6 +1,6 @@
 # Third-party notices
 
-Sprite Editor's own MIT license does not replace the licenses of third-party components.
+WhimTex's own MIT license does not replace the licenses of third-party components.
 FastNoiseLite is bundled as source. The documentation theme is resolved separately at site build time.
 The Unity packages listed below are resolved by Package
 Manager and are not vendored into this repository; their installed packages supply their
@@ -8,12 +8,12 @@ own licenses and any transitive third-party notices.
 
 ## FastNoiseLite
 
-Sprite Editor includes the unmodified HLSL implementation of
+WhimTex includes the unmodified HLSL implementation of
 [FastNoiseLite v1.1.1](https://github.com/Auburn/FastNoiseLite/tree/v1.1.1),
 commit `7ccfbc16eb1c932568f177d63a9ba51d89bbe516`.
 
 File: `src/Shaders/ThirdParty/FastNoiseLite.hlsl`.
-The separate Noise shader adapts its output and parameters to Sprite Editor.
+The separate Noise shader adapts its output and parameters to WhimTex.
 
 MIT License
 

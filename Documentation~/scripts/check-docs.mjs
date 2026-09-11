@@ -95,6 +95,7 @@ function checkSite() {
   if (!fs.existsSync(output)) throw new Error('Build the Jekyll site first.');
   const htmlFiles = filesUnder(output, new Set()).filter(file => file.endsWith('.html'));
   const baseurl = text(path.join(source, '_config.yml')).match(/^baseurl:\s*(.*)$/m)[1].trim();
+  const siteOrigin = text(path.join(source, '_config.yml')).match(/^url:\s*(.*)$/m)[1].trim();
   const origin = 'https://docs.invalid';
   const anchorCache = new Map();
   for (const file of htmlFiles) {
@@ -102,6 +103,10 @@ function checkSite() {
     if (process.env.GITHUB_SHA && !html.includes(`/assets/js/just-the-docs.js?v=${process.env.GITHUB_SHA}`))
       fail(`${file}: main script is not revisioned`);
     const relative = path.relative(output, file).replaceAll('\\', '/').replace(/index\.html$/, '');
+    const canonical = new URL(`${baseurl}/${relative}`, siteOrigin).href;
+    if (!html.includes(`<link rel="canonical" href="${canonical}"`)) fail(`${relative}: canonical URL missing or incorrect`);
+    if (!/<meta name="description" content="[^"]{20,}"/.test(html)) fail(`${relative}: missing search description`);
+    if (!/<meta property="og:site_name" content="WhimTex"/.test(html)) fail(`${relative}: wrong Open Graph brand`);
     const current = new URL(`${baseurl}/${relative}`, origin);
     for (const match of html.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
       const href = decode(match[1]);
@@ -142,8 +147,43 @@ function checkSite() {
     const start = text(path.join(output, lang, 'getting-started/index.html'));
     if (!start.includes(`/${lang === 'en' ? 'ru' : 'en'}/getting-started/`)) fail(`${lang}: translation link missing from rendered page`);
   }
+  for (const file of filesUnder(source).filter(file => /[/\\](en|ru)[/\\].+\.md$/.test(file))) {
+    const fm = frontMatter(text(file));
+    const alternate = frontMatter(text(path.join(source, fm.alternate)));
+    const html = text(path.join(output, fm.permalink, 'index.html'));
+    for (const entry of [fm, alternate]) {
+      const href = new URL(baseurl + entry.permalink, siteOrigin).href;
+      if (!html.includes(`<link rel="alternate" hreflang="${entry.lang}" href="${href}"`))
+        fail(`${fm.permalink}: missing reciprocal hreflang ${entry.lang}`);
+    }
+  }
+  const home = text(path.join(output, 'index.html'));
+  if (!/<title>[^<]*WhimTex[^<]*Unity Sprite Editor[^<]*Texture Editor[^<]*<\/title>/.test(home))
+    fail('Landing page title must describe the brand and editor purpose');
+  const structured = [...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m => JSON.parse(m[1]));
+  const app = structured.find(item => item['@type'] === 'SoftwareApplication');
+  if (app?.name !== 'WhimTex' || app?.applicationCategory !== 'DesignApplication' || app?.offers?.price !== '0')
+    fail('Missing or incorrect application metadata');
+  const sitemap = text(path.join(output, 'sitemap.xml'));
+  if (!sitemap.startsWith('<?xml') || !sitemap.includes('http://www.sitemaps.org/schemas/sitemap/0.9'))
+    fail('Invalid sitemap declaration');
+  const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => decode(m[1]));
+  if (new Set(locations).size !== locations.length) fail('Duplicate sitemap locations');
+  for (const url of locations) {
+    const location = new URL(url);
+    if (location.origin !== siteOrigin || !location.pathname.startsWith(baseurl + '/'))
+      { fail(`Sitemap location escapes the site: ${url}`); continue; }
+    const target = path.join(output, location.pathname.slice(baseurl.length), 'index.html');
+    if (!fs.existsSync(target)) fail(`Sitemap target does not exist: ${url}`);
+  }
+  for (const file of filesUnder(source).filter(file => file.endsWith('.md'))) {
+    const fm = frontMatter(text(file));
+    if (!fm.title) continue;
+    const url = new URL(baseurl + fm.permalink, siteOrigin).href;
+    if (locations.includes(url) !== (fm.search_exclude !== 'true')) fail(`${file}: incorrect sitemap inclusion`);
+  }
   if (fs.existsSync(path.join(output, 'Gemfile')) || fs.existsSync(path.join(output, 'scripts'))) fail('Build tooling leaked into published site');
-  console.log(`Site: ${htmlFiles.length} HTML pages, local assets/fragments and ${entries.length} search entries checked.`);
+  console.log(`Site: ${htmlFiles.length} HTML pages, local assets/fragments, ${entries.length} search entries, SEO metadata and ${locations.length} sitemap URLs checked.`);
 }
 
 if (mode === 'source') checkSource();

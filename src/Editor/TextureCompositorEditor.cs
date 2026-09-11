@@ -16,8 +16,8 @@ namespace DCFApixels.SpriteEditor
 
             Button open = new Button(() => TextureCompositorWindow.Open((TextureCompositor)target))
             {
-                text = "Open in Sprite Editor",
-                tooltip = "Open this saved composition in the Sprite Editor window."
+                text = "Open in WhimTex",
+                tooltip = "Open this saved composition in the WhimTex window."
             };
             open.style.height = 28f;
             open.style.marginBottom = 6f;
@@ -97,13 +97,13 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        [MenuItem("Assets/Open in Sprite Editor", false, 2000)]
+        [MenuItem("Assets/Open in WhimTex", false, 2000)]
         private static void OpenSelectedDocument()
         {
             TextureCompositorWindow.Open(TextureCompositor.FindDocument(Selection.activeObject));
         }
 
-        [MenuItem("Assets/Open in Sprite Editor", true)]
+        [MenuItem("Assets/Open in WhimTex", true)]
         private static bool CanOpenSelectedDocument()
         {
             return Selection.objects.Length == 1 && TextureCompositor.FindDocument(Selection.activeObject) != null;

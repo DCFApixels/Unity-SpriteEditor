@@ -4,6 +4,7 @@ parent: "Layers and groups"
 grand_parent: "English"
 nav_order: 1
 lang: "en"
+description: "Generate procedural noise textures inside Unity with WhimTex. Adjust Perlin, OpenSimplex2, Cellular, fractals and domain warp for clouds, VFX and masks."
 permalink: "/en/noise/"
 alternate: "ru/noise.md"
 ---

@@ -26,21 +26,21 @@ namespace DCFApixels.SpriteEditor
             [CliArg("expectedRevision", "Optional layer contentRevision from inspection")] string expectedRevision = null)
             => JObject.Parse(SpriteEditorApi.LiveLock(requestId, layerId, sessionId, expectedRevision));
 
-        [CliCommand("sprite_editor_sessions", "List open Sprite Editor documents, including unsaved documents, with live session IDs.", MainThreadRequired = true)]
+        [CliCommand("sprite_editor_sessions", "List open WhimTex documents, including unsaved documents, with live session IDs.", MainThreadRequired = true)]
         public static JObject Sessions() => JObject.Parse(SpriteEditorApi.LiveSessions());
 
         [CliCommand("sprite_editor_live", "Reserve, preview or complete an agent layer in an open document using a JSON request file.", MainThreadRequired = true)]
         public static JObject Live([CliArg("requestPath", "Absolute path to a live-edit JSON request file", Required = true)] string requestPath)
             => JObject.Parse(SpriteEditorApi.LiveFile(requestPath));
 
-        [CliCommand("sprite_editor_describe", "Describe Sprite Editor's agent API, operations, enums and limits.", MainThreadRequired = true)]
+        [CliCommand("sprite_editor_describe", "Describe WhimTex's agent API, operations, enums and limits.", MainThreadRequired = true)]
         public static JObject Describe() => JObject.Parse(SpriteEditorApi.Describe());
 
         [CliCommand("sprite_editor_inspect", "Read a compositor's layer IDs, settings and revision before editing.", MainThreadRequired = true)]
         public static JObject Inspect([CliArg("assetPath", "Project-relative compositor .asset path", Required = true)] string assetPath)
             => JObject.Parse(SpriteEditorApi.Inspect(assetPath));
 
-        [CliCommand("sprite_editor_execute", "Validate/apply a Sprite Editor JSON batch file. Check result.success as well as transport success.", MainThreadRequired = true)]
+        [CliCommand("sprite_editor_execute", "Validate/apply a WhimTex JSON batch file. Check result.success as well as transport success.", MainThreadRequired = true)]
         public static JObject Execute([CliArg("requestPath", "Absolute path to a JSON request file", Required = true)] string requestPath)
             => JObject.Parse(SpriteEditorApi.ExecuteFile(requestPath));
 

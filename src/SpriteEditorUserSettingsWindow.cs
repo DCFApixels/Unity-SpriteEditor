@@ -16,12 +16,16 @@ namespace DCFApixels.SpriteEditor
 
         internal static void Open()
         {
-            var window = GetWindow<SpriteEditorUserSettingsWindow>(true, "Sprite Editor Settings");
+            var window = GetWindow<SpriteEditorUserSettingsWindow>(true, "WhimTex Settings");
             window.minSize = new Vector2(340f, 250f);
             window.Show();
         }
 
-        private void OnEnable() => SpriteEditorUserSettings.Changed += RefreshValues;
+        private void OnEnable()
+        {
+            titleContent = new GUIContent("WhimTex Settings");
+            SpriteEditorUserSettings.Changed += RefreshValues;
+        }
         private void OnDisable() => SpriteEditorUserSettings.Changed -= RefreshValues;
         private void OnFocus() => RefreshValues();
 
@@ -54,7 +58,7 @@ namespace DCFApixels.SpriteEditor
             AddHeading(scroll, "Post FX Preview");
             postFxBackground = AddColor(scroll, "Background", value => SpriteEditorUserSettings.PostFxBackground = value);
             postFxBackground.tooltip = "Opaque fill behind the composition before Post FX. Shared with the Post FX panel. Original alpha is still used for depth; document pixels and exports are unchanged.";
-            var note = new Label("Saved for your user account. Applies to all Sprite Editor windows; documents and exports are unaffected.");
+            var note = new Label("Saved for your user account. Applies to all WhimTex windows; documents and exports are unaffected.");
             note.AddToClassList("sprite-editor-user-settings-note");
             scroll.Add(note);
             var reset = new Button(SpriteEditorUserSettings.ResetPreviewAppearance) { text = "Reset Preview Appearance" };

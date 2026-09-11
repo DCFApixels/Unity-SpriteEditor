@@ -1,7 +1,7 @@
-<h1 align="center">Unity Sprite Editor</h1>
+<h1 align="center">WhimTex</h1>
 
 <p align="center">
-  A layered sprite and texture editor, right inside Unity.
+  Unity Sprite Editor &amp; Texture Editor for quick ideas, touch-ups and VFX.
 </p>
 
 <p align="center">
@@ -25,12 +25,15 @@
 
 ---
 
-Create sprites, icons, patterns, and layered textures without leaving Unity. Combine source images,
-paint on the Preview, and add procedural effects. Save the editable composition and its ready-to-use
-texture in one asset — export a separate image only when you need one.
+**WhimTex** is a free, open-source **Unity sprite editor and texture editor** for the small image tasks
+that come up while making a game. Touch up a texture, paint a particle mask, generate noise for VFX,
+or combine a few layers into a sprite — without leaving Unity or opening a separate application.
+
+Save the editable composition and its ready-to-use texture in one asset. Assign it to a material
+and enable **Live Update** to see edits in your scene; export a separate image only when you need one.
 
 <p align="center">
-  <a href="Documentation~/Images/sprite-editor-heart.jpg"><img src="Documentation~/Images/sprite-editor-heart.jpg" alt="Sprite Editor with the Heart document in tiled painting mode" width="720"></a>
+  <a href="Documentation~/Images/sprite-editor-heart.jpg"><img src="Documentation~/Images/sprite-editor-heart.jpg" alt="WhimTex with the Heart document in tiled painting mode" width="720"></a>
 </p>
 
 > [!NOTE]
@@ -38,6 +41,7 @@ texture in one asset — export a separate image only when you need one.
 
 ## What you can make
 
+- VFX and particle textures: soft masks, gradients, procedural noise and packed channels.
 - Layered sprites and icons from imported images, painted pixels, fills, gradients and noise.
 - Pixel art and seamless patterns with Brush/Pencil, selections, symmetry and tiled painting.
 - Outlines, distance fields, normal maps, Gaussian/Motion Blur and custom Shader FX.
@@ -57,7 +61,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 <a id="quick-start"></a>
 ## Make your first image
 
-1. Open **Window → Sprite Editor**, click **New** and set the canvas size.
+1. Open **Window → WhimTex**, click **New** and set the canvas size.
 2. Drop a Project texture onto the Preview, or click **Page +** below Layers for a Drawing layer.
 3. Arrange it with Transform (`T`), or paint with Brush (`B`) / Pencil (`P`).
 4. Press `Ctrl+S`. The editable document and full-resolution texture are saved in one `.asset`.
@@ -96,7 +100,7 @@ The guide follows the editing workflow, from the first canvas to painting, effec
 
 ## Acknowledgements
 
-Thanks to the authors and maintainers of the libraries that help power Sprite Editor:
+Thanks to the authors and maintainers of the libraries that help power WhimTex:
 
 - **[Sobol direction numbers](https://web.maths.unsw.edu.au/~fkuo/sobol/)** — Frances Kuo and Stephen Joe;
   evenly distributed brush variation. [Included license](ThirdPartyNotices.md#sobol-direction-numbers).

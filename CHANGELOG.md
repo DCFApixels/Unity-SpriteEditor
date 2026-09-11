@@ -1,8 +1,17 @@
 # Changelog
 
-All notable changes to Sprite Editor are documented in this file.
+All notable changes to WhimTex are documented in this file.
 
 ## [Unreleased]
+
+## [0.9.0] - 2026-09-11
+
+### Changed
+
+- Renamed the product to WhimTex across the editor window, menus, settings, messages, package display name, PSD application metadata and EN/RU documentation.
+- Focused the introduction on quick texture touch-ups, VFX masks and small sprite workflows inside Unity.
+- Added descriptive search metadata, language links and a sitemap to the documentation website.
+- Preserved package, API, command, shader and preference identifiers, document compatibility and existing installation/documentation URLs.
 
 ## [0.8.0] - 2026-09-11
 
@@ -18,7 +27,7 @@ All notable changes to Sprite Editor are documented in this file.
 
 - Generated images retain their source resolution and fit the requested region through Transform.
 - Selection-based generation supports strict masks or placement guides that allow details beyond the selection.
-- Automatic document targeting falls back to the most recently focused Sprite Editor window when no window currently has focus.
+- Automatic document targeting falls back to the most recently focused WhimTex window when no window currently has focus.
 
 ## [0.7.11] - 2026-09-11
 
@@ -178,7 +187,7 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Added
 
-- User Settings window in the Sprite Editor window menu, with persistent checkerboard colors and cell size (1–128 UI pixels, default 16), numeric-error highlight color, live preview updates and an appearance reset. These preferences do not affect documents, exports or Undo.
+- User Settings window in the WhimTex window menu, with persistent checkerboard colors and cell size (1–128 UI pixels, default 16), numeric-error highlight color, live preview updates and an appearance reset. These preferences do not affect documents, exports or Undo.
 - Selection-wide layer context-menu commands, including ordered movement, group operations, duplication, conversion and separate Properties/FX windows. Batch conversion resolves all source pixels before replacing layers and supports a single Undo step.
 - Per-layer and group Swizzle with channel selection, inversion and zero/one constants, available in Layer Settings, Properties and the agent API.
 - Automatic isolation for swizzled Pass Through groups; identity restores pass-through rendering. Effect targets, rasterization and exports respect remapped alpha and color; PSD preserves original group children in a hidden folder beside the baked result.
@@ -355,7 +364,7 @@ All notable changes to Sprite Editor are documented in this file.
 - Move per-Drawing-layer symmetry and repeat controls to layer settings and Properties.
 - Keep Live Quality always visible on the left of the Preview footer; leave brush controls in the header.
 - Brighter pane headers and an 80% default Live Quality.
-- Refresh drawing surfaces on Undo/Redo even without a Sprite Editor window open.
+- Refresh drawing surfaces on Undo/Redo even without a WhimTex window open.
 - Declare Unity's Newtonsoft Json dependency for strict JSON request parsing.
 
 ## [0.5.4] - 2026-09-08
@@ -401,15 +410,15 @@ All notable changes to Sprite Editor are documented in this file.
 - Default and reset layouts reserve 400 UI pixels for the right pane and give Preview the
   remaining width, instead of fixing Preview to a narrow 340-pixel strip. Keep the upper-right
   settings section at 320 pixels and preserve manually adjusted pane sizes across reopening.
-- Explicit code-editor Undo/Redo shortcuts and command handling when Sprite Editor suppresses
+- Explicit code-editor Undo/Redo shortcuts and command handling when WhimTex suppresses
   Unity shortcuts. Record draft edits once in Unity's Undo history, group continuous typing,
   separate navigation/paste/cut/replacement/newline actions, and restore caret/selection without
   rebuilding the field or compiling shaders. Keep parameter and Apply operations out of typing groups.
 
 ### Added
 
-- Reset Sprite Editor Settings from Unity's window tab menu, with confirmation. Restore layout,
-  selection, scroll/foldout/tool state in open Sprite Editor windows and remove the saved Live
+- Reset WhimTex Settings from Unity's window tab menu, with confirmation. Restore layout,
+  selection, scroll/foldout/tool state in open WhimTex windows and remove the saved Live
   Quality preference without replacing documents, changing layer data or clearing Unity preferences.
 - Duplicate a layer or nested group from its row menu, or drop selected layers onto the footer
   plus button to duplicate the selection in one Undo step. Select copies above the originals;
@@ -446,9 +455,9 @@ All notable changes to Sprite Editor are documented in this file.
 - Preserve embedded output object identities on subsequent saves and canvas resizing;
   create independent outputs for Save As and recover output references after Undo.
 - Resolve documents from their generated textures/sprites for double-click opening, the
-  document field, and Assets/Open in Sprite Editor. Keep the layer-document Inspector button,
+  document field, and Assets/Open in WhimTex. Keep the layer-document Inspector button,
   add Save & Update Output, and render its preview from saved pixels without recompositing.
-- Upgrade existing documents on explicit Sprite Editor Save only. Outputs reflect the last
+- Upgrade existing documents on explicit WhimTex Save only. Outputs reflect the last
   save; source texture changes and Undo/Redo require another save to update the baked result.
 
 ## [0.5.0] - 2026-09-08
@@ -577,7 +586,7 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Changed
 
-- Rebuilt every Sprite Editor window and its `TextureCompositor` custom inspector with UI Toolkit.
+- Rebuilt every WhimTex window and its `TextureCompositor` custom inspector with UI Toolkit.
 - Replaced the main window with a resizable two-pane layout, retained-mode preview, recursive layer
   tree, drawing toolbar, and UI Toolkit drag-and-drop while preserving the existing editing workflow.
 - Preserved direct Preview painting, brush and eraser hotkeys, groups, effect targets, modifiers,
@@ -645,7 +654,7 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Fixed
 
-- Undo and Redo keyboard shortcuts remain available while Sprite Editor suppresses other Unity
+- Undo and Redo keyboard shortcuts remain available while WhimTex suppresses other Unity
   shortcuts.
 
 ## [0.2.7] - 2026-09-07
@@ -666,7 +675,7 @@ All notable changes to Sprite Editor are documented in this file.
 
 ### Fixed
 
-- Unity global and contextual shortcuts are suspended while the Sprite Editor window has focus,
+- Unity global and contextual shortcuts are suspended while the WhimTex window has focus,
   preventing Unity commands such as Local/Global toggle from consuming Drawing hotkeys.
 
 ## [0.2.4] - 2026-09-07
@@ -701,7 +710,7 @@ All notable changes to Sprite Editor are documented in this file.
 ### Added
 
 - Saved `TextureCompositor` assets can now be opened by double-clicking them in the Project window.
-- The `TextureCompositor` Inspector now includes an **Open in Sprite Editor** button.
+- The `TextureCompositor` Inspector now includes an **Open in WhimTex** button.
 
 ## [0.2.0] - 2026-09-07
 

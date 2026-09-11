@@ -1,10 +1,14 @@
-# Sprite Editor asset authoring
+# WhimTex asset authoring
+
+WhimTex is the public product name. The package ID `com.dcfa_pixels.sprite-editor`,
+`DCFApixels.SpriteEditor` namespace, `sprite_editor_*` commands, persisted identifiers and
+existing repository/documentation URLs are compatibility contracts, not branding to rename.
 
 When adding or updating third-party code or libraries, acknowledge the project and link its
 upstream source in both READMEs. Preserve original copyright headers, include the applicable
 license text and notices, and record the source version in `ThirdPartyNotices.md`.
 
-For requests to create or edit **Sprite Editor compositor assets**, use the editor-side
+For requests to create or edit **WhimTex compositor assets**, use the editor-side
 `DCFApixels.SpriteEditor.SpriteEditorApi`, not generated Unity YAML or simulated mouse clicks.
 This guidance is for authoring images; ordinary plugin source-code tasks do not require running it.
 

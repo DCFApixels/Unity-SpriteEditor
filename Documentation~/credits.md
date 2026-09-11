@@ -6,7 +6,7 @@ permalink: /credits/
 
 # Acknowledgements and licenses
 
-Sprite Editor is distributed under the [MIT license](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/LICENSE.md).
+WhimTex is distributed under the [MIT license](https://github.com/DCFApixels/Unity-SpriteEditor/blob/main/LICENSE.md).
 Third-party components retain their own copyrights and licenses.
 
 | Component | Role | Source / license |

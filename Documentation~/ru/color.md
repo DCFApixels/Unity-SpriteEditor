@@ -3,6 +3,7 @@ title: "Цвет, HDR и каналы"
 parent: "Русский"
 nav_order: 11
 lang: "ru"
+description: "Редактируй HDR-текстуры и упаковывай каналы RGBA в Unity с WhimTex. Просматривай отдельные каналы и настраивай Swizzle, диапазон цвета и смешивания."
 permalink: "/ru/color/"
 alternate: "en/color.md"
 previous_page: "ru/preview.md"

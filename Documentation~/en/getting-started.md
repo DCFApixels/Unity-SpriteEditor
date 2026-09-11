@@ -3,6 +3,7 @@ title: "Start here"
 parent: "English"
 nav_order: 1
 lang: "en"
+description: "Install WhimTex in Unity 6 and create your first layered texture or sprite. Paint, add images and save an editable asset ready to use in your game."
 permalink: "/en/getting-started/"
 alternate: "ru/getting-started.md"
 next_page: "en/layers.md"
@@ -21,7 +22,7 @@ https://github.com/DCFApixels/Unity-SpriteEditor.git
 
 ## Make your first image
 
-1. Open **Window → Sprite Editor**, click **New**, and set the canvas **W / H**.
+1. Open **Window → WhimTex**, click **New**, and set the canvas **W / H**.
 2. Drag a texture from Project onto the Preview, or click **Page +** at the bottom of Layers to create a Drawing layer.
 3. Choose **Transform** (`T`) to arrange the image, or **Brush** (`B`) to paint.
 4. Press `Ctrl+S` and choose where to save the document.
@@ -50,6 +51,6 @@ Pan by holding the mouse wheel and dragging. Scroll to zoom; **Fit** shows the w
 ## Make the workspace comfortable
 
 **Window tab ⋮ → User Settings…** lets you change the transparency checkerboard's colors
-and size. **Reset Sprite Editor Settings…** restores the workspace preferences without deleting your documents.
+and size. **Reset WhimTex Settings…** restores the workspace preferences without deleting your documents.
 
 To keep a layer's settings in a separate window, use **layer ⋮ → Properties**.

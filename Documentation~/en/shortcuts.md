@@ -45,4 +45,4 @@ next_page: "en/automation.md"
 | `Enter` in Transform · `Escape` during a gesture | Exit tool · cancel gesture. |
 
 On macOS, `Cmd` also works for saving, selection and Undo/Redo.
-Use these shortcuts while the Sprite Editor window is focused.
+Use these shortcuts while the WhimTex window is focused.
