@@ -37,7 +37,6 @@ namespace DCFApixels.SpriteEditor
             dynamics.tipSdf = defaults.dynamics.tipSdf;
             dynamics.proceduralMode = defaults.dynamics.proceduralMode;
             dynamics.tipGradient = defaults.dynamics.tipGradient;
-            brushHardness = defaults.brushHardness;
             brushTipGuid = string.Empty;
             brushTipLocalId = 0;
             brushTipPresetPath = string.Empty;

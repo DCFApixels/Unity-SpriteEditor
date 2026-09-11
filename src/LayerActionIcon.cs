@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     internal sealed class LayerActionIcon : VisualElement
     {
-        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha, AddDrawing, Transform, Properties, Effects }
+        internal enum Kind { Add, Group, Delete, Bug, Eye, EyeOff, Alpha, AddDrawing, Transform, Properties, Effects, Settings }
 
         private readonly Kind kind;
 
@@ -30,6 +30,9 @@ namespace DCFApixels.SpriteEditor
             painter.BeginPath();
             switch (kind)
             {
+                case Kind.Settings:
+                    DrawSettings(painter);
+                    return;
                 case Kind.Transform:
                     DrawTransform(painter);
                     return;
@@ -114,6 +117,25 @@ namespace DCFApixels.SpriteEditor
                     break;
             }
             painter.Stroke();
+        }
+
+        private static void DrawSettings(Painter2D painter)
+        {
+            painter.fillColor = painter.strokeColor;
+            painter.BeginPath();
+            for (int i = 0; i < 24; i++)
+            {
+                float angle = (i - 0.5f) * Mathf.PI / 12f;
+                float radius = i % 4 == 1 || i % 4 == 2 ? 6.5f : 5f;
+                Vector2 point = new Vector2(8f + Mathf.Cos(angle) * radius, 8f + Mathf.Sin(angle) * radius);
+                if (i == 0) painter.MoveTo(point);
+                else painter.LineTo(point);
+            }
+            painter.ClosePath();
+            painter.MoveTo(new Vector2(10.6f, 8f));
+            painter.Arc(new Vector2(8f, 8f), 2.6f, 0f, 360f);
+            painter.ClosePath();
+            painter.Fill(FillRule.OddEven);
         }
 
         private static void DrawTransform(Painter2D painter)

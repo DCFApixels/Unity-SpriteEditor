@@ -198,7 +198,7 @@ assert.ok(read('src/TextureCompositorWindow.Brushes.cs').includes('new Slider("S
 const settingsSource = read('src/PaintToolSettings.cs');
 const drawerSource = read('src/TextureCompositorWindow.Brushes.cs');
 for (const [section, fields] of [
-  ['Tip', ['dynamics.tip', 'dynamics.tipChannel', 'dynamics.tipSdf', 'dynamics.proceduralMode', 'dynamics.tipGradient', 'brushHardness', 'brushTipGuid', 'brushTipLocalId', 'brushTipPresetPath']],
+  ['Tip', ['dynamics.tip', 'dynamics.tipChannel', 'dynamics.tipSdf', 'dynamics.proceduralMode', 'dynamics.tipGradient', 'brushTipGuid', 'brushTipLocalId', 'brushTipPresetPath']],
   ['Stamps', ['dynamics.randomAlgorithm', 'dynamics.scatter', 'dynamics.scatterBias', 'dynamics.sizeJitter', 'dynamics.angleJitter', 'dynamics.angleOffset', 'dynamics.rotationMode', 'dynamics.flipX', 'dynamics.flipY']],
   ['Color', ['dynamics.blend', 'dynamics.blendApplication']]
 ]) {
@@ -206,6 +206,8 @@ for (const [section, fields] of [
   assert.ok(reset, section + ' reset exists');
   const assigned = [...reset.matchAll(/^\s*([\w.]+) = /gm)].map(match => match[1]);
   assert.deepEqual(assigned, fields, section + ' resets only its fields');
+  for (const preserved of ['brushSize', 'brushHardness', 'brushSpacing', 'dynamics.opacity', 'dynamics.flow'])
+    assert.ok(!assigned.includes(preserved), section + ' preserves ' + preserved);
   assert.ok(drawerSource.includes('CreateBrushSectionHeader("' + section + '", () => paintSettings.ResetBrush' + section + '()'));
   checks += 3;
 }

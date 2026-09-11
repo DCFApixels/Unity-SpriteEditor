@@ -70,7 +70,7 @@ namespace DCFApixels.SpriteEditor
         {
             var result = new Gradient();
             result.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                new[] { new GradientAlphaKey(0f, .4f), new GradientAlphaKey(1f, .6f) });
+                new[] { new GradientAlphaKey(1f, .4f), new GradientAlphaKey(0f, .6f) });
             return result;
         }
 

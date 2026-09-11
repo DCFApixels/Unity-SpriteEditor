@@ -16,7 +16,7 @@ near(uv(-10),uv(0)); near(uv(10),uv(1));
 for(let i=0;i<width;i++) near(uv(i/(width-1))*width-.5,i);
 
 // Reference linear filtering of the premultiplied LUT, including zero-alpha RGB.
-const gradient = t => [1-t,.25,t,saturate((t-.4)/.2)];
+const gradient = t => [1-t,.25,t,1-saturate((t-.4)/.2)];
 const lut = Array.from({length:width},(_,i)=>{
   const [r,g,b,a]=gradient(i/(width-1)); return [r*a,g*a,b*a,a];
 });
@@ -32,7 +32,7 @@ for(let i=0;i<=1000;i++) {
   for(let channel=0;channel<3;channel++) near(color[channel]*rgba[3],rgba[channel]);
   checks+=2;
 }
-near(sample(0)[3],0); near(sample(.5)[3],.5); near(sample(1)[3],1);
+near(sample(0)[3],1); near(sample(.5)[3],.5); near(sample(1)[3],0);
 assert.ok(cache.includes('sdfGradientSnapshot.Equals(source)'));
 assert.ok(cache.indexOf('return sdfGradientTexture;') < cache.indexOf('SetPixels('));
 assert.ok(cache.includes('TextureFormat.RGBAHalf, true, true'));
@@ -61,23 +61,46 @@ for(const tip of [null,{}]) for(const textureSdf of [false,true]) for(const mode
   assert.equal(usesSdf(tip,textureSdf,mode,{SdfGradient:1}),tip ? textureSdf : mode===1);
 assert.ok(dynamics.includes('proceduralMode = BrushProceduralMode.Hardness;'));
 assert.ok(read('src/Layers/DrawingLayer.cs').includes('bool sdfGradient = !pixelPerfect && dynamics != null && dynamics.UsesSdfGradient;'));
-assert.ok(shader.includes('SdfTipGradient(1.0 - radius)'));
-const proceduralStart=shader.indexOf('SdfTipGradient(1.0 - radius)');
+assert.ok(shader.includes('SdfTipGradient(radius)'));
+assert.ok(shader.includes('SdfTipGradient(1.0 - tipValue)'));
+const textureCoordinate = new Function('tipValue', 'return ' + shader.match(/SdfTipGradient\((1\.0 - tipValue)\)/)[1]);
+near(textureCoordinate(1), 0); near(textureCoordinate(0), 1);
+for (let i = 0; i <= 100; i++) near(textureCoordinate(1-i/100), i/100);
+const proceduralStart=shader.indexOf('SdfTipGradient(radius)');
 assert.ok(shader.lastIndexOf('if (radius > 1.0) discard;',proceduralStart)>shader.indexOf('#else',shader.indexOf('float radius = length')));
 assert.ok(shader.includes('coverage = 1.0 - smoothstep(inner, 1.0, radius);'));
 for(const r of [0,.1,.25,.5,.75,.9,1]) {
-  const value=1-r;
+  const value=r;
   near(uv(value)*width-.5,value*(width-1));
   for(let angle=0;angle<Math.PI*2;angle+=.15)
-    near(1-Math.hypot(r*Math.cos(angle),r*Math.sin(angle)),value);
+    near(Math.hypot(r*Math.cos(angle),r*Math.sin(angle)),value);
 }
-assert.ok(drawer.includes('new System.Collections.Generic.List<string> { "Hardness", "SDF Gradient" }'));
-assert.ok(drawer.includes('!paintSettings.dynamics.UsesSdfGradient'));
+assert.ok(drawer.includes('new GUIContent("Hardness")'));
+assert.ok(drawer.includes('new GUIContent("Gradient")'));
+assert.ok(drawer.includes('bool sdf = paintSettings.dynamics.UsesSdfGradient;'));
 assert.ok(read('src/PaintToolSettings.cs').includes('dynamics.proceduralMode = defaults.dynamics.proceduralMode;'));
-assert.ok(dynamics.includes('new GradientAlphaKey(0f, .4f), new GradientAlphaKey(1f, .6f)'));
-assert.ok(drawer.includes('new GradientField("SDF Gradient")'));
+assert.ok(dynamics.includes('new GradientAlphaKey(1f, .4f), new GradientAlphaKey(0f, .6f)'));
+assert.ok(drawer.includes('new GradientField("Gradient")'));
 assert.ok(!drawer.includes('new Slider("Threshold"'));
 assert.ok(drawer.includes('hardness.SetEnabled(paintSettings.dynamics.tip == null)'));
+const header = drawer.split('private void AddBrushEdgeHeader(VisualElement row)')[1].split('private void AddBrushHeaderPercent')[0];
+assert.ok(header.includes('new FloatField("Hardness")'), 'Keep the native draggable field label');
+assert.ok(header.includes('toolkitHeaderBindings.Track(hardness, () => paintSettings.brushHardness * 100f)'));
+assert.ok(header.includes('toolkitHeaderBindings, () => paintSettings.dynamics.tipGradient'));
+assert.ok(header.includes('hardness.EnableInClassList("sprite-editor-brush-setting--hidden", sdf)'));
+assert.ok(header.includes('gradient.EnableInClassList("sprite-editor-brush-setting--hidden", !sdf)'));
+assert.ok(header.includes('mode.SetEnabled(paintSettings.dynamics.tip == null)'));
+assert.ok(!header.includes('GetSelectedLayer'), 'Brush settings remain editable without a Drawing layer');
+const drawerControls = drawer.split('private void AddBrushEdgeHeader')[0];
+assert.ok(drawerControls.includes('new GradientField("Gradient")'));
+assert.ok(drawerControls.includes('new DropdownField("Mode"'));
+assert.ok(drawerControls.includes('AddBrushPercent(scroll, "Hardness", () => paintSettings.brushHardness'));
+assert.ok(drawerControls.includes('brushSettingsBindings, () => paintSettings.dynamics.tipGradient'));
+const applyChange = read('src/TextureCompositorWindow.Tools.cs').split('private void ApplyPaintToolChange(Action change)')[1].split('private void SavePaintToolSettings')[0];
+assert.ok(applyChange.includes('toolkitHeaderBindings.Refresh();'));
+assert.ok(applyChange.includes('brushSettingsBindings?.Refresh();'), 'Both copies update after editing either location');
+assert.match(read('src/TextureCompositorWindow.UI.cs'), /brushRow.Add\(size\);\s*AddBrushEdgeHeader\(brushRow\);\s*AddBrushHeaderPercent\(brushRow, "Opacity"/);
+assert.match(read('src/SpriteEditorSplitView.uss'), /\.sprite-editor-brush-edge\s*\{\s*width: 150px;\s*height: 20px;\s*flex-shrink: 0;/);
 assert.ok(read('src/Layers/DrawingLayer.cs').includes('GetBrushSdfGradient(dynamics, standardColorInputs)'));
 assert.ok(read('src/Automation/SpriteEditorApi.Paint.cs').includes('dynamics.tipGradient = ReadGradient(brush["tipGradient"])'));
 assert.ok(read('src/Automation/SpriteEditorApi.Inspect.cs').includes('["tipGradientKeys"] = GradientSnapshot(dynamics.tipGradient)'));

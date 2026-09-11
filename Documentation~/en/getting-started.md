@@ -55,7 +55,7 @@ Pan by holding the mouse wheel and dragging. Scroll to zoom; **Fit** shows the w
 
 ## Make the workspace comfortable
 
-**Window tab ⋮ → User Settings…** lets you change the transparency checkerboard's colors
+The **gear button to the right of Export** opens User Settings, where you can change the transparency checkerboard's colors
 and size, or enable **Clean Preview Background** to hide the background logo. At the bottom of this settings window,
 **Reset WhimTex Settings…** restores the workspace preferences after confirmation, without deleting your documents or preset files.
 

@@ -253,7 +253,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                 coverage = tipValue * tipOpacity;
                 if (_TipSdf > .5)
                 {
-                    float4 gradient = SdfTipGradient(tipValue);
+                    float4 gradient = SdfTipGradient(1.0 - tipValue);
                     coverage = gradient.a * tipOpacity;
                     color.rgb *= gradient.rgb / max(gradient.a, .00001);
                 }
@@ -275,7 +275,7 @@ Shader "Hidden/TextureCompositor/PaintBrush"
                     if (radius > 1.0) discard;
                     if (_TipSdf > .5)
                     {
-                        float4 gradient = SdfTipGradient(1.0 - radius);
+                        float4 gradient = SdfTipGradient(radius);
                         coverage = gradient.a;
                         color.rgb *= gradient.rgb / max(gradient.a, .00001);
                         color.rgb = _TipStandard > .5 ? saturate(color.rgb) : clamp(color.rgb, -65504.0, 65504.0);

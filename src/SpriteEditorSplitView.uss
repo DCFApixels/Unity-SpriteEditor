@@ -343,6 +343,14 @@
     opacity: 0.035;
 }
 
+.sprite-editor-preview-inset-shadow {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
 .sprite-editor-preview-workspace {
     flex-grow: 1;
     flex-shrink: 1;
@@ -423,6 +431,48 @@
     width: 44px;
     min-width: 44px;
     flex-shrink: 0;
+}
+
+.sprite-editor-brush-edge {
+    width: 150px;
+    height: 20px;
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+
+.sprite-editor-brush-edge-field {
+    flex-grow: 1;
+    margin: 0;
+    min-width: 0;
+}
+
+.sprite-editor-brush-edge-field > .unity-base-field__label {
+    width: 58px;
+    min-width: 58px;
+    flex-shrink: 0;
+    margin-right: 18px;
+    -unity-text-align: middle-left;
+}
+
+.sprite-editor-brush-edge-field > .unity-base-field__input {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.unity-button.sprite-editor-brush-edge-mode {
+    position: absolute;
+    left: 58px;
+    top: 0;
+    bottom: 0;
+    width: 16px;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: transparent;
+}
+
+.unity-button.sprite-editor-brush-edge-mode:hover {
+    background-color: rgba(128, 128, 128, 0.25);
 }
 
 .sprite-editor-post-fx-drawer {
@@ -954,13 +1004,17 @@
     background-color: #adadad;
 }
 
+.sprite-editor-layers-footer,
+.sprite-editor-preview-footer {
+    height: 26px;
+    flex-shrink: 0;
+}
+
 .sprite-editor-layers-footer {
     --footer-button: #464646;
     --footer-divider: #121212;
     --footer-hover: #4c4c4c;
     --footer-pressed: #5c5c5c;
-    height: 26px;
-    flex-shrink: 0;
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
@@ -1036,6 +1090,13 @@
 
 .sprite-editor-document-header {
     border-bottom-width: 0;
+}
+
+.unity-button.sprite-editor-user-settings-button {
+    flex-shrink: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
 }
 
 .sprite-editor-pane-header {
@@ -1243,8 +1304,6 @@
 .sprite-editor-preview-footer {
     flex-direction: row;
     align-items: center;
-    height: 22px;
-    flex-shrink: 0;
     padding-left: 4px;
     padding-right: 4px;
 }
@@ -1299,7 +1358,7 @@
 
 .sprite-editor-preview-footer--compact {
     height: auto;
-    min-height: 22px;
+    min-height: 26px;
     flex-wrap: wrap;
 }
 

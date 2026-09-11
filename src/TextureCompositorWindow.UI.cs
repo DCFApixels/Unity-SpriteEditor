@@ -242,10 +242,6 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas = new SpritePreviewElement(previewViewport);
             toolkitPreviewCanvas.AddManipulator(new ProjectTextureDropManipulator(this, prependToRoot: true));
             toolkitPreviewCanvas.style.flexGrow = 1f;
-            toolkitPreviewCanvas.style.marginLeft = PanePadding;
-            toolkitPreviewCanvas.style.marginRight = PanePadding;
-            toolkitPreviewCanvas.style.marginTop = PanePadding;
-            toolkitPreviewCanvas.style.marginBottom = PanePadding;
             BuildPreviewZoomTool();
             BuildPreviewTransformTool();
             previewEyedropper = new PreviewEyedropperManipulator(this);
@@ -354,6 +350,12 @@ namespace DCFApixels.SpriteEditor
             Button export = SpriteEditorUI.CreateToolbarButton("Export", ShowExportMenu, 64f);
             export.tooltip = "Export the flattened texture as PNG, JPEG, TGA, EXR, or a Unity Texture2D asset.";
             toolbar.Add(export);
+            Button userSettings = SpriteEditorUI.CreateToolbarButton(string.Empty, SpriteEditorUserSettingsWindow.Open, 26f);
+            userSettings.name = "userSettingsButton";
+            userSettings.tooltip = "User Settings";
+            userSettings.AddToClassList("sprite-editor-user-settings-button");
+            userSettings.Add(new LayerActionIcon(LayerActionIcon.Kind.Settings));
+            toolbar.Add(userSettings);
             toolkitDocumentRoot.Add(toolbar);
 
             VisualElement separator = new VisualElement
@@ -1431,6 +1433,7 @@ namespace DCFApixels.SpriteEditor
             size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(
                 () => paintSettings.brushSize = Mathf.Max(1f, evt.newValue)));
             brushRow.Add(size);
+            AddBrushEdgeHeader(brushRow);
             AddBrushHeaderPercent(brushRow, "Opacity", () => paintSettings.dynamics.opacity,
                 v => paintSettings.dynamics.opacity = v, "Opacity (%): maximum strength of one stroke. Release and start a new stroke to build up further.");
             AddBrushHeaderPercent(brushRow, "Flow", () => paintSettings.dynamics.flow,
@@ -1937,6 +1940,7 @@ namespace DCFApixels.SpriteEditor
         {
             private readonly PreviewViewport viewport;
             private readonly Image backdrop;
+            private readonly PreviewInsetShadow insetShadow;
             private readonly VisualElement checker;
             private Texture2D checkerTexture;
             private Texture2D transparentCursorTexture;
@@ -1982,6 +1986,9 @@ namespace DCFApixels.SpriteEditor
                 };
                 backdrop.AddToClassList("sprite-editor-preview-backdrop");
                 Add(backdrop);
+
+                insetShadow = new PreviewInsetShadow();
+                Add(insetShadow);
                 RefreshBackdropVisibility();
 
                 checker = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -2025,9 +2032,53 @@ namespace DCFApixels.SpriteEditor
                 });
             }
 
+            private sealed class PreviewInsetShadow : VisualElement
+            {
+                public PreviewInsetShadow()
+                {
+                    pickingMode = PickingMode.Ignore;
+                    AddToClassList("sprite-editor-preview-inset-shadow");
+                    generateVisualContent += Draw;
+                }
+
+                private void Draw(MeshGenerationContext context)
+                {
+                    Rect bounds = contentRect;
+                    if (bounds.width < 1f || bounds.height < 1f) return;
+                    const int steps = 16;
+                    float depth = Mathf.Min(61.44f, Mathf.Min(bounds.width, bounds.height) * 0.5f);
+                    MeshWriteData mesh = context.Allocate((steps + 1) * 4, steps * 24);
+                    for (int ring = 0; ring <= steps; ring++)
+                    {
+                        float t = ring / (float)steps;
+                        float inset = depth * t;
+                        float fade = (1f - t) * (1f - t) * (1f - t);
+                        Color32 top = new Color(0f, 0f, 0f, 0.36f * fade);
+                        Color32 bottom = new Color(0f, 0f, 0f, 0.21f * fade);
+                        mesh.SetNextVertex(new Vertex { position = new Vector3(bounds.xMin + inset, bounds.yMin + inset, Vertex.nearZ), tint = top });
+                        mesh.SetNextVertex(new Vertex { position = new Vector3(bounds.xMax - inset, bounds.yMin + inset, Vertex.nearZ), tint = top });
+                        mesh.SetNextVertex(new Vertex { position = new Vector3(bounds.xMax - inset, bounds.yMax - inset, Vertex.nearZ), tint = bottom });
+                        mesh.SetNextVertex(new Vertex { position = new Vector3(bounds.xMin + inset, bounds.yMax - inset, Vertex.nearZ), tint = bottom });
+                    }
+                    for (int ring = 0; ring < steps; ring++)
+                    {
+                        for (int side = 0; side < 4; side++)
+                        {
+                            ushort a = (ushort)(ring * 4 + side);
+                            ushort b = (ushort)(ring * 4 + (side + 1) % 4);
+                            ushort c = (ushort)(b + 4);
+                            ushort d = (ushort)(a + 4);
+                            mesh.SetNextIndex(a); mesh.SetNextIndex(b); mesh.SetNextIndex(c);
+                            mesh.SetNextIndex(c); mesh.SetNextIndex(d); mesh.SetNextIndex(a);
+                        }
+                    }
+                }
+            }
+
             public void RefreshBackdropVisibility()
             {
                 backdrop.EnableInClassList("sprite-editor-preview-backdrop--hidden", !SpriteEditorUserSettings.ShowManta);
+                insetShadow.EnableInClassList("sprite-editor-preview-backdrop--hidden", !SpriteEditorUserSettings.ShowManta);
             }
 
             private void UpdateBackdropLayout()

@@ -4,6 +4,18 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8').replace(/\r\n/g,'\n');
 const library=read('src/BrushPresetLibrary.cs'), settings=read('src/PaintToolSettings.cs');
 const ui=read('src/TextureCompositorWindow.BrushPresets.cs');
+const drawer = read('src/TextureCompositorWindow.Brushes.cs').split('private void AddBrushEdgeHeader')[0];
+assert.ok(drawer.includes('new FloatField("Size")'));
+assert.ok(drawer.includes('brushSettingsBindings.Track(size, () => paintSettings.brushSize)'));
+for (const [label, member] of [['Opacity', 'opacity'], ['Flow', 'flow']])
+  assert.ok(drawer.includes(`AddBrushPercent(scroll, "${label}", () => paintSettings.dynamics.${member}, v => paintSettings.dynamics.${member} = v`));
+for (const member of ['brushSize', 'brushHardness', 'brushSpacing'])
+  assert.ok(drawer.includes(`paintSettings.${member}`), `Preset setting accessible in drawer: ${member}`);
+const dynamics = read('src/BrushDynamics.cs').split('[NonSerialized]')[0];
+for (const [, member] of dynamics.matchAll(/public (?:float|int|bool|Gradient|Texture2D|Brush\w+|BlendMode) (\w+)/g)) {
+  if (member === 'seed') continue; // Per-stroke runtime value, refreshed automatically when painting starts.
+  assert.ok(drawer.includes(`paintSettings.dynamics.${member}`), `Preset dynamics accessible in drawer: ${member}`);
+}
 function body(source,name) {
   const declaration=source.search(new RegExp('(?:internal|private) (?:static )?(?:int|void) '+name+'\\('));
   assert.ok(declaration>=0,name);

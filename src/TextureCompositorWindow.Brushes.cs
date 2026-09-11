@@ -38,7 +38,15 @@ namespace DCFApixels.SpriteEditor
             panel.Add(brushDrawer);
 
             scroll.Add(CreateBrushSectionHeader("Tip", () => paintSettings.ResetBrushTip(),
-                "Reset Tip: use a procedural brush in Hardness mode, clear the texture, use Alpha, disable texture SDF and restore the default gradient and hardness."));
+                "Reset Tip: use a procedural brush in Hardness mode, clear the texture, use Alpha, disable texture SDF and restore the default gradient. Size and Hardness are unchanged."));
+            var size = SpriteEditorUI.ConfigureField(new FloatField("Size")
+            {
+                value = paintSettings.brushSize,
+                tooltip = "Brush diameter in canvas pixels. Drag the label to adjust. Shared with Size in the preview header."
+            });
+            size.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() =>
+                paintSettings.brushSize = Mathf.Max(1f, evt.newValue)));
+            brushSettingsBindings.Track(size, () => paintSettings.brushSize);
             var tip = SpriteEditorUI.ConfigureField(new ObjectField("Texture")
                 { objectType = typeof(Texture2D), allowSceneObjects = false, value = paintSettings.dynamics.tip,
                   tooltip = "No texture: procedural brush. Assign a texture: textured brush. Source texture import settings are not changed." });
@@ -55,14 +63,15 @@ namespace DCFApixels.SpriteEditor
             });
             brushSettingsBindings.Track(tip, () => (UnityEngine.Object)paintSettings.dynamics.tip);
             scroll.Add(tip);
+            scroll.Add(size);
             var proceduralMode = SpriteEditorUI.ConfigureField(new DropdownField("Mode",
-                new System.Collections.Generic.List<string> { "Hardness", "SDF Gradient" }, (int)paintSettings.dynamics.proceduralMode)
+                new System.Collections.Generic.List<string> { "Hardness", "Gradient" }, (int)paintSettings.dynamics.proceduralMode)
             {
-                tooltip = "Procedural brush: Hardness controls a soft circular tip; SDF Gradient maps color and opacity from its outer edge (0) to its center (1)."
+                tooltip = "Procedural brush: Hardness controls a soft circular tip; Gradient maps color and opacity from its center (0) to its outer edge (1)."
             });
             proceduralMode.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() =>
-                paintSettings.dynamics.proceduralMode = evt.newValue == "SDF Gradient" ? BrushProceduralMode.SdfGradient : BrushProceduralMode.Hardness));
-            brushSettingsBindings.Track(proceduralMode, () => paintSettings.dynamics.proceduralMode == BrushProceduralMode.SdfGradient ? "SDF Gradient" : "Hardness");
+                paintSettings.dynamics.proceduralMode = evt.newValue == "Gradient" ? BrushProceduralMode.SdfGradient : BrushProceduralMode.Hardness));
+            brushSettingsBindings.Track(proceduralMode, () => paintSettings.dynamics.proceduralMode == BrushProceduralMode.SdfGradient ? "Gradient" : "Hardness");
             brushSettingsBindings.Add(() => proceduralMode.EnableInClassList("sprite-editor-brush-setting--hidden", paintSettings.dynamics.tip != null));
             scroll.Add(proceduralMode);
             var channel = SpriteEditorUI.ConfigureField(new EnumField("Tip Channel", paintSettings.dynamics.tipChannel));
@@ -73,7 +82,7 @@ namespace DCFApixels.SpriteEditor
             var sdf = SpriteEditorUI.ConfigureField(new Toggle("SDF")
             {
                 value = paintSettings.dynamics.tipSdf,
-                tooltip = "Map the selected distance field through SDF Gradient. Alpha/Color use alpha; Luminance modes use brightness. Gradient alpha controls coverage and its RGB multiplies the brush color."
+                tooltip = "Map the selected distance field through Gradient. Alpha/Color use alpha; Luminance modes use brightness. Gradient alpha controls coverage and its RGB multiplies the brush color."
             });
             sdf.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() => paintSettings.dynamics.tipSdf = evt.newValue));
             brushSettingsBindings.Track(sdf, () => paintSettings.dynamics.tipSdf);
@@ -81,12 +90,12 @@ namespace DCFApixels.SpriteEditor
             brushSettingsBindings.Add(() => sdf.EnableInClassList("sprite-editor-brush-setting--hidden", paintSettings.dynamics.tip == null));
             scroll.Add(sdf);
             var hardness = AddBrushPercent(scroll, "Hardness", () => paintSettings.brushHardness, v => paintSettings.brushHardness = v,
-                "Edge hardness of the procedural brush. Textured brushes use their own coverage or SDF Gradient.");
+                "Edge hardness of the procedural brush. Textured brushes use their own coverage or Gradient.");
             brushSettingsBindings.Add(() => hardness.SetEnabled(paintSettings.dynamics.tip == null));
             brushSettingsBindings.Add(() => hardness.EnableInClassList("sprite-editor-brush-setting--hidden", paintSettings.dynamics.UsesSdfGradient));
-            var sdfGradient = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new GradientField("SDF Gradient")
+            var sdfGradient = SpriteEditorUI.ConfigureField(SpriteEditorColorInputs.Bind(new GradientField("Gradient")
             {
-                tooltip = "Left = distance 0 (procedural edge), right = 1 (procedural center). Textured brushes use the selected distance field. Alpha keys shape coverage; color keys multiply the palette color and Tint."
+                tooltip = "Left = interior (0), right = outer edge (1). Textured brushes invert the selected distance field. Alpha keys shape coverage; color keys multiply the palette color and Tint."
             }, brushSettingsBindings, () => paintSettings.dynamics.tipGradient));
             sdfGradient.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() => paintSettings.dynamics.tipGradient = evt.newValue));
             brushSettingsBindings.Add(() => sdfGradient.EnableInClassList("sprite-editor-brush-setting--hidden", !paintSettings.dynamics.UsesSdfGradient));
@@ -172,6 +181,10 @@ namespace DCFApixels.SpriteEditor
 
             scroll.Add(CreateBrushSectionHeader("Color", () => paintSettings.ResetBrushColor(),
                 "Reset Color: opaque white Tint, Normal blending applied per stroke. Palette colors, Opacity and Flow are unchanged."));
+            AddBrushPercent(scroll, "Opacity", () => paintSettings.dynamics.opacity, v => paintSettings.dynamics.opacity = v,
+                "Maximum strength of one stroke. Release and start a new stroke to build up further. Shared with the preview header.");
+            AddBrushPercent(scroll, "Flow", () => paintSettings.dynamics.flow, v => paintSettings.dynamics.flow = v,
+                "Strength of each stamp. Overlapping stamps build up within the stroke. Shared with the preview header.");
             var tintRow = new VisualElement();
             tintRow.AddToClassList("sprite-editor-brush-tint-row");
             var gradient = SpriteEditorUI.ConfigureField(new GradientField("Tint") { value = paintSettings.dynamics.tintGradient,
@@ -206,7 +219,6 @@ namespace DCFApixels.SpriteEditor
             brushSettingsBindings.Track(application, () => paintSettings.dynamics.blendApplication == BrushBlendApplication.Stamp ? "Per Stamp" : "Per Stroke");
             brushSettingsBindings.Add(() => application.SetEnabled(paintSettings.tool != PaintToolMode.Eraser));
             scroll.Add(application);
-            scroll.Add(new HelpBox("Opacity limits a whole stroke. Flow controls each stamp and builds up inside the stroke. Both are in the preview header.", HelpBoxMessageType.Info));
             BuildBrushStrokePreview(brushDrawer);
             brushSettingsBindings.Refresh(true);
         }
@@ -236,6 +248,51 @@ namespace DCFApixels.SpriteEditor
             brushSettingsBindings.Track(field, () => read() * 100f);
             root.Add(field);
             return field;
+        }
+
+        private void AddBrushEdgeHeader(VisualElement row)
+        {
+            var edge = new VisualElement();
+            edge.AddToClassList("sprite-editor-brush-edge");
+            var hardness = new FloatField("Hardness")
+            {
+                tooltip = "Hardness (%). Drag the label or enter 0–100. Textured brushes use their own coverage or Gradient."
+            };
+            hardness.AddToClassList("sprite-editor-brush-edge-field");
+            toolkitHeaderBindings.Track(hardness, () => paintSettings.brushHardness * 100f);
+            hardness.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() =>
+                paintSettings.brushHardness = Mathf.Clamp01((float.IsNaN(evt.newValue) ? 80f : evt.newValue) * .01f)));
+            edge.Add(hardness);
+
+            var gradient = SpriteEditorColorInputs.Bind(new GradientField("Gradient")
+            {
+                tooltip = "Gradient. Click to edit. Left = interior (0), right = outer edge (1). Alpha shapes coverage; RGB multiplies the brush color and Tint."
+            }, toolkitHeaderBindings, () => paintSettings.dynamics.tipGradient);
+            gradient.AddToClassList("sprite-editor-brush-edge-field");
+            gradient.RegisterValueChangedCallback(evt => ApplyPaintToolChange(() => paintSettings.dynamics.tipGradient = evt.newValue));
+            edge.Add(gradient);
+
+            var mode = new Button(() =>
+            {
+                if (paintSettings.dynamics.tip != null) return;
+                var menu = new GenericMenu();
+                menu.AddItem(new GUIContent("Hardness"), paintSettings.dynamics.proceduralMode == BrushProceduralMode.Hardness,
+                    () => ApplyPaintToolChange(() => paintSettings.dynamics.proceduralMode = BrushProceduralMode.Hardness));
+                menu.AddItem(new GUIContent("Gradient"), paintSettings.dynamics.proceduralMode == BrushProceduralMode.SdfGradient,
+                    () => ApplyPaintToolChange(() => paintSettings.dynamics.proceduralMode = BrushProceduralMode.SdfGradient));
+                menu.ShowAsContext();
+            }) { text = "▾", tooltip = "Procedural brush edge: Hardness or Gradient. Both settings are preserved when switching. For a textured brush, toggle SDF in Tip settings." };
+            mode.AddToClassList("sprite-editor-brush-edge-mode");
+            edge.Add(mode);
+            toolkitHeaderBindings.Add(() =>
+            {
+                bool sdf = paintSettings.dynamics.UsesSdfGradient;
+                hardness.EnableInClassList("sprite-editor-brush-setting--hidden", sdf);
+                gradient.EnableInClassList("sprite-editor-brush-setting--hidden", !sdf);
+                hardness.SetEnabled(paintSettings.dynamics.tip == null);
+                mode.SetEnabled(paintSettings.dynamics.tip == null);
+            });
+            row.Add(edge);
         }
 
         private void AddBrushHeaderPercent(VisualElement row, string label, Func<float> read, Action<float> write, string tooltip)
