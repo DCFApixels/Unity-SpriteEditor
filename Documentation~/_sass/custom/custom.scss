@@ -2,6 +2,20 @@
   line-height: 1.65;
 }
 
+.site-title .brand-mark {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+}
+
+.main-content .brand-hero {
+  display: block;
+  width: 144px;
+  height: auto;
+  margin: 0 0 1rem;
+}
+
 .main-content img {
   max-width: 100%;
   height: auto;

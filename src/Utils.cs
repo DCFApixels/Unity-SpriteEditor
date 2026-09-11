@@ -393,7 +393,7 @@ namespace DCFApixels.SpriteEditor
             where T : LayerEditorWindowBase
         {
             T window = CreateInstance<T>();
-            window.titleContent = new GUIContent($"Properties — {layer.layerName}");
+            window.titleContent = SpriteEditorBranding.WindowTitle($"Properties — {layer.layerName}");
             window.Initialize(layer, owner);
             window.ShowUtility();
         }
@@ -412,6 +412,7 @@ namespace DCFApixels.SpriteEditor
 
         protected virtual void OnEnable()
         {
+            titleContent = SpriteEditorBranding.WindowTitle(titleContent.text);
             TextureCompositor.Changed += OnCompositorChanged;
             SpriteEditorApi.LiveEditLocksChanged += RefreshAgentLock;
             RequestPreview(true);
@@ -488,7 +489,7 @@ namespace DCFApixels.SpriteEditor
             {
                 string title = $"Properties — {currentLayer.layerName}";
                 if (titleContent.text != title)
-                    titleContent = new GUIContent(title);
+                    titleContent = SpriteEditorBranding.WindowTitle(title);
             }
             Layer nextLayer = valid ? currentLayer : null;
             if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && boundCompositor == compositor)

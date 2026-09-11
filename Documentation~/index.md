@@ -6,6 +6,8 @@ permalink: "/"
 has_toc: false
 ---
 
+<img class="brand-hero" src="{{ site.logo | relative_url }}" alt="WhimTex manta logo" width="144" height="144">
+
 # WhimTex
 
 **Unity Sprite Editor & Texture Editor**

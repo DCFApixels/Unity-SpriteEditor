@@ -59,6 +59,23 @@ If the repository name or host changes, update `url` and `baseurl` in `_config.y
 
 ## Editing pages
 
+### Brand assets
+
+`Images/whimtex-logo.svg` is the approved vector master. Use it directly in README and page headers.
+The PNG favicon, touch icon, link-preview image and Unity window icon are rasterizations of this
+same SVG, not separately drawn variants. Do not replace document thumbnails or tool icons with the logo.
+
+To regenerate the PNGs with the optional Node.js `sharp` tool installed:
+
+```sh
+node scripts/build-brand-assets.mjs
+```
+
+An existing Sharp module path can be passed as the first argument instead of installing it here.
+This image-conversion helper does not start Unity or trigger a refresh.
+
+### Page content
+
 - Keep matching user-guide paths under `en/` and `ru/`; each has an `alternate` front-matter path.
 - Use relative Markdown links to source `.md` files. The relative-links plugin rewrites them for the site;
   the same links remain usable when reading the sources on GitHub.

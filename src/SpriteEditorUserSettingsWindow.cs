@@ -17,13 +17,14 @@ namespace DCFApixels.SpriteEditor
         internal static void Open()
         {
             var window = GetWindow<SpriteEditorUserSettingsWindow>(true, "WhimTex Settings");
+            window.titleContent = SpriteEditorBranding.WindowTitle("WhimTex Settings");
             window.minSize = new Vector2(340f, 250f);
             window.Show();
         }
 
         private void OnEnable()
         {
-            titleContent = new GUIContent("WhimTex Settings");
+            titleContent = SpriteEditorBranding.WindowTitle("WhimTex Settings");
             SpriteEditorUserSettings.Changed += RefreshValues;
         }
         private void OnDisable() => SpriteEditorUserSettings.Changed -= RefreshValues;

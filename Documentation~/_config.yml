@@ -4,6 +4,7 @@ description: WhimTex is a free Unity sprite editor and texture editor for quick 
 url: https://dcfapixels.github.io
 baseurl: /WhimTex
 repository: DCFApixels/WhimTex
+logo: /Images/whimtex-logo.svg
 theme: just-the-docs
 permalink: pretty
 color_scheme: sprite
@@ -19,6 +20,7 @@ defaults:
     values:
       layout: default
       lang: en
+      image: /Images/whimtex-logo.png
 
 search_enabled: true
 search:

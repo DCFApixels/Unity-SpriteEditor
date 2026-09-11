@@ -15,7 +15,7 @@ assert.match(read('Documentation~/_config.yml'), /^repository: DCFApixels\/WhimT
 assert.equal(JSON.parse(read('src/DCFApixels.SpriteEditor.asmdef')).name, 'DCFApixels.SpriteEditor');
 const window = read('src/TextureCompositorWindow.cs');
 assert.ok(window.includes('[MenuItem("Window/WhimTex")]'));
-assert.match(window, /void OnEnable\(\)\s*\{\s*titleContent = new GUIContent\("WhimTex"\)/,
+assert.match(window, /void OnEnable\(\)\s*\{\s*titleContent = SpriteEditorBranding.WindowTitle\("WhimTex"\)/,
   'Restored windows update their persisted title without resetting their document');
 const commands = read('src/Automation/Pipeline/SpriteEditorCommands.cs');
 for (const id of ['begin', 'sessions', 'live', 'lock', 'describe', 'execute', 'render', 'inspect', 'import_image'])
@@ -35,4 +35,27 @@ function scan(dir) {
 scan('src');
 assert.ok(read('src/PsdWriter.cs').includes('w.Unicode("WhimTex"); w.Unicode("WhimTex");'));
 assert.ok(read('Skills~/sprite-editor-live/SKILL.md').includes('name: sprite-editor-live'));
+const logo = read('Documentation~/Images/whimtex-logo.svg');
+assert.match(logo, /<svg\b/);
+assert.match(logo, /<linearGradient\b/);
+assert.ok(!/<image\b|data:image|<script\b/.test(logo), 'Logo remains editable vector artwork, not an embedded bitmap');
+for (const file of ['README.md', 'README-RU.md'])
+  assert.ok(read(file).includes('src="Documentation~/Images/whimtex-logo.svg"'));
+const iconGuid = read('src/WhimTexIcon.png.meta').match(/^guid: (\w+)$/m)[1];
+assert.ok(read('src/SpriteEditorBranding.cs').includes(`GUIDToAssetPath("${iconGuid}")`));
+for (const file of ['src/TextureCompositorWindow.cs', 'src/SpriteEditorUserSettingsWindow.cs',
+  'src/ModifierEditorWindow.cs', 'src/Utils.cs'])
+  assert.ok(read(file).includes('SpriteEditorBranding.WindowTitle('), `${file}: branded title`);
+for (const [file, size] of [
+  ['src/WhimTexIcon.png', 64], ['Documentation~/Images/favicon-32.png', 32],
+  ['Documentation~/Images/apple-touch-icon.png', 180], ['Documentation~/Images/whimtex-logo.png', 512]
+]) {
+  const png = readFileSync(path.join(root, file));
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  assert.equal(png.readUInt32BE(16), size);
+  assert.equal(png.readUInt32BE(20), size);
+  assert.equal(png[25], 6, `${file}: preserve RGBA transparency`);
+}
+assert.ok(read('Documentation~/_includes/title.html').includes('site.logo | relative_url'));
+assert.ok(read('Documentation~/_includes/favicon.html').includes('site.logo | relative_url'));
 console.log('WhimTex branding and legacy package/API/preference identity checks passed (Unity not executed).');

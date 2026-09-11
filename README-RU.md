@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Documentation~/Images/whimtex-logo.svg" alt="Логотип WhimTex — скат" width="160" height="160">
+</p>
+
 <h1 align="center">WhimTex</h1>
 
 <p align="center">

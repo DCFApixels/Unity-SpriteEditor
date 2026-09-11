@@ -80,7 +80,8 @@ namespace DCFApixels.SpriteEditor
         [MenuItem("Window/WhimTex")]
         public static void ShowWindow()
         {
-            GetWindow<TextureCompositorWindow>("WhimTex");
+            var window = GetWindow<TextureCompositorWindow>("WhimTex");
+            window.titleContent = SpriteEditorBranding.WindowTitle("WhimTex");
         }
 
         public void AddItemsToMenu(GenericMenu menu)
@@ -174,6 +175,7 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             TextureCompositorWindow window = GetWindow<TextureCompositorWindow>("WhimTex");
+            window.titleContent = SpriteEditorBranding.WindowTitle("WhimTex");
             if (window.compositor != target)
             {
                 if (!window.ResolveUnsavedTemporaryDocument())
@@ -193,7 +195,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
-            titleContent = new GUIContent("WhimTex");
+            titleContent = SpriteEditorBranding.WindowTitle("WhimTex");
             previewExposure = 0f;
             LoadPreviewToolSettings();
             LoadPaintToolSettings();

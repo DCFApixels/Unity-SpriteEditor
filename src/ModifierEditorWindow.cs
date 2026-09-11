@@ -25,7 +25,7 @@ namespace DCFApixels.SpriteEditor
         public static void Open(Layer layer, TextureCompositor compositor)
         {
             ModifierEditorWindow window = CreateInstance<ModifierEditorWindow>();
-            window.titleContent = new GUIContent("FX — " + layer?.layerName);
+            window.titleContent = SpriteEditorBranding.WindowTitle("FX — " + layer?.layerName);
             window.compositor = compositor;
             window.layer = layer;
             window.layerId = layer?.Id;
@@ -36,6 +36,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnEnable()
         {
+            titleContent = SpriteEditorBranding.WindowTitle(titleContent.text);
             TextureCompositor.Changed += OnCompositorChanged;
             SpriteEditorApi.LiveEditLocksChanged += RefreshAgentLock;
         }

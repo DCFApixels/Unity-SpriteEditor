@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">WhimTex manta</title>
+  <desc id="desc">Soft blue and periwinkle manta with a pale pink underside. Editable vector paths and gradients on a transparent background.</desc>
+  <defs>
+    <linearGradient id="body" gradientUnits="userSpaceOnUse" x1="495" y1="297" x2="846" y2="939">
+      <stop stop-color="#7edbfb"/>
+      <stop offset=".32" stop-color="#7acbfb"/>
+      <stop offset=".62" stop-color="#83b0fc"/>
+      <stop offset=".85" stop-color="#b9c5fc"/>
+      <stop offset="1" stop-color="#d1cefd"/>
+    </linearGradient>
+    <linearGradient id="wing" gradientUnits="userSpaceOnUse" x1="302" y1="456" x2="791" y2="903">
+      <stop stop-color="#59c7fb"/>
+      <stop offset=".45" stop-color="#529afc"/>
+      <stop offset=".75" stop-color="#628cfc"/>
+      <stop offset="1" stop-color="#a7b6fc"/>
+    </linearGradient>
+    <linearGradient id="rightWing" gradientUnits="userSpaceOnUse" x1="770" y1="364" x2="1178" y2="573">
+      <stop stop-color="#56b5fc"/>
+      <stop offset=".55" stop-color="#5e8ffc"/>
+      <stop offset="1" stop-color="#8e8aff"/>
+    </linearGradient>
+    <linearGradient id="rightTip" gradientUnits="userSpaceOnUse" x1="800" y1="454" x2="1147" y2="215">
+      <stop stop-color="#77cafa"/>
+      <stop offset=".55" stop-color="#799ffd"/>
+      <stop offset="1" stop-color="#8c82fb"/>
+    </linearGradient>
+    <linearGradient id="leftTip" gradientUnits="userSpaceOnUse" x1="180" y1="558" x2="259" y2="758">
+      <stop stop-color="#78d8fb"/>
+      <stop offset="1" stop-color="#60b9fc"/>
+    </linearGradient>
+    <linearGradient id="finInset" gradientUnits="userSpaceOnUse" x1="429" y1="312" x2="685" y2="363">
+      <stop stop-color="#4cb1fc"/>
+      <stop offset="1" stop-color="#469ffc"/>
+    </linearGradient>
+    <linearGradient id="pink" gradientUnits="userSpaceOnUse" x1="549" y1="734" x2="556" y2="945">
+      <stop stop-color="#fed3da"/>
+      <stop offset="1" stop-color="#ffe6e7"/>
+    </linearGradient>
+    <linearGradient id="pinkFold" gradientUnits="userSpaceOnUse" x1="288" y1="694" x2="540" y2="938">
+      <stop stop-color="#fbd0d7"/>
+      <stop offset="1" stop-color="#ffdadf"/>
+    </linearGradient>
+    <linearGradient id="rightPink" gradientUnits="userSpaceOnUse" x1="1037" y1="524" x2="1067" y2="809">
+      <stop stop-color="#ffdce0"/>
+      <stop offset="1" stop-color="#ffe8e9"/>
+    </linearGradient>
+    <linearGradient id="rightPinkFold" gradientUnits="userSpaceOnUse" x1="1181" y1="355" x2="947" y2="746">
+      <stop stop-color="#ffdce2"/>
+      <stop offset="1" stop-color="#fcd0d7"/>
+    </linearGradient>
+    <linearGradient id="tail" gradientUnits="userSpaceOnUse" x1="856" y1="932" x2="731" y2="1122">
+      <stop stop-color="#404efd"/>
+      <stop offset=".48" stop-color="#5974fd"/>
+      <stop offset=".8" stop-color="#879aff"/>
+      <stop offset="1" stop-color="#6680fb"/>
+    </linearGradient>
+    <linearGradient id="eyes" gradientUnits="userSpaceOnUse" x1="601" y1="340" x2="628" y2="490">
+      <stop stop-color="#0d1536"/>
+      <stop offset="1" stop-color="#080e25"/>
+    </linearGradient>
+    <path id="outline" d="M390 466 C373 420 362 377 372 339 C378 315 391 293 406 283 C418 275 430 280 440 290 C458 307 455 330 461 350 C466 369 478 380 495 379 C504 379 508 375 516 370 C544 350 571 341 599 333 C615 321 621 307 614 293 C606 277 582 258 573 244 C560 225 567 210 583 204 C605 195 631 204 650 213 C694 232 728 272 759 315 C786 335 815 344 852 345 C919 347 974 320 1019 277 C1053 245 1079 203 1109 201 C1151 196 1178 234 1191 272 C1207 317 1200 353 1200 385 C1199 420 1187 459 1171 493 C1155 535 1144 577 1120 618 C1090 673 1055 713 1015 753 C967 802 915 846 861 909 C834 941 795 960 754 944 C722 933 699 930 671 934 C619 940 591 943 548 937 C447 924 351 878 261 838 C223 820 192 810 158 806 C125 801 101 802 81 784 C53 762 45 738 51 708 C59 666 94 632 135 613 C203 583 283 583 340 542 C370 520 389 496 390 466 Z"/>
+    <clipPath id="bodyClip"><use href="#outline"/></clipPath>
+  </defs>
+  <path id="curled-tail" fill="url(#tail)" d="M754 943 C779 969 789 1000 777 1033 C765 1064 746 1081 716 1091 C698 1097 681 1103 682 1117 C684 1137 718 1129 738 1122 C804 1097 839 1043 852 987 C858 961 860 935 861 907 Z"/>
+  <use href="#outline" fill="url(#body)"/>
+  <g clip-path="url(#bodyClip)">
+    <path id="left-wing" fill="url(#wing)" d="M390 466 C412 554 474 615 539 687 C601 755 651 825 695 894 L775 966 L38 879 L22 554 Z"/>
+    <path id="left-wing-tip" fill="url(#leftTip)" d="M390 461 C405 544 355 618 285 659 C219 699 157 699 91 773 L64 799 L15 748 L26 602 L339 498 Z"/>
+    <path id="right-wing" fill="url(#rightWing)" d="M760 315 C825 384 882 446 908 536 C937 633 930 719 900 807 C887 847 873 884 861 909 L1127 760 L1230 439 L1217 164 L1047 160 Z"/>
+    <path id="right-wing-tip" fill="url(#rightTip)" d="M760 315 C825 393 903 446 1003 446 C1116 449 1189 400 1201 322 L1222 198 L1091 145 L845 276 Z"/>
+    <path id="left-underside" fill="url(#pink)" d="M80 784 C106 740 172 710 241 710 C350 706 462 762 553 808 C604 834 650 861 695 894 C720 912 738 928 757 945 L745 984 L39 970 Z"/>
+    <path id="left-underside-fold" fill="url(#pinkFold)" d="M80 784 C106 740 172 710 241 710 C350 706 462 762 553 808 C572 818 590 828 608 838 C531 815 481 815 429 823 C368 831 316 842 259 835 C184 829 115 811 80 784 Z"/>
+    <path id="right-underside" fill="url(#rightPink)" d="M1200 324 C1191 406 1140 449 1083 493 C1003 555 957 623 932 697 C909 766 887 849 861 909 L963 902 L1227 644 Z"/>
+    <path id="right-underside-fold" fill="url(#rightPinkFold)" d="M1200 324 C1191 406 1140 449 1083 493 C1003 555 957 623 932 697 C970 636 1013 606 1067 570 C1136 525 1172 490 1189 429 C1200 391 1203 353 1200 324 Z"/>
+    <path id="left-head-fin-fold" fill="url(#finInset)" d="M432 283 C459 299 454 330 461 350 C466 369 478 380 495 379 C504 379 509 375 516 370 L457 422 C437 442 420 412 419 390 C418 366 433 348 441 328 C449 309 445 295 432 283 Z"/>
+    <path id="right-head-fin-fold" fill="url(#finInset)" d="M568 232 C581 251 602 257 626 261 C654 266 677 283 684 302 C688 313 684 321 673 323 C646 327 623 327 599 333 C615 321 621 307 614 293 C606 277 582 258 573 244 Z"/>
+  </g>
+  <g id="face">
+    <ellipse id="left-eye" cx="502" cy="459.5" rx="26.7" ry="31.4" transform="rotate(14 502 459.5)" fill="url(#eyes)"/>
+    <ellipse id="right-eye" cx="721.8" cy="365.8" rx="32.6" ry="23.6" transform="rotate(34 721.8 365.8)" fill="url(#eyes)"/>
+    <ellipse cx="502.2" cy="440.3" rx="6.8" ry="6.1" fill="#fffaff"/>
+    <ellipse cx="713.2" cy="350.8" rx="6.3" ry="5.7" fill="#fffaff"/>
+  </g>
+</svg>
