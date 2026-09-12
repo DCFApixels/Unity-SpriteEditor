@@ -67,4 +67,47 @@ Check(Image(bounds) == fitted, "Degenerate area does not change the view");
 Check(Image(new UnityEngine.Rect(0, 0, 0, 0)).size == UnityEngine.Vector2.zero, "Zero-size viewport stays finite");
 Check(Image(new UnityEngine.Rect(0, 0, float.NaN, float.NaN)) == UnityEngine.Rect.zero,
     "Unresolved layout does not write non-finite image geometry");
+UnityEngine.Vector2 Map(string method, UnityEngine.Vector2 point) =>
+    (UnityEngine.Vector2)type.GetMethod(method, flags).Invoke(viewport, new object[] { bounds, point });
+float Rotation() => (float)type.GetProperty("Rotation", flags).GetValue(viewport);
+foreach (float angle in new[] { 0f, 17f, 45f, 90f, -90f, 179f, -178f })
+{
+    Call("Reset");
+    Call("SetRotation", angle, false);
+    var before = Image(bounds);
+    Check(before == fitted, "Rotation leaves the canonical image rect untouched");
+    Check(Close(Map("ToCanvas", Map("ToView", anchor)), anchor), "Pointer mapping round-trips");
+    var pixel = UV(before, Map("ToCanvas", anchor));
+    Call("ZoomAt", bounds, dimensions, before, anchor, fittedScale * 1.7f);
+    Check(Close(UV(Image(bounds), Map("ToCanvas", anchor)), pixel), "Rotated zoom preserves the anchor pixel");
+    var beforePan = Map("ToView", Image(bounds).position);
+    var delta = new UnityEngine.Vector2(37, -21);
+    Call("Pan", bounds, dimensions, Image(bounds), delta);
+    Check(Close(Map("ToView", Image(bounds).position), beforePan + delta), "Rotated pan follows the screen delta");
+    var framePixel = UV(Image(bounds), Map("ToCanvas", selection.center));
+    Call("Frame", bounds, dimensions, Image(bounds), selection);
+    Check(Close(UV(Image(bounds), bounds.center), framePixel), "Rotated box zoom centers its selected pixel");
+    var visible = (UnityEngine.Rect)type.GetMethod("VisibleCanvasBounds", flags).Invoke(viewport, new object[] { bounds });
+    foreach (var corner in new[] { bounds.min, bounds.max,
+        new UnityEngine.Vector2(bounds.xMax, bounds.yMin), new UnityEngine.Vector2(bounds.xMin, bounds.yMax) })
+    {
+        var p = Map("ToCanvas", corner);
+        Check(p.x >= visible.xMin - .001f && p.x <= visible.xMax + .001f &&
+            p.y >= visible.yMin - .001f && p.y <= visible.yMax + .001f, "Visible tile range covers every rotated corner");
+    }
+    var preserved = Image(bounds);
+    Call("SetRotation", 0f, false);
+    Check(Image(bounds) == preserved, "Angle-only reset preserves zoom and pan");
+}
+Call("SetRotation", 88f, true);
+Check(Rotation() == 90f, "Light snapping catches right angles");
+Call("SetRotation", 88f, false);
+Check(Rotation() == 88f, "Ctrl bypasses snapping");
+Call("SetRotation", 85f, true);
+Check(Rotation() == 85f, "Outside snap tolerance rotation remains continuous");
+Call("SetRotation", float.NaN, false);
+Call("SetRotation", float.PositiveInfinity, false);
+Check(Rotation() == 85f, "Non-finite rotations are ignored");
+Call("Reset");
+Check(Rotation() == 0f && Image(bounds) == fitted, "Fit resets rotation and framing together");
 return "Preview zoom checks passed: " + checks + ". No assets or GPU resources created.";

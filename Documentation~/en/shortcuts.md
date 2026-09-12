@@ -40,6 +40,7 @@ next_page: "en/automation.md"
 | `Shift` / `Alt` / `Shift+Alt` with selection tools | Add / subtract / intersect. |
 | `Enter` / `Backspace` / `Escape` with Lasso | Close / remove vertex / cancel. |
 | `MMB`-drag / mouse wheel | Pan / zoom with any tool. |
+| `Shift+MMB`-drag | Rotate the view with any tool; `Ctrl` bypasses angle snapping. |
 | `Alt`-click with Zoom | Zoom out. |
 | `Ctrl` while snapping | Bypass snapping. |
 | `Enter` in Transform · `Escape` during a gesture | Exit tool · cancel gesture. |

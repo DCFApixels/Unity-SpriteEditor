@@ -1548,7 +1548,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 else if (IsPreviewZoomEnabled)
                 {
-                    toolkitPreviewFooter.text = "Click zoom in • Alt-click zoom out • Area drag to frame • MMB pan • Wheel zoom • Esc cancel";
+                    toolkitPreviewFooter.text = "Click zoom in • Alt-click zoom out • Drag frame • MMB pan • Shift+MMB rotate • Wheel zoom";
                 }
                 else if (IsPreviewFillEnabled)
                 {
@@ -1728,6 +1728,7 @@ namespace DCFApixels.SpriteEditor
                 return position;
 
             Rect rect = toolkitPreviewCanvas.ImageRect;
+            position = toolkitPreviewCanvas.ToCanvas(position);
             Vector2 anchor = new Vector2(
                 rect.x + paintingAxisAnchor.x * rect.width,
                 rect.y + (1f - paintingAxisAnchor.y) * rect.height);
@@ -1735,10 +1736,10 @@ namespace DCFApixels.SpriteEditor
             if (paintingLockedAxis == 0)
             {
                 if (delta.sqrMagnitude < 4f)
-                    return anchor;
+                    return toolkitPreviewCanvas.ToView(anchor);
                 paintingLockedAxis = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y) ? 1 : 2;
             }
-            return paintingLockedAxis == 1 ? new Vector2(position.x, anchor.y) : new Vector2(anchor.x, position.y);
+            return toolkitPreviewCanvas.ToView(paintingLockedAxis == 1 ? new Vector2(position.x, anchor.y) : new Vector2(anchor.x, position.y));
         }
 
         private void OnPreviewPointerUp(PointerUpEvent evt)
@@ -1777,7 +1778,7 @@ namespace DCFApixels.SpriteEditor
             previewPointerAlt = alt;
             previewPointerInside = toolkitPreviewCanvas != null && toolkitPreviewCanvas.contentRect.Contains(localPosition);
             previewEyedropper?.UpdateCursor(localPosition, alt);
-            bool panning = previewZoomManipulator?.IsPanning ?? false;
+            bool panning = previewZoomManipulator?.IsNavigating ?? false;
             bool visible = IsPreviewPaintTool &&
                            !panning && !alt && previewPointerInside;
             toolkitPreviewCanvas?.SetCursor(
@@ -1787,7 +1788,8 @@ namespace DCFApixels.SpriteEditor
             MouseCursor transformCursor = !panning && previewPointerInside && previewTool == PreviewTool.Transform
                 ? previewTransformManipulator?.GetCursor(localPosition, alt) ?? MouseCursor.Pan
                 : MouseCursor.Pan;
-            toolkitPreviewCanvas?.SetToolCursor(previewTool, visible, panning, transformCursor);
+            toolkitPreviewCanvas?.SetToolCursor(previewTool, visible, panning, transformCursor,
+                previewZoomManipulator?.IsRotating ?? false);
         }
 
         private void RefreshPreviewPointerCursor()
@@ -1795,7 +1797,8 @@ namespace DCFApixels.SpriteEditor
             if (previewPointerInside)
                 UpdatePreviewCursor(previewPointerPosition, previewPointerAlt);
             else
-                toolkitPreviewCanvas?.SetToolCursor(previewTool, false, previewZoomManipulator?.IsPanning ?? false);
+                toolkitPreviewCanvas?.SetToolCursor(previewTool, false, previewZoomManipulator?.IsNavigating ?? false,
+                    rotating: previewZoomManipulator?.IsRotating ?? false);
         }
 
         private void ClearPreviewPointerCursor()
@@ -1969,9 +1972,13 @@ namespace DCFApixels.SpriteEditor
             private bool tiled;
             private bool canvasVisible = true;
             private Rect presentationRect;
+            private float presentedRotation;
 
             public Rect ImageRect { get; private set; }
             public float PixelScale => ImageRect.width / Mathf.Max(1, documentWidth);
+            public Vector2 ToCanvas(Vector2 point) => viewport.ToCanvas(contentRect, point);
+            public Vector2 ToView(Vector2 point) => viewport.ToView(contentRect, point);
+            public Rect VisibleCanvasBounds => viewport.VisibleCanvasBounds(contentRect);
             public event Action ViewChanged;
 
             public SpritePreviewElement(PreviewViewport viewport)
@@ -2099,13 +2106,13 @@ namespace DCFApixels.SpriteEditor
                     size, size));
             }
 
-            public void SetToolCursor(PreviewTool tool, bool hide, bool panning, MouseCursor transformCursor = MouseCursor.Pan)
+            public void SetToolCursor(PreviewTool tool, bool hide, bool panning, MouseCursor transformCursor = MouseCursor.Pan, bool rotating = false)
             {
                 bool transforming = !panning && tool == PreviewTool.Transform;
-                EnableInClassList("sprite-editor-preview-cursor--pan", panning || (transforming && transformCursor == MouseCursor.Pan));
+                EnableInClassList("sprite-editor-preview-cursor--pan", (panning && !rotating) || (transforming && transformCursor == MouseCursor.Pan));
                 EnableInClassList("sprite-editor-preview-cursor--zoom", !panning && tool == PreviewTool.Zoom);
                 EnableInClassList("sprite-editor-preview-cursor--scale", transforming && transformCursor == MouseCursor.ScaleArrow);
-                EnableInClassList("sprite-editor-preview-cursor--rotate", transforming && transformCursor == MouseCursor.RotateArrow);
+                EnableInClassList("sprite-editor-preview-cursor--rotate", rotating || (transforming && transformCursor == MouseCursor.RotateArrow));
                 EnableInClassList("sprite-editor-preview-cursor--move", transforming && transformCursor == MouseCursor.MoveArrow);
                 if (toolCursorHidden == hide) return;
                 toolCursorHidden = hide;
@@ -2226,16 +2233,25 @@ namespace DCFApixels.SpriteEditor
                 UpdateImageLayout(false);
             }
 
+            public void SetViewRotation(float degrees, bool snap = false)
+            {
+                if (!canvasVisible) return;
+                viewport.SetRotation(degrees, snap);
+                UpdateImageLayout();
+            }
+
             private void UpdateImageLayout(bool force)
             {
                 Rect nextRect = viewport.ImageRect(contentRect, new Vector2(documentWidth, documentHeight));
                 Rect nextPresentation = tiled ? contentRect : nextRect;
-                if (!force && nextRect == ImageRect && nextPresentation == presentationRect)
+                if (!force && nextRect == ImageRect && nextPresentation == presentationRect &&
+                    presentedRotation == viewport.Rotation)
                     return;
                 ImageRect = nextRect;
                 presentationRect = nextPresentation;
-                PositionElement(checker, presentationRect);
-                PositionElement(image, ImageRect);
+                presentedRotation = viewport.Rotation;
+                PositionSurface(checker, presentationRect, !tiled);
+                PositionSurface(image, ImageRect, true);
                 PositionElement(tiledImage, contentRect);
                 PositionElement(overlay, contentRect);
                 UpdatePencilCursor();
@@ -2243,6 +2259,15 @@ namespace DCFApixels.SpriteEditor
                 tiledImage.MarkDirtyRepaint();
                 overlay.MarkDirtyRepaint();
                 ViewChanged?.Invoke();
+            }
+
+            private void PositionSurface(VisualElement element, Rect rect, bool rotate)
+            {
+                // Keep the background/logo stationary and rotate only the canvas surfaces.
+                if (rotate) rect.position = ToView(rect.center) - rect.size * 0.5f;
+                PositionElement(element, rect);
+                element.style.rotate = new UnityEngine.UIElements.Rotate(
+                    new Angle(rotate ? viewport.Rotation : 0f, AngleUnit.Degree));
             }
 
             private static void PositionElement(VisualElement element, Rect rect)
@@ -2314,15 +2339,20 @@ namespace DCFApixels.SpriteEditor
                 Rect rect = tiledImage.contentRect;
                 if (!tiled || texture == null || rect.width <= 0f || rect.height <= 0f ||
                     ImageRect.width <= 0f || ImageRect.height <= 0f) return;
-                float left = Mathf.Repeat((contentRect.xMin - ImageRect.xMin) / ImageRect.width, 1f);
-                float top = Mathf.Repeat(1f - (contentRect.yMin - ImageRect.yMin) / ImageRect.height, 1f);
-                float right = left + rect.width / ImageRect.width;
-                float bottom = top - rect.height / ImageRect.height;
+                Vector2 Uv(Vector2 point)
+                {
+                    point = ToCanvas(point + contentRect.position);
+                    return new Vector2((point.x - ImageRect.xMin) / ImageRect.width,
+                        1f - (point.y - ImageRect.yMin) / ImageRect.height);
+                }
+                Vector2 origin = Uv(rect.min);
+                // Rebase all corners together: preserve interpolation across repeated UVs.
+                Vector2 offset = new Vector2(Mathf.Floor(origin.x), Mathf.Floor(origin.y));
                 context.AllocateTempMesh(4, 6, out var vertices, out var indices);
-                vertices[0] = new Vertex { position = new Vector3(rect.xMin, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(left, top) };
-                vertices[1] = new Vertex { position = new Vector3(rect.xMax, rect.yMin, Vertex.nearZ), tint = Color.white, uv = new Vector2(right, top) };
-                vertices[2] = new Vertex { position = new Vector3(rect.xMax, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(right, bottom) };
-                vertices[3] = new Vertex { position = new Vector3(rect.xMin, rect.yMax, Vertex.nearZ), tint = Color.white, uv = new Vector2(left, bottom) };
+                vertices[0] = new Vertex { position = new Vector3(rect.xMin, rect.yMin, Vertex.nearZ), tint = Color.white, uv = origin - offset };
+                vertices[1] = new Vertex { position = new Vector3(rect.xMax, rect.yMin, Vertex.nearZ), tint = Color.white, uv = Uv(new Vector2(rect.xMax, rect.yMin)) - offset };
+                vertices[2] = new Vertex { position = new Vector3(rect.xMax, rect.yMax, Vertex.nearZ), tint = Color.white, uv = Uv(rect.max) - offset };
+                vertices[3] = new Vertex { position = new Vector3(rect.xMin, rect.yMax, Vertex.nearZ), tint = Color.white, uv = Uv(new Vector2(rect.xMin, rect.yMax)) - offset };
                 indices[0] = 0; indices[1] = 1; indices[2] = 2;
                 indices[3] = 0; indices[4] = 2; indices[5] = 3;
 #if UNITY_6000_3_OR_NEWER
@@ -2375,8 +2405,9 @@ namespace DCFApixels.SpriteEditor
                     pencilCursorElement.SetVisible(false);
                     return;
                 }
-                Vector2 documentUv = new Vector2((cursorPosition.x - ImageRect.x) / ImageRect.width,
-                    1f - (cursorPosition.y - ImageRect.y) / ImageRect.height);
+                Vector2 canvasCursor = ToCanvas(cursorPosition);
+                Vector2 documentUv = new Vector2((canvasCursor.x - ImageRect.x) / ImageRect.width,
+                    1f - (canvasCursor.y - ImageRect.y) / ImageRect.height);
                 Vector2 source = TiledCanvasUtility.ToSource(documentUv, transform, documentWidth, documentHeight);
                 if (tiled) source = TiledCanvasUtility.CanonicalSource(source, transform, documentWidth, documentHeight);
                 Vector2 center = PaintStrokeParameters.SnapPencilCenter(source, documentWidth, documentHeight, brushSettings.pencilSize);
@@ -2393,6 +2424,9 @@ namespace DCFApixels.SpriteEditor
                 float px = rect.width / documentWidth, py = rect.height / documentHeight;
                 Vector2 x = new Vector2(cos * px, -sin * py) * transform.scale.x;
                 Vector2 y = new Vector2(-sin * px, -cos * py) * transform.scale.y;
+                screenCenter = ToView(screenCenter + contentRect.position) - contentRect.position;
+                x = viewport.ToViewDelta(x);
+                y = viewport.ToViewDelta(y);
                 pencilCursorElement.SetState(brushSettings.pencilSize, brushSettings.pencilShape,
                     screenCenter, x, y, cursorErase, EditorGUIUtility.pixelsPerPoint);
             }
@@ -2478,11 +2512,11 @@ namespace DCFApixels.SpriteEditor
                 painter.Fill();
             }
 
-            private static void StrokeLine(Painter2D painter, Vector2 from, Vector2 to)
+            private void StrokeLine(Painter2D painter, Vector2 from, Vector2 to)
             {
                 painter.BeginPath();
-                painter.MoveTo(from);
-                painter.LineTo(to);
+                painter.MoveTo(ToView(from + contentRect.position) - contentRect.position);
+                painter.LineTo(ToView(to + contentRect.position) - contentRect.position);
                 painter.Stroke();
             }
 

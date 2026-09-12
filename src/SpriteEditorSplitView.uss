@@ -627,6 +627,16 @@
     -unity-text-align: middle-left;
 }
 
+.sprite-editor-view-field {
+    width: 130px;
+}
+
+.sprite-editor-view-field > .unity-base-field__label {
+    min-width: 0;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
 .sprite-editor-area-overlay {
     position: absolute;
     left: 0;

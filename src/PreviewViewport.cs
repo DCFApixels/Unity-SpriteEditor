@@ -10,6 +10,41 @@ namespace DCFApixels.SpriteEditor
         private bool fit = true;
         private float scale = 1f;
         private Vector2 center = new Vector2(0.5f, 0.5f);
+        private float rotation, cosine = 1f, sine;
+        internal float Rotation => rotation;
+
+        internal void SetRotation(float degrees, bool snap = false)
+        {
+            if (float.IsNaN(degrees) || float.IsInfinity(degrees)) return;
+            if (snap)
+            {
+                float nearest = Mathf.Round(degrees / 90f) * 90f;
+                if (Mathf.Abs(degrees - nearest) <= 3f) degrees = nearest;
+            }
+            rotation = Mathf.Repeat(degrees + 180f, 360f) - 180f;
+            cosine = Mathf.Cos(rotation * Mathf.Deg2Rad);
+            sine = Mathf.Sin(rotation * Mathf.Deg2Rad);
+        }
+
+        // ImageRect and document tools stay in unrotated canvas coordinates.
+        // Only the presentation and the incoming pointer cross this boundary.
+        internal Vector2 ToViewDelta(Vector2 delta) => new Vector2(
+            cosine * delta.x - sine * delta.y, sine * delta.x + cosine * delta.y);
+        internal Vector2 ToCanvasDelta(Vector2 delta) => new Vector2(
+            cosine * delta.x + sine * delta.y, -sine * delta.x + cosine * delta.y);
+        internal Vector2 ToView(Rect viewport, Vector2 point) => viewport.center + ToViewDelta(point - viewport.center);
+        internal Vector2 ToCanvas(Rect viewport, Vector2 point) => viewport.center + ToCanvasDelta(point - viewport.center);
+
+        internal Rect VisibleCanvasBounds(Rect viewport)
+        {
+            Vector2 a = ToCanvas(viewport, viewport.min);
+            Vector2 b = ToCanvas(viewport, new Vector2(viewport.xMax, viewport.yMin));
+            Vector2 c = ToCanvas(viewport, viewport.max);
+            Vector2 d = ToCanvas(viewport, new Vector2(viewport.xMin, viewport.yMax));
+            Vector2 min = Vector2.Min(Vector2.Min(a, b), Vector2.Min(c, d));
+            Vector2 max = Vector2.Max(Vector2.Max(a, b), Vector2.Max(c, d));
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        }
 
         internal static float WheelScale(float currentScale, float delta)
         {
@@ -23,6 +58,7 @@ namespace DCFApixels.SpriteEditor
             fit = true;
             scale = 1f;
             center = new Vector2(0.5f, 0.5f);
+            SetRotation(0f);
         }
 
         internal Rect ImageRect(Rect viewport, Vector2 dimensions)
@@ -40,6 +76,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f ||
                 float.IsNaN(nextScale) || float.IsInfinity(nextScale)) return;
+            anchor = ToCanvas(viewport, anchor);
             Vector2 uv = new Vector2((anchor.x - current.x) / current.width, (anchor.y - current.y) / current.height);
             scale = Mathf.Clamp(nextScale, MinimumScale, MaximumScale);
             Vector2 size = dimensions * scale;
@@ -51,8 +88,9 @@ namespace DCFApixels.SpriteEditor
         {
             if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f ||
                 selection.width < 4f || selection.height < 4f) return;
-            center = new Vector2((selection.center.x - current.x) / current.width,
-                (selection.center.y - current.y) / current.height);
+            Vector2 selectionCenter = ToCanvas(viewport, selection.center);
+            center = new Vector2((selectionCenter.x - current.x) / current.width,
+                (selectionCenter.y - current.y) / current.height);
             float ratio = Mathf.Min(Mathf.Max(1f, viewport.width - 8f) / selection.width,
                 Mathf.Max(1f, viewport.height - 8f) / selection.height);
             scale = Mathf.Clamp(current.width / dimensions.x * ratio, MinimumScale, MaximumScale);
@@ -63,6 +101,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (!Valid(viewport, dimensions) || current.width <= 0f || current.height <= 0f) return;
             ZoomAt(viewport, dimensions, current, viewport.center, current.width / dimensions.x);
+            delta = ToCanvasDelta(delta);
             center -= new Vector2(delta.x / (dimensions.x * scale), delta.y / (dimensions.y * scale));
         }
 

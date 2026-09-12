@@ -33,6 +33,6 @@ namespace DCFApixels.SpriteEditor
 
         private bool PreviewContainsPaintPoint(Vector2 position) => toolkitPreviewCanvas != null &&
             toolkitPreviewCanvas.contentRect.Contains(position) &&
-            (tiledPreview || toolkitPreviewCanvas.ImageRect.Contains(position));
+            (tiledPreview || toolkitPreviewCanvas.ImageRect.Contains(toolkitPreviewCanvas.ToCanvas(position)));
     }
 }

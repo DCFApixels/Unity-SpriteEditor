@@ -39,6 +39,7 @@ namespace DCFApixels.SpriteEditor
             private Vector2 CanvasPoint(Vector2 point)
             {
                 Rect image = owner.toolkitPreviewCanvas.ImageRect;
+                point = owner.toolkitPreviewCanvas.ToCanvas(point);
                 return new Vector2((point.x - image.x) / Mathf.Max(.0001f, image.width) * owner.compositor.width,
                     (1f - (point.y - image.y) / Mathf.Max(.0001f, image.height)) * owner.compositor.height);
             }
@@ -72,7 +73,7 @@ namespace DCFApixels.SpriteEditor
             private void Move(PointerMoveEvent evt)
             {
                 if (!owner.IsAreaSelectionTool || !HasGesture || owner.compositor == null ||
-                    (owner.previewZoomManipulator?.IsPanning ?? false)) return;
+                    (owner.previewZoomManipulator?.IsNavigating ?? false)) return;
                 if (RectangleDragging && (evt.pointerId != pointer || (evt.pressedButtons & 1) == 0)) { Cancel(); return; }
                 Current = CanvasPoint(evt.localPosition);
                 owner.areaSelectionOverlay?.MarkDirtyRepaint();
@@ -187,9 +188,9 @@ namespace DCFApixels.SpriteEditor
                 }
                 return true;
             }
-            private Vector2 PreviewPoint(Vector2 canvas, Rect image) => new Vector2(
+            private Vector2 PreviewPoint(Vector2 canvas, Rect image) => owner.toolkitPreviewCanvas.ToView(new Vector2(
                 image.x + canvas.x * image.width / owner.compositor.width,
-                image.yMax - canvas.y * image.height / owner.compositor.height);
+                image.yMax - canvas.y * image.height / owner.compositor.height));
             private void AddVisible(Vector2 a, Vector2 b)
             {
                 Rect bounds = contentRect;
@@ -216,10 +217,11 @@ namespace DCFApixels.SpriteEditor
                 int left = 0, right = 0, top = 0, bottom = 0;
                 if (owner.tiledPreview)
                 {
-                    left = Mathf.FloorToInt((contentRect.xMin - image.xMax) / image.width) + 1;
-                    right = Mathf.CeilToInt((contentRect.xMax - image.xMin) / image.width) - 1;
-                    top = Mathf.FloorToInt((contentRect.yMin - image.yMax) / image.height) + 1;
-                    bottom = Mathf.CeilToInt((contentRect.yMax - image.yMin) / image.height) - 1;
+                    Rect bounds = owner.toolkitPreviewCanvas.VisibleCanvasBounds;
+                    left = Mathf.FloorToInt((bounds.xMin - image.xMax) / image.width) + 1;
+                    right = Mathf.CeilToInt((bounds.xMax - image.xMin) / image.width) - 1;
+                    top = Mathf.FloorToInt((bounds.yMin - image.yMax) / image.height) + 1;
+                    bottom = Mathf.CeilToInt((bounds.yMax - image.yMin) / image.height) - 1;
                 }
                 int skip = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt((right - left + 1f) * (bottom - top + 1f) / 256f)));
                 for (int y = top; y <= bottom && visibleEdges.Count < 16384; y += skip)
@@ -236,8 +238,10 @@ namespace DCFApixels.SpriteEditor
                 if (gesture != null && gesture.RectangleDragging)
                 {
                     Vector2 a = PreviewPoint(gesture.Start, image), b = PreviewPoint(gesture.Current, image);
-                    AddVisible(a, new Vector2(b.x, a.y)); AddVisible(new Vector2(b.x, a.y), b);
-                    AddVisible(b, new Vector2(a.x, b.y)); AddVisible(new Vector2(a.x, b.y), a);
+                    Vector2 c = PreviewPoint(new Vector2(gesture.Current.x, gesture.Start.y), image);
+                    Vector2 d = PreviewPoint(new Vector2(gesture.Start.x, gesture.Current.y), image);
+                    AddVisible(a, c); AddVisible(c, b);
+                    AddVisible(b, d); AddVisible(d, a);
                 }
                 else if (gesture != null && gesture.Vertices.Count > 0)
                 {

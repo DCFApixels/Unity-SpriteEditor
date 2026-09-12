@@ -358,6 +358,7 @@ namespace DCFApixels.SpriteEditor
             internal MouseCursor GetCursor(Vector2 point, bool alt)
             {
                 if (!owner.IsPreviewTransformEnabled || (alt && !IsDragging)) return MouseCursor.Pan;
+                point = owner.toolkitPreviewCanvas.ToCanvas(point);
                 Rect rect = owner.toolkitPreviewCanvas.ImageRect;
                 if (rect.width <= 0f || rect.height <= 0f) return MouseCursor.Pan;
                 int hit = IsDragging ? handle : HitTest(point, owner.CurrentPreviewTransform, rect,
@@ -376,7 +377,8 @@ namespace DCFApixels.SpriteEditor
                     return;
                 Layer selected = owner.GetSelectedLayer();
                 Vector2 dimensions = new Vector2(owner.compositor.width, owner.compositor.height);
-                int hit = HitTest(evt.localPosition, owner.CurrentPreviewTransform, rect, dimensions, owner.PreviewFXParameter == null);
+                Vector2 canvasPoint = owner.toolkitPreviewCanvas.ToCanvas(evt.localPosition);
+                int hit = HitTest(canvasPoint, owner.CurrentPreviewTransform, rect, dimensions, owner.PreviewFXParameter == null);
                 if (hit < 0)
                     return;
                 owner.Focus();
@@ -389,7 +391,7 @@ namespace DCFApixels.SpriteEditor
                 size = dimensions;
                 handle = hit;
                 gestureImageRect = rect;
-                pointerStart = ToDocument(evt.localPosition, rect, size);
+                pointerStart = ToDocument(canvasPoint, rect, size);
                 lastPointerPosition = evt.localPosition;
                 pointerId = evt.pointerId;
                 undoGroup = -1;
@@ -512,6 +514,7 @@ namespace DCFApixels.SpriteEditor
                 if (!IsDragging)
                     return;
                 lastPointerPosition = point;
+                point = owner.toolkitPreviewCanvas.ToCanvas(point);
                 Vector2 current = ToDocument(point, gestureImageRect, size);
                 Vector2 delta = current - pointerStart;
                 if (undoGroup < 0 && delta.sqrMagnitude < 0.000001f)
@@ -689,20 +692,22 @@ namespace DCFApixels.SpriteEditor
                 TextureTransform transform = owner.CurrentPreviewTransform;
                 bool fxTransform = owner.PreviewFXParameter != null;
                 Vector2 dimensions = new Vector2(owner.compositor.width, owner.compositor.height);
+                Vector2 ViewPoint(Vector2 pixels) => owner.toolkitPreviewCanvas.ToView(ToPreview(pixels, rect, dimensions));
+                Vector2 rotationHandle = owner.toolkitPreviewCanvas.ToView(RotationHandle(transform, rect, dimensions));
                 Painter2D painter = context.painter2D;
                 for (int pass = 0; pass < 2; pass++)
                 {
                     painter.lineWidth = pass == 0 ? 3f : 1f;
                     painter.strokeColor = pass == 0 ? new Color(0f, 0f, 0f, 0.85f) : fxTransform ? new Color(0.35f, 1f, 0.5f) : new Color(0.35f, 0.75f, 1f);
                     painter.BeginPath();
-                    painter.MoveTo(ToPreview(TransformPoint(Handles[0], transform, dimensions), rect, dimensions));
+                    painter.MoveTo(ViewPoint(TransformPoint(Handles[0], transform, dimensions)));
                     for (int i = 2; i < Handles.Length; i += 2)
-                        painter.LineTo(ToPreview(TransformPoint(Handles[i], transform, dimensions), rect, dimensions));
+                        painter.LineTo(ViewPoint(TransformPoint(Handles[i], transform, dimensions)));
                     painter.ClosePath();
                     painter.Stroke();
                     painter.BeginPath();
-                    painter.MoveTo(ToPreview(TransformPoint(Handles[5], transform, dimensions), rect, dimensions));
-                    painter.LineTo(RotationHandle(transform, rect, dimensions));
+                    painter.MoveTo(ViewPoint(TransformPoint(Handles[5], transform, dimensions)));
+                    painter.LineTo(rotationHandle);
                     painter.Stroke();
                 }
                 painter.lineWidth = 1f;
@@ -710,7 +715,7 @@ namespace DCFApixels.SpriteEditor
                 painter.fillColor = fxTransform ? new Color(0.35f, 1f, 0.5f) : Color.white;
                 for (int i = 0; i < Handles.Length; i++)
                 {
-                    Vector2 p = ToPreview(TransformPoint(Handles[i], transform, dimensions), rect, dimensions);
+                    Vector2 p = ViewPoint(TransformPoint(Handles[i], transform, dimensions));
                     painter.BeginPath();
                     painter.MoveTo(p + new Vector2(-3f, -3f));
                     painter.LineTo(p + new Vector2(3f, -3f));
@@ -721,11 +726,11 @@ namespace DCFApixels.SpriteEditor
                     painter.Stroke();
                 }
                 painter.BeginPath();
-                painter.Arc(RotationHandle(transform, rect, dimensions), 4f, Angle.Degrees(0f), Angle.Degrees(360f), ArcDirection.Clockwise);
+                painter.Arc(rotationHandle, 4f, Angle.Degrees(0f), Angle.Degrees(360f), ArcDirection.Clockwise);
                 painter.Fill();
                 painter.Stroke();
                 if (fxTransform) return;
-                Vector2 center = ToPreview(Vector2.Scale(transform.pivot, dimensions) + transform.position, rect, dimensions);
+                Vector2 center = ViewPoint(Vector2.Scale(transform.pivot, dimensions) + transform.position);
                 for (int pass = 0; pass < 2; pass++)
                 {
                     painter.lineWidth = pass == 0 ? 3f : 1f;

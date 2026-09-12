@@ -17,9 +17,14 @@ Changing the view does not resize the document.
 ## Move around
 
 - Hold the mouse wheel and drag to pan.
+- Hold `Shift` and drag with the mouse wheel pressed to rotate the view with any tool. Rotation lightly snaps to 90° steps; hold `Ctrl` to bypass snapping.
 - Scroll to zoom around the pointer with any tool.
 - With **Zoom** (`Z`), click to zoom in, `Alt`-click to zoom out, or drag a rectangle around the area you want to inspect.
-- **Fit** shows the whole canvas; **100%** is useful for checking pixel detail.
+- **Fit** shows the whole canvas upright; **100%** is useful for checking pixel detail.
+- Enter a precise percentage in **Zoom %**, then press Enter or leave the field. The center of the view and its rotation stay in place.
+- Enter an exact angle in **Zoom → Angle °** and press Enter (or leave the field) to apply it without snapping. **0°** resets rotation without changing zoom or pan.
+
+View rotation does not rotate the layers or affect saving and export.
 
 Turn on **Tiled** to see repeated copies of the image and paint across its edges.
 See [seamless painting](symmetry.md).

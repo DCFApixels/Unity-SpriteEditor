@@ -608,6 +608,7 @@ namespace DCFApixels.SpriteEditor
             if (imageRect.width <= 0f || imageRect.height <= 0f || layer == null)
                 return false;
 
+            if (toolkitPreviewCanvas != null) mousePosition = toolkitPreviewCanvas.ToCanvas(mousePosition);
             Vector2 documentUv = new Vector2(
                 (mousePosition.x - imageRect.x) / imageRect.width,
                 1f - (mousePosition.y - imageRect.y) / imageRect.height);

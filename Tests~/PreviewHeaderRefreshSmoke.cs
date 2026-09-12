@@ -21,28 +21,28 @@ try
     windowType.GetMethod("AddPreviewZoomSettings", Hidden).Invoke(window, null);
     var bindings = windowType.GetField("toolkitHeaderBindings", Hidden).GetValue(window);
     bindings.GetType().GetMethod("Add").Invoke(bindings, new object[] { (Action)(() => fullRefreshes++) });
-    var label = (UnityEngine.UIElements.Label)windowType.GetField("previewZoomPercent", Hidden).GetValue(window);
+    var field = (UnityEngine.UIElements.FloatField)windowType.GetField("previewZoomPercent", Hidden).GetValue(window);
     var imageRect = canvasType.GetProperty("ImageRect");
     var changed = (Action)canvasType.GetField("ViewChanged", Hidden).GetValue(canvas);
     canvasType.GetField("documentWidth", Hidden).SetValue(canvas, 100);
     imageRect.GetSetMethod(true).Invoke(canvas, new object[] { new Rect(0, 0, 200, 200) });
     changed();
-    Check(label.text == "200%", "Viewport notifications refresh the zoom percentage");
+    Check(field.value == 200f && field.isDelayed, "Viewport notifications refresh the editable zoom percentage");
     Check(fullRefreshes == 0, "Zoom does not refresh unrelated header bindings");
-    string previousText = label.text;
+    string previousText = field.text;
     imageRect.GetSetMethod(true).Invoke(canvas, new object[] { new Rect(40, 20, 200, 200) });
     changed();
-    Check(ReferenceEquals(previousText, label.text), "Panning at the same scale keeps the existing label string");
+    Check(ReferenceEquals(previousText, field.text), "Panning at the same scale leaves the input text untouched");
     Check(fullRefreshes == 0, "Panning does not refresh unrelated header bindings");
     canvasType.GetField("documentWidth", Hidden).SetValue(canvas, 200);
     bindings.GetType().GetMethod("Refresh").Invoke(bindings, new object[] { false });
-    Check(label.text == "100%" && fullRefreshes == 1,
+    Check(field.value == 100f && fullRefreshes == 1,
         "Document updates refresh scale even when the image rectangle is unchanged");
     bindings.GetType().GetMethod("Clear").Invoke(bindings, null);
     windowType.GetMethod("AddPreviewZoomSettings", Hidden).Invoke(window, null);
     bindings.GetType().GetMethod("Refresh").Invoke(bindings, new object[] { false });
-    var rebuiltLabel = (UnityEngine.UIElements.Label)windowType.GetField("previewZoomPercent", Hidden).GetValue(window);
-    Check(!ReferenceEquals(label, rebuiltLabel) && rebuiltLabel.text == "100%",
+    var rebuiltField = (UnityEngine.UIElements.FloatField)windowType.GetField("previewZoomPercent", Hidden).GetValue(window);
+    Check(!ReferenceEquals(field, rebuiltField) && rebuiltField.value == 100f,
         "Rebuilt headers initialize their readout at unchanged scale");
 }
 finally

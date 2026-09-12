@@ -8,20 +8,26 @@ namespace DCFApixels.SpriteEditor
     {
         [NonSerialized] private PreviewViewport previewViewport = new PreviewViewport();
         private PreviewZoomManipulator previewZoomManipulator;
-        private Label previewZoomPercent;
+        private FloatField previewZoomPercent;
+        private FloatField previewRotationField;
+        private Button previewRotationReset;
         private float displayedPreviewScale = float.NaN;
+        private float displayedPreviewRotation = float.NaN;
         private bool IsPreviewZoomEnabled => previewTool == PreviewTool.Zoom && compositor != null;
 
         private void BuildPreviewZoomTool()
         {
             previewZoomManipulator = new PreviewZoomManipulator(this);
             toolkitPreviewCanvas.AddManipulator(previewZoomManipulator);
+            float lastPixelScale = toolkitPreviewCanvas.PixelScale;
             toolkitPreviewCanvas.ViewChanged += () =>
             {
+                bool scaleChanged = lastPixelScale != toolkitPreviewCanvas.PixelScale;
+                lastPixelScale = toolkitPreviewCanvas.PixelScale;
                 RefreshPreviewZoomReadout();
                 RefreshPreviewTransformTool();
                 RefreshPreviewPointerCursor();
-                if (postFxSettings != null && postFxSettings.linkDistanceToZoom) postFxDirty = true;
+                if (scaleChanged && postFxSettings != null && postFxSettings.linkDistanceToZoom) postFxDirty = true;
             };
         }
 
@@ -30,14 +36,62 @@ namespace DCFApixels.SpriteEditor
             VisualElement row = SpriteEditorUI.CreateToolbar();
             row.AddToClassList("sprite-editor-zoom-settings");
             BindPreviewSettingsRow(row, PreviewTool.Zoom);
-            previewZoomPercent = new Label();
+            previewZoomPercent = new FloatField("Zoom %")
+            {
+                isDelayed = true,
+                tooltip = "Preview scale in percent. Zoom around the center of the view without changing its rotation."
+            };
             displayedPreviewScale = float.NaN;
+            displayedPreviewRotation = float.NaN;
             previewZoomPercent.AddToClassList("sprite-editor-zoom-percent");
+            previewZoomPercent.AddToClassList("sprite-editor-view-field");
+            previewZoomPercent.RegisterValueChangedCallback(evt =>
+            {
+                SetPreviewZoomPercent(evt.newValue);
+                previewZoomPercent.SetValueWithoutNotify(toolkitPreviewCanvas.PixelScale * 100f);
+            });
             toolkitHeaderBindings.Add(RefreshPreviewZoomReadout);
             row.Add(previewZoomPercent);
             row.Add(SpriteEditorUI.CreateButton("Fit", () => ChangePreviewZoom(true)));
             row.Add(SpriteEditorUI.CreateButton("100%", () => ChangePreviewZoom(false)));
+            previewRotationField = new FloatField("Angle °")
+            {
+                isDelayed = true,
+                tooltip = "View rotation in degrees. Enter an exact angle; no snapping is applied."
+            };
+            previewRotationField.AddToClassList("sprite-editor-view-field");
+            previewRotationField.RegisterValueChangedCallback(evt =>
+            {
+                SetPreviewRotation(evt.newValue);
+                previewRotationField.SetValueWithoutNotify(previewViewport.Rotation);
+            });
+            row.Add(previewRotationField);
+            previewRotationReset = SpriteEditorUI.CreateButton("0°", () =>
+            {
+                SetPreviewRotation(0f);
+                toolkitPreviewCanvas.Focus();
+            });
+            previewRotationReset.tooltip = "Reset view rotation to 0°.";
+            row.Add(previewRotationReset);
             toolkitPreviewHeader.Add(row);
+        }
+
+        private void SetPreviewZoomPercent(float percent)
+        {
+            if (!HasPreviewLayers || percent <= 0f || float.IsNaN(percent) || float.IsInfinity(percent)) return;
+            CancelPreviewZoomGesture();
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            toolkitPreviewCanvas.ZoomAt(toolkitPreviewCanvas.contentRect.center, percent / 100f);
+        }
+
+        private void SetPreviewRotation(float degrees)
+        {
+            if (!HasPreviewLayers || float.IsNaN(degrees) || float.IsInfinity(degrees)) return;
+            CancelPreviewZoomGesture();
+            FinishPreviewTransform();
+            FinishPaintingStroke();
+            toolkitPreviewCanvas.SetViewRotation(degrees, snap: false);
         }
 
         private void RefreshPreviewZoomReadout()
@@ -45,10 +99,21 @@ namespace DCFApixels.SpriteEditor
             if (previewZoomPercent == null || toolkitPreviewCanvas == null)
                 return;
             float scale = toolkitPreviewCanvas.PixelScale;
+            if (previewRotationField != null)
+            {
+                if (displayedPreviewRotation != previewViewport.Rotation)
+                {
+                    displayedPreviewRotation = previewViewport.Rotation;
+                    previewRotationField.SetValueWithoutNotify(displayedPreviewRotation);
+                }
+                previewRotationField.SetEnabled(HasPreviewLayers);
+            }
+            previewRotationReset?.SetEnabled(HasPreviewLayers && previewViewport.Rotation != 0f);
+            previewZoomPercent.SetEnabled(HasPreviewLayers);
             if (scale == displayedPreviewScale)
                 return;
             displayedPreviewScale = scale;
-            previewZoomPercent.text = $"{scale * 100f:0.##}%";
+            previewZoomPercent.SetValueWithoutNotify(scale * 100f);
         }
 
         private void ChangePreviewZoom(bool fit)
@@ -69,11 +134,13 @@ namespace DCFApixels.SpriteEditor
         {
             private readonly TextureCompositorWindow owner;
             private int pointerId = -1;
-            private bool panning, zoomOut;
+            private bool panning, rotating, zoomOut;
+            private float freeRotation;
             private Vector2 start, current;
             private readonly VisualElement selection;
             internal bool IsDragging => pointerId >= 0;
-            internal bool IsPanning => IsDragging && panning;
+            internal bool IsRotating => IsDragging && rotating;
+            internal bool IsNavigating => IsDragging && panning;
 
             internal PreviewZoomManipulator(TextureCompositorWindow owner)
             {
@@ -86,10 +153,10 @@ namespace DCFApixels.SpriteEditor
             protected override void RegisterCallbacksOnTarget()
             {
                 target.Add(selection);
-                target.RegisterCallback<PointerDownEvent>(OnDown);
+                target.RegisterCallback<PointerDownEvent>(OnDown, TrickleDown.TrickleDown);
                 target.RegisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
-                target.RegisterCallback<PointerMoveEvent>(OnMove);
-                target.RegisterCallback<PointerUpEvent>(OnUp);
+                target.RegisterCallback<PointerMoveEvent>(OnMove, TrickleDown.TrickleDown);
+                target.RegisterCallback<PointerUpEvent>(OnUp, TrickleDown.TrickleDown);
                 target.RegisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
                 target.RegisterCallback<PointerCancelEvent>(OnCancel);
                 target.RegisterCallback<DetachFromPanelEvent>(OnDetach);
@@ -99,10 +166,10 @@ namespace DCFApixels.SpriteEditor
             protected override void UnregisterCallbacksFromTarget()
             {
                 Cancel();
-                target.UnregisterCallback<PointerDownEvent>(OnDown);
+                target.UnregisterCallback<PointerDownEvent>(OnDown, TrickleDown.TrickleDown);
                 target.UnregisterCallback<WheelEvent>(OnWheel, TrickleDown.TrickleDown);
-                target.UnregisterCallback<PointerMoveEvent>(OnMove);
-                target.UnregisterCallback<PointerUpEvent>(OnUp);
+                target.UnregisterCallback<PointerMoveEvent>(OnMove, TrickleDown.TrickleDown);
+                target.UnregisterCallback<PointerUpEvent>(OnUp, TrickleDown.TrickleDown);
                 target.UnregisterCallback<PointerCaptureOutEvent>(OnCaptureOut);
                 target.UnregisterCallback<PointerCancelEvent>(OnCancel);
                 target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
@@ -140,10 +207,14 @@ namespace DCFApixels.SpriteEditor
                 owner.CancelPreviewEyedropper();
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
+                if (owner.areaSelectionManipulator?.RectangleDragging == true)
+                    owner.areaSelectionManipulator.Cancel();
                 owner.Focus();
                 target.Focus();
                 start = current = evt.localPosition;
                 panning = evt.button == 2;
+                rotating = panning && evt.shiftKey;
+                freeRotation = owner.previewViewport.Rotation;
                 zoomOut = evt.altKey;
                 pointerId = evt.pointerId;
                 target.CapturePointer(pointerId);
@@ -162,7 +233,7 @@ namespace DCFApixels.SpriteEditor
                 owner.FinishPaintingStroke();
                 SpritePreviewElement canvas = owner.toolkitPreviewCanvas;
                 canvas.ZoomAt(point, PreviewViewport.WheelScale(canvas.PixelScale, evt.delta.y));
-                if (IsPanning) current = point;
+                if (IsNavigating) current = point;
                 owner.UpdatePreviewCursor(point, evt.altKey);
             }
 
@@ -177,7 +248,8 @@ namespace DCFApixels.SpriteEditor
                     return;
                 }
                 Vector2 point = evt.localPosition;
-                if (panning) owner.toolkitPreviewCanvas.Pan(point - current);
+                if (rotating) RotateTo(point, evt.ctrlKey);
+                else if (panning) owner.toolkitPreviewCanvas.Pan(point - current);
                 current = point;
                 owner.UpdatePreviewCursor(point, evt.altKey);
                 selection.MarkDirtyRepaint();
@@ -187,7 +259,8 @@ namespace DCFApixels.SpriteEditor
             private void OnUp(PointerUpEvent evt)
             {
                 if (!IsDragging || evt.pointerId != pointerId || evt.button != (panning ? 2 : 0)) return;
-                if (panning) owner.toolkitPreviewCanvas.Pan((Vector2)evt.localPosition - current);
+                if (rotating) RotateTo(evt.localPosition, evt.ctrlKey);
+                else if (panning) owner.toolkitPreviewCanvas.Pan((Vector2)evt.localPosition - current);
                 current = evt.localPosition;
                 if (!panning)
                 {
@@ -206,6 +279,16 @@ namespace DCFApixels.SpriteEditor
                 Cancel();
                 owner.UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 SpriteEditorUI.ConsumeEvent(evt);
+            }
+
+            private void RotateTo(Vector2 point, bool disableSnap)
+            {
+                Vector2 pivot = target.contentRect.center;
+                Vector2 from = current - pivot, to = point - pivot;
+                // Avoid an unstable angle when the pointer passes through the pivot.
+                if (from.sqrMagnitude >= 144f && to.sqrMagnitude >= 144f)
+                    freeRotation += Vector2.SignedAngle(from, to);
+                owner.toolkitPreviewCanvas.SetViewRotation(freeRotation, !disableSnap);
             }
 
             private Rect SelectionRect()

@@ -121,7 +121,7 @@ namespace DCFApixels.SpriteEditor
             private void Begin(Vector2 screenPoint)
             {
                 if (IsOpen || failedUntilAltReleased || focusedWindow != owner || !owner.CanUsePreviewEyedropper || owner.paintingLayer != null ||
-                    (owner.previewZoomManipulator?.IsPanning ?? false) ||
+                    (owner.previewZoomManipulator?.IsNavigating ?? false) ||
                     (Event.current != null && (Event.current.control || Event.current.command))) return;
                 try
                 {
