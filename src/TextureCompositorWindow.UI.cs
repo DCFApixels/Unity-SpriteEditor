@@ -544,6 +544,7 @@ namespace DCFApixels.SpriteEditor
 
             ClearToolkitDropIndicator();
             toolkitLayerBindings.Clear();
+            toolkitInspectorEffectTarget?.Invalidate();
             toolkitLayerTree.Clear();
             toolkitLayerTree.AddRange(toolkitNextLayerTree);
             toolkitLayerHierarchyRoot.Clear();

@@ -1,8 +1,18 @@
+.sprite-editor-theme {
+    --whimtex-surface: #383838;
+    --whimtex-surface-light: #c4c4c4;
+    --whimtex-header: #454545;
+    --whimtex-header-light: #d0d0d0;
+    --whimtex-icon: #d2d2d2;
+    --whimtex-neutral-33: #333333;
+    --whimtex-hover-overlay: rgba(128, 128, 128, 0.25);
+}
+
 .unity-button.sprite-editor-layer-menu-button,
 .sprite-editor-group-foldout {
     --menu-hover: rgba(255, 255, 255, 0.12);
     --menu-pressed: rgba(255, 255, 255, 0.2);
-    --menu-dot: #d2d2d2;
+    --menu-dot: var(--whimtex-icon);
     flex-direction: column;
     width: 14px;
     min-width: 0;
@@ -22,7 +32,7 @@
 .sprite-editor-group-foldout.sprite-editor-layer-menu-button--light {
     --menu-hover: rgba(0, 0, 0, 0.1);
     --menu-pressed: rgba(0, 0, 0, 0.18);
-    --menu-dot: #333333;
+    --menu-dot: var(--whimtex-neutral-33);
 }
 
 .unity-button.sprite-editor-layer-menu-button:hover,
@@ -58,13 +68,13 @@
     flex-shrink: 0;
     min-height: 24px;
     padding: 0 3px;
-    background-color: #454545;
+    background-color: var(--whimtex-header);
     border-bottom-width: 1px;
     border-bottom-color: rgba(0, 0, 0, 0.4);
 }
 
 .sprite-editor-settings-pane--light .sprite-editor-layer-table-header {
-    background-color: #d0d0d0;
+    background-color: var(--whimtex-header-light);
 }
 
 .sprite-editor-layer-name-cell {
@@ -214,10 +224,7 @@
     display: none;
 }
 
-.sprite-editor-preview-backdrop--hidden {
-    display: none;
-}
-
+.sprite-editor-preview-backdrop--hidden,
 .sprite-editor-post-fx-field--hidden,
 .sprite-editor-preview-image--hidden {
     display: none;
@@ -234,7 +241,7 @@
     flex-shrink: 0;
     align-items: center;
     padding-top: 4px;
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
     border-right-width: 1px;
     border-right-color: #171717;
 }
@@ -245,7 +252,7 @@
 }
 
 .sprite-editor-tools--light {
-    background-color: #c4c4c4;
+    background-color: var(--whimtex-surface-light);
     border-right-color: #858585;
 }
 
@@ -262,15 +269,15 @@
     border-width: 1px;
     border-color: transparent;
     border-radius: 3px;
-    color: #d2d2d2;
+    color: var(--whimtex-icon);
 }
 
 .sprite-editor-tools--light > .unity-button.sprite-editor-tool-button {
-    color: #333333;
+    color: var(--whimtex-neutral-33);
 }
 
 .unity-button.sprite-editor-tool-button:hover {
-    background-color: rgba(128, 128, 128, 0.25);
+    background-color: var(--whimtex-hover-overlay);
 }
 
 .unity-button.sprite-editor-tool-button--selected,
@@ -472,7 +479,7 @@
 }
 
 .unity-button.sprite-editor-brush-edge-mode:hover {
-    background-color: rgba(128, 128, 128, 0.25);
+    background-color: var(--whimtex-hover-overlay);
 }
 
 .sprite-editor-post-fx-drawer {
@@ -480,7 +487,7 @@
     flex-shrink: 1;
     min-width: 0;
     min-height: 0;
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
     border-width: 1px;
     border-color: #191919;
     border-radius: 3px;
@@ -555,14 +562,14 @@
     border-color: #191919;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
     color: #b8b8b8;
     font-size: 18px;
 }
 
 .unity-button.sprite-editor-post-fx-tab:hover {
     color: #66b8ff;
-    background-color: #454545;
+    background-color: var(--whimtex-header);
 }
 
 .unity-button.sprite-editor-channel-button.sprite-editor-post-fx-button {
@@ -602,7 +609,9 @@
     background-color: #f07860;
 }
 
-.sprite-editor-zoom-settings {
+.sprite-editor-zoom-settings,
+.sprite-editor-fill-settings,
+.sprite-editor-transform-settings {
     flex-wrap: wrap;
     flex-shrink: 0;
 }
@@ -647,11 +656,6 @@
     right: 0;
     top: 0;
     bottom: 0;
-}
-
-.sprite-editor-fill-settings {
-    flex-wrap: wrap;
-    flex-shrink: 0;
 }
 
 .sprite-editor-fill-settings > * {
@@ -700,11 +704,6 @@
     display: none;
 }
 
-.sprite-editor-transform-settings {
-    flex-wrap: wrap;
-    flex-shrink: 0;
-}
-
 .sprite-editor-inspector-section.unity-foldout {
     flex-shrink: 0;
     min-width: 0;
@@ -712,7 +711,7 @@
     padding: 0;
     border-top-width: 1px;
     border-top-color: #252525;
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
 }
 
 .sprite-editor-inspector-section > .unity-foldout__toggle {
@@ -752,7 +751,7 @@
 }
 
 .sprite-editor-inspector-section--light.unity-foldout {
-    background-color: #c4c4c4;
+    background-color: var(--whimtex-surface-light);
     border-top-color: #9a9a9a;
 }
 
@@ -804,11 +803,11 @@
 
 .sprite-editor-properties-window {
     padding: 0 0 8px;
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
 }
 
 .sprite-editor-properties-window--light {
-    background-color: #c4c4c4;
+    background-color: var(--whimtex-surface-light);
 }
 
 .sprite-editor-transform-card .unity-vector2-field .unity-composite-field__field-spacer {
@@ -903,7 +902,7 @@
 }
 
 .sprite-editor-layer-row {
-    --layer-row-background: #383838;
+    --layer-row-background: var(--whimtex-surface);
     --layer-row-hover: #404040;
     --layer-row-divider: #242424;
     --layer-row-selected: #2e4766;
@@ -1013,7 +1012,7 @@
     bottom: 14px;
     background-color: rgba(128, 128, 128, 0.08);
     border-width: 1px;
-    border-color: rgba(128, 128, 128, 0.25);
+    border-color: var(--whimtex-hover-overlay);
     border-radius: 2px;
     opacity: 0.6;
 }
@@ -1027,7 +1026,7 @@
     border-width: 1px;
     border-color: rgba(128, 128, 128, 0.35);
     border-radius: 2px;
-    background-color: rgba(128, 128, 128, 0.25);
+    background-color: var(--whimtex-hover-overlay);
 }
 
 .sprite-editor-seamless-edge--left {
@@ -1142,7 +1141,7 @@
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
-    background-color: #333333;
+    background-color: var(--whimtex-neutral-33);
     border-top-width: 1px;
     border-top-color: #121212;
 }
@@ -1204,7 +1203,7 @@
 
 .sprite-editor-settings-pane,
 .sprite-editor-document-header {
-    background-color: #383838;
+    background-color: var(--whimtex-surface);
 }
 
 .sprite-editor-settings-pane--light,
@@ -1230,7 +1229,7 @@
     padding-left: 8px;
     padding-right: 8px;
     -unity-text-align: middle-left;
-    background-color: #454545;
+    background-color: var(--whimtex-header);
     color: #cfcfcf;
     border-bottom-width: 1px;
     border-bottom-color: #171717;
@@ -1239,7 +1238,7 @@
 }
 
 .sprite-editor-pane-header--light {
-    background-color: #d0d0d0;
+    background-color: var(--whimtex-header-light);
     color: #252525;
     border-bottom-color: #858585;
 }
@@ -1275,11 +1274,11 @@
     border-color: #5688b8;
 }
 
-.sprite-editor-effect-target .unity-base-popup-field__arrow {
+.unity-base-popup-field__arrow.sprite-editor-effect-target-arrow {
     display: none;
 }
 
-.sprite-editor-effect-target .unity-base-popup-field__text {
+.unity-base-popup-field__text.sprite-editor-effect-target-text {
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
@@ -1794,9 +1793,7 @@
 .sprite-editor-normal-map-notice:hover {
     opacity: 1;
 }
-.sprite-editor-hidden {
-    display: none;
-}
+.sprite-editor-hidden,
 .sprite-editor-brush-setting--hidden {
     display: none;
 }

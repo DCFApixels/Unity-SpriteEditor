@@ -61,7 +61,7 @@ namespace DCFApixels.SpriteEditor
                 toolkitLayerSettingsScroll.scrollOffset = Vector2.zero;
                 BuildToolkitLayerInspector(toolkitLayerSettingsScroll, selected);
             }
-            toolkitInspectorEffectTarget?.Invalidate();
+            if (forceValues) toolkitInspectorEffectTarget?.Invalidate();
             toolkitInspectorShaderFX?.Refresh();
             toolkitInspectorBindings.Refresh(forceValues);
         }

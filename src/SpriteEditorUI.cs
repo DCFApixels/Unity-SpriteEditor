@@ -28,6 +28,7 @@ namespace DCFApixels.SpriteEditor
 
             if (!root.styleSheets.Contains(splitViewStyles))
                 root.styleSheets.Add(splitViewStyles);
+            root.AddToClassList("sprite-editor-theme");
             return true;
         }
 

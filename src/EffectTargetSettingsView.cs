@@ -40,6 +40,8 @@ namespace DCFApixels.SpriteEditor
             PopupField<string> target = SpriteEditorUI.ConfigureField(
                 new PopupField<string>("Target", new List<string>(effectTargetLabels), selectedIndex));
             target.AddToClassList("sprite-editor-effect-target");
+            target.Q(className: "unity-base-popup-field__arrow")?.AddToClassList("sprite-editor-effect-target-arrow");
+            target.Q(className: "unity-base-popup-field__text")?.AddToClassList("sprite-editor-effect-target-text");
             target.EnableInClassList("sprite-editor-effect-target--light", !EditorGUIUtility.isProSkin);
             VisualElement targetInput = target.Q(className: "unity-base-field__input");
             var preview = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
@@ -94,24 +96,26 @@ namespace DCFApixels.SpriteEditor
                     choicesChanged = target.choices[i] != effectTargetLabels[i];
                 if (choicesChanged)
                     target.choices = new List<string>(effectTargetLabels);
-                status.style.display = DisplayStyle.Flex;
-                status.messageType = HelpBoxMessageType.Info;
+                string message = string.Empty;
+                HelpBoxMessageType messageType = HelpBoxMessageType.Info;
                 if (effect.inputMode == EffectInputMode.Previous)
-                    status.text = "Uses the item directly below this effect. A group is read as the combined alpha of all visible descendants.";
+                    message = "Uses the item directly below this effect. A group is read as the combined alpha of all visible descendants.";
                 else if (string.IsNullOrEmpty(effect.TargetLayerId))
                 {
-                    status.text = "Select a source layer or group for this effect.";
-                    status.messageType = HelpBoxMessageType.Warning;
+                    message = "Select a source layer or group for this effect.";
+                    messageType = HelpBoxMessageType.Warning;
                 }
                 else if (!compositor.IsUsableEffectTarget(effect, effect.TargetLayerId))
                 {
-                    status.text = "The selected target is missing or would create a cyclic effect dependency.";
-                    status.messageType = HelpBoxMessageType.Error;
+                    message = "The selected target is missing or would create a cyclic effect dependency.";
+                    messageType = HelpBoxMessageType.Error;
                 }
-                else if (compositor.FindLayer(effect.TargetLayerId) is GroupLayer)
-                    status.text = "The selected group is read as the combined alpha of all visible descendant layers.";
-                else
-                    status.style.display = DisplayStyle.None;
+                else if (source is GroupLayer)
+                    message = "The selected group is read as the combined alpha of all visible descendant layers.";
+                DisplayStyle display = message.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+                if (status.style.display.value != display) status.style.display = display;
+                if (display != DisplayStyle.None && status.text != message) status.text = message;
+                if (status.messageType != messageType) status.messageType = messageType;
             }
             Refresh();
             bindings.Add(Refresh);

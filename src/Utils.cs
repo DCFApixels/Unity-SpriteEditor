@@ -464,6 +464,7 @@ namespace DCFApixels.SpriteEditor
                 change();
                 compositor.NormalizeModel();
                 compositor.MarkChanged();
+                InvalidateEffectTargetOptions();
             }
             finally
             {

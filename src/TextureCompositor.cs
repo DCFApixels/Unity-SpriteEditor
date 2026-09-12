@@ -269,7 +269,7 @@ namespace DCFApixels.SpriteEditor
             if (consumer == null)
                 return;
 
-            CollectEffectTargetOptions(layers, consumer, 0, targetIds, labels);
+            CollectEffectTargetOptions(layers, consumer, 0, targetIds, labels, new HashSet<Layer>());
         }
 
         internal bool IsUsableEffectTarget(TargetedLayerEffect consumer, string targetId)
@@ -826,7 +826,8 @@ namespace DCFApixels.SpriteEditor
             TargetedLayerEffect consumer,
             int depth,
             List<string> targetIds,
-            List<string> labels)
+            List<string> labels,
+            HashSet<Layer> visited)
         {
             if (sourceLayers == null)
                 return;
@@ -838,7 +839,8 @@ namespace DCFApixels.SpriteEditor
                     continue;
 
                 bool isGroup = candidate is GroupLayer;
-                if (!LayerDependsOn(candidate, consumer, new HashSet<Layer>()))
+                visited.Clear();
+                if (!LayerDependsOn(candidate, consumer, visited))
                 {
                     string candidateName = string.IsNullOrWhiteSpace(candidate.layerName)
                         ? candidate.GetType().Name
@@ -855,7 +857,8 @@ namespace DCFApixels.SpriteEditor
                         consumer,
                         depth + 1,
                         targetIds,
-                        labels);
+                        labels,
+                        visited);
                 }
             }
         }

@@ -1266,6 +1266,7 @@ namespace DCFApixels.SpriteEditor
             if (changedCompositor != compositor)
                 return;
 
+            toolkitInspectorEffectTarget?.Invalidate();
             CancelPreviewEyedropper();
             if (TextureCompositor.IsRefreshingUndo)
             {

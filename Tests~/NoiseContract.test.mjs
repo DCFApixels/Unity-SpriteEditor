@@ -42,7 +42,7 @@ assert.doesNotMatch(ui, /\.Clear\(|\.isDelayed\s*=\s*true/);
 assert.match(ui, /ImmediatePreviewUpdates => true/);
 assert.match(read('src/Utils.cs'), /protected virtual bool ImmediatePreviewUpdates => false/);
 assert.match(read('src/TextureCompositorWindow.cs'), /immediate \|= GetSelectedLayer\(\) is NoiseLayer/);
-assert.match(read('src/SpriteEditorSplitView.uss'), /\.sprite-editor-hidden\s*\{\s*display: none;/);
+assert.match(read('src/SpriteEditorSplitView.uss'), /\.sprite-editor-hidden,\s*\.sprite-editor-brush-setting--hidden\s*\{\s*display: none;/);
 assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /"noise" => new NoiseLayer\(\)/);
 assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /NoiseLayer _ => "noise"/);
 assert.match(read('src/TextureCompositor.Naming.cs'), /case NoiseLayer _: return "Noise"/);

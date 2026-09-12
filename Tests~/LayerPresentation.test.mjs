@@ -47,6 +47,6 @@ assert.match(target, /IsUsableEffectTarget\(effect, source.Id\)/);
 assert.match(target, /DragAndDropVisualMode.Link : DragAndDropVisualMode.Rejected/);
 assert.match(target, /TextureCompositorWindow.ClearDraggedLayerReference\(\)/);
 const styles = read('SpriteEditorSplitView.uss');
-assert.match(styles, /\.sprite-editor-effect-target \.unity-base-popup-field__arrow\s*\{\s*display: none/);
+assert.match(styles, /\.unity-base-popup-field__arrow\.sprite-editor-effect-target-arrow\s*\{\s*display: none/);
 assert.match(styles, /\.sprite-editor-effect-target\.sprite-editor-effect-target--drop > \.unity-base-field__input/);
 console.log('Object-style effect target: presentation, shared thumbnail and preserved selection/drop contracts passed.');
