@@ -10,7 +10,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private bool interactiveEffects;
         internal bool InteractiveEffects => interactiveEffects;
 
-        internal RenderTexture RenderCachedPreview(int maxSize, EffectRenderCache cache, bool interactive, DrawingLayer painting)
+        internal RenderTexture RenderCachedPreview(int maxSize, EffectRenderCache cache, bool interactive, DrawingLayerBehaviour painting)
         {
             var previous = effectCache;
             bool previousQuality = interactiveEffects;
@@ -99,8 +99,8 @@ namespace DCFApixels.SpriteEditor
         {
             if (container == null || index < 0 || index >= container.Count) return null;
             Layer layer = container[index];
-            if (layer == null || !includeDisabled && !layer.enabled || renderStack != null && renderStack.Contains(layer)) return null;
-            if (layer is TargetedLayerEffect && applyTransform && applyModifiers && applyClipping)
+            if (layer?.Behaviour == null || !includeDisabled && !layer.enabled || renderStack != null && renderStack.Contains(layer)) return null;
+            if (layer?.Behaviour is TargetedLayerBehaviour && applyTransform && applyModifiers && applyClipping)
                 return CachedEffectRender(layer, "effect", outputWidth, outputHeight, scaleMultiplier, false,
                     () => RenderStandaloneUncached(container, index, outputWidth, outputHeight, scaleMultiplier,
                         renderStack, applyTransform, applyModifiers, includeDisabled, applyClipping));
@@ -108,10 +108,10 @@ namespace DCFApixels.SpriteEditor
                 renderStack, applyTransform, applyModifiers, includeDisabled, applyClipping);
         }
 
-        private RenderTexture RenderGroupEffectInput(GroupLayer group, int outputWidth, int outputHeight,
+        private RenderTexture RenderGroupEffectInput(Layer group, int outputWidth, int outputHeight,
             float scaleMultiplier, HashSet<Layer> renderStack, bool preserveColor, bool includeDisabled = false)
         {
-            if (group == null || !includeDisabled && !group.enabled || renderStack != null && renderStack.Contains(group)) return null;
+            if (group?.Behaviour == null || !includeDisabled && !group.enabled || renderStack != null && renderStack.Contains(group)) return null;
             bool color = preserveColor || effectCache != null && effectCache.NeedsColor(group);
             RenderTexture result = CachedEffectRender(group, "group", outputWidth, outputHeight, scaleMultiplier, !color,
                 () => RenderGroupEffectInputUncached(group, outputWidth, outputHeight, scaleMultiplier, renderStack,

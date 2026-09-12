@@ -28,7 +28,7 @@ namespace DCFApixels.SpriteEditor
             if (evt.ctrlKey || evt.commandKey || evt.altKey || evt.shiftKey)
                 return false;
             Layer layer = GetSelectedLayer();
-            if (layer == null || layer is PendingLayer || SpriteEditorApi.IsLayerContentLocked(compositor, layer))
+            if (layer == null || layer?.Behaviour is PendingLayerBehaviour || SpriteEditorApi.IsLayerContentLocked(compositor, layer))
                 return false;
             if (evt.keyCode == KeyCode.None && evt.character >= '0' && evt.character <= '9')
             {

@@ -9,7 +9,7 @@ void Check(bool value, string message) { if (!value) throw new System.Exception(
 try
 {
     document.width = document.height = 64;
-    var drawing = new DCFApixels.SpriteEditor.DrawingLayer
+    var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
     {
         brushSize = 16,
         brushHardness = 1,

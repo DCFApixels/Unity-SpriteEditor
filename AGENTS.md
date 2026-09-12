@@ -7,6 +7,11 @@ are compatibility contracts, not branding to rename. The canonical repository is
 
 ## Versioning
 
+Script compilation is allowed only through the connected Unity Editor's own compilation
+pipeline (including Unity CLI/Pipeline commands), targeting the explicit project path.
+Never use standalone MSBuild or `dotnet build` for this Unity project. Run one compilation
+at a time and check its result before requesting another. Player builds require a separate request.
+
 Do not increment the package version when committing or pushing updates unless the user
 explicitly requests a version change. Keep the current version otherwise.
 

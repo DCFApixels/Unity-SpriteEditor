@@ -15,7 +15,6 @@ namespace DCFApixels.SpriteEditor
         public int width = 512;
         public int height = 512;
         [SerializeReference] public List<Layer> layers = new List<Layer>();
-        [SerializeField, HideInInspector] private int nextGroupNumber = 1;
         [SerializeField, HideInInspector] private List<ShaderFX> embeddedShaderFX = new List<ShaderFX>();
 
         internal static event Action<TextureCompositor> Changed;
@@ -36,7 +35,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (layer?.modifiers != null && layer.modifiers.Contains(effect))
                     return true;
-                if (layer is GroupLayer group && ContainsShaderFX(group.layers, effect))
+                if (layer?.AsGroup() is Layer group && ContainsShaderFX(group.layers, effect))
                     return true;
             }
             return false;
@@ -110,6 +109,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (effect == null || effect.EmbeddedOwner != this || embeddedShaderFX.Contains(effect)) return;
             effect.RegisterCreatedCopyUndo(undoName);
+            Undo.RegisterCompleteObjectUndo(this, undoName);
             embeddedShaderFX.Add(effect);
         }
 
@@ -161,7 +161,7 @@ namespace DCFApixels.SpriteEditor
                                 }
                                 layer.modifiers[i] = copy;
                             }
-                    if (layer is GroupLayer group)
+                    if (layer?.AsGroup() is Layer group)
                         CloneIn(group.layers);
                 }
             }
@@ -197,7 +197,7 @@ namespace DCFApixels.SpriteEditor
                 return null;
 
             GetPreviewDimensions(maxSize, out int previewWidth, out int previewHeight, out float scaleMultiplier);
-            if (preserveGroupColor && layer is GroupLayer group)
+            if (preserveGroupColor && layer?.AsGroup() is Layer group)
                 return RenderGroupEffectInput(group, previewWidth, previewHeight, scaleMultiplier,
                     new HashSet<Layer>(), preserveColor: true, includeDisabled: includeDisabled);
             return RenderStandalone(
@@ -224,7 +224,7 @@ namespace DCFApixels.SpriteEditor
             RenderTexture rendered = null;
             try
             {
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     if (IsGroupIsolatedByClipping(group))
                         rendered = RenderClippingSource(container, index, width, height, 1f, new HashSet<Layer>());
@@ -242,7 +242,7 @@ namespace DCFApixels.SpriteEditor
                         rendered = GetClearRenderTexture(width, height);
                 }
                 Texture2D linear = HdrUtility.ReadLinear(rendered);
-                if (layer.colorRange == LayerColorRange.HDR || layer is GroupLayer || layer is DrawingLayer drawing && HdrUtility.IsHdr(drawing.StoredTexture))
+                if (layer.colorRange == LayerColorRange.HDR || layer?.IsGroup == true || layer?.Behaviour is DrawingLayerBehaviour drawing && HdrUtility.IsHdr(drawing.StoredTexture))
                     return linear;
                 try { return HdrUtility.ToLdr(linear); }
                 finally { DestroyImmediate(linear); }
@@ -259,13 +259,13 @@ namespace DCFApixels.SpriteEditor
             return TryFindLayerRecursive(layers, target, out container, out index);
         }
 
-        internal bool TryFindParentGroup(List<Layer> childList, out GroupLayer parent, out List<Layer> parentContainer, out int parentIndex)
+        internal bool TryFindParentGroup(List<Layer> childList, out Layer parent, out List<Layer> parentContainer, out int parentIndex)
         {
             return TryFindParentGroupRecursive(layers, childList, out parent, out parentContainer, out parentIndex);
         }
 
         internal void GetEffectTargetOptions(
-            TargetedLayerEffect consumer,
+            TargetedLayerBehaviour consumer,
             List<string> targetIds,
             List<string> labels)
         {
@@ -282,14 +282,14 @@ namespace DCFApixels.SpriteEditor
             CollectEffectTargetOptions(layers, consumer, 0, targetIds, labels, new HashSet<Layer>());
         }
 
-        internal bool IsUsableEffectTarget(TargetedLayerEffect consumer, string targetId)
+        internal bool IsUsableEffectTarget(TargetedLayerBehaviour consumer, string targetId)
         {
             Layer target = FindLayer(targetId);
-            return target != null && !(target is PendingLayer) && !LayerDependsOn(target, consumer, new HashSet<Layer>());
+            return target?.Behaviour != null && !(target.Behaviour is PendingLayerBehaviour) && !LayerDependsOn(target, consumer, new HashSet<Layer>());
         }
 
         internal bool HasUsableEffectInput(
-            TargetedLayerEffect effect,
+            TargetedLayerBehaviour effect,
             List<Layer> container,
             int index)
         {
@@ -302,7 +302,7 @@ namespace DCFApixels.SpriteEditor
 
         private static int NextContentLayer(List<Layer> container, int index)
         {
-            do { index++; } while (index < container.Count && (container[index] == null || container[index] is PendingLayer));
+            do { index++; } while (index < container.Count && (container[index]?.Behaviour == null || container[index].Behaviour is PendingLayerBehaviour));
             return index;
         }
 
@@ -363,9 +363,9 @@ namespace DCFApixels.SpriteEditor
 
         internal void DestroyLayerAssets(Layer layer)
         {
-            if (layer is DrawingLayer drawing)
+            if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                 drawing.DestroyStoredTextureWithUndo();
-            if (!(layer is GroupLayer group) || group.layers == null)
+            if (!(layer?.AsGroup() is Layer group) || group.layers == null)
                 return;
             for (int i = 0; i < group.layers.Count; i++)
                 DestroyLayerAssets(group.layers[i]);
@@ -473,12 +473,12 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             // Data and UI are ordered top-to-bottom. Rendering therefore walks backwards.
-            if (sourceLayers.Exists(layer => layer is PendingLayer))
+            if (sourceLayers.Exists(layer => layer?.Behaviour is PendingLayerBehaviour))
             {
                 var content = new List<Layer>(sourceLayers.Count);
                 int start = 0;
                 for (int n = 0; n < sourceLayers.Count; n++)
-                    if (!(sourceLayers[n] is PendingLayer))
+                    if (!(sourceLayers[n]?.Behaviour is PendingLayerBehaviour))
                     {
                         if (n < firstIndex) start++;
                         content.Add(sourceLayers[n]);
@@ -489,7 +489,7 @@ namespace DCFApixels.SpriteEditor
             for (int i = sourceLayers.Count - 1; i >= firstIndex; i--)
             {
                 Layer layer = sourceLayers[i];
-                if (layer is ShaderProcessorLayer processor)
+                if (layer?.Behaviour is ShaderProcessorLayerBehaviour processor)
                 {
                     if (processor.enabled && processor.opacity > 0f && processor.blendMode != BlendMode.None &&
                         (included == null || included.Contains(processor)))
@@ -500,7 +500,7 @@ namespace DCFApixels.SpriteEditor
                 // still owns (and hides) its clipping layers. Orphans never render freely.
                 if (layer == null || layer.clippingMask) continue;
                 int top = i;
-                while (top > firstIndex && sourceLayers[top - 1] != null && !(sourceLayers[top - 1] is ShaderProcessorLayer) && sourceLayers[top - 1].clippingMask) top--;
+                while (top > firstIndex && sourceLayers[top - 1] != null && !(sourceLayers[top - 1]?.Behaviour is ShaderProcessorLayerBehaviour) && sourceLayers[top - 1].clippingMask) top--;
                 if (top < i)
                 {
                     CompositeClippingChain(sourceLayers, i, top, ref accumulator,
@@ -510,11 +510,11 @@ namespace DCFApixels.SpriteEditor
                 }
                 if (included != null && !included.Contains(layer))
                     continue;
-                if (layer == null || !layer.enabled || layer.opacity <= 0f ||
-                    (layer is GroupLayer pass ? !pass.IsPassThrough && pass.EffectiveBlendMode == BlendMode.None : layer.blendMode == BlendMode.None))
+                if (layer?.Behaviour == null || !layer.enabled || layer.opacity <= 0f ||
+                    (layer?.AsGroup() is Layer pass ? !pass.IsPassThrough && pass.EffectiveBlendMode == BlendMode.None : layer.blendMode == BlendMode.None))
                     continue;
 
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     CompositeGroup(group, ref accumulator, outputWidth, outputHeight, scaleMultiplier, renderStack, included);
                     continue;
@@ -541,7 +541,7 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private void CompositeGroup(GroupLayer group, ref RenderTexture accumulator, int w, int h,
+        private void CompositeGroup(Layer group, ref RenderTexture accumulator, int w, int h,
             float scale, HashSet<Layer> stack, HashSet<Layer> included = null)
         {
             if (group.opacity <= 0f) return;
@@ -581,7 +581,7 @@ namespace DCFApixels.SpriteEditor
             Layer layer = container[index];
             if (layer == null || (!includeDisabled && !layer.enabled))
                 return null;
-            if (layer is GroupLayer group)
+            if (layer?.AsGroup() is Layer group)
                 return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
                     preserveColor: false, includeDisabled: includeDisabled);
 
@@ -592,12 +592,20 @@ namespace DCFApixels.SpriteEditor
             RenderTexture input = null;
             try
             {
-                if (layer is ShaderProcessorLayer)
+                if (layer?.Behaviour is ShaderProcessorLayerBehaviour)
                 {
                     input = GetClearRenderTexture(outputWidth, outputHeight);
                     CompositeLayers(container, ref input, outputWidth, outputHeight, scaleMultiplier, renderStack, firstIndex: index + 1);
+                    // Effect inputs may read hidden source layers. A disabled stack processor
+                    // is a bypass, not a hidden image to process again through that path.
+                    if (!layer.enabled)
+                    {
+                        RenderTexture bypass = input;
+                        input = null;
+                        return bypass;
+                    }
                 }
-                if (layer is TargetedLayerEffect effect)
+                if (layer?.Behaviour is TargetedLayerBehaviour effect)
                 {
                     input = RenderEffectInput(
                         effect,
@@ -636,7 +644,7 @@ namespace DCFApixels.SpriteEditor
         }
 
         private RenderTexture RenderEffectInput(
-            TargetedLayerEffect effect,
+            TargetedLayerBehaviour effect,
             List<Layer> container,
             int index,
             int outputWidth,
@@ -660,7 +668,7 @@ namespace DCFApixels.SpriteEditor
                 !IsUsableEffectTarget(effect, effect.TargetLayerId))
                 return null;
 
-            if (target is GroupLayer group)
+            if (target?.AsGroup() is Layer group)
                 return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
                     effect.RequiresColorInput, includeDisabled: true);
             if (!TryFindLayer(target, out List<Layer> targetContainer, out int targetIndex))
@@ -693,7 +701,7 @@ namespace DCFApixels.SpriteEditor
                 return null;
 
             Layer previous = container[previousIndex];
-            if (previous is GroupLayer group)
+            if (previous?.AsGroup() is Layer group)
                 return RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack,
                     preserveGroupColor, includeDisabled: true);
             return RenderStandalone(
@@ -706,11 +714,11 @@ namespace DCFApixels.SpriteEditor
         }
 
         private RenderTexture RenderGroupAlpha(
-            GroupLayer group, int outputWidth, int outputHeight, float scaleMultiplier,
+            Layer group, int outputWidth, int outputHeight, float scaleMultiplier,
             HashSet<Layer> renderStack) => RenderGroupEffectInput(group, outputWidth, outputHeight, scaleMultiplier, renderStack, false);
 
         private RenderTexture RenderGroupEffectInputUncached(
-            GroupLayer group,
+            Layer group,
             int outputWidth,
             int outputHeight,
             float scaleMultiplier,
@@ -833,7 +841,7 @@ namespace DCFApixels.SpriteEditor
 
         private void CollectEffectTargetOptions(
             List<Layer> sourceLayers,
-            TargetedLayerEffect consumer,
+            TargetedLayerBehaviour consumer,
             int depth,
             List<string> targetIds,
             List<string> labels,
@@ -845,22 +853,22 @@ namespace DCFApixels.SpriteEditor
             for (int i = 0; i < sourceLayers.Count; i++)
             {
                 Layer candidate = sourceLayers[i];
-                if (candidate == null || candidate is PendingLayer)
+                if (candidate == null || candidate?.Behaviour is PendingLayerBehaviour)
                     continue;
 
-                bool isGroup = candidate is GroupLayer;
+                bool isGroup = candidate?.IsGroup == true;
                 visited.Clear();
                 if (!LayerDependsOn(candidate, consumer, visited))
                 {
                     string candidateName = string.IsNullOrWhiteSpace(candidate.layerName)
-                        ? candidate.GetType().Name
+                        ? candidate.Behaviour?.GetType().Name ?? "Missing Behaviour"
                         : candidate.layerName;
                     string indentation = depth > 0 ? new string(' ', depth * 4) + "↳ " : string.Empty;
                     targetIds.Add(candidate.Id);
                     labels.Add(indentation + candidateName + (isGroup ? "  [Group]" : string.Empty));
                 }
 
-                if (candidate is GroupLayer group)
+                if (candidate?.AsGroup() is Layer group)
                 {
                     CollectEffectTargetOptions(
                         group.layers,
@@ -885,7 +893,7 @@ namespace DCFApixels.SpriteEditor
             if (candidate.clippingMask && LayerDependsOn(GetClippingBase(candidate), soughtLayer, visited))
                 return true;
 
-            if (candidate is GroupLayer group)
+            if (candidate?.AsGroup() is Layer group)
             {
                 if (group.layers == null)
                     return false;
@@ -897,7 +905,7 @@ namespace DCFApixels.SpriteEditor
                 return false;
             }
 
-            if (candidate is ShaderProcessorLayer)
+            if (candidate?.Behaviour is ShaderProcessorLayerBehaviour)
             {
                 if (TryFindLayer(candidate, out var siblings, out int processorIndex))
                     for (int i = processorIndex + 1; i < siblings.Count; i++)
@@ -905,7 +913,7 @@ namespace DCFApixels.SpriteEditor
                 return false;
             }
 
-            if (!(candidate is TargetedLayerEffect effect))
+            if (!(candidate?.Behaviour is TargetedLayerBehaviour effect))
                 return false;
 
             Layer input = null;
@@ -932,9 +940,9 @@ namespace DCFApixels.SpriteEditor
 
                 layer.EnsureId(usedIds);
                 layer.opacity = Mathf.Clamp01(layer.opacity);
-                if (layer is DrawingLayer drawing)
+                if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                     drawing.NormalizeSettings();
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     group.layers ??= new List<Layer>();
                     NormalizeLayers(group.layers, usedIds);
@@ -960,7 +968,7 @@ namespace DCFApixels.SpriteEditor
                     continue;
                 if (layer.Id == id)
                     return layer;
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     Layer found = FindLayerRecursive(group.layers, id);
                     if (found != null)
@@ -988,7 +996,7 @@ namespace DCFApixels.SpriteEditor
                         return true;
                     }
 
-                    if (layer is GroupLayer group &&
+                    if (layer?.AsGroup() is Layer group &&
                         TryFindLayerRecursive(group.layers, target, out container, out index))
                         return true;
                 }
@@ -1002,7 +1010,7 @@ namespace DCFApixels.SpriteEditor
         private static bool TryFindParentGroupRecursive(
             List<Layer> sourceLayers,
             List<Layer> childList,
-            out GroupLayer parent,
+            out Layer parent,
             out List<Layer> parentContainer,
             out int parentIndex)
         {
@@ -1010,7 +1018,7 @@ namespace DCFApixels.SpriteEditor
             {
                 for (int i = 0; i < sourceLayers.Count; i++)
                 {
-                    if (!(sourceLayers[i] is GroupLayer group))
+                    if (!(sourceLayers[i]?.AsGroup() is Layer group))
                         continue;
                     if (ReferenceEquals(group.layers, childList))
                     {
@@ -1039,25 +1047,25 @@ namespace DCFApixels.SpriteEditor
                 Layer layer = sourceLayers[i];
                 if (layer == null)
                     continue;
-                if (preserveDrawingPixels && layer is DrawingLayer drawing)
+                if (preserveDrawingPixels && layer?.Behaviour is DrawingLayerBehaviour drawing)
                     drawing.ReleasePaintResources();
                 else
                     layer.ReleaseTransientResources();
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                     ReleaseLayerResources(group.layers, preserveDrawingPixels);
             }
         }
 
-        private static void VisitDrawingLayers(List<Layer> sourceLayers, Action<DrawingLayer> visitor)
+        private static void VisitDrawingLayers(List<Layer> sourceLayers, Action<DrawingLayerBehaviour> visitor)
         {
             if (sourceLayers == null || visitor == null)
                 return;
             for (int i = 0; i < sourceLayers.Count; i++)
             {
                 Layer layer = sourceLayers[i];
-                if (layer is DrawingLayer drawing)
+                if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                     visitor(drawing);
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                     VisitDrawingLayers(group.layers, visitor);
             }
         }

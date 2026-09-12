@@ -4,12 +4,12 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class ShaderProcessorLayer : Layer
+    public sealed class ShaderProcessorLayerBehaviour : LayerBehaviour
     {
-        public ShaderProcessorLayer()
+        internal override void InitializeLayer(Layer layer)
         {
-            colorRange = LayerColorRange.HDR;
-            blendRange = LayerBlendRange.HDR;
+            layer.colorRange = LayerColorRange.HDR;
+            layer.blendRange = LayerBlendRange.HDR;
         }
 
         public override string ToString() => "Shader Processor";

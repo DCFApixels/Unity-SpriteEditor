@@ -54,7 +54,7 @@ namespace DCFApixels.SpriteEditor
         }
 
         private bool IsPreviewTransformEnabled => previewTool == PreviewTool.Transform &&
-            GetSelectedLayer() is Layer layer && (!layer.IsGroup || PreviewFXParameter != null) &&
+            GetSelectedLayer() is Layer layer && layer.Behaviour != null && (!layer.IsGroup || PreviewFXParameter != null) &&
             !SpriteEditorApi.IsLayerContentLocked(compositor, layer) && !SpriteEditorApi.ContainsReservation(layer);
 
         private void BuildPreviewTransformTool()
@@ -241,6 +241,7 @@ namespace DCFApixels.SpriteEditor
             private const float CanvasSnapDistance = 8f;
             private readonly TextureCompositorWindow owner;
             private Layer layer;
+            private LayerBehaviour gestureBehaviour;
             private TextureTransform original;
             private Vector2 size;
             private Vector2 pointerStart;
@@ -284,6 +285,7 @@ namespace DCFApixels.SpriteEditor
                 if (IsDragging && (!owner.IsPreviewTransformEnabled ||
                     !ReferenceEquals(gestureParameter, owner.PreviewFXParameter) ||
                     !ReferenceEquals(layer, owner.GetSelectedLayer()) ||
+                    !ReferenceEquals(gestureBehaviour, layer?.Behaviour) ||
                     size != new Vector2(owner.compositor.width, owner.compositor.height)))
                     End(false, true);
                 if (owner.previewTransformFX != null && owner.PreviewFXParameter == null)
@@ -380,6 +382,7 @@ namespace DCFApixels.SpriteEditor
                 owner.Focus();
                 target.Focus();
                 layer = selected;
+                gestureBehaviour = selected.Behaviour;
                 original = owner.CurrentPreviewTransform;
                 gestureParameter = owner.PreviewFXParameter;
                 gestureFX = gestureParameter != null ? owner.previewTransformFX : null;
@@ -668,6 +671,7 @@ namespace DCFApixels.SpriteEditor
                     owner.toolkitRefreshRequested = true;
                 }
                 layer = null;
+                gestureBehaviour = null;
                 gestureFX = null;
                 gestureParameter = null;
                 undoGroup = -1;

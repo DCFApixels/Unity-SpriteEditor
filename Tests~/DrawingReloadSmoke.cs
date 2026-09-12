@@ -1,6 +1,6 @@
 // Opt-in after manual compilation. Temporary CPU textures/documents only; no windows, assets, Undo or reload triggered.
 const System.Reflection.BindingFlags Hidden = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-var drawingType = typeof(DCFApixels.SpriteEditor.DrawingLayer);
+var drawingType = typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour);
 var documentType = typeof(DCFApixels.SpriteEditor.TextureCompositor);
 var pixelsField = drawingType.GetField("pixels", Hidden);
 var disable = documentType.GetMethod("OnDisable", Hidden);
@@ -16,7 +16,7 @@ foreach (var format in new[] { UnityEngine.TextureFormat.RGBA32, UnityEngine.Tex
     var document = UnityEngine.ScriptableObject.CreateInstance<DCFApixels.SpriteEditor.TextureCompositor>();
     document.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
     var textures = new System.Collections.Generic.List<UnityEngine.Texture2D>();
-    var layers = new System.Collections.Generic.List<DCFApixels.SpriteEditor.DrawingLayer>();
+    var layers = new System.Collections.Generic.List<DCFApixels.SpriteEditor.DrawingLayerBehaviour>();
     try
     {
         for (int i = 0; i < 2; i++)
@@ -28,15 +28,15 @@ foreach (var format in new[] { UnityEngine.TextureFormat.RGBA32, UnityEngine.Tex
             texture.SetPixels(new[] { color, color, color, color });
             texture.Apply(false, false);
             textures.Add(texture);
-            var layer = new DCFApixels.SpriteEditor.DrawingLayer();
+            var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
             pixelsField.SetValue(layer, texture);
             layers.Add(layer);
         }
         document.layers.Add(layers[0]);
-        document.layers.Add(new DCFApixels.SpriteEditor.GroupLayer
+        document.layers.Add(new DCFApixels.SpriteEditor.GroupLayerBehaviour
         {
             layers = new System.Collections.Generic.List<DCFApixels.SpriteEditor.Layer> {
-                new DCFApixels.SpriteEditor.GroupLayer {
+                new DCFApixels.SpriteEditor.GroupLayerBehaviour {
                     layers = new System.Collections.Generic.List<DCFApixels.SpriteEditor.Layer> { layers[1] }
                 }
             }

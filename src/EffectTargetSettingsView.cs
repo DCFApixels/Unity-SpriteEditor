@@ -25,7 +25,7 @@ namespace DCFApixels.SpriteEditor
             this.bindings = bindings;
         }
 
-        internal void Build(VisualElement root, TargetedLayerEffect effect)
+        internal void Build(VisualElement root, TargetedLayerBehaviour effect)
         {
             EnumField input = SpriteEditorUI.ConfigureField(new EnumField("Input", effect.inputMode));
             bindings.Track(input, () => (Enum)effect.inputMode);
@@ -89,8 +89,8 @@ namespace DCFApixels.SpriteEditor
                 Texture2D thumbnail = source?.GetPreviewTexture(18);
                 if (preview.image != thumbnail) preview.image = thumbnail;
                 preview.EnableInClassList("sprite-editor-hidden", thumbnail == null);
-                fallback.EnableInClassList("sprite-editor-hidden", source == null || thumbnail != null || source is GroupLayer);
-                groupIcon.EnableInClassList("sprite-editor-hidden", !(source is GroupLayer) || thumbnail != null);
+                fallback.EnableInClassList("sprite-editor-hidden", source == null || thumbnail != null || source?.IsGroup == true);
+                groupIcon.EnableInClassList("sprite-editor-hidden", !(source?.IsGroup == true) || thumbnail != null);
                 bool choicesChanged = target.choices.Count != effectTargetLabels.Length;
                 for (int i = 0; !choicesChanged && i < effectTargetLabels.Length; i++)
                     choicesChanged = target.choices[i] != effectTargetLabels[i];
@@ -110,7 +110,7 @@ namespace DCFApixels.SpriteEditor
                     message = "The selected target is missing or would create a cyclic effect dependency.";
                     messageType = HelpBoxMessageType.Error;
                 }
-                else if (source is GroupLayer)
+                else if (source?.IsGroup == true)
                     message = "The selected group is read as the combined alpha of all visible descendant layers.";
                 DisplayStyle display = message.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
                 if (status.style.display.value != display) status.style.display = display;
@@ -126,7 +126,7 @@ namespace DCFApixels.SpriteEditor
             });
         }
 
-        private void EnsureEffectTargetOptions(TargetedLayerEffect effect)
+        private void EnsureEffectTargetOptions(TargetedLayerBehaviour effect)
         {
             if (effectTargetIds != null &&
                 effectTargetOptionsForLayerId == effect.Id &&
@@ -195,9 +195,9 @@ namespace DCFApixels.SpriteEditor
         private sealed class TargetDropManipulator : PointerManipulator
         {
             private readonly EffectTargetSettingsView owner;
-            private readonly TargetedLayerEffect effect;
+            private readonly TargetedLayerBehaviour effect;
 
-            internal TargetDropManipulator(EffectTargetSettingsView owner, TargetedLayerEffect effect)
+            internal TargetDropManipulator(EffectTargetSettingsView owner, TargetedLayerBehaviour effect)
             {
                 this.owner = owner;
                 this.effect = effect;

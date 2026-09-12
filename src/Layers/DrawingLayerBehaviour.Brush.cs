@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
-    public sealed partial class DrawingLayer
+    public sealed partial class DrawingLayerBehaviour
     {
         [NonSerialized] private BrushSpacingState brushSpacingState;
         [NonSerialized] private uint brushRandomState;

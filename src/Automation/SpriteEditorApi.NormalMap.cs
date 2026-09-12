@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     public static partial class SpriteEditorApi
     {
-        private static void SetNormalMap(NormalMapLayer layer, JObject value)
+        private static void SetNormalMap(NormalMapLayerBehaviour layer, JObject value)
         {
             Keys(value, "mode", "sourceChannel", "inputSpace", "edges", "derivative", "alphaMode", "output", "encoding",
                 "strength", "blackLevel", "whiteLevel", "gamma", "smoothing", "mediumRadius", "largeRadius",
@@ -37,7 +37,7 @@ namespace DCFApixels.SpriteEditor
             Require(layer.largeRadius >= layer.mediumRadius, "Normal Map largeRadius must be at least mediumRadius.");
         }
 
-        private static JObject NormalMapSnapshot(NormalMapLayer layer) => new JObject
+        private static JObject NormalMapSnapshot(NormalMapLayerBehaviour layer) => new JObject
         {
             ["mode"] = layer.mode.ToString(), ["sourceChannel"] = layer.sourceChannel.ToString(),
             ["inputSpace"] = layer.inputSpace.ToString(), ["edges"] = layer.edges.ToString(),

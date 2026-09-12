@@ -101,7 +101,7 @@ namespace DCFApixels.SpriteEditor
                 preset.dynamics.Normalize();
                 preset.size = FiniteRange(preset.size, 1f, 4096f);
                 preset.hardness = FiniteRange(preset.hardness, 0f, 1f);
-                preset.spacing = FiniteRange(preset.spacing, DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing);
+                preset.spacing = FiniteRange(preset.spacing, DrawingLayerBehaviour.MinimumBrushSpacing, DrawingLayerBehaviour.MaximumBrushSpacing);
                 int bytes = reader.ReadInt32();
                 int expected = TipByteCount(preset.width, preset.height, preset.srgb);
                 if (bytes != expected) throw new IOException("Invalid brush tip length.");

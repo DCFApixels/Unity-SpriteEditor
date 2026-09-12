@@ -8,8 +8,8 @@ void Check(bool value, string message)
     checks++;
 }
 T Read<T>(object source, string name) => (T)type.GetField(name).GetValue(source);
-var first = new DCFApixels.SpriteEditor.DrawingLayer();
-var second = new DCFApixels.SpriteEditor.DrawingLayer();
+var first = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
+var second = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
 first.brushSize = 9;
 second.brushSize = 91;
 first.repeatCount = 3;

@@ -59,7 +59,7 @@ namespace DCFApixels.SpriteEditor
             Size = pixelPerfect ? Mathf.Clamp(Mathf.Round(size), 1f, 4096f) : Mathf.Max(1f, size);
             Hardness = pixelPerfect ? 1f : Mathf.Clamp01(hardness);
             SpacingPixels = pixelPerfect ? Mathf.Max(1f, Mathf.Floor(Size * 0.16f)) : Mathf.Max(1f, Size * Mathf.Clamp(spacing,
-                DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing));
+                DrawingLayerBehaviour.MinimumBrushSpacing, DrawingLayerBehaviour.MaximumBrushSpacing));
             Erase = erase;
             WrapCanvas = false;
             SelectionMask = null;

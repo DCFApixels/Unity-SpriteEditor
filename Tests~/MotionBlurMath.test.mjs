@@ -7,7 +7,7 @@ function near(a, b, label, tolerance = 1e-8) {
   assert.ok(Math.abs(a - b) <= tolerance, `${label}: ${a} vs ${b}`); checks++;
 }
 const layer = read('src/Layers/MotionBlurRenderer.cs');
-const settings = read('src/Layers/BlurLayer.cs');
+const settings = read('src/Layers/BlurLayerBehaviour.cs');
 const shader = read('src/Shaders/MotionBlur.shader');
 const ui = read('src/Layers/Editors/BlurLayerEditorWindow.cs');
 const api = read('src/Automation/SpriteEditorApi.Blur.cs');
@@ -125,7 +125,7 @@ for (const key of ['mode', 'strength', 'distance', 'angle', 'arc', 'center', 'di
 assert.doesNotMatch(ui, /\.Clear\(|\.style\.|isDelayed/);
 assert.match(read('src/EffectRenderCache.cs'), /effect\.RequiresColorInput/);
 assert.match(read('src/TextureCompositor.cs'), /effect\.RequiresColorInput/);
-assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /"blur" => new BlurLayer\(\)/);
+assert.match(read('src/LayerTypeRegistry.cs'), /new Entry\("blur", "Blur", "Blur", "Blur", typeof\(BlurLayerBehaviour\)/);
 assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /blurDefaults/);
 assert.match(read('src/Utils.cs'), /DestroyImmediate\(motionBlurMaterial\)/);
 function strengthMix(source, blur, strength) {

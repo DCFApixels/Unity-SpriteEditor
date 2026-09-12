@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../src/' + path, import.meta.url), 'utf8');
-const drawing = read('Layers/DrawingLayer.cs');
+const drawing = read('Layers/DrawingLayerBehaviour.cs');
 const compositor = read('TextureCompositor.cs');
 function body(source, signature) {
     const at = source.indexOf(signature);
@@ -21,7 +21,7 @@ const destroy = body(compositor, 'private void OnDestroy()');
 assert.ok(disable.includes('ReleaseLayerResources(layers, preserveDrawingPixels: true)'));
 assert.ok(destroy.includes('ReleaseLayerResources(layers)'));
 const visit = body(compositor, 'private static void ReleaseLayerResources(');
-assert.ok(visit.includes('preserveDrawingPixels && layer is DrawingLayer drawing'));
+assert.ok(visit.includes('preserveDrawingPixels && layer?.Behaviour is DrawingLayerBehaviour drawing'));
 assert.ok(visit.includes('drawing.ReleasePaintResources()'));
 assert.ok(visit.includes('ReleaseLayerResources(group.layers, preserveDrawingPixels)'));
 assert.ok(compositor.includes('bool preserveDrawingPixels = false'), 'Merge/deletion retain destructive cleanup by default');

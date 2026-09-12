@@ -10,7 +10,7 @@ var data = new UnityEngine.Color[256];
 for (int y=0; y<16; y++) for (int x=0; x<16; x++)
     data[y*16+x] = new UnityEngine.Color(x/15f,y/15f,.4f,x>=4 && x<12 && y>=4 && y<12 ? 1f : 0f);
 texture.SetPixels(data); texture.Apply(false,false);
-var source = new DCFApixels.SpriteEditor.FileLayer { sourceTexture = texture };
+var source = new DCFApixels.SpriteEditor.FileLayerBehaviour { sourceTexture = texture };
 int checks = 0;
 void Check(bool value, string message) { if (!value) throw new System.Exception(message); checks++; }
 void Normalize() => type.GetMethod("NormalizeModel",flags).Invoke(document,null);
@@ -40,13 +40,13 @@ void Same(UnityEngine.Color[] a,UnityEngine.Color[] b,string message)
 }
 try
 {
-    foreach (var effect in new DCFApixels.SpriteEditor.TargetedLayerEffect[] {
-        new DCFApixels.SpriteEditor.OutlineLayer(), new DCFApixels.SpriteEditor.SDFLayer(), new DCFApixels.SpriteEditor.NormalMapLayer() })
+    foreach (var effect in new DCFApixels.SpriteEditor.TargetedLayerBehaviour[] {
+        new DCFApixels.SpriteEditor.OutlineLayerBehaviour(), new DCFApixels.SpriteEditor.SDFLayerBehaviour(), new DCFApixels.SpriteEditor.NormalMapLayerBehaviour() })
     foreach (bool specific in new[]{false,true})
     foreach (bool grouped in new[]{false,true})
     {
         source.enabled = true;
-        var group = new DCFApixels.SpriteEditor.GroupLayer(); group.layers.Add(source);
+        var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour(); group.layers.Add(source);
         DCFApixels.SpriteEditor.Layer target = grouped ? (DCFApixels.SpriteEditor.Layer)group : source;
         document.layers.Clear(); document.layers.Add(effect); document.layers.Add(target); Normalize();
         effect.inputMode = specific ? DCFApixels.SpriteEditor.EffectInputMode.Specific : DCFApixels.SpriteEditor.EffectInputMode.Previous;
@@ -57,7 +57,7 @@ try
         Check(!target.enabled,"Rendering does not modify target visibility");
         if(grouped)
         {
-            var hiddenChild = new DCFApixels.SpriteEditor.ColorFillLayer { color = UnityEngine.Color.white, enabled = false };
+            var hiddenChild = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = UnityEngine.Color.white, enabled = false };
             group.layers.Insert(0,hiddenChild); Normalize();
             Same(before,Render(effect),"Hidden children remain excluded");
         }
@@ -67,8 +67,8 @@ try
         finally { UnityEngine.Object.DestroyImmediate(composite); }
         effect.enabled = true; target.enabled = true;
     }
-    var sdf = new DCFApixels.SpriteEditor.SDFLayer();
-    var normal = new DCFApixels.SpriteEditor.NormalMapLayer();
+    var sdf = new DCFApixels.SpriteEditor.SDFLayerBehaviour();
+    var normal = new DCFApixels.SpriteEditor.NormalMapLayerBehaviour();
     document.layers.Clear(); document.layers.Add(normal); document.layers.Add(sdf); document.layers.Add(source);
     source.enabled = true; Normalize();
     var visibleChain = Render(normal);

@@ -18,14 +18,14 @@ namespace DCFApixels.SpriteEditor
             owned = null;
             Require((request["imagePath"] != null) != (request["layer"] != null), "Provide exactly one of imagePath or layer.");
             Require(request["imagePath"] != null || request["fit"] == null, "fit is only used with imagePath.");
-            var reservation = job.document.FindLayer(job.layerId) as PendingLayer;
+            var reservation = job.document.FindLayer(job.layerId)?.Behaviour as PendingLayerBehaviour;
             Require(reservation != null && reservation.jobId == job.id, "Reservation was removed.", "job_closed");
             if (request["imagePath"] != null)
             {
-                DrawingLayer target = null;
+                DrawingLayerBehaviour target = null;
                 if (job.targetId != null)
                 {
-                    target = job.document.FindLayer(job.targetId) as DrawingLayer;
+                    target = job.document.FindLayer(job.targetId)?.Behaviour as DrawingLayerBehaviour;
                     Require(target != null && LiveLayerRevision(target) == job.targetRevision,
                         "The target pixels or settings changed. Preserve the user's work: start a newLayer job or capture again.", "revision_conflict");
                 }
@@ -38,7 +38,7 @@ namespace DCFApixels.SpriteEditor
                         owned = CreateLiveDrawingImage(job, image,
                             Text(request, "fit", job.mask == null ? "contain" : "stretch"), out var transform);
                         owned.name = reservation.layerName;
-                        var generated = DrawingLayer.FromMergedTexture(owned);
+                        var generated = DrawingLayerBehaviour.FromMergedTexture(owned);
                         generated.colorRange = LayerColorRange.Standard;
                         generated.transform = transform;
                         generated.AdoptReservation(reservation);
@@ -52,7 +52,7 @@ namespace DCFApixels.SpriteEditor
                     { name = reservation.layerName, hideFlags = HideFlags.HideAndDontSave,
                         filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
                     HdrUtility.WritePixels(owned, pixels);
-                    return DrawingLayer.FromRasterizedLayer(target, owned, false);
+                    return DrawingLayerBehaviour.FromRasterizedLayer(target, owned, false);
                 }
                 catch { if (owned != null) Object.DestroyImmediate(owned); owned = null; throw; }
                 finally { Object.DestroyImmediate(image); }
@@ -74,14 +74,14 @@ namespace DCFApixels.SpriteEditor
                 if (spec["transform"] != null) add["transform"] = spec["transform"].DeepClone();
                 candidate = ApplyOperation(builder, add, new Dictionary<string, Layer>(), false);
                 candidate.AdoptReservation(reservation);
-                if (candidate is TargetedLayerEffect effect)
+                if (candidate?.Behaviour is TargetedLayerBehaviour effect)
                 {
                     effect.inputMode = Enum(spec, "input", EffectInputMode.Specific);
                     effect.TargetLayerId = Text(spec, "target");
                     Require(effect.inputMode != EffectInputMode.Previous || effect.TargetLayerId == null, "Previous input does not take a target.");
                 }
                 else Require(spec["input"] == null && spec["target"] == null, "input/target require an effect layer.");
-                if (candidate is FileLayer file && file.sourceTexture != null)
+                if (candidate?.Behaviour is FileLayerBehaviour file && file.sourceTexture != null)
                 {
                     string path = AssetDatabase.GetAssetPath(job.document);
                     Require(string.IsNullOrEmpty(path) || !string.Equals(path, AssetDatabase.GetAssetPath(file.sourceTexture), StringComparison.OrdinalIgnoreCase),
@@ -97,11 +97,11 @@ namespace DCFApixels.SpriteEditor
             var clone = Object.Instantiate(source);
             clone.hideFlags = HideFlags.HideAndDontSave;
             // Unsaved Drawing textures must not be shared with a disposable preview document.
-            var copied = new List<DrawingLayer>();
+            var copied = new List<DrawingLayerBehaviour>();
             try
             {
                 foreach (var layer in Enumerate(clone.layers))
-                    if (layer is DrawingLayer drawing) { drawing.CloneStoredTexture(); copied.Add(drawing); }
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing) { drawing.CloneStoredTexture(); copied.Add(drawing); }
                 return clone;
             }
             catch
@@ -114,7 +114,7 @@ namespace DCFApixels.SpriteEditor
         private static void PutLiveCandidate(TextureCompositor document, LiveJob job, Layer candidate)
         {
             var pending = document.FindLayer(job.layerId);
-            Require(pending is PendingLayer && document.TryFindLayer(pending, out _, out _), "Reservation is missing.", "job_closed");
+            Require(pending?.Behaviour is PendingLayerBehaviour && document.TryFindLayer(pending, out _, out _), "Reservation is missing.", "job_closed");
             document.TryFindLayer(pending, out var container, out int index);
             if (job.targetId == null) container[index] = candidate;
             else
@@ -126,7 +126,7 @@ namespace DCFApixels.SpriteEditor
                 target.ReleaseTransientResources();
                 container.Remove(pending);
             }
-            if (candidate is TargetedLayerEffect effect)
+            if (candidate?.Behaviour is TargetedLayerBehaviour effect)
             {
                 document.TryFindLayer(candidate, out var siblings, out int effectIndex);
                 Require(document.HasUsableEffectInput(effect, siblings, effectIndex), "Effect target is missing or cyclic.", "invalid_target");
@@ -190,9 +190,9 @@ namespace DCFApixels.SpriteEditor
             {
                 candidate = LiveCandidate(job, request, out owned);
                 ApplyLiveCandidateFx(job, request, candidate, effects);
-                long pixels = Enumerate(job.document.layers).OfType<DrawingLayer>().Sum(d =>
+                long pixels = Enumerate(job.document.layers).Select(layer => layer.Behaviour).OfType<DrawingLayerBehaviour>().Sum(d =>
                     d.StoredTexture != null ? (long)d.StoredTexture.width * d.StoredTexture.height : (long)job.width * job.height);
-                if (job.targetId == null && candidate is DrawingLayer generated)
+                if (job.targetId == null && candidate?.Behaviour is DrawingLayerBehaviour generated)
                     pixels += generated.StoredTexture != null
                         ? (long)generated.StoredTexture.width * generated.StoredTexture.height
                         : (long)job.width * job.height;
@@ -208,7 +208,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     if (job.targetId != null)
                     {
-                        var target = (DrawingLayer)job.document.FindLayer(job.targetId);
+                        var target = (DrawingLayerBehaviour)job.document.FindLayer(job.targetId);
                         using var values = HdrUtility.ReadPixels(owned, Allocator.Temp);
                         target.ApplyFillPixels(values, owned.width, owned.height, "Complete Agent Layer");
                         var pending = job.document.FindLayer(job.layerId);
@@ -219,13 +219,16 @@ namespace DCFApixels.SpriteEditor
                     {
                         var pending = job.document.FindLayer(job.layerId);
                         job.document.TryFindLayer(pending, out var container, out int index);
-                        if (candidate is DrawingLayer drawing)
+                        if (candidate?.Behaviour is DrawingLayerBehaviour drawing)
                         {
                             drawing.InitializeCanvas(job.width, job.height);
                             drawing.MakeTexturePersistent(job.document);
                             Undo.RegisterCreatedObjectUndo(drawing.StoredTexture, "Complete Agent Layer");
                         }
-                        container[index] = candidate;
+                        // Native object creation flushes the initial LiveChange record.
+                        Undo.RegisterCompleteObjectUndo(job.document, "Complete Agent Layer");
+                        pending.AdoptContent(candidate);
+                        candidate = pending;
                         foreach (var fx in effects) job.document.AdoptAgentShaderFX(fx, "Complete Agent Layer");
                     }
                 });

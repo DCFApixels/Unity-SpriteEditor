@@ -7,14 +7,14 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class NoiseLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(NoiseLayer);
+        protected override Type EditedLayerType => typeof(NoiseLayerBehaviour);
         protected override bool ImmediatePreviewUpdates => true;
-        public static void Open(NoiseLayer layer, TextureCompositor compositor) =>
+        public static void Open(NoiseLayerBehaviour layer, TextureCompositor compositor) =>
             OpenPropertiesWindow<NoiseLayerEditorWindow>(layer, compositor);
         protected override void BuildSettings(VisualElement root, Layer source) =>
-            BuildFields(root, (NoiseLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (NoiseLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings);
 
-        internal static void BuildFields(VisualElement root, NoiseLayer layer, TextureCompositor compositor,
+        internal static void BuildFields(VisualElement root, NoiseLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
 
@@ -31,7 +31,7 @@ namespace DCFApixels.SpriteEditor
                 var field = SpriteEditorUI.ConfigureField(new FloatField(label));
                 bindings.Track(field, get);
                 field.RegisterValueChangedCallback(evt => applyChange("Change Noise " + label,
-                    () => set(NoiseLayer.Limit(evt.newValue, min, max, get()))));
+                    () => set(NoiseLayerBehaviour.Limit(evt.newValue, min, max, get()))));
                 parent.Add(field);
             }
             void Slider(VisualElement parent, string label, Func<float> get, Action<float> set, float min, float max)
@@ -39,16 +39,16 @@ namespace DCFApixels.SpriteEditor
                 var field = SpriteEditorUI.ConfigureField(new Slider(label, min, max) { showInputField = true });
                 bindings.Track(field, get);
                 field.RegisterValueChangedCallback(evt => applyChange("Change Noise " + label,
-                    () => set(NoiseLayer.Limit(evt.newValue, min, max, get()))));
+                    () => set(NoiseLayerBehaviour.Limit(evt.newValue, min, max, get()))));
                 parent.Add(field);
             }
 
             Choice(root, "Noise Type", () => layer.noiseType, value => layer.noiseType = value);
             var dimensions = SpriteEditorUI.ConfigureField(new PopupField<string>("Dimensions",
-                new System.Collections.Generic.List<string> { "2D", "1D" }, layer.dimensions == NoiseLayer.NoiseDimensions.OneD ? 1 : 0));
-            bindings.Track(dimensions, () => layer.dimensions == NoiseLayer.NoiseDimensions.OneD ? "1D" : "2D");
+                new System.Collections.Generic.List<string> { "2D", "1D" }, layer.dimensions == NoiseLayerBehaviour.NoiseDimensions.OneD ? 1 : 0));
+            bindings.Track(dimensions, () => layer.dimensions == NoiseLayerBehaviour.NoiseDimensions.OneD ? "1D" : "2D");
             dimensions.RegisterValueChangedCallback(evt => applyChange("Change Noise Dimensions",
-                () => layer.dimensions = evt.newValue == "1D" ? NoiseLayer.NoiseDimensions.OneD : NoiseLayer.NoiseDimensions.TwoD));
+                () => layer.dimensions = evt.newValue == "1D" ? NoiseLayerBehaviour.NoiseDimensions.OneD : NoiseLayerBehaviour.NoiseDimensions.TwoD));
             root.Add(dimensions);
             var axis = new VisualElement();
             axis.tooltip = "Direction of variation. 0: vertical stripes; 90: horizontal stripes. Positive angles turn counterclockwise.";
@@ -63,8 +63,8 @@ namespace DCFApixels.SpriteEditor
             offset.tooltip = "Noise-space offset. Scale is measured across the shorter canvas side; preview resolution does not change the pattern.";
             bindings.Track(offset, () => layer.offset);
             offset.RegisterValueChangedCallback(evt => applyChange("Change Noise Offset", () => layer.offset = new Vector2(
-                NoiseLayer.Limit(evt.newValue.x, -10000f, 10000f, layer.offset.x),
-                NoiseLayer.Limit(evt.newValue.y, -10000f, 10000f, layer.offset.y))));
+                NoiseLayerBehaviour.Limit(evt.newValue.x, -10000f, 10000f, layer.offset.x),
+                NoiseLayerBehaviour.Limit(evt.newValue.y, -10000f, 10000f, layer.offset.y))));
             root.Add(offset);
 
             var cellular = new VisualElement();
@@ -100,11 +100,11 @@ namespace DCFApixels.SpriteEditor
 
             bindings.Add(() =>
             {
-                axis.EnableInClassList("sprite-editor-hidden", layer.dimensions != NoiseLayer.NoiseDimensions.OneD);
-                cellular.EnableInClassList("sprite-editor-hidden", layer.noiseType != NoiseLayer.NoiseType.Cellular);
-                fractal.EnableInClassList("sprite-editor-hidden", layer.fractal == NoiseLayer.FractalType.None);
-                pingPong.EnableInClassList("sprite-editor-hidden", layer.fractal != NoiseLayer.FractalType.PingPong);
-                warp.EnableInClassList("sprite-editor-hidden", layer.warp == NoiseLayer.WarpType.None);
+                axis.EnableInClassList("sprite-editor-hidden", layer.dimensions != NoiseLayerBehaviour.NoiseDimensions.OneD);
+                cellular.EnableInClassList("sprite-editor-hidden", layer.noiseType != NoiseLayerBehaviour.NoiseType.Cellular);
+                fractal.EnableInClassList("sprite-editor-hidden", layer.fractal == NoiseLayerBehaviour.FractalType.None);
+                pingPong.EnableInClassList("sprite-editor-hidden", layer.fractal != NoiseLayerBehaviour.FractalType.PingPong);
+                warp.EnableInClassList("sprite-editor-hidden", layer.warp == NoiseLayerBehaviour.WarpType.None);
             });
         }
     }

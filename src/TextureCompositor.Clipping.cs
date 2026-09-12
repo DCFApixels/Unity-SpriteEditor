@@ -10,11 +10,11 @@ namespace DCFApixels.SpriteEditor
         internal static int FindClippingBaseIndex(List<Layer> container, int index)
         {
             if (container == null || index < 0 || index >= container.Count ||
-                container[index] == null || container[index] is ShaderProcessorLayer || !container[index].clippingMask) return -1;
+                container[index] == null || container[index]?.Behaviour is ShaderProcessorLayerBehaviour || !container[index].clippingMask) return -1;
             for (int i = index + 1; i < container.Count; i++)
             {
-                if (container[i] is PendingLayer) continue;
-                if (container[i] == null || container[i] is ShaderProcessorLayer) return -1;
+                if (container[i]?.Behaviour is PendingLayerBehaviour) continue;
+                if (container[i] == null || container[i]?.Behaviour is ShaderProcessorLayerBehaviour) return -1;
                 if (!container[i].clippingMask) return i;
             }
             return -1;
@@ -28,23 +28,23 @@ namespace DCFApixels.SpriteEditor
             return baseIndex < 0 ? null : container[baseIndex];
         }
 
-        internal bool IsGroupIsolatedByClipping(GroupLayer group)
+        internal bool IsGroupIsolatedByClipping(Layer group)
         {
             if (group.clippingMask) return true;
             if (!TryFindLayer(group, out var container, out int index)) return false;
-            do { index--; } while (index >= 0 && container[index] is PendingLayer);
+            do { index--; } while (index >= 0 && container[index]?.Behaviour is PendingLayerBehaviour);
             return index >= 0 && container[index] != null && container[index].clippingMask;
         }
 
-        private static bool IsClippingSourceVisible(Layer layer) => layer != null && layer.enabled && layer.opacity > 0f &&
-            (layer is GroupLayer group ? group.EffectiveBlendMode != BlendMode.None : layer.blendMode != BlendMode.None);
+        private static bool IsClippingSourceVisible(Layer layer) => layer?.Behaviour != null && layer.enabled && layer.opacity > 0f &&
+            (layer?.AsGroup() is Layer group ? group.EffectiveBlendMode != BlendMode.None : layer.blendMode != BlendMode.None);
 
         // Source color before its outer opacity, blend mode and clipping coverage.
         // Groups are isolated here, including those configured as Pass Through.
         private RenderTexture RenderClippingSource(List<Layer> container, int index, int w, int h,
             float scale, HashSet<Layer> stack, HashSet<Layer> included = null)
         {
-            if (!(container[index] is GroupLayer group))
+            if (!(container[index]?.AsGroup() is Layer group))
                 return RenderStandalone(container, index, w, h, scale, stack, applyClipping: false);
             stack ??= new HashSet<Layer>();
             if (!stack.Add(group)) return null;
@@ -90,7 +90,7 @@ namespace DCFApixels.SpriteEditor
                     if (source == null) continue;
                     try
                     {
-                        BlendMode mode = layer is GroupLayer group ? group.EffectiveBlendMode : layer.blendMode;
+                        BlendMode mode = layer?.AsGroup() is Layer group ? group.EffectiveBlendMode : layer.blendMode;
                         if (!includeBase && mode == BlendMode.Overwrite) mode = BlendMode.Normal;
                         BlendInto(ref chain, source, mode, layer.opacity, layer.blendRange, preserveAlpha: includeBase);
                     }
@@ -99,7 +99,7 @@ namespace DCFApixels.SpriteEditor
                 // Partial merges use the unselected base only as a mask. Apply its
                 // coverage once, not once per selected clipping layer.
                 if (!includeBase) BlendInto(ref chain, basePixels, (BlendMode)102, 1f);
-                BlendMode baseMode = basis is GroupLayer baseGroup ? baseGroup.EffectiveBlendMode : basis.blendMode;
+                BlendMode baseMode = basis?.AsGroup() is Layer baseGroup ? baseGroup.EffectiveBlendMode : basis.blendMode;
                 BlendInto(ref accumulator, chain, includeBase ? baseMode : BlendMode.Normal, basis.opacity, basis.blendRange);
             }
             finally

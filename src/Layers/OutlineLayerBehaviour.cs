@@ -8,7 +8,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class OutlineLayer : TargetedLayerEffect
+    public sealed class OutlineLayerBehaviour : TargetedLayerBehaviour
     {
         public DistanceMetric metric = DistanceMetric.EuclideanExact;
         public Color outlineColor = Color.white;
@@ -40,7 +40,7 @@ namespace DCFApixels.SpriteEditor
                     context.width,
                     context.height,
                     128,
-                    (int)SDFLayer.SourceChannel.Alpha,
+                    (int)SDFLayerBehaviour.SourceChannel.Alpha,
                     metric);
 
                 resultTexture = new Texture2D(context.width, context.height, TextureFormat.RGBAFloat, false, true)
@@ -114,8 +114,8 @@ namespace DCFApixels.SpriteEditor
             float distance = signedDistances[index];
             if (!antialiasedDistance)
                 distance = math.sign(distance) * math.max(0f, math.abs(distance) - 0.5f);
-            float lower = outlinePosition == (int)OutlineLayer.OutlinePosition.Outside ? 0f
-                : outlinePosition == (int)OutlineLayer.OutlinePosition.Inside ? -outlineWidth : -outlineWidth * 0.5f;
+            float lower = outlinePosition == (int)OutlineLayerBehaviour.OutlinePosition.Outside ? 0f
+                : outlinePosition == (int)OutlineLayerBehaviour.OutlinePosition.Inside ? -outlineWidth : -outlineWidth * 0.5f;
             lower += outlineOffset;
             float upper = lower + outlineWidth;
             float pixelSpan = 1f;

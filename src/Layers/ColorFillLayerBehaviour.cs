@@ -1,24 +1,20 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class ColorFillLayer : Layer
+    public sealed class ColorFillLayerBehaviour : LayerBehaviour
     {
-        [SerializeField, FormerlySerializedAs("color")] private Color storedColor = Color.white;
-        [SerializeField, HideInInspector] private bool colorIsEncoded;
+        [SerializeField] private Color storedColor = Color.white;
 
         public Color color
         {
-            get => !colorIsEncoded && QualitySettings.activeColorSpace == ColorSpace.Linear
-                ? HdrUtility.Encode(storedColor) : storedColor;
-            set { storedColor = value; colorIsEncoded = true; }
+            get => storedColor;
+            set => storedColor = value;
         }
 
-        private Color LinearColor => !colorIsEncoded && QualitySettings.activeColorSpace == ColorSpace.Linear
-            ? storedColor : HdrUtility.Decode(storedColor);
+        private Color LinearColor => HdrUtility.Decode(storedColor);
 
         [NonSerialized] private Texture2D cachedPreview;
         [NonSerialized] private Color cachedColor;

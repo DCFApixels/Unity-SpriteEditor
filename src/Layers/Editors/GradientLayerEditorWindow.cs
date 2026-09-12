@@ -8,20 +8,20 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class GradientLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(GradientLayer);
+        protected override Type EditedLayerType => typeof(GradientLayerBehaviour);
 
-        public static void Open(GradientLayer layer, TextureCompositor compositor)
+        public static void Open(GradientLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<GradientLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (GradientLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (GradientLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, GradientLayer layer, TextureCompositor compositor,
+            VisualElement root, GradientLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
 
@@ -32,7 +32,7 @@ namespace DCFApixels.SpriteEditor
             {
                 applyChange(
                     "Change Gradient Type",
-                    () => layer.gradientType = (GradientLayer.GradientType)evt.newValue);
+                    () => layer.gradientType = (GradientLayerBehaviour.GradientType)evt.newValue);
             });
             root.Add(gradientType);
 
@@ -66,15 +66,15 @@ namespace DCFApixels.SpriteEditor
             bindings.Track(wrapMode, () => (Enum)layer.circularWrapMode);
             wrapMode.RegisterValueChangedCallback(evt => applyChange(
                 "Change Gradient Wrap Mode",
-                () => layer.circularWrapMode = (GradientLayer.WrapMode)evt.newValue));
+                () => layer.circularWrapMode = (GradientLayerBehaviour.WrapMode)evt.newValue));
             circularSettings.Add(wrapMode);
             root.Add(circularSettings);
             bindings.Add(() =>
             {
-                bool radial = layer.gradientType == GradientLayer.GradientType.Radial ||
-                              layer.gradientType == GradientLayer.GradientType.Diamond ||
-                              layer.gradientType == GradientLayer.GradientType.Square;
-                bool circular = layer.gradientType == GradientLayer.GradientType.Circular;
+                bool radial = layer.gradientType == GradientLayerBehaviour.GradientType.Radial ||
+                              layer.gradientType == GradientLayerBehaviour.GradientType.Diamond ||
+                              layer.gradientType == GradientLayerBehaviour.GradientType.Square;
+                bool circular = layer.gradientType == GradientLayerBehaviour.GradientType.Circular;
                 center.style.display = radial || circular ? DisplayStyle.Flex : DisplayStyle.None;
                 radius.style.display = radial ? DisplayStyle.Flex : DisplayStyle.None;
                 circularSettings.style.display = circular ? DisplayStyle.Flex : DisplayStyle.None;

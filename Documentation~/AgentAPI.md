@@ -11,8 +11,9 @@ permalink: /reference/agentapi/
 # WhimTex: agent API v1
 
 WhimTex retains the package ID `com.dcfa_pixels.sprite-editor`, the `DCFApixels.SpriteEditor`
-namespace and all `sprite_editor_*` commands. The 0.9.0 product rename does not change the API
-version, document format, shader identifiers or saved user preferences.
+namespace and all `sprite_editor_*` commands. The product rename does not change the API version,
+shader identifiers or saved user preferences. The subsequent Layer/Behaviour redesign changes
+the serialized document format without migrating earlier documents; the JSON command contract remains v1.
 {: .no_toc }
 
 <details markdown="1">
@@ -33,6 +34,34 @@ The window's optional **Live Update** publishes preview pixels to the existing o
 without changing its asset reference or CPU pixel data. It is not an API autosave mode: use `save` to persist
 changes, and `render` to obtain current pixels rather than reading `OutputTexture.GetPixels()` during live
 preview. Disabling live output restores the saved image; preview EV, channel display and Post FX are excluded.
+
+## Layer identity and behaviour
+
+`TextureCompositor.layers` contains stable `Layer` objects. Common settings, GUIDs, FX references,
+group compositing and `children` belong to `Layer`; only the type-specific `LayerBehaviour` is
+polymorphic. Use `layer.Behaviour is DrawingLayerBehaviour drawing` to access owned pixels or
+other behaviour-specific methods. `layer.SetBehaviour(new NoiseLayerBehaviour())` replaces the
+behaviour without replacing the layer or changing its common settings. Document changes still
+need the normal Undo/`MarkChanged` workflow; use the JSON API for agent authoring.
+
+A behaviour can belong to only one layer. Do not share one behaviour between wrappers.
+Swapping behaviours releases transient rendering resources but does not destroy the old
+Drawing texture: Undo or the caller may still own it. Finish/synchronize an active stroke
+before recording the structural Undo snapshot, and use the existing document removal or
+conversion workflow when the old owned assets should also be deleted.
+Replacing a populated group with a non-group is rejected; use the editor's explicit conversion
+to Drawing or ungroup it first. Conversion and live-generation completion retain the layer wrapper.
+
+Snapshots include `behaviourMissing`. A missing behaviour does not remove the layer's name, GUID,
+common settings or group children. It does not render. Its `type` is `missing`, or `group` when the
+saved node still contains a group. Type-specific commands require an available behaviour.
+The Layer Settings recovery action can transfer compatible saved behaviour fields; common fields
+are retained directly, not reconstructed from missing-type metadata. Recovery matches a separate
+behaviour identifier rather than list positions or names.
+
+Earlier inheritance-based documents are intentionally incompatible. Keep their originals and use
+the earlier package revision to render/export them. No automatic colour, naming or repeat-mode
+migrations are applied to the new document model.
 
 ## Connecting
 

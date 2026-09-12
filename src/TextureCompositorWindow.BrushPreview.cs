@@ -10,7 +10,7 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private float brushStrokePreviewScale = 1f;
         [NonSerialized] private Image brushStrokePreview;
         [NonSerialized] private IVisualElementScheduledItem brushStrokePreviewSchedule;
-        [NonSerialized] private DrawingLayer brushStrokePreviewLayer;
+        [NonSerialized] private DrawingLayerBehaviour brushStrokePreviewLayer;
         [NonSerialized] private RenderTexture brushStrokePreviewTexture;
         [NonSerialized] private Material brushStrokePreviewMaterial;
         [NonSerialized] private bool brushStrokePreviewDirty = true;
@@ -95,7 +95,7 @@ namespace DCFApixels.SpriteEditor
                     };
                     brushStrokePreviewTexture.Create();
                 }
-                brushStrokePreviewLayer ??= new DrawingLayer();
+                brushStrokePreviewLayer ??= new DrawingLayerBehaviour();
                 var dynamics = JsonUtility.FromJson<BrushDynamics>(JsonUtility.ToJson(paintSettings.dynamics));
                 dynamics.tip = paintSettings.dynamics.tip;
                 dynamics.Normalize();

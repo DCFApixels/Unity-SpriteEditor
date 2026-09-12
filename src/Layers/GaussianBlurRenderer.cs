@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
-using static DCFApixels.SpriteEditor.BlurLayer;
+using static DCFApixels.SpriteEditor.BlurLayerBehaviour;
 
 namespace DCFApixels.SpriteEditor
 {
     internal static class GaussianBlurRenderer
     {
-        internal static RenderTexture RenderBlur(BlurLayer layer, in LayerRenderContext context)
+        internal static RenderTexture RenderBlur(BlurLayerBehaviour layer, in LayerRenderContext context)
         {
             if (context.input == null) return null;
             float strength = layer.strength, radius = layer.radius;

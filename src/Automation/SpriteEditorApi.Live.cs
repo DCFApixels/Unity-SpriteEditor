@@ -41,7 +41,7 @@ namespace DCFApixels.SpriteEditor
             foreach (var job in liveJobs.Values)
                 if (job.state == "pending" && (job.document == null ||
                     (job.editing ? job.document.FindLayer(job.layerId) == null :
-                    !(job.document.FindLayer(job.layerId) is PendingLayer pending) || pending.jobId != job.id)))
+                    !(job.document.FindLayer(job.layerId)?.Behaviour is PendingLayerBehaviour pending) || pending.jobId != job.id)))
                 { job.state = "cancelled"; job.mask = null; releasedEdit |= job.editing; }
             if (releasedEdit) LiveEditLocksChanged?.Invoke();
         }
@@ -169,7 +169,7 @@ namespace DCFApixels.SpriteEditor
                 var selected = window.AgentDocument.FindLayer(Text(request, "layerId"));
                 if (IsLayerContentLocked(window.AgentDocument, selected))
                 { CancelLayerEdit(window.AgentDocument, selected); return Success(); }
-                var pending = selected as PendingLayer;
+                var pending = selected?.Behaviour as PendingLayerBehaviour;
                 Require(pending != null, "Reservation not found.", "layer_not_found");
                 CancelLiveReservation(window.AgentDocument, pending);
                 return Success();
@@ -241,7 +241,7 @@ namespace DCFApixels.SpriteEditor
             Require(destination == "newLayer" || destination == "replacePixels", "destination must be newLayer or replacePixels.");
             string targetId = Text(request, "targetLayerId");
             Require(destination == "replacePixels" || targetId == null, "targetLayerId is only used for replacePixels.");
-            var target = targetId == null ? null : document.FindLayer(targetId) as DrawingLayer;
+            var target = targetId == null ? null : document.FindLayer(targetId)?.Behaviour as DrawingLayerBehaviour;
             Require(!IsLayerContentLocked(document, target), "Target is locked by another job.", "layer_locked");
             Require(destination != "replacePixels" || target != null, "replacePixels requires an explicit Drawing layer target. Use newLayer for other layer types.");
             if (target != null) Require(TiledCanvasUtility.IsInvertible(target.transform) &&
@@ -265,7 +265,7 @@ namespace DCFApixels.SpriteEditor
             CaptureLiveInput(job, window, captureRequest);
             List<Layer> container = Container(document, Text(request, "parent"), new Dictionary<string, Layer>());
             int index = Int(request, "index", 0, 0, container.Count);
-            var reservation = new PendingLayer { layerName = Text(request, "name", "Generating…"), jobId = job.id };
+            var reservation = new PendingLayerBehaviour { layerName = Text(request, "name", "Generating…"), jobId = job.id };
             reservation.AssignNewId(); job.layerId = reservation.Id;
             liveJobs.Add(job.id, job);
             try { LiveChange(document, "Reserve Agent Layer", () => container.Insert(index, reservation)); }
@@ -299,7 +299,7 @@ namespace DCFApixels.SpriteEditor
                 liveJobs.Values.Sum(j => j.mask == null ? 0L : j.mask.Length) + (source.mask?.Length ?? 0) <= 67108864,
                 "Too many pending jobs or selection masks.", "resource_limit");
             Require(Enumerate(source.document.layers).Count() < 1024, "Layer limit reached.", "resource_limit");
-            var pending = source.document.FindLayer(source.layerId) as PendingLayer;
+            var pending = source.document.FindLayer(source.layerId)?.Behaviour as PendingLayerBehaviour;
             Require(pending != null && source.document.TryFindLayer(pending, out _, out _), "Reservation is missing.", "job_closed");
             source.document.TryFindLayer(pending, out var container, out int index);
             var fork = new LiveJob { id = Guid.NewGuid().ToString("N"), requestId = requestId, request = canonical,
@@ -307,7 +307,7 @@ namespace DCFApixels.SpriteEditor
                 region = source.region, mask = source.mask, selectionMode = source.selectionMode,
                 capture = (JObject)source.capture.DeepClone(),
                 context = (JObject)source.context.DeepClone() };
-            var reservation = new PendingLayer { layerName = Text(request, "name", pending.layerName), jobId = fork.id };
+            var reservation = new PendingLayerBehaviour { layerName = Text(request, "name", pending.layerName), jobId = fork.id };
             reservation.AssignNewId(); fork.layerId = reservation.Id;
             liveJobs.Add(fork.id, fork);
             try { LiveChange(fork.document, "Reserve Agent Layer", () => container.Insert(index + 1, reservation)); }
@@ -320,7 +320,7 @@ namespace DCFApixels.SpriteEditor
             if (job.state != "pending") return;
             bool open = Resources.FindObjectsOfTypeAll<TextureCompositorWindow>().Any(w =>
                 w.AgentDocument == job.document && w.AgentSessionId == job.session);
-            var pending = job.document == null ? null : job.document.FindLayer(job.layerId) as PendingLayer;
+            var pending = job.document == null ? null : job.document.FindLayer(job.layerId)?.Behaviour as PendingLayerBehaviour;
             if (!open || (job.editing ? job.document.FindLayer(job.layerId) == null : pending == null || pending.jobId != job.id))
             {
                 job.state = "cancelled"; job.mask = null;
@@ -341,21 +341,21 @@ namespace DCFApixels.SpriteEditor
             return result;
         }
 
-        internal static string LiveReservationStatus(PendingLayer pending)
+        internal static string LiveReservationStatus(PendingLayerBehaviour pending)
         {
             if (pending.jobId == null || !liveJobs.TryGetValue(pending.jobId, out var job))
                 return "Generation interrupted. Cancel this reservation and ask the agent to start again.";
-            if (job.document == null || !ReferenceEquals(job.document.FindLayer(job.layerId), pending))
+            if (job.document == null || !ReferenceEquals(job.document.FindLayer(job.layerId), pending.Owner))
                 return "Generation belongs to another document copy. Cancel this reservation to remove it.";
             RefreshLiveJob(job);
             if (job.state != "pending") return "Generation " + job.state + ". Cancel this reservation to remove it.";
             return job.error ?? "Waiting for the agent. You can rename, hide or move this layer.";
         }
 
-        internal static bool ContainsReservation(Layer layer) => layer is PendingLayer || IsLiveLockedLayer(layer) ||
-            layer is GroupLayer group && group.layers.Any(ContainsReservation);
+        internal static bool ContainsReservation(Layer layer) => layer?.Behaviour is PendingLayerBehaviour || IsLiveLockedLayer(layer) ||
+            layer?.AsGroup() is Layer group && group.layers.Any(ContainsReservation);
 
-        internal static void CancelLiveReservation(TextureCompositor document, PendingLayer pending)
+        internal static void CancelLiveReservation(TextureCompositor document, PendingLayerBehaviour pending)
         {
             if (!document.TryFindLayer(pending, out var container, out _)) return;
             LiveChange(document, "Cancel Agent Layer", () => container.Remove(pending));

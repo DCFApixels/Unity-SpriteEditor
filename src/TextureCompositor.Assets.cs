@@ -44,9 +44,9 @@ namespace DCFApixels.SpriteEditor
             {
                 foreach (Layer layer in source)
                 {
-                    if (layer is DrawingLayer drawing && drawing.StoredTexture != null &&
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing && drawing.StoredTexture != null &&
                         EditorUtility.IsDirty(drawing.StoredTexture)) return true;
-                    if (layer is GroupLayer group && HasDirtyPixels(group.layers)) return true;
+                    if (layer?.AsGroup() is Layer group && HasDirtyPixels(group.layers)) return true;
                 }
                 return false;
             }

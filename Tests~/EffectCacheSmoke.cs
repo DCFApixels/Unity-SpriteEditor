@@ -11,11 +11,11 @@ texture.hideFlags=UnityEngine.HideFlags.HideAndDontSave;
 var input=new UnityEngine.Color[4096];
 for(int y=0;y<64;y++) for(int x=0;x<64;x++) input[y*64+x]=new UnityEngine.Color(2,.3f,.1f,x>16&&x<48&&y>16&&y<48?.9f:0);
 texture.SetPixels(input);texture.Apply(false,false);
-var file=new DCFApixels.SpriteEditor.FileLayer { sourceTexture=texture,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
-var group=new DCFApixels.SpriteEditor.GroupLayer { opacity=.7f,enabled=false,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
+var file=new DCFApixels.SpriteEditor.FileLayerBehaviour { sourceTexture=texture,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
+var group=new DCFApixels.SpriteEditor.GroupLayerBehaviour { opacity=.7f,enabled=false,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
 group.layers.Add(file);
-var outline=new DCFApixels.SpriteEditor.OutlineLayer();
-var gaussian=new DCFApixels.SpriteEditor.BlurLayer { radius=40,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
+var outline=new DCFApixels.SpriteEditor.OutlineLayerBehaviour();
+var gaussian=new DCFApixels.SpriteEditor.BlurLayerBehaviour { radius=40,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
 document.layers.Add(outline);document.layers.Add(group);
 void Normalize()=>compositorType.GetMethod("NormalizeModel",flags).Invoke(document,null);
 Normalize();
@@ -54,10 +54,10 @@ try
     Same(Fresh(),Render(),.003f,"RGBA promotion matches uncached composition");
     // Keep Gaussian reachable without adding its pixels, then compare Outline after promotion.
     gaussian.opacity=0;Same(baseline,Render(),.003f,"Promotion preserves original Outline");gaussian.opacity=1;
-    var normal=new DCFApixels.SpriteEditor.NormalMapLayer {inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
+    var normal=new DCFApixels.SpriteEditor.NormalMapLayerBehaviour {inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
     document.layers.Insert(0,normal);Normalize();Same(Fresh(),Render(),.003f,"Normal Map shares color source");
     document.layers.Remove(normal);
-    var motion=new DCFApixels.SpriteEditor.BlurLayer {mode=DCFApixels.SpriteEditor.BlurType.Linear,distance=8,inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
+    var motion=new DCFApixels.SpriteEditor.BlurLayerBehaviour {mode=DCFApixels.SpriteEditor.BlurType.Linear,distance=8,inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
     document.layers.Insert(0,motion);Normalize();
     Same(Fresh(),Render(),.003f,"Motion Blur shares isolated RGBA source");
     hits=Hits();Render();Check(Hits()>hits,"Motion Blur cache hit");

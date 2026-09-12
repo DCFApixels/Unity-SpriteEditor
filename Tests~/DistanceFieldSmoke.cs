@@ -1,5 +1,5 @@
 // Opt-in after manual compilation. Runs CPU/Burst jobs; no assets, windows, rendering or compilation triggered.
-var assembly = typeof(DCFApixels.SpriteEditor.SDFLayer).Assembly;
+var assembly = typeof(DCFApixels.SpriteEditor.SDFLayerBehaviour).Assembly;
 var utility = assembly.GetType("DCFApixels.SpriteEditor.DistanceFieldUtility", true);
 var compute = utility.GetMethod("ComputeSignedDistance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
 int checks = 0;
@@ -25,12 +25,12 @@ foreach (byte alpha in new byte[] { 0, 255 })
     compute.Invoke(null, new object[] { pixels, distances, 5, 1, (byte)128, 0, DCFApixels.SpriteEditor.DistanceMetric.EuclideanAntialiased });
     for (int i = 0; i < 5; i++) Check(alpha == 0 ? distances[i] > 0 : distances[i] < 0, "Uniform mask has the expected sign");
 }
-var colorInput = typeof(DCFApixels.SpriteEditor.SDFLayer).GetProperty("RequiresColorInput",
+var colorInput = typeof(DCFApixels.SpriteEditor.SDFLayerBehaviour).GetProperty("RequiresColorInput",
     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-var layer = new DCFApixels.SpriteEditor.SDFLayer();
-foreach (DCFApixels.SpriteEditor.SDFLayer.SourceChannel channel in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.SDFLayer.SourceChannel)))
+var layer = new DCFApixels.SpriteEditor.SDFLayerBehaviour();
+foreach (DCFApixels.SpriteEditor.SDFLayerBehaviour.SourceChannel channel in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.SDFLayerBehaviour.SourceChannel)))
 {
     layer.sourceChannel = channel;
-    Check((bool)colorInput.GetValue(layer) == (channel != DCFApixels.SpriteEditor.SDFLayer.SourceChannel.Alpha), "Group source requests the selected data channels");
+    Check((bool)colorInput.GetValue(layer) == (channel != DCFApixels.SpriteEditor.SDFLayerBehaviour.SourceChannel.Alpha), "Group source requests the selected data channels");
 }
 return "Distance field CPU/Burst smoke checks passed: " + checks + "; actual group rendering and Outline appearance still need visual verification.";

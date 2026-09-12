@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositor
     {
-        private void CompositeProcessor(ShaderProcessorLayer layer, ref RenderTexture accumulator,
+        private void CompositeProcessor(ShaderProcessorLayerBehaviour layer, ref RenderTexture accumulator,
             int width, int height, float scale, HashSet<Layer> stack)
         {
             if (!stack.Add(layer)) return;

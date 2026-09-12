@@ -8,23 +8,23 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class SDFLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(SDFLayer);
+        protected override Type EditedLayerType => typeof(SDFLayerBehaviour);
         protected override string PreviewTitle => "Preview (SDF)";
 
-        public static void Open(SDFLayer layer, TextureCompositor compositor)
+        public static void Open(SDFLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<SDFLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (SDFLayer)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+            BuildFields(root, (SDFLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
         }
 
         internal static void BuildFields(
-            VisualElement root, SDFLayer layer, TextureCompositor compositor,
+            VisualElement root, SDFLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
-            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+            Action<VisualElement, TargetedLayerBehaviour> addEffectTarget)
         {
             addEffectTarget(root, layer);
 
@@ -41,7 +41,7 @@ namespace DCFApixels.SpriteEditor
             bindings.Track(sourceChannel, () => (Enum)layer.sourceChannel);
             sourceChannel.RegisterValueChangedCallback(evt => applyChange(
                 "Change SDF Source Channel",
-                () => layer.sourceChannel = (SDFLayer.SourceChannel)evt.newValue));
+                () => layer.sourceChannel = (SDFLayerBehaviour.SourceChannel)evt.newValue));
             root.Add(sourceChannel);
 
             SliderInt threshold = new SliderInt("Threshold", 0, 255);
@@ -68,7 +68,7 @@ namespace DCFApixels.SpriteEditor
             bindings.Track(distancePosition, () => (Enum)layer.distancePosition);
             distancePosition.RegisterValueChangedCallback(evt => applyChange(
                 "Change SDF Position",
-                () => layer.distancePosition = (SDFLayer.DistancePosition)evt.newValue));
+                () => layer.distancePosition = (SDFLayerBehaviour.DistancePosition)evt.newValue));
             root.Add(distancePosition);
 
             Toggle inverted = SpriteEditorUI.ConfigureField(new Toggle("Inverted"));

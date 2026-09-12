@@ -38,7 +38,7 @@ namespace DCFApixels.SpriteEditor
             Require(source == "none" || source == "merged" || source == "layer", "source must be none, merged or layer.");
             Require(source == "layer" || request["sourceLayerId"] == null, "sourceLayerId is only used with source=layer.");
             Layer layer = source == "layer" ? job.document.FindLayer(Text(request, "sourceLayerId")) : null;
-            Require(source != "layer" || layer != null && !(layer is PendingLayer), "Specify a valid sourceLayerId.");
+            Require(source != "layer" || layer != null && !(layer?.Behaviour is PendingLayerBehaviour), "Specify a valid sourceLayerId.");
             job.capture = new JObject { ["source"] = source, ["sourceLayerId"] = layer?.Id,
                 ["region"] = LiveRect(job.region), ["canvas"] = new JArray(job.width, job.height),
                 ["selection"] = job.mask != null, ["selectionMode"] = job.mask != null ? job.selectionMode : null,
@@ -119,7 +119,7 @@ namespace DCFApixels.SpriteEditor
             LiveReady(document); RequireGraphics();
             string layerId = Text(request, "sourceLayerId");
             var layer = layerId == null ? null : document.FindLayer(layerId);
-            Require(layerId == null || layer != null && !(layer is PendingLayer), "Source layer not found.");
+            Require(layerId == null || layer != null && !(layer?.Behaviour is PendingLayerBehaviour), "Source layer not found.");
             int size = Int(request, "maxSize", 1024, 1, 4096);
             Texture2D texture = null;
             RenderTexture rt = null;
@@ -175,13 +175,13 @@ namespace DCFApixels.SpriteEditor
             // Name and visibility do not affect ownership of pixels. Other layer settings do.
             var model = JObject.Parse(JsonUtility.ToJson(layer));
             model.Remove("layerName"); model.Remove("enabled");
-            model.Remove("layers");
+            model.Remove("children");
             using var hash = SHA256.Create();
             var text = new StringBuilder(model.ToString(Newtonsoft.Json.Formatting.None));
             if (layer.modifiers != null)
                 foreach (var modifier in layer.modifiers)
                     if (modifier != null) text.Append(EditorJsonUtility.ToJson(modifier));
-            if (layer is DrawingLayer drawing && drawing.StoredTexture != null)
+            if (layer?.Behaviour is DrawingLayerBehaviour drawing && drawing.StoredTexture != null)
                 text.Append(Convert.ToBase64String(hash.ComputeHash(drawing.StoredTexture.GetRawTextureData())));
             return Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(text.ToString())));
         }
@@ -229,7 +229,7 @@ namespace DCFApixels.SpriteEditor
             catch { Object.DestroyImmediate(texture); throw; }
         }
 
-        private static NativeArray<Color> LiveImagePixels(LiveJob job, Texture2D image, string fit, DrawingLayer target)
+        private static NativeArray<Color> LiveImagePixels(LiveJob job, Texture2D image, string fit, DrawingLayerBehaviour target)
         {
             Require(fit == "stretch" || fit == "contain", "fit must be stretch or contain.");
             int width = target?.StoredTexture != null ? target.StoredTexture.width : job.width;

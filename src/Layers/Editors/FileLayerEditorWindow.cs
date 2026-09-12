@@ -8,20 +8,20 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class FileLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(FileLayer);
+        protected override Type EditedLayerType => typeof(FileLayerBehaviour);
 
-        public static void Open(FileLayer layer, TextureCompositor compositor)
+        public static void Open(FileLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<FileLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (FileLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (FileLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, FileLayer layer, TextureCompositor compositor,
+            VisualElement root, FileLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
 
@@ -38,20 +38,20 @@ namespace DCFApixels.SpriteEditor
 
     public sealed class ColorFillLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(ColorFillLayer);
+        protected override Type EditedLayerType => typeof(ColorFillLayerBehaviour);
 
-        public static void Open(ColorFillLayer layer, TextureCompositor compositor)
+        public static void Open(ColorFillLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<ColorFillLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (ColorFillLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (ColorFillLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, ColorFillLayer layer, TextureCompositor compositor,
+            VisualElement root, ColorFillLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
 

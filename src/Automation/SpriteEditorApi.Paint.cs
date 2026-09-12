@@ -7,7 +7,7 @@ namespace DCFApixels.SpriteEditor
 {
     public static partial class SpriteEditorApi
     {
-        private static void SetBrush(TextureCompositor document, DrawingLayer layer, JObject brush)
+        private static void SetBrush(TextureCompositor document, DrawingLayerBehaviour layer, JObject brush)
         {
             Keys(brush, "color", "size", "hardness", "spacing", "mirrorX", "mirrorY", "mirrorAngle", "center", "repeat", "repeatCount", "repeatSecondaryCount", "radialStartAngle", "elements", "boundary",
                 "opacity", "flow", "scatter", "scatterBias", "sizeJitter", "angleJitter", "angleOffset", "flipX", "flipY", "rotationMode", "randomAlgorithm", "tintGradient", "tip", "tipChannel", "tipSdf", "proceduralMode", "tipGradient", "blend", "blendApplication", "seed");
@@ -49,7 +49,7 @@ namespace DCFApixels.SpriteEditor
             if (brush["color"] != null) layer.brushColor = Color(brush["color"]);
             layer.brushSize = Number(brush, "size", layer.brushSize, 1f, 4096f);
             layer.brushHardness = Number(brush, "hardness", layer.brushHardness, 0f, 1f);
-            layer.brushSpacing = Number(brush, "spacing", layer.brushSpacing, DrawingLayer.MinimumBrushSpacing, DrawingLayer.MaximumBrushSpacing);
+            layer.brushSpacing = Number(brush, "spacing", layer.brushSpacing, DrawingLayerBehaviour.MinimumBrushSpacing, DrawingLayerBehaviour.MaximumBrushSpacing);
             layer.mirrorAcrossVerticalAxis = Bool(brush, "mirrorX", layer.mirrorAcrossVerticalAxis);
             layer.mirrorAcrossHorizontalAxis = Bool(brush, "mirrorY", layer.mirrorAcrossHorizontalAxis);
             layer.mirrorAngle = Number(brush, "mirrorAngle", layer.mirrorAngle, 0f, 360f);
@@ -67,7 +67,7 @@ namespace DCFApixels.SpriteEditor
             layer.repeatBoundaryMode = Enum(brush, "boundary", layer.repeatBoundaryMode);
         }
 
-        private static void Paint(TextureCompositor document, DrawingLayer layer, JObject operation, bool execute)
+        private static void Paint(TextureCompositor document, DrawingLayerBehaviour layer, JObject operation, bool execute)
         {
             if (operation["brush"] != null) SetBrush(document, layer, Obj(operation["brush"], "brush"));
             Require(operation["points"] is JArray points && points.Count >= 1 && points.Count <= 4096, "A stroke needs 1..4096 [x,y] points.");

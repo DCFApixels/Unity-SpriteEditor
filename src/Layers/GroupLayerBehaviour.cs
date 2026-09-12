@@ -5,11 +5,10 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class GroupLayer : Layer
+    public sealed class GroupLayerBehaviour : LayerBehaviour
     {
-        [SerializeReference] public List<Layer> layers = new List<Layer>();
-        // Zero preserves the behavior of documents saved before group blending existed.
-        public GroupCompositing compositing;
+        public List<Layer> layers { get => Owner.layers; set => Owner.children = value; }
+        public GroupCompositing compositing { get => Owner.compositing; set => Owner.compositing = value; }
 
         internal override bool IsGroup => true;
         internal bool IsPassThrough => compositing == GroupCompositing.PassThrough && swizzle.IsIdentity;

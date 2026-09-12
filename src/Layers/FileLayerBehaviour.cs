@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
     using UnityEngine.Experimental.Rendering;
 
     [System.Serializable]
-    public sealed class FileLayer : Layer
+    public sealed class FileLayerBehaviour : LayerBehaviour
     {
         public Texture2D sourceTexture;
         [SerializeField] private bool sourceAssigned;
@@ -35,7 +35,7 @@ namespace DCFApixels.SpriteEditor
             if (owner == null) return false;
             if (owner.layers != null)
                 foreach (Layer layer in owner.layers)
-                    if (layer != null && !ReferenceEquals(layer, this))
+                    if (layer != null && !ReferenceEquals(layer, Owner))
                         return false;
             return true;
         }

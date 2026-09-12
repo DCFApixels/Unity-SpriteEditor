@@ -20,19 +20,19 @@ namespace DCFApixels.SpriteEditor
             Dictionary<string, string> copiedIds = new Dictionary<string, string>();
             Dictionary<ShaderFX, ShaderFX> effects = new Dictionary<ShaderFX, ShaderFX>();
             List<Texture2D> textures = new List<Texture2D>();
-            List<DrawingLayer> drawings = new List<DrawingLayer>();
-            Dictionary<TargetedLayerEffect, Layer> previousInputs = new Dictionary<TargetedLayerEffect, Layer>();
+            List<DrawingLayerBehaviour> drawings = new List<DrawingLayerBehaviour>();
+            Dictionary<TargetedLayerBehaviour, Layer> previousInputs = new Dictionary<TargetedLayerBehaviour, Layer>();
             int undoGroup = -1;
             try
             {
                 VisitDrawingLayers(roots, drawing => drawing.SyncSurfaceToTexture());
                 foreach (Layer source in roots)
                 {
-                    Layer copy = (Layer)JsonUtility.FromJson(JsonUtility.ToJson(source), source.GetType());
+                    Layer copy = JsonUtility.FromJson<Layer>(JsonUtility.ToJson(source));
                     PrepareCopy(source, copy);
                 }
                 foreach (Layer copy in copies.Values)
-                    if (copy is TargetedLayerEffect effect &&
+                    if (copy?.Behaviour is TargetedLayerBehaviour effect &&
                         !string.IsNullOrEmpty(effect.TargetLayerId) &&
                         copiedIds.TryGetValue(effect.TargetLayerId, out string targetId))
                         effect.TargetLayerId = targetId;
@@ -40,7 +40,7 @@ namespace DCFApixels.SpriteEditor
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName(undoName);
-                foreach (DrawingLayer drawing in drawings)
+                foreach (DrawingLayerBehaviour drawing in drawings)
                     drawing.MakeTexturePersistent(this);
                 foreach (ShaderFX effect in effects.Values)
                     effect.PersistEmbedded(this);
@@ -53,7 +53,7 @@ namespace DCFApixels.SpriteEditor
                     pair.Value.layerName = AllocateDuplicateName(pair.Key);
                 embeddedShaderFX.AddRange(effects.Values);
                 InsertCopies(layers);
-                foreach (KeyValuePair<TargetedLayerEffect, Layer> input in previousInputs)
+                foreach (KeyValuePair<TargetedLayerBehaviour, Layer> input in previousInputs)
                 {
                     Layer target = input.Value;
                     if (target != null && copies.TryGetValue(target, out Layer targetCopy))
@@ -74,7 +74,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (undoGroup >= 0)
                     Undo.RevertAllDownToGroup(undoGroup);
-                foreach (DrawingLayer drawing in drawings)
+                foreach (DrawingLayerBehaviour drawing in drawings)
                     drawing.InvalidatePaintSurface();
                 foreach (ShaderFX effect in effects.Values)
                     if (effect != null)
@@ -99,19 +99,19 @@ namespace DCFApixels.SpriteEditor
                     {
                         if (selected.Contains(layer))
                             roots.Add(layer);
-                        else if (layer is GroupLayer group)
+                        else if (layer?.AsGroup() is Layer group)
                             CollectRoots(group.layers);
                     }
             }
 
             void PrepareCopy(Layer source, Layer copy)
             {
-                if (copy == null || copy.GetType() != source.GetType())
+                if (copy == null || copy.Behaviour?.GetType() != source.Behaviour?.GetType() || copy.IsGroup != source.IsGroup)
                     throw new InvalidOperationException("Could not copy the layer data.");
                 copy.AssignNewId();
                 copies.Add(source, copy);
                 copiedIds.Add(source.Id, copy.Id);
-                if (copy is DrawingLayer drawing)
+                if (copy?.Behaviour is DrawingLayerBehaviour drawing)
                 {
                     drawing.CloneStoredTexture();
                     drawing.InitializeCanvas(width, height);
@@ -119,9 +119,9 @@ namespace DCFApixels.SpriteEditor
                         textures.Add(drawing.StoredTexture);
                     drawings.Add(drawing);
                 }
-                if (source is TargetedLayerEffect sourceEffect && sourceEffect.inputMode == EffectInputMode.Previous &&
+                if (source?.Behaviour is TargetedLayerBehaviour sourceEffect && sourceEffect.inputMode == EffectInputMode.Previous &&
                     TryFindLayer(source, out List<Layer> sourceContainer, out int sourceIndex))
-                    previousInputs.Add((TargetedLayerEffect)copy,
+                    previousInputs.Add((TargetedLayerBehaviour)copy,
                         sourceIndex + 1 < sourceContainer.Count ? sourceContainer[sourceIndex + 1] : null);
                 if (copy.modifiers != null)
                     for (int i = 0; i < copy.modifiers.Count; i++)
@@ -134,7 +134,7 @@ namespace DCFApixels.SpriteEditor
                             }
                             copy.modifiers[i] = effectCopy;
                         }
-                if (source is GroupLayer sourceGroup && copy is GroupLayer copyGroup)
+                if (source?.AsGroup() is Layer sourceGroup && copy?.AsGroup() is Layer copyGroup)
                 {
                     if (sourceGroup.layers.Count != copyGroup.layers.Count)
                         throw new InvalidOperationException("Could not copy the group's children.");
@@ -158,7 +158,7 @@ namespace DCFApixels.SpriteEditor
                         container.InsertRange(start, block);
                         i += block.Count - 1;
                     }
-                    else if (source is GroupLayer group)
+                    else if (source?.AsGroup() is Layer group)
                         InsertCopies(group.layers);
                 }
             }

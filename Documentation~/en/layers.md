@@ -87,11 +87,15 @@ when you want to paint on the combined result.
 
 ## Repair a missing layer
 
-Broken layers show their saved names as read-only text when available, or **Missing Reference** otherwise.
-Select the row to see the warning in Layer Settings. Choose **Replace with**,
-then click **Replace Layer**. The replacement stays in the same position and keeps compatible
-saved settings. The panel lists settings that cannot be transferred; check the result before saving.
+A layer whose type is unavailable keeps its name, position, visibility and common settings.
+A group also keeps its children. Select the row to see the warning in Layer Settings.
+Choose **Replace with**, then click **Replace Behaviour**. **Transfer saved settings** copies
+compatible type-specific settings when they are available. The panel lists anything that cannot
+be transferred; check the result before saving. Groups containing children can only be restored as groups.
 
-If **Saved data** asks you to choose a record, select the old layer by its name.
-Use **Use new layer defaults** only when you want a fresh replacement without its old settings.
-You can also remove the broken row from **⋮ → Remove** or with the trash button.
+You can still move, hide or remove the broken layer. It does not render until its type is restored.
+
+{: .warning }
+The current layer format is incompatible with documents created before the Layer/Behaviour redesign.
+There is no automatic conversion. Keep those documents with their original WhimTex version,
+or export their images there before updating.

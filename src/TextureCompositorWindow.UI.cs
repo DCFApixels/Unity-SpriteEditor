@@ -25,6 +25,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private VisualElement toolkitPreviewErrorRoot;
         [NonSerialized] private ObjectField toolkitDocumentField;
         [NonSerialized] private VisualElement toolkitLayerHierarchyRoot;
+        [NonSerialized] private VisualElement toolkitLayerEndDropZone;
         [NonSerialized] private VisualElement activeDropElement;
         [NonSerialized] private StyleLength activeDropMarginLeft;
         [NonSerialized] private LayerDragManipulator activeLayerDrag;
@@ -50,6 +51,7 @@ namespace DCFApixels.SpriteEditor
         {
             public readonly List<Layer> Container;
             public readonly Layer Layer;
+            public readonly LayerBehaviour Behaviour;
             public readonly int Index;
             public readonly int Depth;
 
@@ -57,13 +59,14 @@ namespace DCFApixels.SpriteEditor
             {
                 Container = container;
                 Layer = layer;
+                Behaviour = layer?.Behaviour;
                 Index = index;
                 Depth = depth;
             }
 
             public bool Equals(LayerTreeEntry other) =>
                 ReferenceEquals(Container, other.Container) && ReferenceEquals(Layer, other.Layer) &&
-                Index == other.Index && Depth == other.Depth;
+                ReferenceEquals(Behaviour, other.Behaviour) && Index == other.Index && Depth == other.Depth;
         }
 
         public void CreateGUI()
@@ -193,6 +196,7 @@ namespace DCFApixels.SpriteEditor
             toolkitSettingsScroll.EnableInClassList("sprite-editor-layer-list--light", !EditorGUIUtility.isProSkin);
             toolkitSettingsScroll.AddManipulator(new ProjectTextureDropManipulator(this));
             toolkitSettingsScroll.AddManipulator(layerDragAutoScroll = new LayerDragAutoScrollManipulator(this, toolkitSettingsScroll));
+            toolkitSettingsScroll.contentViewport.AddManipulator(new LayerListEndDropManipulator(this));
             toolkitSettingsScroll.style.minHeight = 0f;
             toolkitSettingsScroll.style.flexGrow = 1f;
             layersPane.Add(toolkitSettingsScroll);
@@ -471,7 +475,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (layer == null) continue;
                 layer.enabled = true;
-                if (layer is GroupLayer group) ShowAllLayers(group.layers);
+                if (layer?.AsGroup() is Layer group) ShowAllLayers(group.layers);
             }
         }
 
@@ -514,7 +518,7 @@ namespace DCFApixels.SpriteEditor
             {
                 bool hasSelection = GetSelectedLayer() != null;
                 group.SetEnabled(hasSelection);
-                delete.SetEnabled(hasSelection || HasSelectedMissingLayer);
+                delete.SetEnabled(hasSelection);
             });
         }
 
@@ -547,8 +551,8 @@ namespace DCFApixels.SpriteEditor
             toolkitInspectorEffectTarget?.Invalidate();
             toolkitLayerTree.Clear();
             toolkitLayerTree.AddRange(toolkitNextLayerTree);
-            RefreshMissingLayerNames();
             toolkitLayerHierarchyRoot.Clear();
+            toolkitLayerEndDropZone = null;
             if (compositor == null || compositor.layers.Count == 0)
             {
                 SpriteEditorUI.AddHelpBox(
@@ -570,7 +574,7 @@ namespace DCFApixels.SpriteEditor
             {
                 Layer layer = layers[i];
                 toolkitNextLayerTree.Add(new LayerTreeEntry(layers, layer, i, depth));
-                if (layer is GroupLayer group && GetGroupExpanded(group))
+                if (layer?.AsGroup() is Layer group && GetGroupExpanded(group))
                     CollectToolkitLayerTree(group.layers, depth + 1);
             }
             toolkitNextLayerTree.Add(new LayerTreeEntry(layers, null, -1, depth));
@@ -590,17 +594,17 @@ namespace DCFApixels.SpriteEditor
                     continue;
                 }
 
-                VisualElement row = layer is GroupLayer group
+                VisualElement row = layer?.AsGroup() is Layer group
                     ? BuildToolkitGroupRow(group, layers, i, depth)
                     : BuildToolkitLeafRow(layer, layers, i, depth);
                 root.Add(row);
 
-                if (layer is GroupLayer expandedGroup && GetGroupExpanded(expandedGroup))
+                if (layer?.AsGroup() is Layer expandedGroup && GetGroupExpanded(expandedGroup))
                     AddToolkitLayerRows(expandedGroup.layers, depth + 1, root);
             }
 
             if (depth == 0)
-                root.Add(BuildContainerEndDropZone(layers, depth));
+                root.Add(toolkitLayerEndDropZone = BuildContainerEndDropZone(layers, depth));
         }
 
         private VisualElement CreateToolkitLayerRow(Layer layer, int depth)
@@ -754,26 +758,26 @@ namespace DCFApixels.SpriteEditor
         {
             if (compositor == null || !compositor.TryFindLayer(layer, out var container, out int index)) return false;
             float y = row.WorldToLocal(position).y;
-            if (y >= row.layout.height - 3f && layer is GroupLayer expanded &&
+            if (y >= row.layout.height - 3f && layer?.AsGroup() is Layer expanded &&
                 GetGroupExpanded(expanded) && expanded.layers.Count > 0) return false;
             // Both sides of the boundary target its upper sibling. Group children
             // are separate containers, so a boundary never clips across a folder.
             int targetIndex = y <= 3f ? index - 1 : y >= row.layout.height - 3f ? index : -1;
             if (targetIndex < 0 || targetIndex + 1 >= container.Count) return false;
             Layer target = container[targetIndex];
-            if (target == null || SpriteEditorApi.IsLayerContentLocked(compositor, target) || target is ShaderProcessorLayer || container[targetIndex + 1] is ShaderProcessorLayer) return false;
+            if (target == null || SpriteEditorApi.IsLayerContentLocked(compositor, target) || target?.Behaviour is ShaderProcessorLayerBehaviour || container[targetIndex + 1]?.Behaviour is ShaderProcessorLayerBehaviour) return false;
             ExecuteContextChange("Change Clipping Mask", () => target.clippingMask = !target.clippingMask);
             return true;
         }
 
-        private void ToggleLayerGroup(GroupLayer group)
+        private void ToggleLayerGroup(Layer group)
         {
             groupExpansion[group.Id] = !GetGroupExpanded(group);
             RefreshToolkitLayerHierarchy();
         }
 
         private VisualElement BuildToolkitGroupRow(
-            GroupLayer group,
+            Layer group,
             List<Layer> container,
             int index,
             int depth)
@@ -794,7 +798,7 @@ namespace DCFApixels.SpriteEditor
             });
             nameCell.Add(foldout);
 
-            TextField name = new TextField { isDelayed = true };
+            TextField name = new TextField { isDelayed = true, isReadOnly = group.Behaviour == null };
             name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(group.layerName);
             toolkitLayerBindings.Track(name, () => group.layerName);
@@ -844,11 +848,18 @@ namespace DCFApixels.SpriteEditor
             };
             thumbnail.AddToClassList("sprite-editor-layer-thumbnail");
             nameCell.Add(thumbnail);
+            if (layer.Behaviour == null)
+            {
+                var missing = new Label("!") { tooltip = "Missing behaviour — select this layer to restore it.", pickingMode = PickingMode.Ignore };
+                missing.AddToClassList("sprite-editor-missing-thumbnail");
+                nameCell.Add(missing);
+            }
             toolkitLayerBindings.Add(() => thumbnail.image = layer.GetPreviewTexture(18));
 
             TextField name = new TextField { isDelayed = true };
             name.AddToClassList("sprite-editor-layer-name");
             name.SetValueWithoutNotify(layer.layerName);
+            name.isReadOnly = layer.Behaviour == null;
             toolkitLayerBindings.Track(name, () => layer.layerName);
             name.RegisterValueChangedCallback(evt => ApplyToolkitChange(
                 "Rename Sprite Layer",
@@ -871,7 +882,7 @@ namespace DCFApixels.SpriteEditor
             blend.RegisterValueChangedCallback(evt => ApplySelectedBlend(layer, (BlendMode)evt.newValue));
             row.Add(blend);
 
-            if (layer is PendingLayer pending)
+            if (layer?.Behaviour is PendingLayerBehaviour pending)
             {
                 opacity.SetEnabled(false);
                 blend.SetEnabled(false);
@@ -886,7 +897,7 @@ namespace DCFApixels.SpriteEditor
                 opacity.SetEnabled(editable); blend.SetEnabled(editable);
             });
 
-            if (layer is TargetedLayerEffect effect)
+            if (layer?.Behaviour is TargetedLayerBehaviour effect)
             {
                 Label warning = new Label("!");
                 warning.tooltip = effect.inputMode == EffectInputMode.Specific
@@ -924,7 +935,7 @@ namespace DCFApixels.SpriteEditor
             void Refresh()
             {
                 button.EnableInClassList("sprite-editor-layer-enabled--hidden", !layer.enabled);
-                button.tooltip = layer is GroupLayer
+                button.tooltip = layer?.IsGroup == true
                     ? (layer.enabled ? "Hide group and its descendants" : "Show group")
                     : (layer.enabled ? "Hide layer" : "Show layer");
             }
@@ -935,7 +946,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ToggleLayerVisibility(Layer layer)
         {
-            ApplyToolkitChange(layer is GroupLayer ? "Toggle Sprite Group" : "Toggle Sprite Layer",
+            ApplyToolkitChange(layer?.IsGroup == true ? "Toggle Sprite Group" : "Toggle Sprite Layer",
                 () => layer.enabled = !layer.enabled);
         }
 
@@ -955,7 +966,7 @@ namespace DCFApixels.SpriteEditor
 
         private VisualElement BuildMissingLayerRow(List<Layer> container, int index, int depth)
         {
-            return CreateMissingLayerRow(container, index, depth);
+            return new HelpBox("Unsupported layer data from an older document. This document format has no automatic migration.", HelpBoxMessageType.Warning);
         }
 
         private sealed class LayerDragManipulator : PointerManipulator
@@ -1110,7 +1121,7 @@ namespace DCFApixels.SpriteEditor
                 if (foldout != null)
                 {
                     evt.StopImmediatePropagation();
-                    if (layer is GroupLayer group && foldout.worldBound.Contains(evt.position))
+                    if (layer?.AsGroup() is Layer group && foldout.worldBound.Contains(evt.position))
                         owner.ToggleLayerGroup(group);
                     return;
                 }
@@ -1185,7 +1196,7 @@ namespace DCFApixels.SpriteEditor
                         out Layer dragged,
                         out List<Layer> destination,
                         out int destinationIndex,
-                        out GroupLayer groupToExpand,
+                        out Layer groupToExpand,
                         out bool insertBefore))
                 {
                     DragAndDrop.visualMode = DragAndDropVisualMode.Rejected;
@@ -1207,7 +1218,7 @@ namespace DCFApixels.SpriteEditor
                         out Layer dragged,
                         out List<Layer> destination,
                         out int destinationIndex,
-                        out GroupLayer groupToExpand,
+                        out Layer groupToExpand,
                         out _))
                 {
                     return;
@@ -1231,7 +1242,7 @@ namespace DCFApixels.SpriteEditor
             out Layer dragged,
             out List<Layer> destination,
             out int destinationIndex,
-            out GroupLayer groupToExpand,
+            out Layer groupToExpand,
             out bool insertBefore)
         {
             dragged = GetDraggedLayer();
@@ -1244,13 +1255,13 @@ namespace DCFApixels.SpriteEditor
 
             Vector2 local = row.WorldToLocal(mousePosition);
             float height = Mathf.Max(1f, row.resolvedStyle.height);
-            bool dropInside = rowLayer is GroupLayer &&
+            bool dropInside = rowLayer?.IsGroup == true &&
                               local.y >= height * 0.25f &&
                               local.y <= height * 0.75f;
             insertBefore = local.y < height * 0.5f;
             if (dropInside)
             {
-                groupToExpand = (GroupLayer)rowLayer;
+                groupToExpand = (Layer)rowLayer;
                 destination = groupToExpand.layers;
                 destinationIndex = 0;
             }
@@ -1395,9 +1406,9 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewActions.Clear();
             Button clear = SpriteEditorUI.CreateToolbarButton("Clear", () =>
             {
-                if (GetSelectedLayer() is DrawingLayer drawing) ClearDrawingLayer(drawing);
+                if (GetSelectedLayer()?.Behaviour is DrawingLayerBehaviour drawing) ClearDrawingLayer(drawing);
             }, 46f);
-            toolkitHeaderBindings.Add(() => clear.SetEnabled(GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)));
+            toolkitHeaderBindings.Add(() => clear.SetEnabled(GetSelectedLayer()?.Behaviour is DrawingLayerBehaviour layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)));
             toolkitPreviewActions.Add(clear);
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();
@@ -1508,7 +1519,7 @@ namespace DCFApixels.SpriteEditor
 
             bool hasLayers = HasPreviewLayers;
             toolkitPreviewCanvas.SetCanvasVisible(hasLayers);
-            DrawingLayer drawing = GetSelectedLayer() as DrawingLayer;
+            DrawingLayerBehaviour drawing = GetSelectedLayer()?.Behaviour as DrawingLayerBehaviour;
             ApplyPreviewTextureFilter();
             RefreshPreviewQualityControl();
             RefreshPreviewToolToolbar();
@@ -1589,7 +1600,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (HandlePaintConversionPrompt(evt)) return;
             if (HandleFillPointerDown(evt)) return;
-            DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
+            DrawingLayerBehaviour layer = GetSelectedLayer()?.Behaviour as DrawingLayerBehaviour;
             if (!IsPreviewBrushEnabled || paintingLayer != null || layer == null || (evt.button != 0 && evt.button != 1) || evt.altKey)
                 return;
             if (!toolkitPreviewCanvas.contentRect.Contains(evt.localPosition)) return;
@@ -1614,7 +1625,7 @@ namespace DCFApixels.SpriteEditor
 
         private bool TryBeginPreviewStroke(Vector2 position, bool shift)
         {
-            DrawingLayer layer = GetSelectedLayer() as DrawingLayer;
+            DrawingLayerBehaviour layer = GetSelectedLayer()?.Behaviour as DrawingLayerBehaviour;
             if (layer == null ||
                 !TryMapPreviewToLayerUv(position, toolkitPreviewCanvas.ImageRect, layer, out Vector2 startUv, allowOutside: true)) return false;
             paintingLayer = layer;
@@ -1946,7 +1957,7 @@ namespace DCFApixels.SpriteEditor
             private readonly VisualElement overlay;
             private readonly PencilCursorElement pencilCursorElement;
             private Texture texture;
-            private DrawingLayer drawingLayer;
+            private DrawingLayerBehaviour drawingLayer;
             private PaintToolSettings brushSettings;
             private bool pencilCursor;
             private int documentWidth = 1;
@@ -2151,7 +2162,7 @@ namespace DCFApixels.SpriteEditor
                 overlay.MarkDirtyRepaint();
             }
 
-            public void SetDocument(Texture nextTexture, int width, int height, DrawingLayer layer, bool transforming = false, PaintToolSettings brush = null)
+            public void SetDocument(Texture nextTexture, int width, int height, DrawingLayerBehaviour layer, bool transforming = false, PaintToolSettings brush = null)
             {
                 transformMode = transforming;
                 texture = nextTexture;

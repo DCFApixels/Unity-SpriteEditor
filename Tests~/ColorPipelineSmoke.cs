@@ -5,7 +5,7 @@ var assembly = typeof(DCFApixels.SpriteEditor.TextureCompositor).Assembly;
 var instance = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
 var statics = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
 var utility = assembly.GetType(ns + "HdrUtility");
-if (typeof(DCFApixels.SpriteEditor.ColorFillLayer).GetProperty("color") == null)
+if (typeof(DCFApixels.SpriteEditor.ColorFillLayerBehaviour).GetProperty("color") == null)
     throw new Exception("Manually compile the color compatibility fix before running this test.");
 var brushShader = Shader.Find("Hidden/TextureCompositor/PaintBrush");
 if (brushShader.GetPropertyType(brushShader.FindPropertyIndex("_Color")) != UnityEngine.Rendering.ShaderPropertyType.Vector)
@@ -63,19 +63,19 @@ try
     foreach (var color in new[] { new Color(.463f, 0, 1, 1), new Color(1, .2f, .5f, 1), new Color(.37f, .61f, .23f, .6f) })
     {
         Color linear = Decode(color);
-        var fill = new DCFApixels.SpriteEditor.ColorFillLayer { color = color };
+        var fill = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = color };
         Use(fill); Near(Pixel(), linear, "Color Fill");
-        var copy = JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>(JsonUtility.ToJson(fill));
+        var copy = JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayerBehaviour>(JsonUtility.ToJson(fill));
         Use(copy); Near(Pixel(), linear, "New fill JSON round-trip");
-        Use(new DCFApixels.SpriteEditor.FileLayer { sourceTexture = Texture(color, false) });
+        Use(new DCFApixels.SpriteEditor.FileLayerBehaviour { sourceTexture = Texture(color, false) });
         Near(Pixel(), linear, "sRGB File");
-        Use(new DCFApixels.SpriteEditor.FileLayer { sourceTexture = Texture(linear, true) });
+        Use(new DCFApixels.SpriteEditor.FileLayerBehaviour { sourceTexture = Texture(linear, true) });
         Near(Pixel(), linear, "Linear File");
-        Use(new DCFApixels.SpriteEditor.GradientLayer { gradient = Constant(color) });
+        Use(new DCFApixels.SpriteEditor.GradientLayerBehaviour { gradient = Constant(color) });
         Near(Pixel(), linear, "Gradient");
         foreach (var range in new[] { DCFApixels.SpriteEditor.LayerColorRange.Standard, DCFApixels.SpriteEditor.LayerColorRange.HDR })
         {
-            var drawing = new DCFApixels.SpriteEditor.DrawingLayer
+            var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
             { brushColor = color, brushSize = 4, brushHardness = 1, colorRange = range };
             Use(drawing);
             Call(drawing, "PaintPoint", new Vector2(.5625f, .5625f), 8, 8, Call(drawing, "GetStrokeParameters", false));
@@ -110,29 +110,20 @@ try
             shapeTexture.SetPixel(0, edge, Color.clear); shapeTexture.SetPixel(7, edge, Color.clear);
         }
         shapeTexture.Apply(false, false);
-        var shape = new DCFApixels.SpriteEditor.FileLayer { sourceTexture = shapeTexture };
-        var sdf = new DCFApixels.SpriteEditor.SDFLayer { gradient = Constant(color) };
+        var shape = new DCFApixels.SpriteEditor.FileLayerBehaviour { sourceTexture = shapeTexture };
+        var sdf = new DCFApixels.SpriteEditor.SDFLayerBehaviour { gradient = Constant(color) };
         Use(sdf, shape);
         Color opaque = color; opaque.a = 1;
         sdf.gradient = Constant(opaque);
         Near(Pixel(), Decode(opaque), "SDF gradient");
-        var outline = new DCFApixels.SpriteEditor.OutlineLayer
+        var outline = new DCFApixels.SpriteEditor.OutlineLayerBehaviour
         { outlineColor = opaque, outlineWidth = 100, outlineSoftness = 0,
-            outlinePosition = DCFApixels.SpriteEditor.OutlineLayer.OutlinePosition.Inside };
+            outlinePosition = DCFApixels.SpriteEditor.OutlineLayerBehaviour.OutlinePosition.Inside };
         Use(outline, shape); Near(Pixel(), Decode(opaque), "Outline color");
     }
 
-    var legacy = JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>("{\"color\":{\"r\":1,\"g\":0.2,\"b\":0.5,\"a\":1}}");
-    Color oldValue = new Color(1, .2f, .5f, 1);
-    Color oldLinear = QualitySettings.activeColorSpace == ColorSpace.Linear ? oldValue : Decode(oldValue);
-    Use(legacy); Near(Pixel(), oldLinear, "Legacy serialized Color Fill");
-    Near(legacy.color, Encode(oldLinear), "Legacy fill picker matches its appearance");
-    var legacyCopy = JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>(JsonUtility.ToJson(legacy));
-    Use(legacyCopy); Near(Pixel(), oldLinear, "Legacy fill save/reopen representation");
-    legacy.color = legacy.color; Use(legacy); Near(Pixel(), oldLinear, "Editing legacy color without changing it");
-
     var hdrColor = new Color(2, -.25f, .4f, 1);
-    var hdrDrawing = new DCFApixels.SpriteEditor.DrawingLayer
+    var hdrDrawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
     { colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR, brushColor = hdrColor, brushSize = 4, brushHardness = 1 };
     Use(hdrDrawing);
     Call(hdrDrawing, "PaintPoint", new Vector2(.5625f, .5625f), 8, 8, Call(hdrDrawing, "GetStrokeParameters", false));
@@ -147,7 +138,7 @@ try
         var expected = new Color(65504, (float)(65504 * Linear(input.g) / peak),
             input.b == 0 ? 0 : (float)(65504 * Linear(input.b) / peak), 1);
         Near(bounded, expected, "Paint intensity preserves RGB ratios", .02f);
-        var drawing = new DCFApixels.SpriteEditor.DrawingLayer
+        var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
         { colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR, brushColor = input, brushSize = 4, brushHardness = 1 };
         Use(drawing);
         Call(drawing, "PaintPoint", new Vector2(.5625f, .5625f), 8, 8, Call(drawing, "GetStrokeParameters", false));
@@ -160,8 +151,8 @@ try
     }
     Near((Color)Static("DecodePaintColor", hdrColor), Decode(hdrColor), "In-range paint remains unchanged");
 
-    var source = new DCFApixels.SpriteEditor.ColorFillLayer { color = new Color(.3f,.6f,.2f,1) };
-    var top = new DCFApixels.SpriteEditor.ColorFillLayer { color = new Color(.8f,.2f,.4f,1), opacity = .5f };
+    var source = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = new Color(.3f,.6f,.2f,1) };
+    var top = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = new Color(.8f,.2f,.4f,1), opacity = .5f };
     Use(top, source); Near(Pixel(), Decode(Color.Lerp(source.color, top.color, .5f)), "Standard opacity blends in sRGB");
 
     // Test both uniform layouts without compiling a Shader FX: cached FX used Color, new FX use Vector.
@@ -171,8 +162,8 @@ try
         if (shader == null || !shader.isSupported) throw new Exception("Missing test shader: " + shaderName);
         var material = new Material(shader) { hideFlags = HideFlags.HideAndDontSave }; objects.Add(material);
         var parameter = new DCFApixels.SpriteEditor.ShaderFXParameter
-        { type = DCFApixels.SpriteEditor.ShaderFXParameterType.Color, colorValue = new Color(.463f, .23f, .71f, 1) };
-        Call(parameter, "SetValue", material, "_Color");
+        { name = "_Color", type = DCFApixels.SpriteEditor.ShaderFXParameterType.Color, colorValue = new Color(.463f, .23f, .71f, 1) };
+        Call(parameter, "SetValue", material, parameter, new Vector2(8, 8));
         if (shader == brushShader)
         { material.SetFloat("_Hardness", 1); material.SetFloat("_SrcBlend", 1); material.SetFloat("_DstBlend", 0); }
         var target = RenderTexture.GetTemporary(8, 8, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);

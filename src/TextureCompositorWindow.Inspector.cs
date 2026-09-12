@@ -13,6 +13,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Label toolkitLayerSettingsTitle;
         [NonSerialized] private Button toolkitLayerGuidButton;
         [NonSerialized] private Layer toolkitInspectorLayer;
+        [NonSerialized] private LayerBehaviour toolkitInspectorBehaviour;
         [NonSerialized] private TextureCompositor toolkitInspectorDocument;
         [NonSerialized] private bool toolkitInspectorBuilt;
         [NonSerialized] private bool toolkitInspectorLocked;
@@ -24,7 +25,7 @@ namespace DCFApixels.SpriteEditor
         {
             toolkitInspectorBuilt = false;
             toolkitInspectorLayer = null;
-            toolkitInspectorMissingLayer = null;
+            toolkitInspectorBehaviour = null;
             toolkitInspectorDocument = null;
             toolkitInspectorEffectTarget = null;
             toolkitInspectorShaderFX = null;
@@ -38,8 +39,7 @@ namespace DCFApixels.SpriteEditor
 
             Layer selected = GetSelectedLayer();
             bool locked = SpriteEditorApi.IsLayerContentLocked(compositor, selected);
-            string title = selected == null ? (HasSelectedMissingLayer
-                ? MissingLayerDisplayName(selectedMissingLayer.Container, selectedMissingLayer.Index) : "Layer Settings") : selected.layerName;
+            string title = selected == null ? "Layer Settings" : selected.layerName;
             if (toolkitLayerSettingsTitle != null && toolkitLayerSettingsTitle.text != title)
                 toolkitLayerSettingsTitle.text = title;
             if (toolkitLayerGuidButton != null)
@@ -53,12 +53,12 @@ namespace DCFApixels.SpriteEditor
             // Normal value changes must preserve text editing, pointer capture and scroll position.
             if (!toolkitInspectorBuilt || !ReferenceEquals(toolkitInspectorLayer, selected) ||
                 toolkitInspectorDocument != compositor || toolkitInspectorLocked != locked ||
-                !ReferenceEquals(toolkitInspectorMissingLayer, selectedMissingLayer))
+                !ReferenceEquals(toolkitInspectorBehaviour, selected?.Behaviour))
             {
                 ResetToolkitLayerInspector();
                 toolkitInspectorBuilt = true;
                 toolkitInspectorLayer = selected;
-                toolkitInspectorMissingLayer = selectedMissingLayer;
+                toolkitInspectorBehaviour = selected?.Behaviour;
                 toolkitInspectorDocument = compositor;
                 toolkitInspectorLocked = locked;
                 toolkitLayerSettingsScroll.Clear();
@@ -74,12 +74,12 @@ namespace DCFApixels.SpriteEditor
         {
             if (layer == null)
             {
-                if (HasSelectedMissingLayer) { BuildMissingLayerInspector(root); return; }
                 SpriteEditorUI.AddHelpBox(root, "Select a layer below to edit its settings.", HelpBoxMessageType.Info);
                 return;
             }
 
-            if (layer is PendingLayer pending)
+            if (layer.Behaviour == null) { BuildMissingBehaviourInspector(root, layer); return; }
+            if (layer?.Behaviour is PendingLayerBehaviour pending)
             {
                 var status = new HelpBox(SpriteEditorApi.LiveReservationStatus(pending), HelpBoxMessageType.Info);
                 root.Add(status);
@@ -98,62 +98,82 @@ namespace DCFApixels.SpriteEditor
                 settings.SetEnabled(false);
                 root = settings;
             }
+            Action<string, Action> apply = InspectorChangeFor(layer);
             toolkitInspectorShaderFX = SpriteEditorUI.BuildLayerInspectorSections(root, layer, compositor,
-                ApplyToolkitChange, toolkitInspectorBindings, properties => BuildToolkitLayerProperties(properties, layer),
+                apply, toolkitInspectorBindings, properties => BuildToolkitLayerProperties(properties, layer, apply),
                 colorSettingsExpanded, value => colorSettingsExpanded = value,
                 layerPropertiesExpanded, value => layerPropertiesExpanded = value,
                 layerFxExpanded, value => layerFxExpanded = value);
         }
 
-        private void BuildToolkitLayerProperties(VisualElement root, Layer layer)
+        private Action<string, Action> InspectorChangeFor(Layer layer)
         {
-            switch (layer)
+            var document = compositor;
+            var behaviour = layer.Behaviour;
+            return (undoName, change) =>
             {
-                case ShaderProcessorLayer:
+                if (compositor != document || compositor == null ||
+                    !ReferenceEquals(compositor.FindLayer(layer.Id), layer) ||
+                    !ReferenceEquals(layer.Behaviour, behaviour) ||
+                    !ReferenceEquals(GetSelectedLayer(), layer) ||
+                    SpriteEditorApi.IsLayerContentLocked(compositor, layer))
+                {
+                    toolkitRefreshRequested = true;
+                    return;
+                }
+                ApplyToolkitChange(undoName, change);
+            };
+        }
+
+        private void BuildToolkitLayerProperties(VisualElement root, Layer layer, Action<string, Action> apply)
+        {
+            switch (layer?.Behaviour)
+            {
+                case ShaderProcessorLayerBehaviour:
                     SpriteEditorUI.AddHelpBox(root, "Processes the composited layers below. Normal blends between the original and processed image using Opacity. In a Pass Through group, the external backdrop is included. Add or edit Shader FX below.", HelpBoxMessageType.Info);
                     break;
-                case DrawingLayer drawing:
-                    DrawingLayerEditorWindow.BuildFields(root, drawing, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                case DrawingLayerBehaviour drawing:
+                    DrawingLayerEditorWindow.BuildFields(root, drawing, compositor, apply, toolkitInspectorBindings);
                     break;
-                case FileLayer file:
-                    FileLayerEditorWindow.BuildFields(root, file, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                case FileLayerBehaviour file:
+                    FileLayerEditorWindow.BuildFields(root, file, compositor, apply, toolkitInspectorBindings);
                     break;
-                case ColorFillLayer fill:
-                    ColorFillLayerEditorWindow.BuildFields(root, fill, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                case ColorFillLayerBehaviour fill:
+                    ColorFillLayerEditorWindow.BuildFields(root, fill, compositor, apply, toolkitInspectorBindings);
                     break;
-                case GradientLayer gradient:
-                    GradientLayerEditorWindow.BuildFields(root, gradient, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                case GradientLayerBehaviour gradient:
+                    GradientLayerEditorWindow.BuildFields(root, gradient, compositor, apply, toolkitInspectorBindings);
                     break;
-                case NoiseLayer noise:
-                    NoiseLayerEditorWindow.BuildFields(root, noise, compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                case NoiseLayerBehaviour noise:
+                    NoiseLayerEditorWindow.BuildFields(root, noise, compositor, apply, toolkitInspectorBindings);
                     break;
-                case OutlineLayer outline:
-                    OutlineLayerEditorWindow.BuildFields(root, outline, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case OutlineLayerBehaviour outline:
+                    OutlineLayerEditorWindow.BuildFields(root, outline, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
-                case SDFLayer sdf:
-                    SDFLayerEditorWindow.BuildFields(root, sdf, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case SDFLayerBehaviour sdf:
+                    SDFLayerEditorWindow.BuildFields(root, sdf, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
-                case NormalMapLayer normalMap:
-                    NormalMapLayerEditorWindow.BuildFields(root, normalMap, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case NormalMapLayerBehaviour normalMap:
+                    NormalMapLayerEditorWindow.BuildFields(root, normalMap, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
-                case BlurLayer blur:
-                    BlurLayerEditorWindow.BuildFields(root, blur, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case BlurLayerBehaviour blur:
+                    BlurLayerEditorWindow.BuildFields(root, blur, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
-                case MakeSeamlessLayer seamless:
-                    MakeSeamlessLayerEditorWindow.BuildFields(root, seamless, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case MakeSeamlessLayerBehaviour seamless:
+                    MakeSeamlessLayerEditorWindow.BuildFields(root, seamless, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
             }
         }
 
-        private void AddToolkitInspectorEffectTarget(VisualElement root, TargetedLayerEffect effect)
+        private void AddToolkitInspectorEffectTarget(VisualElement root, TargetedLayerBehaviour effect)
         {
             toolkitInspectorEffectTarget = new EffectTargetSettingsView(
-                compositor, ApplyToolkitChange, toolkitInspectorBindings);
+                compositor, InspectorChangeFor(effect.Owner), toolkitInspectorBindings);
             toolkitInspectorEffectTarget.Build(root, effect);
         }
     }

@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
-    public sealed partial class DrawingLayer
+    public sealed partial class DrawingLayerBehaviour
     {
         internal void RenderBrushPreview(RenderTexture target, PaintStrokeParameters parameters, Material display)
         {

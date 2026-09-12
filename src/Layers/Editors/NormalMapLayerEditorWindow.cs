@@ -10,17 +10,17 @@ namespace DCFApixels.SpriteEditor
     {
         private enum SettingsView { Simple, Advanced }
         private const string AdvancedViewKey = "SpriteEditor.NormalMap.AdvancedView";
-        private static readonly NormalMapLayer Defaults = new NormalMapLayer();
-        protected override Type EditedLayerType => typeof(NormalMapLayer);
+        private static readonly NormalMapLayerBehaviour Defaults = new NormalMapLayerBehaviour();
+        protected override Type EditedLayerType => typeof(NormalMapLayerBehaviour);
         protected override string PreviewTitle => "Preview (Normal Map)";
-        public static void Open(NormalMapLayer layer, TextureCompositor compositor) =>
+        public static void Open(NormalMapLayerBehaviour layer, TextureCompositor compositor) =>
             OpenPropertiesWindow<NormalMapLayerEditorWindow>(layer, compositor);
         protected override void BuildSettings(VisualElement root, Layer source) =>
-            BuildFields(root, (NormalMapLayer)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+            BuildFields(root, (NormalMapLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
 
-        internal static void BuildFields(VisualElement root, NormalMapLayer layer, TextureCompositor compositor,
+        internal static void BuildFields(VisualElement root, NormalMapLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
-            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+            Action<VisualElement, TargetedLayerBehaviour> addEffectTarget)
         {
             SpriteEditorUI.ApplyWindowStyles(root);
             addEffectTarget(root, layer);
@@ -129,9 +129,9 @@ namespace DCFApixels.SpriteEditor
                 view.SetValueWithoutNotify(advanced ? SettingsView.Advanced : SettingsView.Simple);
                 settings.EnableInClassList("sprite-editor-normal-map-simple", !advanced);
                 advancedNotice.EnableInClassList("sprite-editor-normal-map-hidden", advanced || !HasAdvancedOverrides(layer));
-                advancedNotice.text = layer.output == NormalMapLayer.OutputMode.Height
+                advancedNotice.text = layer.output == NormalMapLayerBehaviour.OutputMode.Height
                     ? "Advanced settings modified · Height output — show" : "Advanced settings modified — show";
-                bool texture = layer.mode == NormalMapLayer.GenerationMode.Texture;
+                bool texture = layer.mode == NormalMapLayerBehaviour.GenerationMode.Texture;
                 textureSection.SetEnabled(texture);
                 explanation.text = texture
                     ? "Infer relief from image contrast. Detail controls are available in Advanced."
@@ -146,7 +146,7 @@ namespace DCFApixels.SpriteEditor
             RefreshPresentation();
         }
 
-        private static bool HasAdvancedOverrides(NormalMapLayer layer) =>
+        private static bool HasAdvancedOverrides(NormalMapLayerBehaviour layer) =>
             layer.inputSpace != Defaults.inputSpace || layer.ignoreTransparent != Defaults.ignoreTransparent ||
             layer.derivative != Defaults.derivative || layer.flipX != Defaults.flipX ||
             layer.output != Defaults.output || layer.encoding != Defaults.encoding ||

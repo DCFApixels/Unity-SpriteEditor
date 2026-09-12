@@ -1,5 +1,5 @@
 var checks = 0;
-var type = typeof(DCFApixels.SpriteEditor.DrawingLayer);
+var type = typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour);
 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
 var normalize = type.GetMethod("NormalizeSettings", flags);
 var build = type.GetMethod("BuildPatternStamps", flags);
@@ -13,8 +13,8 @@ void Check(bool condition, string message)
     if (!condition) throw new System.Exception(message);
     checks++;
 }
-void Normalize(DCFApixels.SpriteEditor.DrawingLayer layer) => normalize.Invoke(layer, null);
-System.Collections.IList Stamps(DCFApixels.SpriteEditor.DrawingLayer layer)
+void Normalize(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer) => normalize.Invoke(layer, null);
+System.Collections.IList Stamps(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer)
 {
     build.Invoke(layer, new object[] { point, 512, 256 });
     return (System.Collections.IList)stampsField.GetValue(layer);
@@ -22,16 +22,11 @@ System.Collections.IList Stamps(DCFApixels.SpriteEditor.DrawingLayer layer)
 UnityEngine.Vector2 Center(object stamp) =>
     (UnityEngine.Vector2)stamp.GetType().GetField("center").GetValue(stamp);
 
-var legacy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(
-    "{\"mirrorAcrossVerticalAxis\":true,\"repeatMode\":0}");
-Normalize(legacy);
-Check(legacy.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.Mirror, "Legacy mirror-only migration");
-Check(legacy.mirrorAngle == 0f, "Legacy Mirror keeps unrotated axes");
-legacy.repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.None;
-Normalize(legacy);
-Check(legacy.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.None, "Migration must not re-enable Mirror");
+var inactiveMirror = new DCFApixels.SpriteEditor.DrawingLayerBehaviour { mirrorAcrossVerticalAxis = true };
+Normalize(inactiveMirror);
+Check(inactiveMirror.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.None, "Stored axis flags do not enable Mirror");
 
-var mirror = new DCFApixels.SpriteEditor.DrawingLayer
+var mirror = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
 {
     repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Mirror,
     mirrorAcrossVerticalAxis = true,
@@ -53,7 +48,7 @@ for (int i = 0; i < expected.Length; i++)
     Check((Center(mirrored[i]) - expected[i]).sqrMagnitude < 0.00000001f, "Mirror uses movable center");
 begin.Invoke(mirror, new object[] { point });
 Check((bool)clipped.GetValue(mirror), "Mirror Clip anchors to its initial region");
-var restored = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(
+var restored = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayerBehaviour>(
     UnityEngine.JsonUtility.ToJson(mirror));
 Normalize(restored);
 Check(restored.repeatMode == mirror.repeatMode && Stamps(restored).Count == 4, "Mirror survives JSON round-trip");
@@ -63,7 +58,7 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatMode mode in System.Enum.GetValues(t
     if (mode == DCFApixels.SpriteEditor.PaintRepeatMode.Mirror) continue;
     foreach (DCFApixels.SpriteEditor.PaintRepeatElementMode elements in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.PaintRepeatElementMode)))
     {
-        var layer = new DCFApixels.SpriteEditor.DrawingLayer
+        var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
         {
             repeatMode = mode, repeatCount = 8, repeatSecondaryCount = 3,
             repeatElementMode = elements
@@ -88,7 +83,7 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatMode mode in System.Enum.GetValues(t
         Check(underCursor, mode + ": source stamp stays under cursor");
     }
 }
-var legacyRadial = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(
+var legacyRadial = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayerBehaviour>(
     "{\"mirrorAcrossVerticalAxis\":true,\"mirrorAcrossHorizontalAxis\":true,\"repeatMode\":4,\"repeatCount\":8}");
 Normalize(legacyRadial);
 Check(legacyRadial.repeatMode == DCFApixels.SpriteEditor.PaintRepeatMode.Radial && Stamps(legacyRadial).Count == 8,
@@ -98,7 +93,7 @@ foreach (float degrees in new[] { 0f, 17.5f, 90f, 359f, 360f })
 foreach (int count in new[] { 3, 8 })
 foreach (DCFApixels.SpriteEditor.PaintRepeatElementMode elements in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.PaintRepeatElementMode)))
 {
-    var radial = new DCFApixels.SpriteEditor.DrawingLayer
+    var radial = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
     {
         repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Radial,
         repeatCount = count, radialStartAngle = degrees, repeatElementMode = elements,
@@ -131,7 +126,7 @@ foreach (DCFApixels.SpriteEditor.PaintRepeatElementMode elements in System.Enum.
         sectors[i] = (int)sectorMethod.Invoke(radial, new object[] { uv, count, 512, 256 });
     }
     Check(sectors[0] == sectors[1] && sectors[0] != sectors[2], "CPU Clip follows rotated boundaries");
-    var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(UnityEngine.JsonUtility.ToJson(radial));
+    var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayerBehaviour>(UnityEngine.JsonUtility.ToJson(radial));
     Check(copy.radialStartAngle == degrees, "Start angle survives JSON round-trip");
 }
 UnityEngine.Vector2 Rotate(UnityEngine.Vector2 value, float angle)
@@ -143,7 +138,7 @@ foreach (float degrees in new[] { 0f, 17.5f, 45f, 90f, 360f })
 foreach (var size in new[] { new UnityEngine.Vector2Int(512, 256), new UnityEngine.Vector2Int(256, 512) })
 foreach (int axes in new[] { 1, 2, 3 })
 {
-    var layer = new DCFApixels.SpriteEditor.DrawingLayer
+    var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
     {
         repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Mirror,
         mirrorAcrossVerticalAxis = (axes & 1) != 0,
@@ -170,7 +165,7 @@ foreach (int axes in new[] { 1, 2, 3 })
         Check((Center(actual[index++]) - expectedUv).sqrMagnitude < 0.00000001f,
             "Rotated Mirror reflects in pixels rather than stretched UV coordinates");
     }
-    var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayer>(UnityEngine.JsonUtility.ToJson(layer));
+    var copy = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.DrawingLayerBehaviour>(UnityEngine.JsonUtility.ToJson(layer));
     Check(copy.mirrorAngle == degrees && copy.radialStartAngle == 123f, "Mirror and Radial angles persist independently");
     var axisDirection = (UnityEngine.Vector2)type.GetMethod("GetMirrorAxisDirection", flags).Invoke(layer, new object[] { true });
     var onAxis = layer.patternCenter + new UnityEngine.Vector2(axisDirection.x * 10f / size.x, axisDirection.y * 10f / size.y);
@@ -184,7 +179,7 @@ var clipMethod = type.GetMethod("TryClipStrokeSegmentToRepeatShape", flags);
 foreach (float degrees in new[] { 0f, 37f, 90f })
 foreach (int axes in new[] { 0, 1, 2, 3 })
 {
-    var layer = new DCFApixels.SpriteEditor.DrawingLayer
+    var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
     {
         repeatMode = DCFApixels.SpriteEditor.PaintRepeatMode.Mirror,
         mirrorAngle = degrees,

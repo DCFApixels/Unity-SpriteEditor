@@ -16,18 +16,9 @@ namespace DCFApixels.SpriteEditor
             {
                 Keys(operation, "op", "type", "as", "parent", "index", "settings", "transform");
                 string type = Text(operation, "type");
-                Layer added = type switch
-                {
-                    "file" => new FileLayer(), "drawing" => new DrawingLayer(), "group" => new GroupLayer(),
-                    "color" => new ColorFillLayer(), "gradient" => new GradientLayer(),
-                    "noise" => new NoiseLayer(),
-                    "outline" => new OutlineLayer(), "sdf" => new SDFLayer(),
-                    "normalMap" => new NormalMapLayer(),
-                    "blur" => new BlurLayer(),
-                    "makeSeamless" => new MakeSeamlessLayer(),
-                    "shaderProcessor" => new ShaderProcessorLayer(),
-                    _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
-                };
+                var descriptor = LayerTypeRegistry.Find(type);
+                Require(descriptor != null, "Unknown layer type: " + type);
+                Layer added = descriptor.CreateLayer();
                 string alias = Text(operation, "as");
                 if (alias != null)
                 {
@@ -42,7 +33,7 @@ namespace DCFApixels.SpriteEditor
                 if (alias != null) aliases.Add(alias, added);
                 if (operation["settings"] != null) SetLayer(document, added, Obj(operation["settings"], "settings"));
                 if (operation["transform"] != null) SetTransform(document, added, Obj(operation["transform"], "transform"));
-                if (execute && added is DrawingLayer drawing)
+                if (execute && added?.Behaviour is DrawingLayerBehaviour drawing)
                 {
                     drawing.InitializeCanvas(document.width, document.height);
                     drawing.MakeTexturePersistent(document);
@@ -52,7 +43,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             Layer layer = Resolve(document, Text(operation, "layer"), aliases);
-            if (layer is PendingLayer)
+            if (layer?.Behaviour is PendingLayerBehaviour)
             {
                 Require(op == "move" || op == "set", "Reserved layers only support moving, renaming and visibility changes.", "layer_locked");
                 if (op == "set") Keys(Obj(operation["settings"], "settings"), "name", "enabled");
@@ -61,8 +52,8 @@ namespace DCFApixels.SpriteEditor
             {
                 case "compact":
                     Keys(operation, "op", "layer");
-                    Require(layer is DrawingLayer, "compact requires a Drawing layer.");
-                    if (execute) ((DrawingLayer)layer).ConvertTo8Bit();
+                    Require(layer?.Behaviour is DrawingLayerBehaviour, "compact requires a Drawing layer.");
+                    if (execute) ((DrawingLayerBehaviour)layer).ConvertTo8Bit();
                     else layer.colorRange = LayerColorRange.Standard;
                     break;
                 case "set":
@@ -75,8 +66,8 @@ namespace DCFApixels.SpriteEditor
                     break;
                 case "target":
                     Keys(operation, "op", "layer", "input", "target");
-                    Require(layer is TargetedLayerEffect, "target requires an effect layer.");
-                    var effect = (TargetedLayerEffect)layer;
+                    Require(layer?.Behaviour is TargetedLayerBehaviour, "target requires an effect layer.");
+                    var effect = (TargetedLayerBehaviour)layer;
                     effect.inputMode = Enum(operation, "input", EffectInputMode.Specific);
                     Require(effect.inputMode != EffectInputMode.Previous || operation["target"] == null, "Previous input does not take a target.");
                     effect.TargetLayerId = effect.inputMode == EffectInputMode.Specific
@@ -84,13 +75,13 @@ namespace DCFApixels.SpriteEditor
                     break;
                 case "stroke":
                     Keys(operation, "op", "layer", "points", "space", "erase", "brush", "pencil");
-                    Require(layer is DrawingLayer, "stroke requires a Drawing layer.");
-                    Paint(document, (DrawingLayer)layer, operation, execute);
+                    Require(layer?.Behaviour is DrawingLayerBehaviour, "stroke requires a Drawing layer.");
+                    Paint(document, (DrawingLayerBehaviour)layer, operation, execute);
                     break;
                 case "move":
                     Keys(operation, "op", "layer", "parent", "index");
                     List<Layer> destination = Container(document, Text(operation, "parent"), aliases);
-                    if (layer is GroupLayer movingGroup)
+                    if (layer?.AsGroup() is Layer movingGroup)
                         Require(!ContainsContainer(movingGroup, destination), "A group cannot be moved into itself or its descendants.");
                     Require(document.TryFindLayer(layer, out List<Layer> source, out int sourceIndex), "Layer not found.");
                     source.RemoveAt(sourceIndex);
@@ -99,15 +90,15 @@ namespace DCFApixels.SpriteEditor
                 default:
                     throw new SpriteEditorApiException("invalid_request", "Unknown operation: " + op);
             }
-            if (execute && layer is DrawingLayer changedDrawing) changedDrawing.SetColorRange(layer.colorRange);
+            if (execute && layer?.Behaviour is DrawingLayerBehaviour changedDrawing) changedDrawing.SetColorRange(layer.colorRange);
             return layer;
         }
 
-        private static bool ContainsContainer(GroupLayer group, List<Layer> candidate)
+        private static bool ContainsContainer(Layer group, List<Layer> candidate)
         {
             if (group.layers == candidate) return true;
             foreach (Layer child in group.layers)
-                if (child is GroupLayer nested && ContainsContainer(nested, candidate)) return true;
+                if (child?.AsGroup() is Layer nested && ContainsContainer(nested, candidate)) return true;
             return false;
         }
 
@@ -125,8 +116,8 @@ namespace DCFApixels.SpriteEditor
         {
             if (string.IsNullOrEmpty(parent)) return document.layers;
             Layer layer = Resolve(document, parent, aliases);
-            Require(layer is GroupLayer, "parent must reference a group.");
-            return ((GroupLayer)layer).layers;
+            Require(layer?.IsGroup == true, "parent must reference a group.");
+            return ((Layer)layer).layers;
         }
 
         private static void SetLayer(TextureCompositor document, Layer layer, JObject settings)
@@ -138,25 +129,25 @@ namespace DCFApixels.SpriteEditor
             {
                 string key = property.Name;
                 bool valid = key == "name" || key == "enabled" || key == "clippingMask" || key == "opacity" || key == "blend" ||
-                    key == "colorRange" || key == "blendRange" || key == "swizzle" || key == "compositing" && layer is GroupLayer || !layer.IsGroup &&
+                    key == "colorRange" || key == "blendRange" || key == "swizzle" || key == "compositing" && layer?.IsGroup == true || !layer.IsGroup &&
                     (key == "opacity" || key == "blend" || key == "filter" ||
-                    key == "source" && layer is FileLayer || key == "brush" && layer is DrawingLayer ||
-                    key == "color" && (layer is ColorFillLayer || layer is OutlineLayer) ||
-                    key == "metric" && (layer is SDFLayer || layer is OutlineLayer) ||
-                    key == "normalMap" && layer is NormalMapLayer ||
-                    key == "blur" && layer is BlurLayer ||
-                    key == "makeSeamless" && layer is MakeSeamlessLayer ||
-                    key == "noise" && layer is NoiseLayer ||
+                    key == "source" && layer?.Behaviour is FileLayerBehaviour || key == "brush" && layer?.Behaviour is DrawingLayerBehaviour ||
+                    key == "color" && (layer?.Behaviour is ColorFillLayerBehaviour || layer?.Behaviour is OutlineLayerBehaviour) ||
+                    key == "metric" && (layer?.Behaviour is SDFLayerBehaviour || layer?.Behaviour is OutlineLayerBehaviour) ||
+                    key == "normalMap" && layer?.Behaviour is NormalMapLayerBehaviour ||
+                    key == "blur" && layer?.Behaviour is BlurLayerBehaviour ||
+                    key == "makeSeamless" && layer?.Behaviour is MakeSeamlessLayerBehaviour ||
+                    key == "noise" && layer?.Behaviour is NoiseLayerBehaviour ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition" ||
-                     key == "outlineOffset" || key == "fillCenter" || key == "fillColor") && layer is OutlineLayer ||
-                    (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer is SDFLayer ||
-                    key == "gradient" && (layer is GradientLayer || layer is SDFLayer));
+                     key == "outlineOffset" || key == "fillCenter" || key == "fillColor") && layer?.Behaviour is OutlineLayerBehaviour ||
+                    (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer?.Behaviour is SDFLayerBehaviour ||
+                    key == "gradient" && (layer?.Behaviour is GradientLayerBehaviour || layer?.Behaviour is SDFLayerBehaviour));
                 Require(valid, key + " is not supported by " + TypeName(layer) + " layers.");
             }
             layer.layerName = Text(settings, "name", layer.layerName);
             layer.enabled = Bool(settings, "enabled", layer.enabled);
             layer.clippingMask = Bool(settings, "clippingMask", layer.clippingMask);
-            Require(!(layer is ShaderProcessorLayer) || !layer.clippingMask, "Shader Processor is a stack operation and cannot be a clipping layer.");
+            Require(!(layer?.Behaviour is ShaderProcessorLayerBehaviour) || !layer.clippingMask, "Shader Processor is a stack operation and cannot be a clipping layer.");
             layer.opacity = Number(settings, "opacity", layer.opacity, 0f, 1f);
             layer.blendMode = Enum(settings, "blend", layer.blendMode);
             if (settings["swizzle"] != null)
@@ -174,10 +165,10 @@ namespace DCFApixels.SpriteEditor
                 }
                 layer.swizzle = swizzle;
             }
-            if (layer is GroupLayer group)
+            if (layer?.AsGroup() is Layer group)
                 group.compositing = Enum(settings, "compositing", group.compositing);
             layer.filterMode = Enum(settings, "filter", layer.filterMode);
-            if (layer is FileLayer file && settings["source"] != null)
+            if (layer?.Behaviour is FileLayerBehaviour file && settings["source"] != null)
             {
                 string path = ReadAssetPath(Text(settings, "source"));
                 var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -187,17 +178,17 @@ namespace DCFApixels.SpriteEditor
             }
             layer.colorRange = Enum(settings, "colorRange", layer.colorRange);
             layer.blendRange = Enum(settings, "blendRange", layer.blendRange);
-            if (layer is ColorFillLayer fill && settings["color"] != null) fill.color = Color(settings["color"]);
-            if (layer is NormalMapLayer normal && settings["normalMap"] != null)
+            if (layer?.Behaviour is ColorFillLayerBehaviour fill && settings["color"] != null) fill.color = Color(settings["color"]);
+            if (layer?.Behaviour is NormalMapLayerBehaviour normal && settings["normalMap"] != null)
                 SetNormalMap(normal, Obj(settings["normalMap"], "normalMap"));
-            if (layer is BlurLayer blur && settings["blur"] != null)
+            if (layer?.Behaviour is BlurLayerBehaviour blur && settings["blur"] != null)
                 SetBlur(blur, Obj(settings["blur"], "blur"));
-            if (layer is MakeSeamlessLayer seamless && settings["makeSeamless"] != null)
+            if (layer?.Behaviour is MakeSeamlessLayerBehaviour seamless && settings["makeSeamless"] != null)
                 SetMakeSeamless(seamless, Obj(settings["makeSeamless"], "makeSeamless"));
-            if (layer is NoiseLayer noise && settings["noise"] != null)
+            if (layer?.Behaviour is NoiseLayerBehaviour noise && settings["noise"] != null)
                 SetNoise(noise, Obj(settings["noise"], "noise"));
-            if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(document, drawing, Obj(settings["brush"], "brush"));
-            if (layer is OutlineLayer outline)
+            if (layer?.Behaviour is DrawingLayerBehaviour drawing && settings["brush"] != null) SetBrush(document, drawing, Obj(settings["brush"], "brush"));
+            if (layer?.Behaviour is OutlineLayerBehaviour outline)
             {
                 outline.metric = Enum(settings, "metric", outline.metric);
                 outline.outlineWidth = Number(settings, "outlineWidth", outline.outlineWidth, 0f, 16384f);
@@ -208,7 +199,7 @@ namespace DCFApixels.SpriteEditor
                 if (settings["fillColor"] != null) outline.fillColor = Color(settings["fillColor"]);
                 if (settings["color"] != null) outline.outlineColor = Color(settings["color"]);
             }
-            if (layer is SDFLayer sdf)
+            if (layer?.Behaviour is SDFLayerBehaviour sdf)
             {
                 sdf.metric = Enum(settings, "metric", sdf.metric);
                 sdf.sourceChannel = Enum(settings, "sourceChannel", sdf.sourceChannel);
@@ -218,7 +209,7 @@ namespace DCFApixels.SpriteEditor
                 sdf.maxDistanceNormalization = Number(settings, "maxDistance", sdf.maxDistanceNormalization, 0f, 16384f);
                 if (settings["gradient"] != null) sdf.gradient = ReadGradient(settings["gradient"]);
             }
-            if (layer is GradientLayer gradient && settings["gradient"] != null) gradient.gradient = ReadGradient(settings["gradient"]);
+            if (layer?.Behaviour is GradientLayerBehaviour gradient && settings["gradient"] != null) gradient.gradient = ReadGradient(settings["gradient"]);
         }
 
         private static Gradient ReadGradient(JToken token)

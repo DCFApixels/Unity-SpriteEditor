@@ -34,8 +34,7 @@ namespace DCFApixels.SpriteEditor
             FinishPreviewTransform();
             FinishPaintingStroke();
             LayerTreeEntry entry = toolkitLayerTree[index];
-            if (entry.Layer == null) SelectMissingLayer(entry.Container, entry.Index);
-            else SelectOnlyLayer(entry.Layer.Id);
+            SelectOnlyLayer(entry.Layer.Id);
             rootVisualElement.Focus();
             RefreshToolkitInterface();
             ScrollView scroll = toolkitLayerHierarchyRoot?.GetFirstAncestorOfType<ScrollView>();
@@ -53,8 +52,7 @@ namespace DCFApixels.SpriteEditor
             for (int i = 0; i < toolkitLayerTree.Count; i++)
             {
                 var entry = toolkitLayerTree[i];
-                if (entry.Layer != null ? entry.Layer.Id == selectedLayerId :
-                    selectedMissingLayer != null && entry.Index >= 0 && entry.Container == selectedMissingLayer.Container && entry.Index == selectedMissingLayer.Index)
+                if (entry.Layer != null && entry.Layer.Id == selectedLayerId)
                 {
                     current = i;
                     break;
@@ -62,7 +60,7 @@ namespace DCFApixels.SpriteEditor
             }
             int next = current < 0 ? (direction > 0 ? 0 : toolkitLayerTree.Count - 1) : current + direction;
             for (int i = next; i >= 0 && i < toolkitLayerTree.Count; i += direction)
-                if (toolkitLayerTree[i].Index >= 0) return i;
+                if (toolkitLayerTree[i].Index >= 0 && toolkitLayerTree[i].Layer != null) return i;
             return -1;
         }
 
@@ -77,7 +75,6 @@ namespace DCFApixels.SpriteEditor
 
         private void SelectOnlyLayer(string id)
         {
-            selectedMissingLayer = null;
             ResetOpacityEntry();
             selectedLayerIds.Clear();
             if (id != null)
@@ -88,8 +85,6 @@ namespace DCFApixels.SpriteEditor
 
         private void NormalizeLayerSelection()
         {
-            if (selectedMissingLayer != null && (!selectedMissingLayer.IsValid(compositor) || selectedLayerId != null))
-                selectedMissingLayer = null;
             selectedLayerIds ??= new List<string>();
             selectedLayerIds.RemoveAll(id => compositor == null || compositor.FindLayer(id) == null);
             if (compositor != null && compositor.FindLayer(selectedLayerId) != null)
@@ -105,7 +100,6 @@ namespace DCFApixels.SpriteEditor
 
         private void ActivateSelectedLayer(string id)
         {
-            selectedMissingLayer = null;
             ResetOpacityEntry();
             selectedLayerIds.Remove(id);
             selectedLayerIds.Add(id);
@@ -114,7 +108,6 @@ namespace DCFApixels.SpriteEditor
 
         private void SelectLayerFromPointer(Layer layer, PointerDownEvent evt, bool preserveSelection = false)
         {
-            selectedMissingLayer = null;
             FinishPreviewTransform();
             FinishPaintingStroke();
             bool additive = evt.ctrlKey || evt.commandKey;
@@ -193,7 +186,7 @@ namespace DCFApixels.SpriteEditor
             ApplyToolkitChange(undoName, () =>
             {
                 foreach (Layer layer in targets)
-                    if (!(layer is PendingLayer) && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)) change(layer);
+                    if (!(layer?.Behaviour is PendingLayerBehaviour) && !SpriteEditorApi.IsLayerContentLocked(compositor, layer)) change(layer);
             });
         }
 
@@ -207,7 +200,7 @@ namespace DCFApixels.SpriteEditor
         {
             ApplySelectedParameter(source, "Change Selected Layers Blend", layer =>
             {
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                     group.compositing = passThrough ? GroupCompositing.PassThrough : GroupCompositing.Isolated;
                 if (!passThrough) layer.blendMode = mode;
             });
@@ -221,7 +214,7 @@ namespace DCFApixels.SpriteEditor
                     continue;
                 if (IsLayerSelected(layer.Id))
                     result.Add(layer);
-                else if (layer is GroupLayer group)
+                else if (layer?.AsGroup() is Layer group)
                     CollectSelectedRoots(group.layers, result);
             }
         }
@@ -229,14 +222,13 @@ namespace DCFApixels.SpriteEditor
         private static bool ContainerContainsLayer(List<Layer> container, Layer target)
         {
             foreach (Layer layer in container)
-                if (layer == target || layer is GroupLayer group && ContainerContainsLayer(group.layers, target))
+                if (layer == target || layer?.AsGroup() is Layer group && ContainerContainsLayer(group.layers, target))
                     return true;
             return false;
         }
 
         private void DeleteSelectedLayers()
         {
-            if (HasSelectedMissingLayer) { RemoveSelectedMissingLayer(); return; }
             DeleteLayers(GetSelectedRoots());
         }
 
@@ -258,7 +250,7 @@ namespace DCFApixels.SpriteEditor
                     if (copies.TryGetValue(source, out Layer copy))
                         ActivateSelectedLayer(copy.Id);
                 foreach (KeyValuePair<Layer, Layer> pair in copies)
-                    if (pair.Key is GroupLayer group)
+                    if (pair.Key?.AsGroup() is Layer group)
                         groupExpansion[pair.Value.Id] = GetGroupExpanded(group);
                 if (active != null && copies.TryGetValue(active, out Layer activeCopy))
                     ActivateSelectedLayer(activeCopy.Id);
@@ -309,7 +301,7 @@ namespace DCFApixels.SpriteEditor
             applyingToolkitChange = true;
             try
             {
-                DrawingLayer merged = compositor.MergeLayers(layers, keepSources);
+                DrawingLayerBehaviour merged = compositor.MergeLayers(layers, keepSources);
                 SelectOnlyLayer(merged.Id);
                 temporaryDocumentDirty |= !AssetDatabase.Contains(compositor);
                 lineAnchorLayer = null;
@@ -446,12 +438,12 @@ namespace DCFApixels.SpriteEditor
                 return false;
             foreach (Layer layer in layers)
                 if (!compositor.TryFindLayer(layer, out _, out _) ||
-                    layer is GroupLayer group && ContainsLayerContainer(group, destination))
+                    layer?.AsGroup() is Layer group && ContainsLayerContainer(group, destination))
                     return false;
             return true;
         }
 
-        private void PerformSelectedLayersDrop(List<Layer> layers, List<Layer> destination, int index, GroupLayer expand)
+        private void PerformSelectedLayersDrop(List<Layer> layers, List<Layer> destination, int index, Layer expand)
         {
             if (!CanDropLayers(layers, destination))
                 return;

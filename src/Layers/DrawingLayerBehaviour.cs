@@ -7,7 +7,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed partial class DrawingLayer : Layer
+    public sealed partial class DrawingLayerBehaviour : LayerBehaviour
     {
         private const int MinimumRepeatCount = 2;
         private const int MaximumRepeatCount = 64;
@@ -42,7 +42,6 @@ namespace DCFApixels.SpriteEditor
         public int repeatCount = 8;
         public int repeatSecondaryCount = 4;
         [Range(0f, 360f)] public float radialStartAngle;
-        [SerializeField] private bool unifiedPatternMode;
 
         [NonSerialized] private RenderTexture paintSurface;
         [NonSerialized] private bool paintSurfaceDirty;
@@ -59,20 +58,20 @@ namespace DCFApixels.SpriteEditor
         internal bool UsesRepeatedPattern => repeatMode != PaintRepeatMode.None && !UsesMirrorPattern;
         internal float RadialStartAngleRadians => -Mathf.PI + Mathf.Repeat(radialStartAngle, 360f) * Mathf.Deg2Rad;
 
-        internal static DrawingLayer FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform,
+        internal static DrawingLayerBehaviour FromRasterizedLayer(Layer source, Texture2D texture, bool applyTransform,
             bool preserveGroupBlend = false)
         {
-            DrawingLayer result = source is DrawingLayer drawing
-                ? JsonUtility.FromJson<DrawingLayer>(JsonUtility.ToJson(drawing))
-                : new DrawingLayer();
+            DrawingLayerBehaviour result = source?.Behaviour is DrawingLayerBehaviour drawing
+                ? JsonUtility.FromJson<DrawingLayerBehaviour>(JsonUtility.ToJson(drawing))
+                : new DrawingLayerBehaviour();
             result.CopyRasterizedIdentityFrom(source);
             result.transform = applyTransform ? TextureTransform.Default : source.transform;
             if (source.IsGroup)
             {
                 result.transform = TextureTransform.Default;
                 result.opacity = preserveGroupBlend ? source.opacity : 1f;
-                result.blendMode = preserveGroupBlend ? ((GroupLayer)source).EffectiveBlendMode : BlendMode.Normal;
-                if (((GroupLayer)source).IsPassThrough)
+                result.blendMode = preserveGroupBlend ? ((Layer)source).EffectiveBlendMode : BlendMode.Normal;
+                if (((Layer)source).IsPassThrough)
                     result.colorRange = LayerColorRange.HDR;
                 result.swizzle = default;
                 result.modifiers.Clear();
@@ -87,9 +86,9 @@ namespace DCFApixels.SpriteEditor
             return result;
         }
 
-        internal static DrawingLayer FromMergedTexture(Texture2D texture)
+        internal static DrawingLayerBehaviour FromMergedTexture(Texture2D texture)
         {
-            var result = new DrawingLayer { pixels = texture, colorRange = LayerColorRange.HDR };
+            var result = new DrawingLayerBehaviour { pixels = texture, colorRange = LayerColorRange.HDR };
             result.AssignNewId();
             return result;
         }
@@ -140,13 +139,6 @@ namespace DCFApixels.SpriteEditor
 
         internal void NormalizeSettings()
         {
-            if (!unifiedPatternMode)
-            {
-                if (repeatMode == PaintRepeatMode.None &&
-                    (mirrorAcrossVerticalAxis || mirrorAcrossHorizontalAxis))
-                    repeatMode = PaintRepeatMode.Mirror;
-                unifiedPatternMode = true;
-            }
             brushSize = Mathf.Max(1f, brushSize);
             brushHardness = Mathf.Clamp01(brushHardness);
             if (brushSpacing <= 0f)
@@ -551,6 +543,9 @@ namespace DCFApixels.SpriteEditor
                 pixels = null;
             }
         }
+
+        // Detaching does not delete owned pixels: the caller or Undo may still own them.
+        internal override void OnDetached() => ReleasePaintResources();
 
         internal void ReleasePaintResources()
         {

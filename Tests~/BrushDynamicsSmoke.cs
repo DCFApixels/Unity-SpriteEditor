@@ -1,12 +1,21 @@
 // Opt-in after manual compilation. Runs against the real GPU brush; no asset saves or imports.
 
 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
-var assembly = typeof(DCFApixels.SpriteEditor.DrawingLayer).Assembly;
+var assembly = typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour).Assembly;
 var settingsType = assembly.GetType("DCFApixels.SpriteEditor.PaintToolSettings", true);
 object Call(object target, string name, params object[] args) =>
     target.GetType().GetMethod(name, flags).Invoke(target, args);
-void Set(object target, string name, object value) => target.GetType().GetField(name, flags).SetValue(target, value);
-object Get(object target, string name) => target.GetType().GetField(name, flags).GetValue(target);
+void Set(object target, string name, object value)
+{
+    var field = target.GetType().GetField(name, flags);
+    if (field != null) field.SetValue(target, value);
+    else target.GetType().GetProperty(name, flags).SetValue(target, value);
+}
+object Get(object target, string name)
+{
+    var field = target.GetType().GetField(name, flags);
+    return field != null ? field.GetValue(target) : target.GetType().GetProperty(name, flags).GetValue(target);
+}
 object Settings()
 {
     var result = System.Activator.CreateInstance(settingsType, true);
@@ -15,7 +24,7 @@ object Settings()
     Set(result, "brushSpacing", .25f);
     return result;
 }
-void Stroke(DCFApixels.SpriteEditor.DrawingLayer layer, object settings, int stamps, bool erase = false)
+void Stroke(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer, object settings, int stamps, bool erase = false)
 {
     object parameters = Call(settings, "GetStrokeParameters", erase, (UnityEngine.Color?)UnityEngine.Color.white);
     var center = new UnityEngine.Vector2(.5f, .5f);
@@ -27,18 +36,18 @@ void Stroke(DCFApixels.SpriteEditor.DrawingLayer layer, object settings, int sta
     }
     finally { Call(layer, "EndStroke"); }
 }
-UnityEngine.Color Pixel(DCFApixels.SpriteEditor.DrawingLayer layer, int x = 16, int y = 16) =>
-    ((UnityEngine.Texture2D)typeof(DCFApixels.SpriteEditor.DrawingLayer).GetProperty("StoredTexture", flags).GetValue(layer)).GetPixel(x, y);
+UnityEngine.Color Pixel(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer, int x = 16, int y = 16) =>
+    ((UnityEngine.Texture2D)typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour).GetProperty("StoredTexture", flags).GetValue(layer)).GetPixel(x, y);
 int checks = 0;
 void Check(bool value, string message) { if (!value) throw new System.Exception(message); checks++; }
 void Near(float actual, float expected, string message) =>
     Check(UnityEngine.Mathf.Abs(actual - expected) < .016f, message + ": " + actual + " != " + expected);
-void Release(DCFApixels.SpriteEditor.DrawingLayer layer) => Call(layer, "ReleaseTransientResources");
+void Release(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer) => Call(layer, "ReleaseTransientResources");
 
 foreach (float opacity in new[] { 1f, .4f })
 foreach (float flow in new[] { 1f, .1f })
 {
-    var layer = new DCFApixels.SpriteEditor.DrawingLayer();
+    var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
     object settings = Settings(), dynamics = Get(settings, "dynamics");
     Set(dynamics, "opacity", opacity); Set(dynamics, "flow", flow);
     try
@@ -57,7 +66,7 @@ foreach (float flow in new[] { 1f, .1f })
     finally { Release(layer); }
 }
 
-float SurfaceRed(DCFApixels.SpriteEditor.DrawingLayer layer)
+float SurfaceRed(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer)
 {
     var previous = UnityEngine.RenderTexture.active;
     var readback = new UnityEngine.Texture2D(32, 32, UnityEngine.TextureFormat.RGBAFloat, false, true);
@@ -72,7 +81,7 @@ float SurfaceRed(DCFApixels.SpriteEditor.DrawingLayer layer)
 foreach (string application in new[] { "Stroke", "Stamp" })
 foreach (float opacity in new[] { 1f, .5f })
 {
-    var layer = new DCFApixels.SpriteEditor.DrawingLayer();
+    var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
     object settings = Settings(), dynamics = Get(settings, "dynamics");
     try
     {
@@ -197,7 +206,7 @@ foreach (float opacity in new[] { 1f, .5f })
     Check((float)Get(settings, "brushSize") == 16f, "Section resets preserve size");
 }
 
-var tinted = new DCFApixels.SpriteEditor.DrawingLayer();
+var tinted = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
 try
 {
     var settings = Settings();
@@ -238,7 +247,7 @@ for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) pixels[y * 4 + x] = x < 
 tip.SetPixels(pixels); tip.Apply(false, false);
 try
 {
-    var layer = new DCFApixels.SpriteEditor.DrawingLayer();
+    var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
     object settings = Settings(), dynamics = Get(settings, "dynamics");
     Set(dynamics, "tip", tip);
     Set(dynamics, "tipChannel", System.Enum.Parse(Get(dynamics, "tipChannel").GetType(), "Color"));
@@ -248,7 +257,7 @@ try
         Near(Pixel(layer, 12).r, 1f, "Color tip red");
         Near(Pixel(layer, 12).g, 0f, "Color tip tint");
         Near(Pixel(layer, 20).a, 0f, "Tip alpha cuts footprint");
-        var rotated = new DCFApixels.SpriteEditor.DrawingLayer();
+        var rotated = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
         try
         {
             Set(dynamics, "angleJitter", 180f);

@@ -24,7 +24,7 @@ namespace DCFApixels.SpriteEditor
         private readonly HashSet<string> requiredEntries = new HashSet<string>();
         private readonly List<Entry> unused = new List<Entry>();
         private TextureCompositor document;
-        private DrawingLayer liveDrawing;
+        private DrawingLayerBehaviour liveDrawing;
         private long clock, frame;
         internal long BudgetBytes { get; set; } = DefaultBudget;
         internal long Bytes { get; private set; }
@@ -32,7 +32,7 @@ namespace DCFApixels.SpriteEditor
         internal int Hits { get; private set; }
         internal int Misses { get; private set; }
 
-        internal void BeginFrame(TextureCompositor owner, DrawingLayer painting = null)
+        internal void BeginFrame(TextureCompositor owner, DrawingLayerBehaviour painting = null)
         {
             if (document != owner) { Dispose(); document = owner; }
             liveDrawing = painting;
@@ -58,19 +58,19 @@ namespace DCFApixels.SpriteEditor
         private void VisitRequired(Layer layer)
         {
             if (layer == null || !visiting.Add(layer)) return;
-            if (layer is GroupLayer group) VisitVisible(group.layers);
-            if (layer is TargetedLayerEffect effect)
+            if (layer?.AsGroup() is Layer group) VisitVisible(group.layers);
+            if (layer?.Behaviour is TargetedLayerBehaviour effect)
             {
                 RequireEntry(layer, "effect");
                 Layer input = Input(effect);
-                if (input is GroupLayer) RequireEntry(input, "group");
+                if (input?.IsGroup == true) RequireEntry(input, "group");
                 if (effect.RequiresColorInput) colorSources.Add(input);
                 VisitRequired(input);
             }
             if (layer.clippingMask) VisitRequired(document.GetClippingBase(layer));
         }
 
-        internal bool NeedsColor(GroupLayer group) => colorSources.Contains(group);
+        internal bool NeedsColor(Layer group) => colorSources.Contains(group);
 
         private void RequireEntry(Layer layer, string kind)
         {
@@ -78,7 +78,7 @@ namespace DCFApixels.SpriteEditor
             requiredEntries.Add(layer.Id + "/" + kind + "/debug");
         }
 
-        private Layer Input(TargetedLayerEffect effect)
+        private Layer Input(TargetedLayerBehaviour effect)
         {
             if (effect.inputMode == EffectInputMode.Specific) return document.FindLayer(effect.TargetLayerId);
             return document.TryFindLayer(effect, out var list, out int index) && index + 1 < list.Count ? list[index + 1] : null;
@@ -87,7 +87,7 @@ namespace DCFApixels.SpriteEditor
         internal ulong Stamp(Layer layer)
         {
             if (layer == null) return 1;
-            if (layer is ShaderProcessorLayer) return 0;
+            if (layer?.Behaviour is ShaderProcessorLayerBehaviour) return 0;
             if (stamps.TryGetValue(layer, out ulong ready)) return ready;
             if (!visiting.Add(layer)) return 0;
             try
@@ -111,15 +111,15 @@ namespace DCFApixels.SpriteEditor
                     hash = Mix(hash, (ulong)texture.wrapModeU);
                     hash = Mix(hash, (ulong)texture.wrapModeV);
                 }
-                if (ReferenceEquals(layer, liveDrawing)) hash = Mix(hash, unchecked((ulong)frame));
-                if (layer is GroupLayer group && group.layers != null)
+                if (ReferenceEquals(layer, liveDrawing?.Owner)) hash = Mix(hash, unchecked((ulong)frame));
+                if (layer?.AsGroup() is Layer group && group.layers != null)
                     foreach (Layer child in group.layers)
                     {
                         ulong dependency = Stamp(child);
                         if (dependency == 0) return stamps[layer] = 0;
                         hash = Mix(hash, dependency);
                     }
-                if (layer is TargetedLayerEffect effect)
+                if (layer?.Behaviour is TargetedLayerBehaviour effect)
                 {
                     ulong dependency = Stamp(Input(effect));
                     if (dependency == 0) return stamps[layer] = 0;

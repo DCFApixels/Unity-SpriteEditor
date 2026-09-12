@@ -6,16 +6,16 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class MakeSeamlessLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(MakeSeamlessLayer);
+        protected override Type EditedLayerType => typeof(MakeSeamlessLayerBehaviour);
         protected override string PreviewTitle => "Preview (Make Seamless)";
-        public static void Open(MakeSeamlessLayer layer, TextureCompositor compositor) =>
+        public static void Open(MakeSeamlessLayerBehaviour layer, TextureCompositor compositor) =>
             OpenPropertiesWindow<MakeSeamlessLayerEditorWindow>(layer, compositor);
         protected override void BuildSettings(VisualElement root, Layer source) =>
-            BuildFields(root, (MakeSeamlessLayer)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+            BuildFields(root, (MakeSeamlessLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
 
-        internal static void BuildFields(VisualElement root, MakeSeamlessLayer layer, TextureCompositor compositor,
+        internal static void BuildFields(VisualElement root, MakeSeamlessLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
-            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+            Action<VisualElement, TargetedLayerBehaviour> addEffectTarget)
         {
             addEffectTarget(root, layer);
             root.Add(BuildEdgeSelector(layer, applyChange, bindings));
@@ -23,12 +23,12 @@ namespace DCFApixels.SpriteEditor
                 { tooltip = "Mirror the chosen source edge onto the opposite edge, or leave this axis unchanged." });
             bindings.Track(horizontal, () => (Enum)layer.horizontal);
             horizontal.RegisterValueChangedCallback(evt => applyChange("Change Seamless Direction",
-                () => layer.horizontal = (MakeSeamlessLayer.HorizontalDirection)evt.newValue));
+                () => layer.horizontal = (MakeSeamlessLayerBehaviour.HorizontalDirection)evt.newValue));
             root.Add(horizontal);
             var vertical = SpriteEditorUI.ConfigureField(new EnumField("Vertical", layer.vertical));
             bindings.Track(vertical, () => (Enum)layer.vertical);
             vertical.RegisterValueChangedCallback(evt => applyChange("Change Seamless Direction",
-                () => layer.vertical = (MakeSeamlessLayer.VerticalDirection)evt.newValue));
+                () => layer.vertical = (MakeSeamlessLayerBehaviour.VerticalDirection)evt.newValue));
             root.Add(vertical);
             var width = SpriteEditorUI.ConfigureField(new Slider("Fade Width (%)", .1f, 50f)
                 { showInputField = true, tooltip = "Transition width as a percentage of each canvas dimension. Wider transitions hide the join more gradually." });
@@ -46,7 +46,7 @@ namespace DCFApixels.SpriteEditor
             root.Add(falloff);
         }
 
-        private static VisualElement BuildEdgeSelector(MakeSeamlessLayer layer,
+        private static VisualElement BuildEdgeSelector(MakeSeamlessLayerBehaviour layer,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             var selector = new VisualElement { name = "seamlessEdges" };
@@ -54,21 +54,21 @@ namespace DCFApixels.SpriteEditor
             selector.Add(new SeamlessImageIcon());
 
             AddEdge("left", "Copy the right edge onto the left. Click again to turn horizontal blending off.",
-                () => layer.horizontal == MakeSeamlessLayer.HorizontalDirection.RightToLeft,
-                () => layer.horizontal = layer.horizontal == MakeSeamlessLayer.HorizontalDirection.RightToLeft
-                    ? MakeSeamlessLayer.HorizontalDirection.Off : MakeSeamlessLayer.HorizontalDirection.RightToLeft);
+                () => layer.horizontal == MakeSeamlessLayerBehaviour.HorizontalDirection.RightToLeft,
+                () => layer.horizontal = layer.horizontal == MakeSeamlessLayerBehaviour.HorizontalDirection.RightToLeft
+                    ? MakeSeamlessLayerBehaviour.HorizontalDirection.Off : MakeSeamlessLayerBehaviour.HorizontalDirection.RightToLeft);
             AddEdge("right", "Copy the left edge onto the right. Click again to turn horizontal blending off.",
-                () => layer.horizontal == MakeSeamlessLayer.HorizontalDirection.LeftToRight,
-                () => layer.horizontal = layer.horizontal == MakeSeamlessLayer.HorizontalDirection.LeftToRight
-                    ? MakeSeamlessLayer.HorizontalDirection.Off : MakeSeamlessLayer.HorizontalDirection.LeftToRight);
+                () => layer.horizontal == MakeSeamlessLayerBehaviour.HorizontalDirection.LeftToRight,
+                () => layer.horizontal = layer.horizontal == MakeSeamlessLayerBehaviour.HorizontalDirection.LeftToRight
+                    ? MakeSeamlessLayerBehaviour.HorizontalDirection.Off : MakeSeamlessLayerBehaviour.HorizontalDirection.LeftToRight);
             AddEdge("top", "Copy the bottom edge onto the top. Click again to turn vertical blending off.",
-                () => layer.vertical == MakeSeamlessLayer.VerticalDirection.BottomToTop,
-                () => layer.vertical = layer.vertical == MakeSeamlessLayer.VerticalDirection.BottomToTop
-                    ? MakeSeamlessLayer.VerticalDirection.Off : MakeSeamlessLayer.VerticalDirection.BottomToTop);
+                () => layer.vertical == MakeSeamlessLayerBehaviour.VerticalDirection.BottomToTop,
+                () => layer.vertical = layer.vertical == MakeSeamlessLayerBehaviour.VerticalDirection.BottomToTop
+                    ? MakeSeamlessLayerBehaviour.VerticalDirection.Off : MakeSeamlessLayerBehaviour.VerticalDirection.BottomToTop);
             AddEdge("bottom", "Copy the top edge onto the bottom. Click again to turn vertical blending off.",
-                () => layer.vertical == MakeSeamlessLayer.VerticalDirection.TopToBottom,
-                () => layer.vertical = layer.vertical == MakeSeamlessLayer.VerticalDirection.TopToBottom
-                    ? MakeSeamlessLayer.VerticalDirection.Off : MakeSeamlessLayer.VerticalDirection.TopToBottom);
+                () => layer.vertical == MakeSeamlessLayerBehaviour.VerticalDirection.TopToBottom,
+                () => layer.vertical = layer.vertical == MakeSeamlessLayerBehaviour.VerticalDirection.TopToBottom
+                    ? MakeSeamlessLayerBehaviour.VerticalDirection.Off : MakeSeamlessLayerBehaviour.VerticalDirection.TopToBottom);
             return selector;
 
             void AddEdge(string edge, string tooltip, Func<bool> selected, Action toggle)

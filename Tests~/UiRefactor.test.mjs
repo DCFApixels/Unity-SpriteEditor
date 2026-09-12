@@ -15,7 +15,7 @@ for (const part of ['arrow','text'])
     assert.ok(target.includes(`target.Q(className: "unity-base-popup-field__${part}")?.AddToClassList("sprite-editor-effect-target-${part}")`));
 assert.match(target, /if \(status.style.display.value != display\) status.style.display = display/);
 assert.match(target, /if \(status.messageType != messageType\) status.messageType = messageType/);
-assert.match(target, /else if \(source is GroupLayer\)/);
+assert.match(target, /else if \(source\?\.IsGroup == true\)/);
 assert.match(target, /IsUsableEffectTarget\(effect, effect.TargetLayerId\)/, 'Status still validates the current dependency');
 const inspector = read('src/TextureCompositorWindow.Inspector.cs');
 assert.match(inspector, /if \(forceValues\) toolkitInspectorEffectTarget\?\.Invalidate\(\)/);

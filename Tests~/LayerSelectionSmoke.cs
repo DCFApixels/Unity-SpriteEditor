@@ -17,13 +17,13 @@ bool Same(System.Collections.Generic.List<DCFApixels.SpriteEditor.Layer> actual,
 }
 try
 {
-    var a = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "A" };
-    var b = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "B" };
-    var c = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "C" };
-    var d = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "D" };
-    var e = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "E" };
-    var group = new DCFApixels.SpriteEditor.GroupLayer();
-    var nested = new DCFApixels.SpriteEditor.GroupLayer();
+    var a = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "A" };
+    var b = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "B" };
+    var c = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "C" };
+    var d = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "D" };
+    var e = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "E" };
+    var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
+    var nested = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
 
     // Every flat selection, including empty/all, at both boundaries and with gaps.
     var original = Layers(a, b, c, d, e);

@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     public static partial class SpriteEditorApi
     {
-        private static void SetNoise(NoiseLayer layer, JObject value)
+        private static void SetNoise(NoiseLayerBehaviour layer, JObject value)
         {
             Keys(value, "noiseType", "seed", "scale", "offset", "fractal", "octaves", "lacunarity", "gain",
                 "weightedStrength", "pingPongStrength", "cellularDistance", "cellularReturn", "cellularJitter",
@@ -37,7 +37,7 @@ namespace DCFApixels.SpriteEditor
             layer.inverted = Bool(value, "inverted", layer.inverted);
         }
 
-        private static JObject NoiseSnapshot(NoiseLayer layer) => new JObject
+        private static JObject NoiseSnapshot(NoiseLayerBehaviour layer) => new JObject
         {
             ["noiseType"] = layer.noiseType.ToString(), ["seed"] = layer.seed,
             ["dimensions"] = layer.dimensions.ToString(), ["direction"] = layer.direction,

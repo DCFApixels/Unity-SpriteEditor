@@ -8,7 +8,7 @@ namespace DCFApixels.SpriteEditor
 {
     internal static class LayerColorSettingsView
     {
-        internal static DropdownField GroupBlend(GroupLayer group, Action<BlendMode, bool> change,
+        internal static DropdownField GroupBlend(Layer group, Action<BlendMode, bool> change,
             SpriteEditorUI.ValueBindings bindings)
         {
             var choices = new List<string> { "Pass Through" };
@@ -61,11 +61,11 @@ namespace DCFApixels.SpriteEditor
             card.Add(BuildSwizzle(layer, apply, bindings, owner));
             bindings.Add(() =>
             {
-                bool active = !(layer is GroupLayer group) || !group.IsPassThrough ||
+                bool active = !(layer?.AsGroup() is Layer group) || !group.IsPassThrough ||
                     (owner != null && owner.IsGroupIsolatedByClipping(group));
                 color.SetEnabled(active); blend.SetEnabled(active); preset.SetEnabled(active);
             });
-            if (layer is DrawingLayer pixels)
+            if (layer?.Behaviour is DrawingLayerBehaviour pixels)
             {
                 var storage = new Label();
                 storage.AddToClassList("sprite-editor-storage-description");
@@ -113,7 +113,7 @@ namespace DCFApixels.SpriteEditor
                 channels.Add(field);
             }
             container.Add(row);
-            if (layer is GroupLayer group)
+            if (layer?.AsGroup() is Layer group)
             {
                 var hint = new HelpBox("", HelpBoxMessageType.Info);
                 bindings.Add(() =>
@@ -132,7 +132,7 @@ namespace DCFApixels.SpriteEditor
 
         private static void SetColorRange(Layer layer, LayerColorRange range)
         {
-            if (layer is DrawingLayer drawing) drawing.SetColorRange(range);
+            if (layer?.Behaviour is DrawingLayerBehaviour drawing) drawing.SetColorRange(range);
             else layer.colorRange = range;
         }
     }

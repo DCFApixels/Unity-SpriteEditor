@@ -4,7 +4,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class GradientLayer : Layer
+    public sealed class GradientLayerBehaviour : LayerBehaviour
     {
         public GradientType gradientType = GradientType.Vertical;
         public Gradient gradient = GradientUtility.Create(GradientUtility.WhiteToBlack);

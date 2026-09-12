@@ -6,9 +6,9 @@ document.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
 document.width = 33; document.height = 25;
 var texture = new UnityEngine.Texture2D(33,25,UnityEngine.TextureFormat.RGBAFloat,false,true);
 texture.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
-var source = new DCFApixels.SpriteEditor.FileLayer {
+var source = new DCFApixels.SpriteEditor.FileLayerBehaviour {
     sourceTexture = texture, colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR };
-var effect = new DCFApixels.SpriteEditor.MakeSeamlessLayer {
+var effect = new DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour {
     colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR };
 document.layers.Add(effect); document.layers.Add(source);
 type.GetMethod("NormalizeModel",flags).Invoke(document,null);
@@ -23,7 +23,7 @@ void Same(UnityEngine.Color a, UnityEngine.Color b, string message)
 }
 UnityEngine.Color[] Render()
 {
-    var rt = (UnityEngine.RenderTexture)type.GetMethod("RenderLayerPreview",flags).Invoke(document,new object[]{effect,33});
+    var rt = (UnityEngine.RenderTexture)type.GetMethod("RenderLayerPreview",flags).Invoke(document,new object[]{effect.Owner,33});
     var previous = UnityEngine.RenderTexture.active;
     var read = new UnityEngine.Texture2D(33,25,UnityEngine.TextureFormat.RGBAFloat,false,true);
     try
@@ -40,12 +40,12 @@ try
     for(int y=0;y<25;y++) for(int x=0;x<33;x++)
         input[y*33+x] = new UnityEngine.Color(x/8f,y/12f,.3f,.2f + ((x+y)%5)*.2f);
     texture.SetPixels(input); texture.Apply(false,false);
-    foreach(var h in new[]{DCFApixels.SpriteEditor.MakeSeamlessLayer.HorizontalDirection.Off,
-        DCFApixels.SpriteEditor.MakeSeamlessLayer.HorizontalDirection.LeftToRight,
-        DCFApixels.SpriteEditor.MakeSeamlessLayer.HorizontalDirection.RightToLeft})
-    foreach(var v in new[]{DCFApixels.SpriteEditor.MakeSeamlessLayer.VerticalDirection.Off,
-        DCFApixels.SpriteEditor.MakeSeamlessLayer.VerticalDirection.BottomToTop,
-        DCFApixels.SpriteEditor.MakeSeamlessLayer.VerticalDirection.TopToBottom})
+    foreach(var h in new[]{DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.HorizontalDirection.Off,
+        DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.HorizontalDirection.LeftToRight,
+        DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.HorizontalDirection.RightToLeft})
+    foreach(var v in new[]{DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.VerticalDirection.Off,
+        DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.VerticalDirection.BottomToTop,
+        DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour.VerticalDirection.TopToBottom})
     foreach(float width in new[]{.001f,.2f,.5f}) foreach(float falloff in new[]{.25f,1f,4f})
     {
         effect.horizontal=h; effect.vertical=v; effect.blendWidth=width; effect.falloff=falloff;
@@ -61,7 +61,7 @@ try
     try
     {
         UnityEngine.JsonUtility.FromJsonOverwrite(json,copy);
-        var roundtrip=copy.layers[0] as DCFApixels.SpriteEditor.MakeSeamlessLayer;
+        var roundtrip=copy.layers[0]?.Behaviour as DCFApixels.SpriteEditor.MakeSeamlessLayerBehaviour;
         if(roundtrip==null || roundtrip.horizontal!=effect.horizontal || roundtrip.falloff!=effect.falloff)
             throw new System.Exception("Seamless settings serialization");
     }

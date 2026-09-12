@@ -4,7 +4,7 @@ var type = typeof(DCFApixels.SpriteEditor.TextureCompositor);
 var document = UnityEngine.ScriptableObject.CreateInstance<DCFApixels.SpriteEditor.TextureCompositor>();
 document.hideFlags = UnityEngine.HideFlags.HideAndDontSave;
 document.width = 99; document.height = 63;
-var layer = new DCFApixels.SpriteEditor.NoiseLayer { encoding = DCFApixels.SpriteEditor.NoiseLayer.OutputEncoding.LinearData };
+var layer = new DCFApixels.SpriteEditor.NoiseLayerBehaviour { encoding = DCFApixels.SpriteEditor.NoiseLayerBehaviour.OutputEncoding.LinearData };
 document.layers.Add(layer);
 type.GetMethod("NormalizeModel", flags).Invoke(document, null);
 int checks = 0;
@@ -12,7 +12,7 @@ void Check(bool value, string message) { if (!value) throw new System.Exception(
 UnityEngine.Color[] Render(int size = 33)
 {
     var previous = UnityEngine.RenderTexture.active;
-    var rt = (UnityEngine.RenderTexture)type.GetMethod("RenderLayerPreview", flags).Invoke(document, new object[] { layer, size });
+    var rt = (UnityEngine.RenderTexture)type.GetMethod("RenderLayerPreview", flags).Invoke(document, new object[] { layer.Owner, size });
     var read = new UnityEngine.Texture2D(rt.width, rt.height, UnityEngine.TextureFormat.RGBAFloat, false, true);
     try
     {
@@ -49,13 +49,13 @@ try
     var inverse = Render();
     for (int i = 0; i < a.Length; i++) Check(UnityEngine.Mathf.Abs(a[i].r + inverse[i].r - 1) < .002f, "Invert");
     layer.inverted = false;
-    layer.encoding = DCFApixels.SpriteEditor.NoiseLayer.OutputEncoding.ColorValues;
+    layer.encoding = DCFApixels.SpriteEditor.NoiseLayerBehaviour.OutputEncoding.ColorValues;
     var color = Render();
     for (int i = 0; i < a.Length; i++)
         Check(UnityEngine.Mathf.Abs(color[i].r - UnityEngine.Mathf.GammaToLinearSpace(a[i].r)) < .003f, "Color encoding");
-    layer.encoding = DCFApixels.SpriteEditor.NoiseLayer.OutputEncoding.LinearData;
-    foreach (DCFApixels.SpriteEditor.NoiseLayer.NoiseType algorithm in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayer.NoiseType)))
-    foreach (DCFApixels.SpriteEditor.NoiseLayer.FractalType fractal in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayer.FractalType)))
+    layer.encoding = DCFApixels.SpriteEditor.NoiseLayerBehaviour.OutputEncoding.LinearData;
+    foreach (DCFApixels.SpriteEditor.NoiseLayerBehaviour.NoiseType algorithm in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayerBehaviour.NoiseType)))
+    foreach (DCFApixels.SpriteEditor.NoiseLayerBehaviour.FractalType fractal in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayerBehaviour.FractalType)))
     {
         layer.noiseType = algorithm; layer.fractal = fractal;
         foreach (var pixel in Render())
@@ -63,12 +63,12 @@ try
                 UnityEngine.Mathf.Abs(pixel.r - pixel.g) < .001f && UnityEngine.Mathf.Abs(pixel.r - pixel.b) < .001f && pixel.a > .999f,
                 "Finite opaque grayscale: " + algorithm + "/" + fractal);
     }
-    layer.noiseType = DCFApixels.SpriteEditor.NoiseLayer.NoiseType.OpenSimplex2;
-    layer.fractal = DCFApixels.SpriteEditor.NoiseLayer.FractalType.FBm;
-    foreach (DCFApixels.SpriteEditor.NoiseLayer.WarpType warp in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayer.WarpType)))
+    layer.noiseType = DCFApixels.SpriteEditor.NoiseLayerBehaviour.NoiseType.OpenSimplex2;
+    layer.fractal = DCFApixels.SpriteEditor.NoiseLayerBehaviour.FractalType.FBm;
+    foreach (DCFApixels.SpriteEditor.NoiseLayerBehaviour.WarpType warp in System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.NoiseLayerBehaviour.WarpType)))
     {
         layer.warp = warp;
-        if (warp != DCFApixels.SpriteEditor.NoiseLayer.WarpType.None)
+        if (warp != DCFApixels.SpriteEditor.NoiseLayerBehaviour.WarpType.None)
             Check(Difference(a, Render()) > .005f, "Warp changes pattern: " + warp);
     }
     return "Noise GPU checks passed: " + checks;

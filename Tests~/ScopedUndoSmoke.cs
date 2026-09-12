@@ -70,8 +70,8 @@ try
     pixels = new Texture2D(2, 2, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
     pixels.SetPixels(new[] { Color.red, Color.red, Color.red, Color.red });
     pixels.Apply();
-    var drawing = new DCFApixels.SpriteEditor.DrawingLayer();
-    typeof(DCFApixels.SpriteEditor.DrawingLayer).GetField("pixels", Hidden).SetValue(drawing, pixels);
+    var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
+    typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour).GetField("pixels", Hidden).SetValue(drawing, pixels);
     first.layers.Add(drawing);
     Call(first, "MarkChanged");
     group = Begin("Texture-only legacy edit");

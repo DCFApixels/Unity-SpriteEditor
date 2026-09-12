@@ -26,12 +26,12 @@ namespace DCFApixels.SpriteEditor
                 foreach (Layer layer in source)
                 {
                     if (layer == null) continue;
-                    if (layer is DrawingLayer drawing) Track(drawing.StoredTexture);
-                    else if (layer is FileLayer) Track(layer.SamplingSource);
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing) Track(drawing.StoredTexture);
+                    else if (layer?.Behaviour is FileLayerBehaviour) Track(layer.SamplingSource);
                     if (layer.modifiers != null)
                         foreach (UnityEngine.Object modifier in layer.modifiers)
                             if (modifier is Material) Track(modifier);
-                    if (layer is GroupLayer group) Capture(group.layers);
+                    if (layer?.AsGroup() is Layer group) Capture(group.layers);
                 }
             }
 

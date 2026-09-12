@@ -108,7 +108,7 @@ namespace DCFApixels.SpriteEditor
                 foreach (Layer layer in Enumerate(probe.layers))
                 {
                     layerCount++;
-                    if (layer is DrawingLayer drawing)
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                         drawingPixels += drawing.StoredTexture != null ? (long)drawing.StoredTexture.width * drawing.StoredTexture.height : (long)probe.width * probe.height;
                 }
                 Require(layerCount <= 1024 && drawingPixels <= 67108864,
@@ -232,10 +232,10 @@ namespace DCFApixels.SpriteEditor
         {
             foreach (Layer layer in Enumerate(document.layers))
             {
-                if (layer is FileLayer file && file.sourceTexture != null)
+                if (layer?.Behaviour is FileLayerBehaviour file && file.sourceTexture != null)
                     Require(!string.Equals(AssetDatabase.GetAssetPath(file.sourceTexture), path, StringComparison.OrdinalIgnoreCase),
                         "A document cannot sample its own saved output texture.", "invalid_target");
-                if (layer is TargetedLayerEffect effect && effect.inputMode == EffectInputMode.Specific)
+                if (layer?.Behaviour is TargetedLayerBehaviour effect && effect.inputMode == EffectInputMode.Specific)
                     Require(document.IsUsableEffectTarget(effect, effect.TargetLayerId),
                         "Invalid or cyclic effect target for " + effect.layerName, "invalid_target");
             }
@@ -247,7 +247,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (layer == null) continue;
                 yield return layer;
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                     foreach (Layer child in Enumerate(group.layers)) yield return child;
             }
         }

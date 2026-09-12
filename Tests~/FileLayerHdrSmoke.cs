@@ -3,8 +3,8 @@ using System.Reflection;
 using UnityEngine;
 using DCFApixels.SpriteEditor;
 
-var assign = typeof(FileLayer).GetMethod("AssignSourceTexture", BindingFlags.Instance | BindingFlags.NonPublic);
-var layer = new FileLayer();
+var assign = typeof(FileLayerBehaviour).GetMethod("AssignSourceTexture", BindingFlags.Instance | BindingFlags.NonPublic);
+var layer = new FileLayerBehaviour();
 var hdr = new Texture2D(2, 2, TextureFormat.RGBAHalf, false, true);
 var otherHdr = new Texture2D(2, 2, TextureFormat.RGBAFloat, false, true);
 var standard = new Texture2D(2, 2, TextureFormat.RGBA32, false);

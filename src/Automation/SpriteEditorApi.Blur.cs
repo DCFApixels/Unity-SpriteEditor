@@ -6,13 +6,13 @@ namespace DCFApixels.SpriteEditor
 {
     public static partial class SpriteEditorApi
     {
-        private static void SetBlur(BlurLayer layer, JObject value)
+        private static void SetBlur(BlurLayerBehaviour layer, JObject value)
         {
             Keys(value, "mode", "strength", "radius", "distance", "angle", "arc", "center", "direction", "edges");
             layer.mode = Enum(value, "mode", layer.mode);
-            layer.strength = Number(value, "strength", layer.strength, 0f, BlurLayer.MaximumStrength);
-            layer.radius = Number(value, "radius", layer.radius, 0f, BlurLayer.MaximumRadius);
-            layer.distance = Number(value, "distance", layer.distance, 0f, BlurLayer.MaximumDistance);
+            layer.strength = Number(value, "strength", layer.strength, 0f, BlurLayerBehaviour.MaximumStrength);
+            layer.radius = Number(value, "radius", layer.radius, 0f, BlurLayerBehaviour.MaximumRadius);
+            layer.distance = Number(value, "distance", layer.distance, 0f, BlurLayerBehaviour.MaximumDistance);
             layer.angle = Number(value, "angle", layer.angle, -180f, 180f);
             layer.arc = Number(value, "arc", layer.arc, 0f, 360f);
             if (value["center"] != null)
@@ -25,7 +25,7 @@ namespace DCFApixels.SpriteEditor
             layer.edges = Enum(value, "edges", layer.edges);
         }
 
-        private static JObject BlurSnapshot(BlurLayer layer) => new JObject
+        private static JObject BlurSnapshot(BlurLayerBehaviour layer) => new JObject
         {
             ["mode"] = layer.mode.ToString(), ["strength"] = layer.strength,
             ["radius"] = layer.radius, ["distance"] = layer.distance, ["angle"] = layer.angle,

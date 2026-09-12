@@ -79,7 +79,7 @@ namespace DCFApixels.SpriteEditor
             var document = window.AgentDocument;
             LiveReady(document); RefreshLiveJobs();
             Layer layer = document.FindLayer(Text(request, "layerId"));
-            Require(layer != null && !(layer is PendingLayer), "Specify an existing content layer.", "layer_not_found");
+            Require(layer != null && !(layer?.Behaviour is PendingLayerBehaviour), "Specify an existing content layer.", "layer_not_found");
             Require(!IsLayerContentLocked(document, layer) && !liveJobs.Values.Any(j => j.state == "pending" &&
                 j.document == document && j.targetId == layer.Id), "Layer already has an active edit job.", "layer_locked");
             Require(liveJobs.Count < 512 && liveJobs.Values.Count(j => j.state == "pending") < 16, "Live job limit reached.", "resource_limit");
@@ -248,7 +248,7 @@ namespace DCFApixels.SpriteEditor
                 Layer candidate = probe.FindLayer(target.Id);
                 ApplyLiveEditSettings(probe, candidate, changes);
                 ApplyLiveFx(candidate, changes["fx"], job.document, created);
-                if (candidate is FileLayer file && file.sourceTexture != null)
+                if (candidate?.Behaviour is FileLayerBehaviour file && file.sourceTexture != null)
                     Require(!string.Equals(AssetDatabase.GetAssetPath(file.sourceTexture), AssetDatabase.GetAssetPath(job.document), StringComparison.OrdinalIgnoreCase),
                         "A document cannot sample its own output.", "invalid_target");
                 if (trial)
@@ -272,7 +272,7 @@ namespace DCFApixels.SpriteEditor
                 LiveChange(job.document, "Complete Agent Edit", () =>
                 {
                     ApplyLiveEditSettings(job.document, target, changes);
-                    if (target is DrawingLayer drawing) drawing.SetColorRange(target.colorRange);
+                    if (target?.Behaviour is DrawingLayerBehaviour drawing) drawing.SetColorRange(target.colorRange);
                     target.modifiers = new List<Object>(candidate.modifiers);
                     foreach (var fx in created) job.document.AdoptAgentShaderFX(fx, "Complete Agent Edit");
                 });

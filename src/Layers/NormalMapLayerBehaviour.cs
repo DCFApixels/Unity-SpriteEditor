@@ -5,7 +5,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class NormalMapLayer : TargetedLayerEffect
+    public sealed class NormalMapLayerBehaviour : TargetedLayerBehaviour
     {
         public enum GenerationMode { HeightMap, Texture }
         public enum HeightChannel { Luminance, Red, Green, Blue, Alpha, Maximum }

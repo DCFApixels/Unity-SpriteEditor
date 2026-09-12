@@ -60,10 +60,10 @@ namespace DCFApixels.SpriteEditor
         [SerializeField] private bool temporaryDocumentDirty;
         [NonSerialized] private string previewError;
         [NonSerialized] private Dictionary<string, bool> groupExpansion;
-        [NonSerialized] private DrawingLayer paintingLayer;
+        [NonSerialized] private DrawingLayerBehaviour paintingLayer;
         [NonSerialized] private Vector2 lastPaintingUv;
         [NonSerialized] private bool hasLastPaintingUv;
-        [NonSerialized] private DrawingLayer lineAnchorLayer;
+        [NonSerialized] private DrawingLayerBehaviour lineAnchorLayer;
         [NonSerialized] private Vector2 lineAnchorUv;
         [NonSerialized] private Vector2Int lineAnchorCanvasSize;
         [NonSerialized] private Vector2 lastPaintingDocumentUv;
@@ -465,7 +465,7 @@ namespace DCFApixels.SpriteEditor
                 return false;
             }
 
-            if (layer is GroupLayer group && ContainsLayerContainer(group, destinationContainer))
+            if (layer?.AsGroup() is Layer group && ContainsLayerContainer(group, destinationContainer))
                 return false;
 
             normalizedDestinationIndex = Mathf.Clamp(destinationIndex, 0, destinationContainer.Count);
@@ -476,7 +476,7 @@ namespace DCFApixels.SpriteEditor
                    normalizedDestinationIndex != sourceIndex;
         }
 
-        private static bool ContainsLayerContainer(GroupLayer group, List<Layer> candidateContainer)
+        private static bool ContainsLayerContainer(Layer group, List<Layer> candidateContainer)
         {
             if (group == null || group.layers == null)
                 return false;
@@ -485,7 +485,7 @@ namespace DCFApixels.SpriteEditor
 
             for (int i = 0; i < group.layers.Count; i++)
             {
-                if (group.layers[i] is GroupLayer nestedGroup &&
+                if (group.layers[i]?.AsGroup() is Layer nestedGroup &&
                     ContainsLayerContainer(nestedGroup, candidateContainer))
                 {
                     return true;
@@ -498,7 +498,7 @@ namespace DCFApixels.SpriteEditor
             Layer layer,
             List<Layer> destinationContainer,
             int destinationIndex,
-            GroupLayer groupToExpand)
+            Layer groupToExpand)
         {
             List<Layer> dragged = GetDraggedRoots();
             if (dragged != null)
@@ -539,7 +539,7 @@ namespace DCFApixels.SpriteEditor
             ClearDraggedLayerReference();
         }
 
-        private void ClearDrawingLayer(DrawingLayer layer)
+        private void ClearDrawingLayer(DrawingLayerBehaviour layer)
         {
             if (layer == null || compositor == null || SpriteEditorApi.IsLayerContentLocked(compositor, layer))
                 return;
@@ -566,7 +566,7 @@ namespace DCFApixels.SpriteEditor
         private void FinishPaintingStroke()
         {
             int capturedPointer = paintingPointerId;
-            DrawingLayer finishedLayer = paintingLayer;
+            DrawingLayerBehaviour finishedLayer = paintingLayer;
             paintingLayer = null;
             paintingErase = false;
             paintingMouseButton = -1;
@@ -582,6 +582,12 @@ namespace DCFApixels.SpriteEditor
                 return;
 
             finishedLayer.EndStroke();
+            if (!ReferenceEquals(finishedLayer.Owner.Behaviour, finishedLayer) || compositor == null ||
+                !ReferenceEquals(compositor.FindLayer(finishedLayer.Id), finishedLayer.Owner))
+            {
+                lineAnchorLayer = null;
+                return;
+            }
             finishedLayer.SyncSurfaceToTexture();
             nextPaintingPreviewAt = 0d;
             temporaryDocumentDirty |= compositor != null && !AssetDatabase.Contains(compositor);
@@ -594,7 +600,7 @@ namespace DCFApixels.SpriteEditor
         private bool TryMapPreviewToLayerUv(
             Vector2 mousePosition,
             Rect imageRect,
-            DrawingLayer layer,
+            DrawingLayerBehaviour layer,
             out Vector2 sourceUv,
             bool allowOutside = false)
         {
@@ -617,7 +623,7 @@ namespace DCFApixels.SpriteEditor
                 !float.IsInfinity(sourceUv.x) && !float.IsInfinity(sourceUv.y);
         }
 
-        private bool TryMapDocumentToLayerUv(Vector2 documentUv, DrawingLayer layer, out Vector2 sourceUv)
+        private bool TryMapDocumentToLayerUv(Vector2 documentUv, DrawingLayerBehaviour layer, out Vector2 sourceUv)
         {
             Vector2 outputSize = new Vector2(Mathf.Max(1, compositor.width), Mathf.Max(1, compositor.height));
             Vector2 pivotPixels = Vector2.Scale(layer.transform.pivot, outputSize);
@@ -639,7 +645,7 @@ namespace DCFApixels.SpriteEditor
             return sourceUv.x >= 0f && sourceUv.x <= 1f && sourceUv.y >= 0f && sourceUv.y <= 1f;
         }
 
-        private Vector2 MapLayerToDocumentUv(Vector2 sourceUv, DrawingLayer layer)
+        private Vector2 MapLayerToDocumentUv(Vector2 sourceUv, DrawingLayerBehaviour layer)
         {
             Vector2 outputSize = new Vector2(Mathf.Max(1, compositor.width), Mathf.Max(1, compositor.height));
             Vector2 pivot = Vector2.Scale(layer.transform.pivot, outputSize);
@@ -677,28 +683,22 @@ namespace DCFApixels.SpriteEditor
             FinishPaintingStroke();
             Layer selected = GetSelectedLayer();
             if (selected != null && compositor.TryFindLayer(selected, out List<Layer> container, out int index))
-                AddLayer(container, index, new DrawingLayer());
+                AddLayer(container, index, new DrawingLayerBehaviour());
             else
-                AddLayer(compositor.layers, 0, new DrawingLayer());
+                AddLayer(compositor.layers, 0, new DrawingLayerBehaviour());
         }
 
         private void ShowAddMenu(List<Layer> container, int insertionIndex)
         {
             GenericMenu menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Drawing Layer"), false, () => AddLayer(container, insertionIndex, new DrawingLayer()));
-            menu.AddItem(new GUIContent("File"), false, () => AddLayer(container, insertionIndex, new FileLayer()));
-            menu.AddItem(new GUIContent("Color Fill"), false, () => AddLayer(container, insertionIndex, new ColorFillLayer()));
-            menu.AddItem(new GUIContent("Gradient"), false, () => AddLayer(container, insertionIndex, new GradientLayer()));
-            menu.AddItem(new GUIContent("Noise"), false, () => AddLayer(container, insertionIndex, new NoiseLayer()));
-            menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Outline"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
-            menu.AddItem(new GUIContent("SDF"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
-            menu.AddItem(new GUIContent("Normal Map"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
-            menu.AddItem(new GUIContent("Blur"), false, () => AddLayer(container, insertionIndex, new BlurLayer()));
-            menu.AddItem(new GUIContent("Make Seamless"), false, () => AddLayer(container, insertionIndex, new MakeSeamlessLayer()));
-            menu.AddItem(new GUIContent("Shader Processor"), false, () => AddLayer(container, insertionIndex, new ShaderProcessorLayer()));
-            menu.AddSeparator(string.Empty);
-            menu.AddItem(new GUIContent("Group"), false, () => AddLayer(container, insertionIndex, new GroupLayer()));
+            int section = 0;
+            foreach (var descriptor in LayerTypeRegistry.Entries)
+            {
+                if (section != descriptor.Section) menu.AddSeparator(string.Empty);
+                section = descriptor.Section;
+                menu.AddItem(new GUIContent(descriptor.MenuName), false,
+                    () => AddLayer(container, insertionIndex, descriptor.CreateLayer()));
+            }
             menu.ShowAsContext();
         }
 
@@ -707,14 +707,14 @@ namespace DCFApixels.SpriteEditor
             ExecuteModelChange("Add Sprite Layer", () =>
             {
                 layer.layerName = compositor.AllocateLayerName(layer);
-                if (layer is DrawingLayer drawing)
+                if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                     drawing.InitializeCanvas(compositor.width, compositor.height);
                 insertionIndex = Mathf.Clamp(insertionIndex, 0, container.Count);
                 container.Insert(insertionIndex, layer);
                 compositor.NormalizeModel();
-                if (layer is ShaderProcessorLayer) compositor.AddEmbeddedShaderFX(layer);
+                if (layer?.Behaviour is ShaderProcessorLayerBehaviour) compositor.AddEmbeddedShaderFX(layer);
                 SelectOnlyLayer(layer.Id);
-                if (layer is GroupLayer)
+                if (layer?.IsGroup == true)
                     groupExpansion[layer.Id] = true;
             });
         }
@@ -742,11 +742,11 @@ namespace DCFApixels.SpriteEditor
             }
             int index = 0;
             while (index < container.Count && container[index] != selected[0] &&
-                !(container[index] is GroupLayer parentGroup && ContainerContainsLayer(parentGroup.layers, selected[0])))
+                !(container[index]?.AsGroup() is Layer parentGroup && ContainerContainsLayer(parentGroup.layers, selected[0])))
                 index++;
             ExecuteContextChange("Group Sprite Layers", () =>
             {
-                GroupLayer group = new GroupLayer { layerName = compositor.AllocateGroupName() };
+                Layer group = new GroupLayerBehaviour { layerName = compositor.AllocateGroupName() };
                 foreach (Layer layer in selected)
                     if (compositor.TryFindLayer(layer, out List<Layer> source, out _))
                         source.Remove(layer);
@@ -807,7 +807,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Assign Channels", "Top to bottom. 1–3 layers: RGB with alpha 1 and upper-layer Add. 4 layers: RGBA Swizzle only, other channels zero."),
                     false, () => ApplyContextChannelPreset(targets));
             else menu.AddDisabledItem(new GUIContent("Assign Channels"));
-            var clippingTargets = targets.FindAll(target => !(target is ShaderProcessorLayer));
+            var clippingTargets = targets.FindAll(target => !(target?.Behaviour is ShaderProcessorLayerBehaviour));
             bool allClipped = clippingTargets.Count > 0 && clippingTargets.TrueForAll(target => target.clippingMask);
             if (clippingTargets.Count == 0) menu.AddDisabledItem(new GUIContent("Clipping Mask"));
             else
@@ -818,21 +818,12 @@ namespace DCFApixels.SpriteEditor
                         if (!SpriteEditorApi.IsLayerContentLocked(compositor, target) &&
                             compositor.TryFindLayer(target, out _, out _)) target.clippingMask = !allClipped;
                 }));
-            if (targets.Exists(target => target is GroupLayer))
+            if (targets.Exists(target => target?.IsGroup == true))
             {
                 menu.AddSeparator(string.Empty);
-                menu.AddItem(new GUIContent("Add Inside/Drawing Layer"), false, () => AddInsideContextGroups(targets, () => new DrawingLayer()));
-                menu.AddItem(new GUIContent("Add Inside/File Layer"), false, () => AddInsideContextGroups(targets, () => new FileLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Color Fill Layer"), false, () => AddInsideContextGroups(targets, () => new ColorFillLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Gradient Layer"), false, () => AddInsideContextGroups(targets, () => new GradientLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Noise Layer"), false, () => AddInsideContextGroups(targets, () => new NoiseLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
-                menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Blur"), false, () => AddInsideContextGroups(targets, () => new BlurLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Make Seamless"), false, () => AddInsideContextGroups(targets, () => new MakeSeamlessLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Shader Processor"), false, () => AddInsideContextGroups(targets, () => new ShaderProcessorLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
+                foreach (var descriptor in LayerTypeRegistry.Entries)
+                    menu.AddItem(new GUIContent("Add Inside/" + descriptor.InsideMenuName), false,
+                        () => AddInsideContextGroups(targets, descriptor.CreateLayer));
                 menu.AddItem(new GUIContent("Ungroup"), false, () => UngroupContextLayers(targets));
             }
 
@@ -846,13 +837,13 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("Merge Selected %e"), false, () => MergeSelectedLayers(roots, false));
             menu.AddItem(new GUIContent("Merge Selected as Copy %&e"), false, () => MergeSelectedLayers(roots, true));
             menu.AddItem(new GUIContent("Delete"), false, () => DeleteLayers(roots));
-            if (targets.Exists(target => !(target is GroupLayer)))
+            if (targets.Exists(target => !(target?.IsGroup == true)))
             {
                 menu.AddSeparator(string.Empty);
                 menu.AddItem(new GUIContent("FX"), false, () =>
                 {
                     foreach (Layer target in targets)
-                        if (!(target is GroupLayer)) ModifierEditorWindow.Open(target, compositor);
+                        if (!(target?.IsGroup == true)) ModifierEditorWindow.Open(target, compositor);
                 });
                 menu.AddItem(new GUIContent("Properties"), false, () =>
                 {
@@ -879,14 +870,14 @@ namespace DCFApixels.SpriteEditor
             FinishPaintingStroke();
             if (compositor == null || layers.Count == 0)
                 return;
-            if (layers.Exists(layer => layer is GroupLayer) && !groupConfirmed && !EditorUtility.DisplayDialog(
+            if (layers.Exists(layer => layer?.IsGroup == true) && !groupConfirmed && !EditorUtility.DisplayDialog(
                 "Convert Groups to Drawing",
                 GroupConversionWarning,
                 "Convert", "Cancel"))
                 return;
 
             var textures = new List<Texture2D>();
-            var replacements = new List<DrawingLayer>();
+            var replacements = new List<DrawingLayerBehaviour>();
             int undoGroup = -1;
             int registeredTextures = 0;
             string activeId = selectedLayerId;
@@ -900,27 +891,32 @@ namespace DCFApixels.SpriteEditor
                         throw new InvalidOperationException("The selected layer is no longer in the document.");
                     Texture2D texture = compositor.RasterizeLayer(layer, applyTransform);
                     textures.Add(texture);
-                    replacements.Add(DrawingLayer.FromRasterizedLayer(layer, texture, applyTransform,
-                        layer is GroupLayer group && compositor.IsGroupIsolatedByClipping(group)));
+                    replacements.Add(DrawingLayerBehaviour.FromRasterizedLayer(layer, texture, applyTransform,
+                        layer?.AsGroup() is Layer group && compositor.IsGroupIsolatedByClipping(group)));
                 }
                 string undoName = applyTransform ? "Convert to Drawing (Apply Transform)" : "Convert to Drawing (Keep Transform)";
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName(undoName);
+                for (int i = 0; i < layers.Count; i++)
+                {
+                    replacements[i].MakeTexturePersistent(compositor);
+                    Undo.RegisterCreatedObjectUndo(textures[i], undoName);
+                    registeredTextures++;
+                }
                 Undo.RegisterCompleteObjectUndo(compositor, undoName);
                 for (int i = 0; i < layers.Count; i++)
                 {
                     Layer layer = layers[i];
                     if (!compositor.TryFindLayer(layer, out List<Layer> container, out int index))
                         throw new InvalidOperationException("The selected layer is no longer in the document.");
-                    replacements[i].MakeTexturePersistent(compositor);
-                    Undo.RegisterCreatedObjectUndo(textures[i], undoName);
-                    registeredTextures++;
-                    container[index] = replacements[i];
                     compositor.DestroyLayerAssets(layer);
-                    layer.ReleaseTransientResources();
+                    if (layer.IsGroup)
+                        foreach (Layer child in layer.layers)
+                            ReleaseConvertedChildren(child);
+                    layer.AdoptContent(replacements[i]);
                 }
-                SelectContextLayers(new List<Layer>(replacements), activeId);
+                SelectContextLayers(layers, activeId);
                 lineAnchorLayer = null;
                 applyingToolkitChange = true;
                 CommitModelChange();
@@ -948,41 +944,49 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
+        private static void ReleaseConvertedChildren(Layer layer)
+        {
+            if (layer == null) return;
+            layer.ReleaseTransientResources();
+            if (layer.IsGroup)
+                foreach (Layer child in layer.layers) ReleaseConvertedChildren(child);
+        }
+
         private void OpenLayerEditor(Layer layer)
         {
-            switch (layer)
+            switch (layer?.Behaviour)
             {
-                case DrawingLayer drawingLayer:
+                case DrawingLayerBehaviour drawingLayer:
                     DrawingLayerEditorWindow.Open(drawingLayer, compositor);
                     break;
-                case FileLayer fileLayer:
+                case FileLayerBehaviour fileLayer:
                     FileLayerEditorWindow.Open(fileLayer, compositor);
                     break;
-                case ColorFillLayer colorFillLayer:
+                case ColorFillLayerBehaviour colorFillLayer:
                     ColorFillLayerEditorWindow.Open(colorFillLayer, compositor);
                     break;
-                case GradientLayer gradientLayer:
+                case GradientLayerBehaviour gradientLayer:
                     GradientLayerEditorWindow.Open(gradientLayer, compositor);
                     break;
-                case NoiseLayer noiseLayer:
+                case NoiseLayerBehaviour noiseLayer:
                     NoiseLayerEditorWindow.Open(noiseLayer, compositor);
                     break;
-                case OutlineLayer outlineLayer:
+                case OutlineLayerBehaviour outlineLayer:
                     OutlineLayerEditorWindow.Open(outlineLayer, compositor);
                     break;
-                case SDFLayer sdfLayer:
+                case SDFLayerBehaviour sdfLayer:
                     SDFLayerEditorWindow.Open(sdfLayer, compositor);
                     break;
-                case NormalMapLayer normalMap:
+                case NormalMapLayerBehaviour normalMap:
                     NormalMapLayerEditorWindow.Open(normalMap, compositor);
                     break;
-                case BlurLayer blur:
+                case BlurLayerBehaviour blur:
                     BlurLayerEditorWindow.Open(blur, compositor);
                     break;
-                case MakeSeamlessLayer seamless:
+                case MakeSeamlessLayerBehaviour seamless:
                     MakeSeamlessLayerEditorWindow.Open(seamless, compositor);
                     break;
-                case ShaderProcessorLayer processor:
+                case ShaderProcessorLayerBehaviour processor:
                     ShaderProcessorLayerEditorWindow.Open(processor, compositor);
                     break;
             }
@@ -993,7 +997,7 @@ namespace DCFApixels.SpriteEditor
             return compositor == null ? null : compositor.FindLayer(selectedLayerId);
         }
 
-        private bool GetGroupExpanded(GroupLayer group)
+        private bool GetGroupExpanded(Layer group)
         {
             groupExpansion ??= new Dictionary<string, bool>();
             if (!groupExpansion.TryGetValue(group.Id, out bool expanded))
@@ -1033,7 +1037,7 @@ namespace DCFApixels.SpriteEditor
 
         private void RequestPreview(bool immediate = false)
         {
-            immediate |= GetSelectedLayer() is NoiseLayer;
+            immediate |= GetSelectedLayer()?.Behaviour is NoiseLayerBehaviour;
             double requestedAt = EditorApplication.timeSinceStartup + (immediate ? 0d : PreviewDelay);
             if (!previewRequested || requestedAt < previewAt)
                 previewAt = requestedAt;
@@ -1260,6 +1264,12 @@ namespace DCFApixels.SpriteEditor
         {
             if (changedCompositor != compositor)
                 return;
+
+            if (paintingLayer != null && (!ReferenceEquals(paintingLayer.Owner.Behaviour, paintingLayer) ||
+                !ReferenceEquals(compositor.FindLayer(paintingLayer.Id), paintingLayer.Owner)))
+                FinishPaintingStroke();
+            if (lineAnchorLayer != null && !ReferenceEquals(lineAnchorLayer.Owner.Behaviour, lineAnchorLayer))
+                lineAnchorLayer = null;
 
             toolkitInspectorEffectTarget?.Invalidate();
             CancelPreviewEyedropper();

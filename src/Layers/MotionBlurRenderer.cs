@@ -1,6 +1,6 @@
 using System;
 using UnityEngine;
-using static DCFApixels.SpriteEditor.BlurLayer;
+using static DCFApixels.SpriteEditor.BlurLayerBehaviour;
 
 namespace DCFApixels.SpriteEditor
 {
@@ -12,7 +12,7 @@ namespace DCFApixels.SpriteEditor
         internal static float Limit(float value, float min, float max, float fallback = 0f) =>
             float.IsNaN(value) || float.IsInfinity(value) ? fallback : Mathf.Clamp(value, min, max);
 
-        internal static RenderTexture RenderBlur(BlurLayer layer, in LayerRenderContext context)
+        internal static RenderTexture RenderBlur(BlurLayerBehaviour layer, in LayerRenderContext context)
         {
             if (context.input == null) return null;
             float strength = layer.strength, distance = layer.distance, angle = layer.angle, arc = layer.arc;

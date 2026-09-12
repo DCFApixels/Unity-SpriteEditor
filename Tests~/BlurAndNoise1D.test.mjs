@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
-const blur = read('src/Layers/BlurLayer.cs');
+const blur = read('src/Layers/BlurLayerBehaviour.cs');
 const ui = read('src/Layers/Editors/BlurLayerEditorWindow.cs');
 const api = read('src/Automation/SpriteEditorApi.Blur.cs');
 
 test('one serialized Blur type dispatches to the existing filters, applying output settings once', () => {
-    assert.match(blur, /public sealed class BlurLayer : TargetedLayerEffect/);
+    assert.match(blur, /public sealed class BlurLayerBehaviour : TargetedLayerBehaviour/);
     assert.match(blur, /enum BlurType \{ Gaussian, Linear, Circular \}/);
     assert.match(blur, /public BlurType mode;/);
     assert.match(blur, /mode == BlurType.Gaussian\s*\? GaussianBlurRenderer.RenderBlur\(this, context\) : MotionBlurRenderer.RenderBlur\(this, context\)/);
@@ -16,7 +16,7 @@ test('one serialized Blur type dispatches to the existing filters, applying outp
         const renderer = read(`src/Layers/${name}BlurRenderer.cs`);
         assert.match(renderer, /layer.ApplyTransformAndModifiers\(straight, context\)/);
         assert.match(renderer, /layer.ApplyTransformAndModifiers\(context.input, context\)/);
-        assert.ok(!existsSync(new URL(`../src/Layers/${name}BlurLayer.cs`, import.meta.url)));
+        assert.ok(!existsSync(new URL(`../src/Layers/${name}BlurLayerBehaviour.cs`, import.meta.url)));
     }
     assert.match(read('src/Layers/MotionBlurRenderer.cs'), /layer.mode == BlurType.Circular/);
     assert.match(read('src/EffectRenderCache.cs'), /JsonUtility.ToJson\(layer\)/);
@@ -34,11 +34,12 @@ test('unified properties expose all settings and only hide inactive controls wit
     assert.match(ui, /linear.EnableInClassList\("sprite-editor-hidden", layer.mode != BlurType.Linear\)/);
     assert.match(ui, /circular.EnableInClassList\("sprite-editor-hidden", layer.mode != BlurType.Circular\)/);
     const window = read('src/TextureCompositorWindow.cs');
-    assert.match(window, /new GUIContent\("Blur"\)/);
-    assert.match(window, /new GUIContent\("Add Inside\/Blur"\)/);
+    assert.match(window, /new GUIContent\(descriptor.MenuName\)/);
+    assert.match(window, /new GUIContent\("Add Inside\/" \+ descriptor.InsideMenuName\)/);
     assert.doesNotMatch(window, /new GUIContent\("(?:Add Inside\/)?(?:Gaussian Blur|Motion Blur)/);
     const factory = read('src/Automation/SpriteEditorApi.Layers.cs');
-    assert.match(factory, /"blur" => new BlurLayer\(\)/);
+    assert.match(factory, /LayerTypeRegistry.Find\(type\)/);
+    assert.match(read('src/LayerTypeRegistry.cs'), /new Entry\("blur", "Blur", "Blur", "Blur", typeof\(BlurLayerBehaviour\)/);
     assert.doesNotMatch(factory, /"gaussianBlur"|"motionBlur"/);
 });
 
@@ -48,8 +49,8 @@ test('1D noise projects before warp and keeps the original 2D path', () => {
     assert.match(shader, /if \(_NoiseOneD != 0\)/);
     assert.match(shader, /p = float2\(dot\(centered, _NoiseAxis.xy\), 0.0\) \+ _NoiseDomain.zw/);
     assert.ok(shader.indexOf('dot(centered, _NoiseAxis.xy)') < shader.indexOf('fnlDomainWarp2D'));
-    assert.match(read('src/Layers/NoiseLayer.cs'), /enum NoiseDimensions \{ TwoD, OneD \}/);
-    assert.match(read('src/Layers/Editors/NoiseLayerEditorWindow.cs'), /axis.EnableInClassList\("sprite-editor-hidden", layer.dimensions != NoiseLayer.NoiseDimensions.OneD\)/);
+    assert.match(read('src/Layers/NoiseLayerBehaviour.cs'), /enum NoiseDimensions \{ TwoD, OneD \}/);
+    assert.match(read('src/Layers/Editors/NoiseLayerEditorWindow.cs'), /axis.EnableInClassList\("sprite-editor-hidden", layer.dimensions != NoiseLayerBehaviour.NoiseDimensions.OneD\)/);
 });
 
 test('1D domain stays constant along stripes on rectangular canvases and at any direction', () => {

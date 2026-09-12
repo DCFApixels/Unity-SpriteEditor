@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const shader = read('src/Shaders/PaintBrush.shader');
-const cache = read('src/Layers/DrawingLayer.BrushGradient.cs');
+const cache = read('src/Layers/DrawingLayerBehaviour.BrushGradient.cs');
 const width = Number(cache.match(/SdfGradientWidth = (\d+)/)[1]);
 const saturate = v => Math.max(0,Math.min(1,v));
 const coordBody = shader.match(/float u = ([^;]+);/)[1];
@@ -45,7 +45,7 @@ assert.ok(cache.includes('SpriteEditorColorInputs.StandardColor(colors[i].color)
 assert.ok(cache.includes('sdfGradientSnapshot.mode = source.mode'));
 assert.ok(cache.includes('sdfGradientSnapshot.colorSpace = source.colorSpace'));
 assert.ok(cache.includes('Object.DestroyImmediate(sdfGradientTexture)'));
-assert.ok(read('src/Layers/DrawingLayer.BrushMesh.cs').includes('ReleaseBrushSdfGradient();'));
+assert.ok(read('src/Layers/DrawingLayerBehaviour.BrushMesh.cs').includes('ReleaseBrushSdfGradient();'));
 assert.ok(shader.includes('float tipValue = tip.a;') && shader.includes('float tipOpacity = 1.0;'));
 assert.ok(shader.includes('tipValue = _TipChannel > 1.5 ? 1.0 - value : value;'));
 assert.ok(shader.includes('tipOpacity = tip.a;'));
@@ -60,7 +60,7 @@ const usesSdf = new Function('tip','tipSdf','proceduralMode','BrushProceduralMod
 for(const tip of [null,{}]) for(const textureSdf of [false,true]) for(const mode of [0,1])
   assert.equal(usesSdf(tip,textureSdf,mode,{SdfGradient:1}),tip ? textureSdf : mode===1);
 assert.ok(dynamics.includes('proceduralMode = BrushProceduralMode.Hardness;'));
-assert.ok(read('src/Layers/DrawingLayer.cs').includes('bool sdfGradient = !pixelPerfect && dynamics != null && dynamics.UsesSdfGradient;'));
+assert.ok(read('src/Layers/DrawingLayerBehaviour.cs').includes('bool sdfGradient = !pixelPerfect && dynamics != null && dynamics.UsesSdfGradient;'));
 assert.ok(shader.includes('SdfTipGradient(radius)'));
 assert.ok(shader.includes('SdfTipGradient(1.0 - tipValue)'));
 const textureCoordinate = new Function('tipValue', 'return ' + shader.match(/SdfTipGradient\((1\.0 - tipValue)\)/)[1]);
@@ -101,7 +101,7 @@ assert.ok(applyChange.includes('toolkitHeaderBindings.Refresh();'));
 assert.ok(applyChange.includes('brushSettingsBindings?.Refresh();'), 'Both copies update after editing either location');
 assert.match(read('src/TextureCompositorWindow.UI.cs'), /brushRow.Add\(size\);\s*AddBrushEdgeHeader\(brushRow\);\s*AddBrushHeaderPercent\(brushRow, "Opacity"/);
 assert.match(read('src/SpriteEditorSplitView.uss'), /\.sprite-editor-brush-edge\s*\{\s*width: 150px;\s*height: 20px;\s*flex-shrink: 0;/);
-assert.ok(read('src/Layers/DrawingLayer.cs').includes('GetBrushSdfGradient(dynamics, standardColorInputs)'));
+assert.ok(read('src/Layers/DrawingLayerBehaviour.cs').includes('GetBrushSdfGradient(dynamics, standardColorInputs)'));
 assert.ok(read('src/Automation/SpriteEditorApi.Paint.cs').includes('dynamics.tipGradient = ReadGradient(brush["tipGradient"])'));
 assert.ok(read('src/Automation/SpriteEditorApi.Inspect.cs').includes('["tipGradientKeys"] = GradientSnapshot(dynamics.tipGradient)'));
 assert.ok(read('src/PaintToolSettings.cs').includes('dynamics.tipGradient = defaults.dynamics.tipGradient'));

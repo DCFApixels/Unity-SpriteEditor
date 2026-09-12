@@ -22,7 +22,7 @@ namespace DCFApixels.SpriteEditor
                 if (rgb && index < ordered.Count - 1)
                 {
                     layer.blendMode = BlendMode.Add;
-                    if (layer is GroupLayer group) group.compositing = GroupCompositing.Isolated;
+                    if (layer?.AsGroup() is Layer group) group.compositing = GroupCompositing.Isolated;
                 }
             }
         }
@@ -37,7 +37,7 @@ namespace DCFApixels.SpriteEditor
                     if (layer == null) continue;
                     bool included = selected.Contains(layer);
                     if (included) result.Add(layer);
-                    if (layer is GroupLayer group && (!included || !rootsOnly)) Visit(group.layers);
+                    if (layer?.AsGroup() is Layer group && (!included || !rootsOnly)) Visit(group.layers);
                 }
             }
             Visit(tree);
@@ -69,9 +69,9 @@ namespace DCFApixels.SpriteEditor
         internal readonly struct GroupMove
         {
             internal readonly Layer layer;
-            internal readonly GroupLayer group;
+            internal readonly Layer group;
             internal readonly List<Layer> source, destination;
-            internal GroupMove(Layer layer, GroupLayer group, List<Layer> source, List<Layer> destination)
+            internal GroupMove(Layer layer, Layer group, List<Layer> source, List<Layer> destination)
             { this.layer = layer; this.group = group; this.source = source; this.destination = destination; }
         }
 
@@ -86,10 +86,10 @@ namespace DCFApixels.SpriteEditor
                 {
                     int above = index - 1;
                     while (above >= 0 && selected.Contains(container[above])) above--;
-                    if (above >= 0 && container[above] is GroupLayer group)
+                    if (above >= 0 && container[above]?.AsGroup() is Layer group)
                         moves.Add(new GroupMove(layer, group, container, group.layers));
                 }
-                else if (document.TryFindParentGroup(container, out GroupLayer parent, out List<Layer> destination, out _))
+                else if (document.TryFindParentGroup(container, out Layer parent, out List<Layer> destination, out _))
                     moves.Add(new GroupMove(layer, parent, container, destination));
             }
             return moves;
@@ -111,7 +111,7 @@ namespace DCFApixels.SpriteEditor
             var result = new List<Layer>(selected);
             for (int i = selected.Count - 1; i >= 0; i--)
             {
-                if (!(selected[i] is GroupLayer group) || !document.TryFindLayer(group, out List<Layer> container, out int index)) continue;
+                if (!(selected[i]?.AsGroup() is Layer group) || !document.TryFindLayer(group, out List<Layer> container, out int index)) continue;
                 container.RemoveAt(index);
                 container.InsertRange(index, group.layers);
                 result.Remove(group);

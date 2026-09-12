@@ -88,11 +88,11 @@ namespace DCFApixels.SpriteEditor
                 string preferredActive = null;
                 foreach (Layer target in targets)
                 {
-                    if (!(target is GroupLayer group) || !compositor.TryFindLayer(group, out _, out _)) continue;
+                    if (!(target?.AsGroup() is Layer group) || !compositor.TryFindLayer(group, out _, out _)) continue;
                     Layer layer = create();
                     layer.AssignNewId();
                     layer.layerName = compositor.AllocateLayerName(layer);
-                    if (layer is DrawingLayer drawing)
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing)
                     {
                         try
                         {
@@ -109,10 +109,10 @@ namespace DCFApixels.SpriteEditor
                         }
                     }
                     group.layers.Insert(0, layer);
-                    if (layer is ShaderProcessorLayer) compositor.AddEmbeddedShaderFX(layer);
+                    if (layer?.Behaviour is ShaderProcessorLayerBehaviour) compositor.AddEmbeddedShaderFX(layer);
                     created.Add(layer);
                     groupExpansion[group.Id] = true;
-                    if (layer is GroupLayer) groupExpansion[layer.Id] = true;
+                    if (layer?.IsGroup == true) groupExpansion[layer.Id] = true;
                     if (group.Id == selectedLayerId) preferredActive = layer.Id;
                 }
                 compositor.NormalizeModel();

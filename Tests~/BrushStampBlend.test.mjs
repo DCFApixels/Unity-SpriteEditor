@@ -53,7 +53,7 @@ for(const [w,h] of [[1,1],[127,63],[512,1024]]) for(const [l,b,r,t] of [[.1,.3,.
   const right=clamp(Math.ceil(r*w)+1,w), top=clamp(Math.ceil(t*h)+1,h);
   assert.ok(x<=clamp(l*w,w)&&y<=clamp(b*h,h)&&right>=clamp(r*w,w)&&top>=clamp(t*h,h)); checks++;
 }
-const paint=read('src/Layers/DrawingLayer.cs'), brush=read('src/Layers/DrawingLayer.Brush.cs'), mesh=read('src/Layers/DrawingLayer.BrushMesh.cs');
+const paint=read('src/Layers/DrawingLayerBehaviour.cs'), brush=read('src/Layers/DrawingLayerBehaviour.Brush.cs'), mesh=read('src/Layers/DrawingLayerBehaviour.BrushMesh.cs');
 assert.ok(paint.includes('EnsureAdvancedStroke(surface, stampBlend)'));
 assert.ok(brush.includes('if (withBackdrop) Graphics.Blit(advancedStrokeBase, advancedStroke)'));
 assert.ok(paint.includes('if (stampBlend) BeginBrushMesh();'));

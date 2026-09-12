@@ -385,6 +385,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private bool interfaceBuilt;
         [NonSerialized] private bool interfaceRefreshRequested;
         [NonSerialized] private Layer boundLayer;
+        [NonSerialized] private LayerBehaviour boundBehaviour;
         [NonSerialized] private TextureCompositor boundCompositor;
         internal readonly SpriteEditorUI.ValueBindings SettingsBindings = new SpriteEditorUI.ValueBindings();
 
@@ -456,6 +457,11 @@ namespace DCFApixels.SpriteEditor
         {
             if (compositor == null || change == null || SpriteEditorApi.IsLayerContentLocked(compositor, currentLayer))
                 return;
+            if (!ResolveLayer() || !ReferenceEquals(boundLayer, currentLayer) || !ReferenceEquals(boundBehaviour, boundLayer?.Behaviour))
+            {
+                RefreshInterface();
+                return;
+            }
 
             Undo.RecordObject(compositor, undoName);
             applyingChange = true;
@@ -474,7 +480,7 @@ namespace DCFApixels.SpriteEditor
             RequestPreview();
         }
 
-        protected void AddEffectTarget(VisualElement root, TargetedLayerEffect effect)
+        protected void AddEffectTarget(VisualElement root, TargetedLayerBehaviour effect)
         {
             effectTargetSettings = new EffectTargetSettingsView(compositor, ApplyLayerChange, SettingsBindings);
             effectTargetSettings.Build(root, effect);
@@ -498,7 +504,7 @@ namespace DCFApixels.SpriteEditor
                     titleContent = SpriteEditorBranding.WindowTitle(title);
             }
             Layer nextLayer = valid ? currentLayer : null;
-            if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && boundCompositor == compositor)
+            if (interfaceBuilt && ReferenceEquals(boundLayer, nextLayer) && ReferenceEquals(boundBehaviour, nextLayer?.Behaviour) && boundCompositor == compositor)
             {
                 shaderFXView?.Refresh();
                 SettingsBindings.Refresh(forceValues);
@@ -506,6 +512,7 @@ namespace DCFApixels.SpriteEditor
             }
             interfaceBuilt = true;
             boundLayer = nextLayer;
+            boundBehaviour = nextLayer?.Behaviour;
             boundCompositor = compositor;
             SettingsBindings.Clear();
             shaderFXView = null;
@@ -588,7 +595,7 @@ namespace DCFApixels.SpriteEditor
 
             currentLayer = compositor.FindLayer(layerId);
 
-            return currentLayer != null && EditedLayerType.IsInstanceOfType(currentLayer);
+            return currentLayer != null && EditedLayerType.IsInstanceOfType(currentLayer.Behaviour);
         }
 
         private void InvalidateEffectTargetOptions()

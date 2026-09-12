@@ -39,15 +39,15 @@ for (const a of [0,.1,.5,1]) for (const b of [0,.2,.7,1]) for (const r of [0,.5,
 }
 // Transparent red next to opaque blue must not produce red fringes on resampling.
 assert.deepEqual(blend(rgba(1,0,0,0),rgba(0,0,1,1),.5),rgba(0,0,1,.5)); checks++;
-const PendingLayer = class {};
+const PendingLayerBehaviour = class {};
 code=body(model,'private static int NextContentLayer(')
-  .replaceAll('container.Count','container.length').replaceAll(' is PendingLayer',' instanceof PendingLayer');
-const next=new Function('PendingLayer',`return (container,index)=>{${code}}`)(PendingLayer);
+  .replaceAll('container.Count','container.length').replaceAll(' is PendingLayerBehaviour',' instanceof PendingLayerBehaviour');
+const next=new Function('PendingLayerBehaviour',`return (container,index)=>{${code}}`)(PendingLayerBehaviour);
 for (let count=0;count<100;count++) {
-  const container=Array.from({length:count},(_,i)=>i%3===0?new PendingLayer():i%3===1?null:{i});
+  const container=Array.from({length:count},(_,i)=>i%4===0?{Behaviour:new PendingLayerBehaviour()}:i%4===1?null:i%4===2?{Behaviour:null}:{Behaviour:{i}});
   for (let index=-1;index<count;index++) {
     let expected=index+1;
-    while(expected<count && (container[expected]==null || container[expected] instanceof PendingLayer)) expected++;
+    while(expected<count && (container[expected]?.Behaviour==null || container[expected].Behaviour instanceof PendingLayerBehaviour)) expected++;
     assert.equal(next(container,index),expected); checks++;
   }
 }

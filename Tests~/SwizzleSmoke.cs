@@ -19,7 +19,7 @@ DCFApixels.SpriteEditor.LayerSwizzle Route(int output, int source)
 try
 {
     document.width = document.height = 8;
-    var layer = new DCFApixels.SpriteEditor.ColorFillLayer
+    var layer = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour
     {
         color = new UnityEngine.Color(.3f, .6f, .8f, .7f),
         colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR,
@@ -27,14 +27,14 @@ try
     };
     document.layers.Add(layer);
     Check(layer.swizzle.IsIdentity, "New layers default to identity");
-    Check(UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>("{}").swizzle.IsIdentity,
+    Check(UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayerBehaviour>("{}").swizzle.IsIdentity,
         "Missing serialized swizzle defaults to identity");
     UnityEngine.Color before = Pixel();
     for (int output = 0; output < 4; output++)
     for (int source = 0; source < System.Enum.GetValues(typeof(DCFApixels.SpriteEditor.SwizzleChannel)).Length; source++)
     {
         layer.swizzle = Route(output, source);
-        var clone = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>(UnityEngine.JsonUtility.ToJson(layer));
+        var clone = UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.Layer>(UnityEngine.JsonUtility.ToJson(layer.Owner));
         Check(clone.swizzle[output] == (DCFApixels.SpriteEditor.SwizzleChannel)source, "Channel serialization round-trip");
         var expected = before;
         expected[output] = source >= 10 ? before[source - 10] * before.a : source == 8 ? 0f : source == 9 ? 1f : source >= 4 ? 1f - before[source - 4] : before[source];
@@ -65,9 +65,9 @@ try
     layer.swizzle = default;
     layer.color = new UnityEngine.Color(.8f, .4f, .2f, 1f);
     layer.blendMode = DCFApixels.SpriteEditor.BlendMode.Multiply;
-    var group = new DCFApixels.SpriteEditor.GroupLayer();
+    var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
     group.layers.Add(layer);
-    var backdrop = new DCFApixels.SpriteEditor.ColorFillLayer { color = new UnityEngine.Color(.5f, .5f, .5f, 1f) };
+    var backdrop = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = new UnityEngine.Color(.5f, .5f, .5f, 1f) };
     document.layers.Clear(); document.layers.Add(group); document.layers.Add(backdrop);
     var pass = Pixel();
     group.swizzle = Route(0, 2);
@@ -93,7 +93,7 @@ try
     Check(Near(Pixel().a, 0f), "Group alpha is remapped");
     var coverage = (UnityEngine.RenderTexture)typeof(DCFApixels.SpriteEditor.TextureCompositor)
         .GetMethod("RenderGroupAlpha", flags).Invoke(document,
-            new object[] { group, 8, 8, 1f, new System.Collections.Generic.HashSet<DCFApixels.SpriteEditor.Layer>() });
+            new object[] { group.Owner, 8, 8, 1f, new System.Collections.Generic.HashSet<DCFApixels.SpriteEditor.Layer>() });
     var readback = new UnityEngine.Texture2D(8, 8, UnityEngine.TextureFormat.RGBAFloat, false, true);
     var previous = UnityEngine.RenderTexture.active;
     try
@@ -111,7 +111,7 @@ try
     var swizzled = Route(0, 2); swizzled[2] = DCFApixels.SpriteEditor.SwizzleChannel.R;
     layer.swizzle = swizzled;
     var rasterize = typeof(DCFApixels.SpriteEditor.TextureCompositor).GetMethod("RasterizeLayer", flags);
-    var raw = (UnityEngine.Texture2D)rasterize.Invoke(document, new object[] { layer, true });
+    var raw = (UnityEngine.Texture2D)rasterize.Invoke(document, new object[] { layer.Owner, true });
     try { Check(raw.GetPixel(2, 2).r > .98f && raw.GetPixel(2, 2).b < .01f, "Conversion keeps swizzle unbaked for non-group layers"); }
     finally { UnityEngine.Object.DestroyImmediate(raw); }
     var description = DCFApixels.SpriteEditor.SpriteEditorApi.Describe();

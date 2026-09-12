@@ -5,7 +5,7 @@ var setter = type.GetMethod("SetNormalMap", flags);
 var snapshot = type.GetMethod("NormalMapSnapshot", flags);
 var jsonType = setter.GetParameters()[1].ParameterType;
 object Json(string text) => jsonType.GetMethod("Parse", new[] { typeof(string) }).Invoke(null, new object[] { text });
-var normal = new DCFApixels.SpriteEditor.NormalMapLayer();
+var normal = new DCFApixels.SpriteEditor.NormalMapLayerBehaviour();
 int checks = 0;
 void Check(bool value, string message) { if (!value) throw new System.Exception(message); checks++; }
 void Set(string json) => setter.Invoke(null, new object[] { normal, Json(json) });
@@ -17,8 +17,8 @@ void Reject(string json)
     Check(rejected, "Reject " + json);
 }
 Set("{\"mode\":\"Texture\",\"sourceChannel\":\"Alpha\",\"inputSpace\":\"Linear\",\"edges\":\"Repeat\",\"encoding\":\"LinearData\",\"strength\":12,\"flipY\":true}");
-Check(normal.mode == DCFApixels.SpriteEditor.NormalMapLayer.GenerationMode.Texture && normal.flipY && normal.strength == 12, "Apply settings");
-var copy = new DCFApixels.SpriteEditor.NormalMapLayer();
+Check(normal.mode == DCFApixels.SpriteEditor.NormalMapLayerBehaviour.GenerationMode.Texture && normal.flipY && normal.strength == 12, "Apply settings");
+var copy = new DCFApixels.SpriteEditor.NormalMapLayerBehaviour();
 setter.Invoke(null, new object[] { copy, snapshot.Invoke(null, new object[] { normal }) });
 Check(UnityEngine.JsonUtility.ToJson(normal) == UnityEngine.JsonUtility.ToJson(copy), "Complete API settings round-trip");
 Reject("{\"strength\":-1}"); Reject("{\"edges\":\"Unknown\"}"); Reject("{\"unused\":1}");

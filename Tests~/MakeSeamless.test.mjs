@@ -56,15 +56,15 @@ assert.match(shader, /float2 position = saturate\(\(uv - .5 \* texel\) \/ max\(1
 assert.match(shader, /float4 c = lerp\(lerp\(original, acrossX, x\), lerp\(acrossY, acrossBoth, x\), y\)/);
 assert.match(shader, /c\.rgb \* c\.a/);
 assert.match(shader, /c\.a > 0 \? c\.rgb \/ c\.a : 0/);
-const layer = read('src/Layers/MakeSeamlessLayer.cs');
+const layer = read('src/Layers/MakeSeamlessLayerBehaviour.cs');
 assert.match(layer, /RequiresColorInput => true/);
 assert.match(layer, /RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear/);
 assert.match(layer, /RenderTexture.ReleaseTemporary\(result\)/);
 assert.match(layer, /GL.sRGBWrite = srgb/);
 assert.match(layer, /horizontal == HorizontalDirection.Off && vertical == VerticalDirection.Off/);
-assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /"makeSeamless" => new MakeSeamlessLayer/);
+assert.match(read('src/LayerTypeRegistry.cs'), /new Entry\("makeSeamless", "Make Seamless", "Make Seamless", "Make Seamless", typeof\(MakeSeamlessLayerBehaviour\)/);
 assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /SetMakeSeamless\(seamless,/);
-assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /MakeSeamlessLayer _ => "makeSeamless"/);
+assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /LayerTypeRegistry.Find\(layer\?\.Behaviour\?\.GetType\(\)\)\?\.ApiId/);
 assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /settings\["makeSeamless"\] = MakeSeamlessSnapshot/);
 for (const key of ['horizontal','vertical','blendWidth','falloff']) {
     const api = read('src/Automation/SpriteEditorApi.MakeSeamless.cs');
@@ -83,7 +83,7 @@ for (const [edge, [axis, selected]] of Object.entries(mappings)) {
     const block = editor.slice(editor.indexOf(`AddEdge("${edge}"`)).split(');')[0];
     const expr = block.match(/\(\) => layer\.(horizontal|vertical) = ([\s\S]*)/);
     assert.equal(expr[1], axis);
-    const toggle = new Function('layer', `layer.${axis} = ${expr[2].replace(/MakeSeamlessLayer\.\w+Direction\.(\w+)/g, (_, mode) => modes[mode])}`);
+    const toggle = new Function('layer', `layer.${axis} = ${expr[2].replace(/MakeSeamlessLayerBehaviour\.\w+Direction\.(\w+)/g, (_, mode) => modes[mode])}`);
     for (const start of [0,1,2]) for (const other of [0,1,2]) {
         const layer = axis === 'horizontal' ? {horizontal:start, vertical:other} : {horizontal:other, vertical:start};
         toggle(layer);

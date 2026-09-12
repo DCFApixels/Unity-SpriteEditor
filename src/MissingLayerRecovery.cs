@@ -14,10 +14,8 @@ namespace DCFApixels.SpriteEditor
     {
         internal sealed class Record
         {
-            internal long ReferenceId;
-            internal string Label, Error;
+            internal string Error;
             internal JObject Data;
-            internal string LayerName => Data?["layerName"]?.Annotation<MissingLayerData.ScalarText>()?.Text ?? (string)Data?["layerName"];
         }
 
         internal sealed class Report
@@ -28,37 +26,34 @@ namespace DCFApixels.SpriteEditor
                 " Kept defaults for unavailable or incompatible fields: " + string.Join(", ", Skipped) + ".");
         }
 
-        internal static List<Record> ReadRecords(TextureCompositor document)
+        internal static Record FindRecord(TextureCompositor document, string behaviourId)
         {
-            var records = new List<Record>();
+            if (string.IsNullOrEmpty(behaviourId)) return null;
+            Record found = null;
             foreach (var missing in UnityEditor.SerializationUtility.GetManagedReferencesWithMissingTypes(document))
             {
-                var record = new Record { ReferenceId = missing.referenceId, Label = missing.className + " · " + missing.referenceId };
                 try
                 {
-                    record.Data = MissingLayerData.Parse(missing.serializedData);
-                    // Other missing managed objects are not necessarily layers.
-                    if (record.Data["layerName"] == null || record.Data["id"] == null) continue;
-                    record.Label = record.LayerName + " — " + record.Label;
+                    var data = MissingLayerData.Parse(missing.serializedData);
+                    string id = data["recoveryId"]?.Annotation<MissingLayerData.ScalarText>()?.Text ?? (string)data["recoveryId"];
+                    if (id != behaviourId) continue;
+                    if (found != null) return new Record { Error = "Saved behaviour data is ambiguous. Common settings are safe; select a new behaviour without transferring specific settings." };
+                    found = new Record { Data = data };
                 }
                 catch (Exception e) when (e is FormatException || e is Newtonsoft.Json.JsonException)
                 {
-                    record.Error = "The saved data cannot be read safely: " + e.Message;
+                    // An unreadable unrelated missing reference must not affect this layer.
                 }
-                records.Add(record);
             }
-            return records;
+            return found;
         }
 
-        internal static Report Copy(Record record, Layer destination, TextureCompositor document)
+        internal static Report Copy(Record record, LayerBehaviour destination, TextureCompositor document)
         {
             var report = new Report();
             if (record == null) return report;
             if (record.Data == null) throw new InvalidOperationException(record.Error);
             CopyFields(record.Data, destination, document, report, "", 0);
-            // Never create duplicate identities or redirect references to another live layer.
-            if (!string.IsNullOrEmpty(destination.Id) && document.FindLayer(destination.Id) != null)
-                throw new InvalidOperationException("These saved data already belong to an existing layer. Choose another record.");
             return report;
         }
 
@@ -78,6 +73,7 @@ namespace DCFApixels.SpriteEditor
             var fields = Fields(destination.GetType());
             foreach (var property in source.Properties())
             {
+                if (path.Length == 0 && property.Name == "recoveryId") continue;
                 string childPath = path.Length == 0 ? property.Name : path + "." + property.Name;
                 if (!fields.TryGetValue(property.Name, out var field) ||
                     !TryValue(property.Value, field.FieldType, field.GetValue(destination), document, report, childPath, depth + 1, out object value))
@@ -94,6 +90,7 @@ namespace DCFApixels.SpriteEditor
         {
             value = original;
             if (depth > 64) return false;
+            if (token is JObject unavailable && unavailable["$unavailable"] != null) return false;
             if (type == typeof(string) && token.Annotation<MissingLayerData.ScalarText>() is MissingLayerData.ScalarText scalar)
             { value = scalar.Text; report.Copied++; return true; }
             if (token.Type == JTokenType.Null && !type.IsValueType) { value = null; report.Copied++; return true; }

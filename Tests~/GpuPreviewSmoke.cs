@@ -44,16 +44,16 @@ try
             pixels[y * 32 + x] = new Color32((byte)(x * 8), (byte)(y * 16), 93,
                 (byte)(x > 3 && x < 28 && y > 2 && y < 13 ? 180 : 0));
     source.Apply(false, false);
-    var drawing = new DCFApixels.SpriteEditor.DrawingLayer();
-    typeof(DCFApixels.SpriteEditor.DrawingLayer).GetField("pixels", InstanceHidden).SetValue(drawing, source);
+    var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
+    typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour).GetField("pixels", InstanceHidden).SetValue(drawing, source);
     sentinel = RenderTexture.GetTemporary(2, 2);
     RenderTexture.active = sentinel;
 
     for (int mode = 0; mode < 4; mode++)
     {
         document.layers.Clear();
-        if (mode == 2) document.layers.Add(new DCFApixels.SpriteEditor.SDFLayer());
-        if (mode == 3) document.layers.Add(new DCFApixels.SpriteEditor.OutlineLayer());
+        if (mode == 2) document.layers.Add(new DCFApixels.SpriteEditor.SDFLayerBehaviour());
+        if (mode == 3) document.layers.Add(new DCFApixels.SpriteEditor.OutlineLayerBehaviour());
         if (mode != 0) document.layers.Add(drawing);
         foreach (int size in new[] { 32, 16, 1, 32 })
         {

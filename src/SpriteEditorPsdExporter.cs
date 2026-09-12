@@ -89,8 +89,8 @@ namespace DCFApixels.SpriteEditor
             if (layers == null) return null;
             foreach (Layer layer in layers)
             {
-                if (layer is ShaderProcessorLayer) return layer;
-                if (layer is GroupLayer group)
+                if (layer?.Behaviour is ShaderProcessorLayerBehaviour) return layer;
+                if (layer?.AsGroup() is Layer group)
                 {
                     Layer found = FindProcessor(group.layers);
                     if (found != null) return found;
@@ -107,15 +107,17 @@ namespace DCFApixels.SpriteEditor
             for (int i = layers.Count - 1; i >= 0; i--)
             {
                 Layer layer = layers[i];
-                if (layer == null || layer is PendingLayer) continue;
+                if (layer == null || layer?.Behaviour is PendingLayerBehaviour) continue;
                 if (!visited.Add(layer)) throw new InvalidOperationException("The layer tree contains a cycle or shared layer instance.");
                 bool orphanClipping = layer.clippingMask && document.GetClippingBase(layer) == null;
+                bool missingBehaviour = layer.Behaviour == null;
+                if (missingBehaviour) report.Note(layer, "Layer behaviour is unavailable; exported hidden with its structure preserved.");
                 if (orphanClipping) report.Note(layer, "Clipping has no base in this group; exported hidden to preserve its invisible result.");
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     report.groupCount++;
                     records.Add(new PsdWriter.LayerRecord { name = "</Group>", id = LayerId(group, ids, ":end"), section = 3, visible = false });
-                    bool bakedSwizzle = !group.swizzle.IsIdentity;
+                    bool bakedSwizzle = !missingBehaviour && !group.swizzle.IsIdentity;
                     if (bakedSwizzle)
                         records.Add(new PsdWriter.LayerRecord { name = "</Group>", id = LayerId(group, ids, ":source-end"), section = 3, visible = false });
                     Collect(document, group.layers, records, report, visited, ids);
@@ -131,7 +133,7 @@ namespace DCFApixels.SpriteEditor
                     bool isolated = !group.IsPassThrough || document.IsGroupIsolatedByClipping(group);
                     string groupBlend = isolated ? BlendKey(group.EffectiveBlendMode, out _) : "pass";
                     records.Add(new PsdWriter.LayerRecord { name = group.layerName, id = LayerId(group, ids), section = 1,
-                        visible = group.enabled && !orphanClipping && (!isolated || group.EffectiveBlendMode != BlendMode.None), opacity = ToByte(group.opacity),
+                        visible = group.enabled && !missingBehaviour && !orphanClipping && (!isolated || group.EffectiveBlendMode != BlendMode.None), opacity = ToByte(group.opacity),
                         blend = isolated ? groupBlend : "norm", sectionBlend = groupBlend, clipping = group.clippingMask });
                     if (isolated && group.blendRange == LayerBlendRange.HDR)
                         report.Note(group, "HDR group blending is approximated in the 8-bit layer stack; merged pixels are clamped.");
@@ -146,7 +148,7 @@ namespace DCFApixels.SpriteEditor
                     id = LayerId(layer, ids),
                     opacity = ToByte(layer.opacity),
                     clipping = layer.clippingMask,
-                    visible = layer.enabled && !orphanClipping && layer.blendMode != BlendMode.None,
+                    visible = layer.enabled && !missingBehaviour && !orphanClipping && layer.blendMode != BlendMode.None,
                     blend = BlendKey(layer.blendMode, out bool approximate),
                     openPixels = () => new Pixels(document.RenderPsdPixels(layer), document.width, document.height)
                 };
@@ -155,7 +157,7 @@ namespace DCFApixels.SpriteEditor
 
                 bool modifiers = HasModifiers(layer) || !layer.swizzle.IsIdentity;
                 if (!layer.swizzle.IsIdentity) report.Note(layer, "Swizzle is baked into the layer pixels.");
-                if (layer is ColorFillLayer fill && !modifiers)
+                if (layer?.Behaviour is ColorFillLayerBehaviour fill && !modifiers)
                 {
                     record.adjustment = true;
                     record.mask = true;
@@ -163,7 +165,7 @@ namespace DCFApixels.SpriteEditor
                     record.openPixels = () => new Pixels(document.RenderPsdPixels(layer), document.width, document.height, alphaAsMask: true);
                     report.editableFillCount++;
                 }
-                else if (layer is GradientLayer gradient && CanExportGradient(gradient, modifiers))
+                else if (layer?.Behaviour is GradientLayerBehaviour gradient && CanExportGradient(gradient, modifiers))
                 {
                     record.adjustment = true;
                     record.mask = gradient.transform.tiling == TransformTilingMode.Clip;
@@ -171,10 +173,10 @@ namespace DCFApixels.SpriteEditor
                     record.openPixels = () => GradientPixels(document, gradient, record.mask);
                     report.editableFillCount++;
                     if (!gradient.transform.IsIdentity() ||
-                        (gradient.gradientType != GradientLayer.GradientType.Horizontal && gradient.gradientType != GradientLayer.GradientType.Vertical))
+                        (gradient.gradientType != GradientLayerBehaviour.GradientType.Horizontal && gradient.gradientType != GradientLayerBehaviour.GradientType.Vertical))
                         report.Note(layer, "Gradient geometry/interpolation is editable but may differ, especially on a non-square canvas.");
                 }
-                else if (layer is OutlineLayer outline && CanExportOutline(outline, modifiers))
+                else if (layer?.Behaviour is OutlineLayerBehaviour outline && CanExportOutline(outline, modifiers))
                 {
                     record.fillOpacity = 0;
                     Add(record, "lfx2", Stroke(outline));
@@ -182,7 +184,7 @@ namespace DCFApixels.SpriteEditor
                     report.editableOutlineCount++;
                     report.Note(layer, "Editable stroke on a snapshot of the target alpha, with Fill 0%. Target linkage, distance metric and softness are not retained.");
                 }
-                else if (!(layer is DrawingLayer) && !(layer is FileLayer))
+                else if (!(layer?.Behaviour is DrawingLayerBehaviour) && !(layer?.Behaviour is FileLayerBehaviour))
                     report.Note(layer, "Rasterized with its transform and FX; no compatible editable representation for these settings.");
                 else if (HasModifiers(layer))
                     report.Note(layer, "Shader/Material FX are baked into the layer pixels.");
@@ -207,20 +209,20 @@ namespace DCFApixels.SpriteEditor
             return id;
         }
 
-        private static bool CanExportOutline(OutlineLayer layer, bool modifiers) =>
+        private static bool CanExportOutline(OutlineLayerBehaviour layer, bool modifiers) =>
             !modifiers && !layer.fillCenter && layer.outlineOffset == 0f &&
             layer.transform.IsIdentity() && layer.outlineWidth > 0f && layer.outlineWidth <= 250f &&
             (layer.metric == DistanceMetric.EuclideanExact || layer.metric == DistanceMetric.EuclideanApproximate);
 
-        private static bool CanExportGradient(GradientLayer layer, bool modifiers)
+        private static bool CanExportGradient(GradientLayerBehaviour layer, bool modifiers)
         {
             if (modifiers || layer.gradient == null || layer.gradient.mode == GradientMode.Fixed ||
                 (layer.transform.tiling != TransformTilingMode.Clip && layer.transform.tiling != TransformTilingMode.Source)) return false;
-            bool linear = layer.gradientType == GradientLayer.GradientType.Horizontal || layer.gradientType == GradientLayer.GradientType.Vertical;
+            bool linear = layer.gradientType == GradientLayerBehaviour.GradientType.Horizontal || layer.gradientType == GradientLayerBehaviour.GradientType.Vertical;
             Vector2 scale = layer.transform.scale;
             if (Mathf.Abs(scale.x) < 0.00001f || Mathf.Abs(scale.y) < 0.00001f) return false;
             if (!linear && (scale.x <= 0 || !Mathf.Approximately(scale.x, scale.y) || layer.radius <= 0f)) return false;
-            return layer.gradientType != GradientLayer.GradientType.Circular || Mathf.Approximately(layer.circularRepetitions, 1f);
+            return layer.gradientType != GradientLayerBehaviour.GradientType.Circular || Mathf.Approximately(layer.circularRepetitions, 1f);
         }
 
         private static void Add(PsdWriter.LayerRecord layer, string key, PsdWriter.Descriptor value) =>
@@ -231,10 +233,10 @@ namespace DCFApixels.SpriteEditor
             .Number("Grn ", Mathf.Clamp01(color.g) * 255d)
             .Number("Bl  ", Mathf.Clamp01(color.b) * 255d);
 
-        private static PsdWriter.Descriptor Stroke(OutlineLayer layer)
+        private static PsdWriter.Descriptor Stroke(OutlineLayerBehaviour layer)
         {
-            string position = layer.outlinePosition == OutlineLayer.OutlinePosition.Inside ? "InsF" :
-                layer.outlinePosition == OutlineLayer.OutlinePosition.Center ? "CtrF" : "OutF";
+            string position = layer.outlinePosition == OutlineLayerBehaviour.OutlinePosition.Inside ? "InsF" :
+                layer.outlinePosition == OutlineLayerBehaviour.OutlinePosition.Center ? "CtrF" : "OutF";
             var stroke = new PsdWriter.Descriptor("FrFX").Bool("enab", true).Bool("present", true).Bool("showInDialog", true)
                 .Enum("Styl", "FStl", position).Enum("PntT", "FrFl", "SClr").Enum("Md  ", "BlnM", "Nrml")
                 .Unit("Opct", "#Prc", Mathf.Clamp01(layer.outlineColor.a) * 100d)
@@ -242,7 +244,7 @@ namespace DCFApixels.SpriteEditor
             return new PsdWriter.Descriptor().Unit("Scl ", "#Prc", 100).Bool("masterFXSwitch", true).Object("FrFX", stroke);
         }
 
-        private static PsdWriter.Descriptor Gradient(GradientLayer layer, int width, int height)
+        private static PsdWriter.Descriptor Gradient(GradientLayerBehaviour layer, int width, int height)
         {
             var colors = new List<PsdWriter.Descriptor>();
             foreach (GradientColorKey key in layer.gradient.colorKeys)
@@ -258,11 +260,11 @@ namespace DCFApixels.SpriteEditor
             double angle = 0, scale = 100;
             switch (layer.gradientType)
             {
-                case GradientLayer.GradientType.Horizontal: type = "Lnr "; break;
-                case GradientLayer.GradientType.Vertical: type = "Lnr "; angle = 90; break;
-                case GradientLayer.GradientType.Circular: type = "Angl"; angle = 180; break;
-                case GradientLayer.GradientType.Diamond: type = "Dmnd"; break;
-                case GradientLayer.GradientType.Square: type = "Dmnd"; angle = 45; break;
+                case GradientLayerBehaviour.GradientType.Horizontal: type = "Lnr "; break;
+                case GradientLayerBehaviour.GradientType.Vertical: type = "Lnr "; angle = 90; break;
+                case GradientLayerBehaviour.GradientType.Circular: type = "Angl"; angle = 180; break;
+                case GradientLayerBehaviour.GradientType.Diamond: type = "Dmnd"; break;
+                case GradientLayerBehaviour.GradientType.Square: type = "Dmnd"; angle = 45; break;
                 default: type = "Rdl "; break;
             }
             Vector2 center = type == "Lnr " ? new Vector2(0.5f, 0.5f) : layer.center;
@@ -276,7 +278,7 @@ namespace DCFApixels.SpriteEditor
             angle += transform.rotation;
             if (type == "Lnr ")
             {
-                bool horizontal = layer.gradientType == GradientLayer.GradientType.Horizontal;
+                bool horizontal = layer.gradientType == GradientLayerBehaviour.GradientType.Horizontal;
                 float axisScale = horizontal ? transform.scale.x : transform.scale.y;
                 if (axisScale < 0) angle += 180;
                 double projectedCanvas = Math.Abs(width * Math.Cos(angle * Math.PI / 180)) + Math.Abs(height * Math.Sin(angle * Math.PI / 180));
@@ -285,7 +287,7 @@ namespace DCFApixels.SpriteEditor
             else
             {
                 scale = layer.radius * transform.scale.x * 200;
-                if (layer.gradientType == GradientLayer.GradientType.Square) scale *= Math.Sqrt(2);
+                if (layer.gradientType == GradientLayerBehaviour.GradientType.Square) scale *= Math.Sqrt(2);
             }
             return new PsdWriter.Descriptor().Unit("Angl", "#Ang", angle).Enum("Type", "GrdT", type)
                 .Unit("Scl ", "#Prc", scale).Bool("Rvrs", false).Bool("Dthr", false).Bool("Algn", true)
@@ -326,7 +328,7 @@ namespace DCFApixels.SpriteEditor
 
         private static byte ToByte(float value) => (byte)Mathf.RoundToInt(Mathf.Clamp01(value) * 255f);
 
-        private static Pixels GradientPixels(TextureCompositor document, GradientLayer layer, bool mask)
+        private static Pixels GradientPixels(TextureCompositor document, GradientLayerBehaviour layer, bool mask)
         {
             Texture2D texture = document.RenderPsdPixels(layer);
             try

@@ -21,10 +21,12 @@ Shader "Hidden/TextureCompositor/GaussianBlur"
         float2 address(float2 pixel)
         {
             float2 size = _MainTex_TexelSize.zw;
-            if (_Edges == 2) return pixel - floor(pixel / size) * size;
+            // Pixel addresses are integral. Integer modulo avoids reciprocal rounding
+            // mapping the first repeated texel back to the last texel on some GPUs.
+            if (_Edges == 2) return (int2(pixel) % int2(size) + int2(size)) % int2(size);
             if (_Edges == 3)
             {
-                float2 p = pixel - floor(pixel / (2 * size)) * (2 * size);
+                float2 p = (int2(pixel) % int2(2 * size) + int2(2 * size)) % int2(2 * size);
                 return min(p, 2 * size - 1 - p);
             }
             return clamp(pixel, 0, size - 1);

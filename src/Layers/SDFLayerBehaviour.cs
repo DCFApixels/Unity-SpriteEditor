@@ -10,7 +10,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class SDFLayer : TargetedLayerEffect
+    public sealed class SDFLayerBehaviour : TargetedLayerBehaviour
     {
         public DistanceMetric metric = DistanceMetric.EuclideanExact;
         public SourceChannel sourceChannel = SourceChannel.Alpha;
@@ -171,18 +171,18 @@ namespace DCFApixels.SpriteEditor
             float distance = signedDistances[index];
             switch (distancePosition)
             {
-                case (int)SDFLayer.DistancePosition.Outside:
+                case (int)SDFLayerBehaviour.DistancePosition.Outside:
                     distance = math.max(distance, 0f);
                     break;
-                case (int)SDFLayer.DistancePosition.Inside:
+                case (int)SDFLayerBehaviour.DistancePosition.Inside:
                     distance = math.max(-distance, 0f);
                     break;
-                case (int)SDFLayer.DistancePosition.Center:
+                case (int)SDFLayerBehaviour.DistancePosition.Center:
                     distance = math.abs(distance);
                     break;
             }
 
-            float normalized = distancePosition == (int)SDFLayer.DistancePosition.Signed
+            float normalized = distancePosition == (int)SDFLayerBehaviour.DistancePosition.Signed
                 ? (distance + maxDistance) / (2f * maxDistance)
                 : distance / maxDistance;
             normalized = math.saturate(normalized);

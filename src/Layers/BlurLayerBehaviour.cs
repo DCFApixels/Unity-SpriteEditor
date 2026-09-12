@@ -6,7 +6,7 @@ namespace DCFApixels.SpriteEditor
     public enum BlurType { Gaussian, Linear, Circular }
 
     [Serializable]
-    public sealed class BlurLayer : TargetedLayerEffect
+    public sealed class BlurLayerBehaviour : TargetedLayerBehaviour
     {
         public enum EdgeMode { Transparent, Clamp, Repeat, Mirror }
         public enum MotionDirection { Centered, Forward, Backward }

@@ -5,7 +5,7 @@ var setter = type.GetMethod("SetNoise", flags);
 var snapshot = type.GetMethod("NoiseSnapshot", flags);
 var jsonType = setter.GetParameters()[1].ParameterType;
 object Json(string text) => jsonType.GetMethod("Parse", new[] { typeof(string) }).Invoke(null, new object[] { text });
-var layer = new DCFApixels.SpriteEditor.NoiseLayer();
+var layer = new DCFApixels.SpriteEditor.NoiseLayerBehaviour();
 int checks = 0;
 void Check(bool value, string message) { if (!value) throw new System.Exception(message); checks++; }
 void Set(string json) => setter.Invoke(null, new object[] { layer, Json(json) });
@@ -19,7 +19,7 @@ void Reject(string json)
 Check(layer.seed == 1337 && layer.scale == 8 && layer.octaves == 3, "Defaults");
 Set("{\"seed\":2147483647,\"noiseType\":\"Cellular\",\"scale\":12.5,\"offset\":[3,-4],\"fractal\":\"Ridged\",\"octaves\":6,\"lacunarity\":3,\"gain\":0.6,\"weightedStrength\":0.2,\"pingPongStrength\":3,\"cellularDistance\":\"Hybrid\",\"cellularReturn\":\"Distance2Sub\",\"cellularJitter\":0.75,\"warp\":\"BasicGrid\",\"warpStrength\":2,\"encoding\":\"LinearData\",\"inverted\":true}");
 Check(layer.seed == int.MaxValue && layer.offset.y == -4 && layer.inverted, "Set parameters");
-var copy = new DCFApixels.SpriteEditor.NoiseLayer();
+var copy = new DCFApixels.SpriteEditor.NoiseLayerBehaviour();
 setter.Invoke(null, new object[] { copy, snapshot.Invoke(null, new object[] { layer }) });
 Check(UnityEngine.JsonUtility.ToJson(layer) == UnityEngine.JsonUtility.ToJson(copy), "Settings round trip");
 Set("{\"seed\":-2147483648}");

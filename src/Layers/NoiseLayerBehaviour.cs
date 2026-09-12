@@ -4,7 +4,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class NoiseLayer : Layer
+    public sealed class NoiseLayerBehaviour : LayerBehaviour
     {
         public enum NoiseType { OpenSimplex2, OpenSimplex2S, Cellular, Perlin, ValueCubic, Value }
         public enum FractalType { None, FBm, Ridged, PingPong }

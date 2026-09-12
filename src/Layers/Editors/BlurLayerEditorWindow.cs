@@ -7,16 +7,16 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class BlurLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(BlurLayer);
+        protected override Type EditedLayerType => typeof(BlurLayerBehaviour);
         protected override string PreviewTitle => "Preview (Blur)";
-        public static void Open(BlurLayer layer, TextureCompositor compositor) =>
+        public static void Open(BlurLayerBehaviour layer, TextureCompositor compositor) =>
             OpenPropertiesWindow<BlurLayerEditorWindow>(layer, compositor);
         protected override void BuildSettings(VisualElement root, Layer source) =>
-            BuildFields(root, (BlurLayer)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+            BuildFields(root, (BlurLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
 
-        internal static void BuildFields(VisualElement root, BlurLayer layer, TextureCompositor compositor,
+        internal static void BuildFields(VisualElement root, BlurLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
-            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+            Action<VisualElement, TargetedLayerBehaviour> addEffectTarget)
         {
             addEffectTarget(root, layer);
             var mode = SpriteEditorUI.ConfigureField(new EnumField("Mode", layer.mode));
@@ -35,16 +35,16 @@ namespace DCFApixels.SpriteEditor
             }
 
             Slider(root, "Strength (%)", "0: original; 100: normal blur; above 100: denser translucent blur without changing its size or color brightness. Fully opaque areas are unchanged above 100.",
-                () => layer.strength * 100f, value => layer.strength = value / 100f, 0f, BlurLayer.MaximumStrength * 100f);
+                () => layer.strength * 100f, value => layer.strength = value / 100f, 0f, BlurLayerBehaviour.MaximumStrength * 100f);
 
             var gaussian = new VisualElement();
             Slider(gaussian, "Radius (px)", "Extent in original canvas pixels. Zero leaves the source unchanged.",
-                () => layer.radius, value => layer.radius = value, 0f, BlurLayer.MaximumRadius);
+                () => layer.radius, value => layer.radius = value, 0f, BlurLayerBehaviour.MaximumRadius);
             root.Add(gaussian);
 
             var linear = new VisualElement();
             Slider(linear, "Distance (px)", "Total length in original canvas pixels. Zero leaves the source unchanged.",
-                () => layer.distance, value => layer.distance = value, 0f, BlurLayer.MaximumDistance);
+                () => layer.distance, value => layer.distance = value, 0f, BlurLayerBehaviour.MaximumDistance);
             Slider(linear, "Angle (deg)", "Zero points right; positive angles turn counterclockwise.",
                 () => layer.angle, value => layer.angle = value, -180f, 180f);
             root.Add(linear);
@@ -65,13 +65,13 @@ namespace DCFApixels.SpriteEditor
             direction.tooltip = "Centered spreads both ways. Forward follows Angle in Linear mode and turns counterclockwise in Circular mode; Backward reverses it.";
             bindings.Track(direction, () => (Enum)layer.direction);
             direction.RegisterValueChangedCallback(evt => applyChange("Change Blur Direction",
-                () => layer.direction = (BlurLayer.MotionDirection)evt.newValue));
+                () => layer.direction = (BlurLayerBehaviour.MotionDirection)evt.newValue));
             root.Add(direction);
             var edges = SpriteEditorUI.ConfigureField(new EnumField("Edges", layer.edges));
             edges.tooltip = "Sampling outside the source canvas, independent of tiled preview and Transform tiling.";
             bindings.Track(edges, () => (Enum)layer.edges);
             edges.RegisterValueChangedCallback(evt => applyChange("Change Blur Edges",
-                () => layer.edges = (BlurLayer.EdgeMode)evt.newValue));
+                () => layer.edges = (BlurLayerBehaviour.EdgeMode)evt.newValue));
             root.Add(edges);
 
             bindings.Add(() =>

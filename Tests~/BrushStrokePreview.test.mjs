@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const layer = read('src/Layers/DrawingLayer.BrushPreview.cs');
+const layer = read('src/Layers/DrawingLayerBehaviour.BrushPreview.cs');
 const ui = read('src/TextureCompositorWindow.BrushPreview.cs');
 const body = layer.match(/internal static Vector2 BrushPreviewPoint[^]*?\{([^]*?)\n        \}/)[1]
   .replace('float margin', 'let margin').replace('new Vector2', 'point').replaceAll('Mathf.', 'math.')
@@ -20,7 +20,7 @@ for (const width of [128, 300, 596, 768]) {
 assert.ok(layer.includes('PaintSegment(from, to, width, height, i == 1, parameters)'));
 assert.ok(layer.includes('BeginStroke(from)') && layer.includes('EndStroke()'));
 assert.ok(layer.includes('RenderTexture.active = previous'));
-assert.ok(ui.includes('new DrawingLayer()'));
+assert.ok(ui.includes('new DrawingLayerBehaviour()'));
 assert.ok(ui.includes('JsonUtility.FromJson<BrushDynamics>'));
 const sizeExpression = ui.match(/float size = ([^;]+);/)[1]
   .replaceAll('Mathf.', 'math.').replace('paintSettings.brushSize', 'size')

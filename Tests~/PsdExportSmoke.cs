@@ -8,21 +8,21 @@ void Check(bool condition, string message) { if (!condition) throw new Exception
 try
 {
     document.width = 32; document.height = 24;
-    var fill = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "Color", color = new Color(1, 0, 0.25f, 0.6f) };
+    var fill = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "Color", color = new Color(1, 0, 0.25f, 0.6f) };
     fill.transform.scale = new Vector2(0.7f, 0.8f);
     fill.transform.rotation = 20;
-    var gradient = new DCFApixels.SpriteEditor.GradientLayer { layerName = "Gradient", gradientType = DCFApixels.SpriteEditor.GradientLayer.GradientType.Horizontal };
+    var gradient = new DCFApixels.SpriteEditor.GradientLayerBehaviour { layerName = "Gradient", gradientType = DCFApixels.SpriteEditor.GradientLayerBehaviour.GradientType.Horizontal };
     gradient.transform.rotation = 15;
     gradient.transform.scale = new Vector2(0.7f, 1f);
     document.layers = new List<DCFApixels.SpriteEditor.Layer>
     {
-        new DCFApixels.SpriteEditor.OutlineLayer { layerName = "Outline", outlineWidth = 3 },
-        new DCFApixels.SpriteEditor.GroupLayer { layerName = "Группа 💗", layers = new List<DCFApixels.SpriteEditor.Layer>
+        new DCFApixels.SpriteEditor.OutlineLayerBehaviour { layerName = "Outline", outlineWidth = 3 },
+        new DCFApixels.SpriteEditor.GroupLayerBehaviour { layerName = "Группа 💗", layers = new List<DCFApixels.SpriteEditor.Layer>
         {
-            new DCFApixels.SpriteEditor.SDFLayer { layerName = "SDF" }, fill,
-            new DCFApixels.SpriteEditor.GroupLayer { layerName = "Nested", layers = new List<DCFApixels.SpriteEditor.Layer>
+            new DCFApixels.SpriteEditor.SDFLayerBehaviour { layerName = "SDF" }, fill,
+            new DCFApixels.SpriteEditor.GroupLayerBehaviour { layerName = "Nested", layers = new List<DCFApixels.SpriteEditor.Layer>
             {
-                gradient, new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "Hidden", enabled = false, color = Color.blue }
+                gradient, new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "Hidden", enabled = false, color = Color.blue }
             } }
         } }
     };

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const file = read('src/Layers/FileLayer.cs');
+const file = read('src/Layers/FileLayerBehaviour.cs');
 assert.match(file, /\[SerializeField\] private bool sourceAssigned;/);
 assert.match(file, /bool initializeCanvas = false/);
 assert.match(file, /sourceAssigned \|= sourceTexture != null \|\| texture != null;/);
@@ -12,10 +12,11 @@ const condition = file.match(/if \((initializeCanvas .*CanInitializeCanvas\(owne
 const canInitializeSource = file.split('private bool CanInitializeCanvas(TextureCompositor owner)')[1]
   .split('public override Texture2D')[0].trim()
   .replace('foreach (Layer layer in owner.layers)', 'for (const layer of owner.layers)')
-  .replace('!ReferenceEquals(layer, this)', 'layer !== this');
+  .replace('!ReferenceEquals(layer, Owner)', 'layer !== this.Owner');
 const canInitialize = new Function('owner', canInitializeSource);
 const eligible = new Function('initializeCanvas', 'wasEmpty', 'sourceAssigned', 'texture', 'owner', 'CanInitializeCanvas', `return ${condition};`);
 const layer = {};
+layer.Owner = layer;
 const texture = { width: 2048, height: 1024 };
 const empty = { layers: [] };
 const sole = { layers: [layer] };

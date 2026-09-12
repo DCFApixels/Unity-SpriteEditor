@@ -4,7 +4,7 @@ using UnityEngine;
 namespace DCFApixels.SpriteEditor
 {
     [Serializable]
-    public sealed class MakeSeamlessLayer : TargetedLayerEffect
+    public sealed class MakeSeamlessLayerBehaviour : TargetedLayerBehaviour
     {
         public enum HorizontalDirection { Off, LeftToRight, RightToLeft }
         public enum VerticalDirection { Off, BottomToTop, TopToBottom }

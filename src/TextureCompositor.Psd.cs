@@ -5,7 +5,7 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositor
     {
-        internal Texture2D RenderPsdGroupContent(GroupLayer group)
+        internal Texture2D RenderPsdGroupContent(Layer group)
         {
             RenderTexture rendered = GetClearRenderTexture(width, height);
             RenderTexture previous = RenderTexture.active;
@@ -28,7 +28,7 @@ namespace DCFApixels.SpriteEditor
             RenderTexture previous = RenderTexture.active;
             try
             {
-                var fill = new ColorFillLayer { color = Color.white, transform = layer.transform, filterMode = layer.filterMode };
+                var fill = new ColorFillLayerBehaviour { color = Color.white, transform = layer.transform, filterMode = layer.filterMode };
                 rendered = fill.Render(new LayerRenderContext(this, null, width, height, 1f));
                 return CopyToTexture2D(rendered, uploadToGpu: false);
             }
@@ -50,7 +50,7 @@ namespace DCFApixels.SpriteEditor
                 else if (TryFindLayer(layer, out List<Layer> container, out int index))
                 {
                     var stack = new HashSet<Layer>();
-                    if (effectInput && layer is TargetedLayerEffect effect)
+                    if (effectInput && layer?.Behaviour is TargetedLayerBehaviour effect)
                     {
                         stack.Add(layer);
                         rendered = RenderEffectInput(effect, container, index, width, height, 1f, stack);

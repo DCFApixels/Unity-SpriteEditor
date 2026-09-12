@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
-const sdf = read('src/Layers/SDFLayer.cs'), outline = read('src/Layers/OutlineLayer.cs');
+const sdf = read('src/Layers/SDFLayerBehaviour.cs'), outline = read('src/Layers/OutlineLayerBehaviour.cs');
 function body(text, signature) {
     const at = text.indexOf(signature); assert.ok(at >= 0, signature);
     const start = text.indexOf('{', at); let end = start + 1, depth = 1;
@@ -117,10 +117,10 @@ assert.notDeepEqual(field([rgba(0), rgba(140), rgba(255)], 3, 1, true).values,
     field([rgba(0), rgba(180), rgba(255)], 3, 1, true).values, 'AA retains partial coverage changes');
 
 const executeOutline = extract(outline.slice(outline.indexOf('internal struct OutlineJob')), 'public void Execute(', 'index');
-const OutlineLayer = { OutlinePosition: { Outside: 0, Inside: 1, Center: 2 } };
+const OutlineLayerBehaviour = { OutlinePosition: { Outside: 0, Inside: 1, Center: 2 } };
 const Color = function(r, g, b, a) { Object.assign(this, { r, g, b, a }); };
 for (const aa of [false, true]) for (const position of [0, 1, 2]) for (const width of [0, .25, .5, 1, 2, 4]) for (const soft of [0, .5, 1, 4]) {
-    const ctx = { math, OutlineLayer, Color, signedDistances: [-3, -2, -1, 1, 2, 3], output: [],
+    const ctx = { math, OutlineLayerBehaviour, Color, signedDistances: [-3, -2, -1, 1, 2, 3], output: [],
         antialiasedDistance: aa, outlinePosition: position, outlineWidth: width, outlineSoftness: soft,
         outlineOffset: 0, fillCenter: false, fillColor: { r: 1, g: 1, b: 1, a: 1 },
         outlineColor: { r: 3, g: .2, b: 0, a: .7 }, width: 6, height: 1 };
@@ -130,7 +130,7 @@ for (const aa of [false, true]) for (const position of [0, 1, 2]) for (const wid
 }
 function renderRow({ offset = 0, filled = false, fillAlpha = 1, borderAlpha = 1, width = 4, soft = 1 } = {}) {
     const signedDistances = Array.from({ length: 161 }, (_, i) => (i - 80) / 8);
-    const ctx = { math, OutlineLayer, Color, signedDistances, output: [], width: signedDistances.length, height: 1,
+    const ctx = { math, OutlineLayerBehaviour, Color, signedDistances, output: [], width: signedDistances.length, height: 1,
         antialiasedDistance: true, outlinePosition: 0, outlineWidth: width, outlineSoftness: soft, outlineOffset: offset,
         fillCenter: filled, fillColor: { r: 0, g: 0, b: 2, a: fillAlpha }, outlineColor: { r: 3, g: 0, b: 0, a: borderAlpha } };
     for (let i = 0; i < signedDistances.length; i++) executeOutline(ctx, i);
@@ -142,7 +142,7 @@ assert.equal(filled[0].b, 2, 'Fill HDR color is preserved');
 assert.equal(filled[96].r, 3, 'Border HDR color is preserved');
 assert.equal(renderRow()[0].a, 0, 'Hollow center remains transparent');
 for (const value of [1e10, -1e10]) for (const fillCenter of [false, true]) {
-    const ctx = { math, OutlineLayer, Color, signedDistances: [value], output: [], width: 1, height: 1,
+    const ctx = { math, OutlineLayerBehaviour, Color, signedDistances: [value], output: [], width: 1, height: 1,
         antialiasedDistance: true, outlinePosition: 0, outlineWidth: 1000, outlineSoftness: 1000, outlineOffset: 1000,
         fillCenter, fillColor: { r: 1, g: 1, b: 1, a: 1 }, outlineColor: { r: 1, g: 1, b: 1, a: 1 } };
     executeOutline(ctx, 0);

@@ -30,12 +30,84 @@ namespace DCFApixels.SpriteEditor
                 for (string line; (line = reader.ReadLine()) != null;)
                     if (!string.IsNullOrWhiteSpace(line)) lines.Add(line.TrimEnd());
             int index = 0;
-            JToken result = Block(lines, ref index, 0);
+            // Unity versions also return a typed diagnostic tree, not YAML:
+            // recoveryId "..." (string) / strength 2.75 (float).
+            JToken result = lines.Count > 0 && TypedHeader(lines[0].TrimStart(), out _, out _, out _)
+                ? TypedBlock(lines, ref index, 0) : Block(lines, ref index, 0);
             if (index != lines.Count || !(result is JObject obj)) throw new FormatException("Unsupported saved layer data.");
             return obj;
         }
 
-        private static int Indent(string line) => line.Length - line.TrimStart(' ').Length;
+        private static int Indent(string line) => line.Length - line.TrimStart(' ', '\t').Length;
+
+        private static bool TypedHeader(string line, out string name, out string value, out string type)
+        {
+            name = value = type = null;
+            int suffix = line.LastIndexOf(" (", StringComparison.Ordinal);
+            if (suffix <= 0 || !line.EndsWith(")", StringComparison.Ordinal)) return false;
+            type = line.Substring(suffix + 2, line.Length - suffix - 3);
+            string field = line.Substring(0, suffix);
+            int space = field.IndexOf(' ');
+            name = space < 0 ? field : field.Substring(0, space);
+            value = space < 0 ? "" : field.Substring(space + 1).Trim();
+            // Field names in the diagnostic tree are identifiers, never quoted YAML keys.
+            if (name.Length == 0 || !(char.IsLetter(name[0]) || name[0] == '_')) return false;
+            foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '_')) return false;
+            return type.Length > 0;
+        }
+
+        private static JToken Unavailable() => new JObject { ["$unavailable"] = true };
+
+        private static JToken TypedBlock(List<string> lines, ref int index, int depth, bool isArray = false)
+        {
+            if (depth > 64) throw new FormatException("Saved layer data is nested too deeply.");
+            int indent = Indent(lines[index]);
+            var map = new JObject();
+            JArray array = null;
+            int count = -1;
+            while (index < lines.Count && Indent(lines[index]) == indent)
+            {
+                string line = lines[index++].Substring(indent);
+                if (!TypedHeader(line, out string name, out string value, out string type))
+                    throw new FormatException("Unsupported typed saved field.");
+                JToken token;
+                if (index < lines.Count && Indent(lines[index]) > indent)
+                    token = TypedBlock(lines, ref index, depth + 1, type == "Array");
+                else if (type == "string")
+                {
+                    // Do not interpret numeric strings or unescape them as field syntax.
+                    try { token = value.StartsWith("\"") ? JToken.Parse(value) : Unavailable(); }
+                    catch (Newtonsoft.Json.JsonException) { token = Unavailable(); }
+                }
+                else if (value.Length == 0) token = Unavailable();
+                else token = Inline(value, depth + 1);
+
+                // Unity vectors/lists wrap their elements in an Array with size/data fields.
+                if (isArray && name == "size" && map.Count == 0 && array == null && type == "int" && token.Type == JTokenType.Integer)
+                {
+                    long size = (long)token;
+                    if (size < 0 || size > 65536) throw new FormatException("Unsupported saved array size.");
+                    count = (int)size;
+                    array = new JArray();
+                }
+                else if (array != null)
+                {
+                    if (name != "data" || array.Count >= count) throw new FormatException("Unsupported saved array item.");
+                    array.Add(token);
+                }
+                else
+                {
+                    if (map.ContainsKey(name)) throw new FormatException("Duplicate saved field: " + name);
+                    map.Add(name, token);
+                }
+            }
+            if (array != null)
+            {
+                if (array.Count != count) throw new FormatException("Incomplete saved array.");
+                return array;
+            }
+            return map.Count == 1 && map["Array"] is JArray elements ? (JToken)elements.DeepClone() : map;
+        }
         private static JToken Block(List<string> lines, ref int index, int depth)
         {
             if (index >= lines.Count) throw new FormatException("Incomplete saved layer data.");

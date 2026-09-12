@@ -1,6 +1,6 @@
 // Opt-in after manual compilation. Transient textures/documents only, no saves/imports or Undo operations.
 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-var drawingType = typeof(DCFApixels.SpriteEditor.DrawingLayer);
+var drawingType = typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour);
 var settingsType = drawingType.Assembly.GetType("DCFApixels.SpriteEditor.PaintToolSettings", true);
 object Call(object target, string name, params object[] args) => target.GetType().GetMethod(name, flags).Invoke(target, args);
 int checks = 0;
@@ -14,9 +14,9 @@ var settings = System.Activator.CreateInstance(settingsType, true);
 settingsType.GetField("brushSize").SetValue(settings, 16f);
 settingsType.GetField("brushHardness").SetValue(settings, 1f);
 settingsType.GetField("pencilSize").SetValue(settings, 16);
-UnityEngine.Texture2D Stored(DCFApixels.SpriteEditor.DrawingLayer layer) =>
+UnityEngine.Texture2D Stored(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer) =>
     (UnityEngine.Texture2D)drawingType.GetProperty("StoredTexture", flags).GetValue(layer);
-void Point(DCFApixels.SpriteEditor.DrawingLayer layer, object parameters)
+void Point(DCFApixels.SpriteEditor.DrawingLayerBehaviour layer, object parameters)
 {
     var center = new UnityEngine.Vector2(.5f, .5f);
     Call(layer, "BeginStroke", center);
@@ -29,7 +29,7 @@ try
     foreach (bool pencil in new[] { false, true })
     foreach (bool transformed in new[] { false, true })
     {
-        var layer = new DCFApixels.SpriteEditor.DrawingLayer();
+        var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
         if (transformed) layer.transform.rotation = 180f;
         try
         {
@@ -54,7 +54,7 @@ try
     document.hideFlags = UnityEngine.HideFlags.HideAndDontSave; document.width = document.height = 16;
     try
     {
-        var fill = new DCFApixels.SpriteEditor.ColorFillLayer { color = new UnityEngine.Color(1,0,0,.5f), enabled = false, opacity = 0f };
+        var fill = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = new UnityEngine.Color(1,0,0,.5f), enabled = false, opacity = 0f };
         document.layers.Add(fill);
         var alpha = (UnityEngine.Texture2D)Call(document, "RenderAreaSelectionAlphaSource", fill);
         try { Check(System.Math.Abs(alpha.GetPixel(8,8).a - .5f) < .01f, "Alpha selection ignores outer visibility and opacity"); }

@@ -46,7 +46,7 @@ namespace DCFApixels.SpriteEditor
             }
 
             private void ResolveTarget(VisualElement element, Vector2 mousePosition,
-                out List<Layer> container, out int index, out GroupLayer group,
+                out List<Layer> container, out int index, out Layer group,
                 out VisualElement indicator, out bool before, out int depth)
             {
                 container = owner.compositor.layers;
@@ -80,7 +80,7 @@ namespace DCFApixels.SpriteEditor
                     indicator = current;
                     float fraction = current.WorldToLocal(mousePosition).y / Mathf.Max(1f, current.resolvedStyle.height);
                     before = fraction < 0.5f;
-                    if (layer is GroupLayer destination && fraction >= 0.25f && fraction <= 0.75f)
+                    if (layer?.AsGroup() is Layer destination && fraction >= 0.25f && fraction <= 0.75f)
                     {
                         group = destination;
                         container = destination.layers;
@@ -103,7 +103,7 @@ namespace DCFApixels.SpriteEditor
                 if (!HasProjectTextures())
                     return;
                 ResolveTarget(evt.target as VisualElement, evt.mousePosition,
-                    out _, out _, out GroupLayer group, out VisualElement indicator, out bool before, out int depth);
+                    out _, out _, out Layer group, out VisualElement indicator, out bool before, out int depth);
                 owner.ClearFooterDropIndicator();
                 owner.SetToolkitDropIndicator(indicator, group != null, before, depth);
                 DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
@@ -115,7 +115,7 @@ namespace DCFApixels.SpriteEditor
                 if (!HasProjectTextures())
                     return;
                 ResolveTarget(evt.target as VisualElement, evt.mousePosition,
-                    out List<Layer> container, out int index, out GroupLayer group, out _, out _, out _);
+                    out List<Layer> container, out int index, out Layer group, out _, out _, out _);
                 UnityEngine.Object[] textures = DragAndDrop.objectReferences;
                 DragAndDrop.AcceptDrag();
                 evt.StopImmediatePropagation();
@@ -132,7 +132,7 @@ namespace DCFApixels.SpriteEditor
                         index = Mathf.Clamp(index, 0, container.Count);
                         foreach (Texture2D texture in textures)
                         {
-                            FileLayer layer = new FileLayer();
+                            FileLayerBehaviour layer = new FileLayerBehaviour();
                             layer.layerName = owner.compositor.AllocateLayerName(layer);
                             layer.AssignSourceTexture(texture, owner.compositor, initializeCanvas: true);
                             container.Insert(index++, layer);

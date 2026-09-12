@@ -2,7 +2,7 @@
 // No project build, source import, scene edit or persistent asset is performed.
 var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
 var document = ScriptableObject.CreateInstance<DCFApixels.SpriteEditor.TextureCompositor>();
-var drawing = new DCFApixels.SpriteEditor.DrawingLayer();
+var drawing = new DCFApixels.SpriteEditor.DrawingLayerBehaviour();
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
 object Call(object target, string name, params object[] args) => target.GetType().GetMethod(name, flags).Invoke(target, args);
@@ -17,7 +17,7 @@ bool Near(float a, float b) => Mathf.Abs(a - b) < 0.008f;
 try
 {
     document.width = document.height = 8;
-    var bright = new DCFApixels.SpriteEditor.ColorFillLayer
+    var bright = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour
     { color = new Color(2, -.5f, .25f, 1), colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR };
     document.layers.Add(bright);
     Color hdr = Pixel();
@@ -26,15 +26,15 @@ try
     Color limited = Pixel();
     Check(Near(limited.r, 1) && Near(limited.g, 0), "Standard clamps own output");
     bright.colorRange = DCFApixels.SpriteEditor.LayerColorRange.HDR;
-    var transparent = new DCFApixels.SpriteEditor.ColorFillLayer { color = Color.clear };
+    var transparent = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = Color.clear };
     document.layers.Insert(0, transparent);
     Check(Near(Pixel().r, hdr.r), "Transparent Standard layer preserves underlying HDR");
     transparent.color = Color.white; transparent.opacity = 0;
     Check(Near(Pixel().r, hdr.r), "Zero opacity preserves underlying HDR");
 
-    var child = new DCFApixels.SpriteEditor.ColorFillLayer { color = new Color(.8f, 0, 0, 1),
+    var child = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = new Color(.8f, 0, 0, 1),
         blendMode = DCFApixels.SpriteEditor.BlendMode.Multiply, blendRange = DCFApixels.SpriteEditor.LayerBlendRange.HDR };
-    var group = new DCFApixels.SpriteEditor.GroupLayer();
+    var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
     group.layers.Add(child);
     bright.color = new Color(.5f, .5f, .5f, 1);
     document.layers.Clear(); document.layers.Add(group); document.layers.Add(bright);
@@ -50,13 +50,13 @@ try
     document.layers.Remove(bright);
     child.blendMode = DCFApixels.SpriteEditor.BlendMode.Normal;
     child.color = Color.red;
-    group.layers.Add(new DCFApixels.SpriteEditor.ColorFillLayer { color = Color.red });
+    group.layers.Add(new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = Color.red });
     Check(Near(Pixel().a, .5f), "Group opacity is not multiplied into each child");
-    var outer = new DCFApixels.SpriteEditor.GroupLayer { opacity = .5f };
+    var outer = new DCFApixels.SpriteEditor.GroupLayerBehaviour { opacity = .5f };
     outer.layers.Add(group); document.layers[0] = outer;
     Check(Near(Pixel().a, .25f), "Nested group opacity");
     document.layers.Add(bright);
-    var coverage = (RenderTexture)Call(document, "RenderGroupAlpha", outer, 8, 8, 1f,
+    var coverage = (RenderTexture)Call(document, "RenderGroupAlpha", outer.Owner, 8, 8, 1f,
         new System.Collections.Generic.HashSet<DCFApixels.SpriteEditor.Layer>());
     var readback = new Texture2D(8, 8, TextureFormat.RGBAFloat, false, true);
     var previous = RenderTexture.active;
@@ -88,9 +88,9 @@ try
     Undo.IncrementCurrentGroup(); Undo.RegisterCompleteObjectUndo(document, "HDR smoke compact");
     Call(drawing, "ConvertTo8Bit"); Call(document, "MarkChanged"); Undo.FlushUndoRecordObjects();
     Check(Stored().format == TextureFormat.RGBA32, "Explicit compact changes storage");
-    Undo.PerformUndo(); drawing = (DCFApixels.SpriteEditor.DrawingLayer)document.layers[0];
+    Undo.PerformUndo(); drawing = (DCFApixels.SpriteEditor.DrawingLayerBehaviour)document.layers[0];
     Check(Stored().format == TextureFormat.RGBAHalf && Near(Stored().GetPixel(0, 0).r, 4), "Undo restores storage format and HDR pixels");
-    Undo.PerformRedo(); drawing = (DCFApixels.SpriteEditor.DrawingLayer)document.layers[0];
+    Undo.PerformRedo(); drawing = (DCFApixels.SpriteEditor.DrawingLayerBehaviour)document.layers[0];
     Check(Stored().format == TextureFormat.RGBA32, "Redo reapplies compact");
 
     document.layers.Clear(); document.layers.Add(bright);

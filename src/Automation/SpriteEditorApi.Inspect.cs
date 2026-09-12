@@ -30,23 +30,25 @@ namespace DCFApixels.SpriteEditor
             result["swizzleChannels"] = new JArray(LayerSwizzle.Labels);
             result["clippingMask"] = "Boolean setting on every layer type. Clips to the first non-clipping sibling below; missing/hidden bases hide the chain. Participating groups are isolated; base alpha and opacity are preserved.";
             result["groupCompositing"] = new JArray(System.Enum.GetNames(typeof(GroupCompositing)));
-            result["layerTypes"] = new JArray("file", "drawing", "group", "color", "gradient", "noise", "outline", "sdf", "normalMap", "blur", "makeSeamless", "shaderProcessor");
-            result["blurDefaults"] = BlurSnapshot(new BlurLayer());
+            var layerTypes = new JArray();
+            foreach (var descriptor in LayerTypeRegistry.Entries) layerTypes.Add(descriptor.ApiId);
+            result["layerTypes"] = layerTypes;
+            result["blurDefaults"] = BlurSnapshot(new BlurLayerBehaviour());
             result["blurModes"] = new JArray(System.Enum.GetNames(typeof(BlurType)));
-            result["noiseDimensions"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.NoiseDimensions)));
-            result["noiseDefaults"] = NoiseSnapshot(new NoiseLayer());
-            result["noiseTypes"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.NoiseType)));
-            result["noiseFractals"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.FractalType)));
-            result["noiseCellularDistances"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.CellularDistance)));
-            result["noiseCellularReturns"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.CellularReturn)));
-            result["noiseWarps"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.WarpType)));
-            result["noiseEncodings"] = new JArray(System.Enum.GetNames(typeof(NoiseLayer.OutputEncoding)));
-            result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayer());
-            result["makeSeamlessDefaults"] = MakeSeamlessSnapshot(new MakeSeamlessLayer());
-            result["makeSeamlessHorizontal"] = new JArray(System.Enum.GetNames(typeof(MakeSeamlessLayer.HorizontalDirection)));
-            result["makeSeamlessVertical"] = new JArray(System.Enum.GetNames(typeof(MakeSeamlessLayer.VerticalDirection)));
-            result["blurDirections"] = new JArray(System.Enum.GetNames(typeof(BlurLayer.MotionDirection)));
-            result["blurEdges"] = new JArray(System.Enum.GetNames(typeof(BlurLayer.EdgeMode)));
+            result["noiseDimensions"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.NoiseDimensions)));
+            result["noiseDefaults"] = NoiseSnapshot(new NoiseLayerBehaviour());
+            result["noiseTypes"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.NoiseType)));
+            result["noiseFractals"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.FractalType)));
+            result["noiseCellularDistances"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.CellularDistance)));
+            result["noiseCellularReturns"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.CellularReturn)));
+            result["noiseWarps"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.WarpType)));
+            result["noiseEncodings"] = new JArray(System.Enum.GetNames(typeof(NoiseLayerBehaviour.OutputEncoding)));
+            result["normalMapDefaults"] = NormalMapSnapshot(new NormalMapLayerBehaviour());
+            result["makeSeamlessDefaults"] = MakeSeamlessSnapshot(new MakeSeamlessLayerBehaviour());
+            result["makeSeamlessHorizontal"] = new JArray(System.Enum.GetNames(typeof(MakeSeamlessLayerBehaviour.HorizontalDirection)));
+            result["makeSeamlessVertical"] = new JArray(System.Enum.GetNames(typeof(MakeSeamlessLayerBehaviour.VerticalDirection)));
+            result["blurDirections"] = new JArray(System.Enum.GetNames(typeof(BlurLayerBehaviour.MotionDirection)));
+            result["blurEdges"] = new JArray(System.Enum.GetNames(typeof(BlurLayerBehaviour.EdgeMode)));
             result["blendModes"] = new JArray(System.Enum.GetNames(typeof(BlendMode)));
             result["tilingModes"] = new JArray(System.Enum.GetNames(typeof(TransformTilingMode)));
             result["filterModes"] = new JArray(System.Enum.GetNames(typeof(LayerFilterMode)));
@@ -80,7 +82,7 @@ namespace DCFApixels.SpriteEditor
             if (!string.IsNullOrEmpty(path)) text.Append(AssetDatabase.GetAssetDependencyHash(path));
             foreach (Layer layer in Enumerate(document.layers))
             {
-                if (layer is DrawingLayer drawing && drawing.StoredTexture != null)
+                if (layer?.Behaviour is DrawingLayerBehaviour drawing && drawing.StoredTexture != null)
                 {
                     Require(drawing.StoredTexture.isReadable, "Drawing texture is not readable.", "invalid_document");
                     text.Append(Convert.ToBase64String(hash.ComputeHash(drawing.StoredTexture.GetRawTextureData())));
@@ -112,10 +114,11 @@ namespace DCFApixels.SpriteEditor
                     if (layer == null) continue;
                     JObject settings = new JObject { ["name"] = layer.layerName, ["enabled"] = layer.enabled };
                     var entry = new JObject { ["id"] = layer.Id, ["type"] = TypeName(layer), ["parent"] = parent, ["index"] = i, ["settings"] = settings };
+                    entry["behaviourMissing"] = layer.Behaviour == null;
                     entry["fx"] = LiveFxSnapshot(layer, document);
                     entry["contentRevision"] = LiveLayerRevision(layer);
                     entry["contentLocked"] = IsLayerContentLocked(document, layer);
-                    if (layer is PendingLayer pending)
+                    if (layer?.Behaviour is PendingLayerBehaviour pending)
                     {
                         entry["jobId"] = pending.jobId;
                         entry["contentLocked"] = true;
@@ -124,7 +127,7 @@ namespace DCFApixels.SpriteEditor
                     settings["opacity"] = layer.opacity;
                     settings["clippingMask"] = layer.clippingMask;
                     entry["clippingBaseId"] = document.GetClippingBase(layer)?.Id;
-                    if (layer is GroupLayer clippingGroup)
+                    if (layer?.AsGroup() is Layer clippingGroup)
                         entry["isolatedByClipping"] = document.IsGroupIsolatedByClipping(clippingGroup);
                     settings["blend"] = layer.blendMode.ToString();
                     settings["colorRange"] = layer.colorRange.ToString();
@@ -132,8 +135,8 @@ namespace DCFApixels.SpriteEditor
                     settings["swizzle"] = new JArray(LayerSwizzle.Labels[(int)layer.swizzle[0]],
                         LayerSwizzle.Labels[(int)layer.swizzle[1]], LayerSwizzle.Labels[(int)layer.swizzle[2]],
                         LayerSwizzle.Labels[(int)layer.swizzle[3]]);
-                    if (layer is GroupLayer folder) settings["compositing"] = folder.compositing.ToString();
-                    if (layer is DrawingLayer stored) entry["storageFormat"] = stored.StoredTexture != null ? stored.StoredTexture.format.ToString() : "Unallocated";
+                    if (layer?.AsGroup() is Layer folder) settings["compositing"] = folder.compositing.ToString();
+                    if (layer?.Behaviour is DrawingLayerBehaviour stored) entry["storageFormat"] = stored.StoredTexture != null ? stored.StoredTexture.format.ToString() : "Unallocated";
                     if (!layer.IsGroup)
                     {
                         settings["opacity"] = layer.opacity;
@@ -146,21 +149,21 @@ namespace DCFApixels.SpriteEditor
                         };
                         entry["modifierCount"] = layer.modifiers?.Count ?? 0;
                     }
-                    if (layer is FileLayer file)
+                    if (layer?.Behaviour is FileLayerBehaviour file)
                     {
                         settings["source"] = file.sourceTexture != null ? AssetDatabase.GetAssetPath(file.sourceTexture) : "";
                         if (file.sourceTexture != null)
                             entry["sourceSize"] = new JArray(file.sourceTexture.width, file.sourceTexture.height);
                     }
-                    if (layer is ColorFillLayer fill) settings["color"] = Json(fill.color);
-                    if (layer is DrawingLayer drawing) settings["brush"] = BrushSnapshot(drawing);
-                    if (layer is TargetedLayerEffect targeted)
+                    if (layer?.Behaviour is ColorFillLayerBehaviour fill) settings["color"] = Json(fill.color);
+                    if (layer?.Behaviour is DrawingLayerBehaviour drawing) settings["brush"] = BrushSnapshot(drawing);
+                    if (layer?.Behaviour is TargetedLayerBehaviour targeted)
                     {
                         entry["input"] = targeted.inputMode.ToString();
                         entry["target"] = targeted.TargetLayerId;
                         entry["inputValid"] = document.HasUsableEffectInput(targeted, source, i);
                     }
-                    if (layer is OutlineLayer outline)
+                    if (layer?.Behaviour is OutlineLayerBehaviour outline)
                     {
                         settings["color"] = Json(outline.outlineColor);
                         settings["metric"] = outline.metric.ToString();
@@ -171,7 +174,7 @@ namespace DCFApixels.SpriteEditor
                         settings["fillCenter"] = outline.fillCenter;
                         settings["fillColor"] = Json(outline.fillColor);
                     }
-                    if (layer is SDFLayer sdf)
+                    if (layer?.Behaviour is SDFLayerBehaviour sdf)
                     {
                         settings["metric"] = sdf.metric.ToString();
                         settings["sourceChannel"] = sdf.sourceChannel.ToString();
@@ -181,13 +184,13 @@ namespace DCFApixels.SpriteEditor
                         settings["maxDistance"] = sdf.maxDistanceNormalization;
                         entry["gradientKeys"] = GradientSnapshot(sdf.gradient);
                     }
-                    if (layer is NormalMapLayer normal) settings["normalMap"] = NormalMapSnapshot(normal);
-                    if (layer is BlurLayer blur) settings["blur"] = BlurSnapshot(blur);
-                    if (layer is MakeSeamlessLayer seamless) settings["makeSeamless"] = MakeSeamlessSnapshot(seamless);
-                    if (layer is NoiseLayer noise) settings["noise"] = NoiseSnapshot(noise);
-                    if (layer is GradientLayer gradient) entry["gradientKeys"] = GradientSnapshot(gradient.gradient);
+                    if (layer?.Behaviour is NormalMapLayerBehaviour normal) settings["normalMap"] = NormalMapSnapshot(normal);
+                    if (layer?.Behaviour is BlurLayerBehaviour blur) settings["blur"] = BlurSnapshot(blur);
+                    if (layer?.Behaviour is MakeSeamlessLayerBehaviour seamless) settings["makeSeamless"] = MakeSeamlessSnapshot(seamless);
+                    if (layer?.Behaviour is NoiseLayerBehaviour noise) settings["noise"] = NoiseSnapshot(noise);
+                    if (layer?.Behaviour is GradientLayerBehaviour gradient) entry["gradientKeys"] = GradientSnapshot(gradient.gradient);
                     layers.Add(entry);
-                    if (layer is GroupLayer group) Collect(group.layers, layer.Id);
+                    if (layer?.AsGroup() is Layer group) Collect(group.layers, layer.Id);
                 }
             }
         }
@@ -204,7 +207,7 @@ namespace DCFApixels.SpriteEditor
             return new JObject { ["colors"] = colors, ["alphas"] = alphas };
         }
 
-        private static JObject BrushSnapshot(DrawingLayer layer)
+        private static JObject BrushSnapshot(DrawingLayerBehaviour layer)
         {
             BrushDynamics dynamics = layer.brushDynamics ?? new BrushDynamics();
             return new JObject
@@ -232,13 +235,9 @@ namespace DCFApixels.SpriteEditor
             };
         }
 
-        private static string TypeName(Layer layer) => layer switch
-        {
-            PendingLayer _ => "pending", FileLayer _ => "file", DrawingLayer _ => "drawing", GroupLayer _ => "group", ColorFillLayer _ => "color",
-            GradientLayer _ => "gradient", OutlineLayer _ => "outline", SDFLayer _ => "sdf", NormalMapLayer _ => "normalMap",
-            NoiseLayer _ => "noise",
-            BlurLayer _ => "blur", MakeSeamlessLayer _ => "makeSeamless",
-            ShaderProcessorLayer _ => "shaderProcessor", _ => layer.GetType().Name
-        };
+        private static string TypeName(Layer layer) =>
+            layer?.Behaviour is PendingLayerBehaviour ? "pending" :
+            LayerTypeRegistry.Find(layer?.Behaviour?.GetType())?.ApiId ??
+            (layer?.IsGroup == true ? "group" : layer?.Behaviour?.GetType().Name ?? "missing");
     }
 }

@@ -37,8 +37,8 @@ namespace DCFApixels.SpriteEditor
                 return false;
             }
         }
-        private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
-        private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer() is DrawingLayer layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
+        private bool IsPreviewBrushEnabled => IsPreviewPaintTool && GetSelectedLayer()?.Behaviour is DrawingLayerBehaviour layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
+        private bool IsPreviewFillEnabled => previewTool == PreviewTool.Fill && GetSelectedLayer()?.Behaviour is DrawingLayerBehaviour layer && !SpriteEditorApi.IsLayerContentLocked(compositor, layer);
 
         private void ApplyPreviewTextureFilter()
         {
@@ -134,7 +134,7 @@ namespace DCFApixels.SpriteEditor
             bool painting = IsPreviewPaintTool && (evt.button == 0 || evt.button == 1);
             bool filling = previewTool == PreviewTool.Fill && evt.button == 0;
             if ((!painting && !filling) || evt.altKey || compositor == null ||
-                !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer() is DrawingLayer && !SpriteEditorApi.IsLayerContentLocked(compositor, GetSelectedLayer()))
+                !PreviewContainsPaintPoint(evt.localPosition) || GetSelectedLayer()?.Behaviour is DrawingLayerBehaviour && !SpriteEditorApi.IsLayerContentLocked(compositor, GetSelectedLayer()))
                 return false;
 
             SpriteEditorUI.ConsumeEvent(evt);
@@ -151,6 +151,11 @@ namespace DCFApixels.SpriteEditor
                 if (layer == null)
                 {
                     EditorUtility.DisplayDialog("No Layer Selected", "Select a layer before painting or filling.", "OK");
+                    return true;
+                }
+                if (layer.Behaviour == null)
+                {
+                    ShowNotification(new GUIContent("Restore this layer's behaviour in Layer Settings before painting."));
                     return true;
                 }
                 string warning = layer.IsGroup ? "\n\n" + GroupConversionWarning : string.Empty;
@@ -177,8 +182,8 @@ namespace DCFApixels.SpriteEditor
             {
                 case PreviewTool.Brush:
                 case PreviewTool.Pencil:
-                case PreviewTool.Fill: return layer is DrawingLayer;
-                case PreviewTool.Transform: return layer != null && !layer.IsGroup;
+                case PreviewTool.Fill: return layer?.Behaviour is DrawingLayerBehaviour;
+                case PreviewTool.Transform: return layer?.Behaviour != null && !layer.IsGroup;
                 case PreviewTool.Zoom:
                 case PreviewTool.RectangleSelect:
                 case PreviewTool.PolygonSelect: return compositor != null;
@@ -255,12 +260,12 @@ namespace DCFApixels.SpriteEditor
             previewNoneButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.None);
             if (previewBrushButton != null)
             {
-                previewBrushButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
+                previewBrushButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected?.Behaviour is DrawingLayerBehaviour));
                 previewBrushButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Brush);
             }
             if (previewPencilButton != null)
             {
-                previewPencilButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
+                previewPencilButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected?.Behaviour is DrawingLayerBehaviour));
                 previewPencilButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Pencil);
             }
             if (previewTransformButton != null)
@@ -270,7 +275,7 @@ namespace DCFApixels.SpriteEditor
             }
             if (previewFillButton != null)
             {
-                previewFillButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected is DrawingLayer));
+                previewFillButton.EnableInClassList("sprite-editor-tool-button--unavailable", !(selected?.Behaviour is DrawingLayerBehaviour));
                 previewFillButton.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Fill);
             }
         }

@@ -5,13 +5,12 @@ const ghost = read('TextureCompositorWindow.LayerDragGhost.cs');
 const ui = read('TextureCompositorWindow.UI.cs');
 const window = read('TextureCompositorWindow.cs');
 assert.match(read('SpriteEditorUI.cs'), /Properties \(\{TextureCompositor.LayerMenuName\(layer\)\}\)/);
-assert.match(read('TextureCompositor.Naming.cs'), /layer is DrawingLayer \? "Drawing Layer" : LayerNamePrefix\(layer\)/);
+assert.match(read('TextureCompositor.Naming.cs'), /LayerTypeRegistry.Find\(layer\?\.Behaviour\?\.GetType\(\)\)\?\.MenuName/);
 const menu = window.slice(window.indexOf('private void ShowAddMenu'),window.indexOf('private void AddLayer'));
 const prefixes = read('TextureCompositor.Naming.cs');
-for (const [, label, type] of menu.matchAll(/new GUIContent\("([^"/]+)"\).*new (\w+)\(\)/g)) {
-    if (type === 'DrawingLayer') assert.equal(label, 'Drawing Layer');
-    else assert.ok(prefixes.includes(`case ${type} _: return "${label}";`), `${type}: ${label}`);
-}
+assert.match(menu, /foreach \(var descriptor in LayerTypeRegistry.Entries\)/);
+assert.match(menu, /descriptor.MenuName/);
+assert.match(prefixes, /LayerTypeRegistry.Find\(layer\?\.Behaviour\?\.GetType\(\)\)\?\.NamePrefix/);
 assert.match(ui, /StartDrag\([^\n]+\);\s*owner.ShowLayerDragGhost\(target, layer, start, evt.position\);\s*Release\(\)/);
 assert.match(ghost, /new Label\(layerName \?\? ""\)/);
 assert.doesNotMatch(ghost, /new TextField|GetPreviewTexture|RenderTexture|Texture2D\(/);
@@ -38,7 +37,7 @@ assert.match(target, /targetInput.Insert\(0, icon\)/);
 assert.match(target, /targetInput.Add\(selector\)/);
 assert.match(target, /source\?\.GetPreviewTexture\(18\)/, 'Reuse the layer-list thumbnail size, avoiding gradient thumbnail reallocations');
 assert.match(target, /if \(preview.image != thumbnail\) preview.image = thumbnail/);
-assert.match(target, /source is GroupLayer/);
+assert.match(target, /source\?\.IsGroup == true/);
 assert.match(target, /Refresh\(\);\s*bindings.Add\(Refresh\)/);
 assert.match(target, /bindings.Track\(target,/);
 assert.match(target, /target.AddManipulator\(new TargetDropManipulator\(this, effect\)\)/);

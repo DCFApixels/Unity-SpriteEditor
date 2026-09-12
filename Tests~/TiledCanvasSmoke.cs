@@ -2,7 +2,7 @@
 // Temporary objects only; no saved assets, visible windows, preferences, or Undo changes.
 const System.Reflection.BindingFlags Hidden = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
 const System.Reflection.BindingFlags StaticHidden = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
-var layerType = typeof(DCFApixels.SpriteEditor.DrawingLayer);
+var layerType = typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour);
 var utility = layerType.Assembly.GetType("DCFApixels.SpriteEditor.TiledCanvasUtility", true);
 object MathCall(string name, params object[] args) => utility.GetMethod(name, StaticHidden).Invoke(null, args);
 object Call(object target, string name, params object[] args) => target.GetType().GetMethod(name, Hidden).Invoke(target, args);
@@ -47,7 +47,7 @@ try
     foreach (float hardness in new[] { 0f, 1f })
     foreach (float size in new[] { 18f, 300f })
     {
-        var layer = new DCFApixels.SpriteEditor.DrawingLayer
+        var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
         {
             brushColor = new Color(1f,0.25f,0.1f,0.5f), brushSize = size, brushHardness = hardness
         };
@@ -86,7 +86,7 @@ try
 
     foreach (var transform in transforms)
     {
-        var layer = new DCFApixels.SpriteEditor.DrawingLayer
+        var layer = new DCFApixels.SpriteEditor.DrawingLayerBehaviour
         { transform = transform, brushColor = Color.white, brushSize = 12f, brushHardness = 0f };
         try
         {
@@ -120,7 +120,7 @@ try
         finally { Call(layer,"ReleaseTransientResources"); }
     }
 
-    var line = new DCFApixels.SpriteEditor.DrawingLayer { brushSize=3, brushHardness=1, brushColor=Color.white };
+    var line = new DCFApixels.SpriteEditor.DrawingLayerBehaviour { brushSize=3, brushHardness=1, brushColor=Color.white };
     try
     {
         var parameters = Call(Call(line,"GetStrokeParameters",false),"WithCanvasWrap");

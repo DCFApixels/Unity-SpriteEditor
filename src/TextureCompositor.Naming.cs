@@ -18,27 +18,11 @@ namespace DCFApixels.SpriteEditor
         [SerializeField, HideInInspector] private int nextCopyNumber = 1;
 
         internal static string LayerMenuName(Layer layer) =>
-            layer is DrawingLayer ? "Drawing Layer" : LayerNamePrefix(layer);
+            LayerTypeRegistry.Find(layer?.Behaviour?.GetType())?.MenuName ?? LayerNamePrefix(layer);
 
-        private static string LayerNamePrefix(Layer layer)
-        {
-            switch (layer)
-            {
-                case GroupLayer _: return "Group";
-                case FileLayer _: return "File";
-                case DrawingLayer _: return "Layer";
-                case ColorFillLayer _: return "Color Fill";
-                case GradientLayer _: return "Gradient";
-                case NoiseLayer _: return "Noise";
-                case OutlineLayer _: return "Outline";
-                case SDFLayer _: return "SDF";
-                case NormalMapLayer _: return "Normal Map";
-                case BlurLayer _: return "Blur";
-                case MakeSeamlessLayer _: return "Make Seamless";
-                case ShaderProcessorLayer _: return "Shader Processor";
-                default: return ObjectNames.NicifyVariableName(layer.GetType().Name);
-            }
-        }
+        private static string LayerNamePrefix(Layer layer) =>
+            LayerTypeRegistry.Find(layer?.Behaviour?.GetType())?.NamePrefix ??
+            (layer?.IsGroup == true ? "Group" : layer?.Behaviour == null ? "Missing Behaviour" : ObjectNames.NicifyVariableName(layer.Behaviour.GetType().Name));
 
         internal string AllocateLayerName(Layer layer) => AllocateName(LayerNamePrefix(layer));
         internal string AllocateGroupName() => AllocateName("Group");
@@ -70,7 +54,6 @@ namespace DCFApixels.SpriteEditor
             {
                 if (counter == null)
                     continue;
-                counter.prefix = ShortNamePrefix(counter.prefix);
                 if (counter.prefix == prefix)
                 {
                     result ??= counter;
@@ -84,27 +67,10 @@ namespace DCFApixels.SpriteEditor
             return created;
         }
 
-        private static string ShortNamePrefix(string prefix)
-        {
-            switch (prefix)
-            {
-                case "Drawing Layer": return "Layer";
-                case "File Layer": return "File";
-                case "Color Fill Layer": return "Color Fill";
-                case "Gradient Layer": return "Gradient";
-                case "Outline Layer": return "Outline";
-                case "SDF Layer": return "SDF";
-                default: return prefix;
-            }
-        }
-
         private void SynchronizeNextAutomaticNumbers()
         {
-            LayerNameCounter groupCounter = GetNameCounter("Group");
-            groupCounter.next = Mathf.Max(1, Mathf.Max(groupCounter.next, nextGroupNumber));
             nextCopyNumber = Mathf.Max(1, nextCopyNumber);
             Scan(layers);
-            nextGroupNumber = groupCounter.next;
 
             void Scan(List<Layer> source)
             {
@@ -121,14 +87,10 @@ namespace DCFApixels.SpriteEditor
                     if (name.StartsWith(prefix + " ", StringComparison.Ordinal) &&
                         int.TryParse(name.Substring(prefix.Length + 1), out int number))
                         counter.next = SynchronizeCounter(counter.next, number);
-                    string legacyPrefix = layer is DrawingLayer ? "Drawing Layer" : prefix + " Layer";
-                    if (name.StartsWith(legacyPrefix + " ", StringComparison.Ordinal) &&
-                        int.TryParse(name.Substring(legacyPrefix.Length + 1), out int legacyNumber))
-                        counter.next = SynchronizeCounter(counter.next, legacyNumber);
                     int copySuffix = name.LastIndexOf(" Copy ", StringComparison.Ordinal);
                     if (copySuffix >= 0 && int.TryParse(name.Substring(copySuffix + 6), out int copyNumber))
                         nextCopyNumber = SynchronizeCounter(nextCopyNumber, copyNumber);
-                    if (layer is GroupLayer group)
+                    if (layer?.AsGroup() is Layer group)
                         Scan(group.layers);
                 }
             }

@@ -14,11 +14,11 @@ DCFApixels.SpriteEditor.TextureCompositor Doc(params DCFApixels.SpriteEditor.Lay
     doc.layers.AddRange(layers); type.GetMethod("NormalizeModel", flags).Invoke(doc, null);
     documents.Add(doc); return doc;
 }
-DCFApixels.SpriteEditor.ColorFillLayer Fill(Color color) => new DCFApixels.SpriteEditor.ColorFillLayer { color = color };
-DCFApixels.SpriteEditor.DrawingLayer Merge(DCFApixels.SpriteEditor.TextureCompositor doc, bool copy,
+DCFApixels.SpriteEditor.ColorFillLayerBehaviour Fill(Color color) => new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = color };
+DCFApixels.SpriteEditor.DrawingLayerBehaviour Merge(DCFApixels.SpriteEditor.TextureCompositor doc, bool copy,
     params DCFApixels.SpriteEditor.Layer[] layers)
 {
-    var result = (DCFApixels.SpriteEditor.DrawingLayer)method.Invoke(doc,
+    var result = (DCFApixels.SpriteEditor.DrawingLayerBehaviour)method.Invoke(doc,
         new object[] { new List<DCFApixels.SpriteEditor.Layer>(layers), copy });
     owned.Add(result.GetPreviewTexture(8)); return result;
 }
@@ -37,7 +37,7 @@ try
     var doc = Doc(top, bottom); string originalId = top.Id;
     Color before = Pixel(doc);
     var merged = Merge(doc, false, bottom, top, top);
-    Check(doc.layers.Count == 1 && doc.layers[0] == merged, "Replacement deduplicates and uses document order");
+    Check(doc.layers.Count == 1 && doc.layers[0] == merged.Owner, "Replacement deduplicates and uses document order");
     Near(Pixel(doc), before, "Normal layers preserve their merged RGBA");
     Check(merged.modifiers.Count == 0 && merged.opacity == 1 && merged.transform.Equals(DCFApixels.SpriteEditor.TextureTransform.Default),
         "Result has baked settings and identity transform");
@@ -46,39 +46,40 @@ try
     Check(doc.layers.Count == 2 && doc.layers[0].Id == originalId, "One Undo restores source structure");
     Near(Pixel(doc), before, "Undo restores source pixels");
     Undo.PerformRedo();
-    Check(doc.layers.Count == 1 && doc.layers[0] is DCFApixels.SpriteEditor.DrawingLayer, "One Redo restores merged layer");
+    Check(doc.layers.Count == 1 && doc.layers[0]?.Behaviour is DCFApixels.SpriteEditor.DrawingLayerBehaviour,
+        "One Redo restores merged layer: count=" + doc.layers.Count + ", type=" + doc.layers[0]?.Behaviour?.GetType().Name);
     owned.Add(doc.layers[0].GetPreviewTexture(8));
 
     top = Fill(Color.red); bottom = Fill(Color.blue); doc = Doc(top, bottom);
     merged = Merge(doc, true, top, bottom);
-    Check(doc.layers.Count == 3 && doc.layers[0] == merged && doc.layers[1] == top && doc.layers[2] == bottom,
+    Check(doc.layers.Count == 3 && doc.layers[0] == merged.Owner && doc.layers[1] == top.Owner && doc.layers[2] == bottom.Owner,
         "Copy inserts above originals without removing them");
     Check(top.enabled && bottom.enabled && merged.Id != top.Id, "Copy retains source visibility and has an independent ID");
     Check(merged.layerName.Contains(" Copy "), "Copy uses the shared copy naming convention");
 
-    var group = new DCFApixels.SpriteEditor.GroupLayer { opacity = .4f };
+    var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour { opacity = .4f };
     top = Fill(Color.red); bottom = Fill(Color.blue); group.layers.Add(top); group.layers.Add(bottom);
     doc = Doc(group); before = Pixel(doc);
     merged = Merge(doc, false, group, top);
     Check(doc.layers.Count == 1, "Selected group and selected child are merged once");
     Near(Pixel(doc), before, "Group opacity is baked once");
 
-    group = new DCFApixels.SpriteEditor.GroupLayer { opacity = .4f };
+    group = new DCFApixels.SpriteEditor.GroupLayerBehaviour { opacity = .4f };
     top = Fill(Color.red); bottom = Fill(Color.blue); group.layers.Add(top); group.layers.Add(bottom);
     doc = Doc(group); before = Pixel(doc);
     merged = Merge(doc, false, top, bottom);
-    Check(doc.layers[0] == group && group.layers.Count == 1 && group.layers[0] == merged, "Sibling merge stays inside its parent");
+    Check(doc.layers[0] == group.Owner && group.layers.Count == 1 && group.layers[0] == merged.Owner, "Sibling merge stays inside its parent");
     Near(Pixel(doc), before, "Unselected parent opacity is not baked twice");
 
-    var left = new DCFApixels.SpriteEditor.GroupLayer(); var right = new DCFApixels.SpriteEditor.GroupLayer();
+    var left = new DCFApixels.SpriteEditor.GroupLayerBehaviour(); var right = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
     top = Fill(Color.red); bottom = Fill(Color.blue); var retained = Fill(Color.green);
     left.layers.Add(top); left.layers.Add(retained); right.layers.Add(bottom);
     doc = Doc(left, right); merged = Merge(doc, false, top, bottom);
-    Check(doc.layers[0] == merged && left.layers.Count == 1 && left.layers[0] == retained && right.layers.Count == 0,
+    Check(doc.layers[0] == merged.Owner && left.layers.Count == 1 && left.layers[0] == retained.Owner && right.layers.Count == 0,
         "Cross-group merge retains unselected content and uses the common parent");
 
     top = Fill(Color.red); bottom = Fill(Color.blue);
-    var effect = new DCFApixels.SpriteEditor.OutlineLayer();
+    var effect = new DCFApixels.SpriteEditor.OutlineLayerBehaviour();
     doc = Doc(effect, top, bottom); Merge(doc, true, top, bottom);
     Check(effect.inputMode == DCFApixels.SpriteEditor.EffectInputMode.Specific && effect.TargetLayerId == top.Id,
         "Copy insertion does not steal an existing Previous input");

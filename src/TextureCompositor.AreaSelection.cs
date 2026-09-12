@@ -19,7 +19,7 @@ namespace DCFApixels.SpriteEditor
             try
             {
                 var stack = new HashSet<Layer>();
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                 {
                     stack.Add(group);
                     rendered = GetClearRenderTexture(width, height);

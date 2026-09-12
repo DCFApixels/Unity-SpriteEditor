@@ -7,20 +7,20 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class DrawingLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(DrawingLayer);
+        protected override Type EditedLayerType => typeof(DrawingLayerBehaviour);
 
-        public static void Open(DrawingLayer layer, TextureCompositor compositor)
+        public static void Open(DrawingLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<DrawingLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (DrawingLayer)source, Compositor, ApplyLayerChange, SettingsBindings);
+            BuildFields(root, (DrawingLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings);
         }
 
         internal static void BuildFields(
-            VisualElement root, DrawingLayer layer, TextureCompositor compositor,
+            VisualElement root, DrawingLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings)
         {
             SpriteEditorUI.ApplyWindowStyles(root);

@@ -294,7 +294,7 @@ namespace DCFApixels.SpriteEditor
             bool propertiesExpanded, Action<bool> propertiesExpansionChanged,
             bool fxExpanded, Action<bool> fxExpansionChanged)
         {
-            bool group = layer is GroupLayer;
+            bool group = layer?.IsGroup == true;
             if (group)
             {
                 var transform = CreateInspectorSection("Transform", "transformSection", LayerActionIcon.Kind.Transform,
@@ -306,11 +306,11 @@ namespace DCFApixels.SpriteEditor
 
             LayerColorSettingsView.Build(root, layer, apply, bindings, colorExpanded, colorExpansionChanged, owner);
             var properties = CreateInspectorSection($"Properties ({TextureCompositor.LayerMenuName(layer)})", "propertiesSection", LayerActionIcon.Kind.Properties,
-                propertiesExpanded, propertiesExpansionChanged, !group && !(layer is ShaderProcessorLayer));
+                propertiesExpanded, propertiesExpansionChanged, !group && !(layer?.Behaviour is ShaderProcessorLayerBehaviour));
             root.Add(properties);
             if (group)
                 properties.tooltip = "Edit the group's opacity and blend mode in the layer list.";
-            else if (layer is ShaderProcessorLayer)
+            else if (layer?.Behaviour is ShaderProcessorLayerBehaviour)
                 properties.tooltip = "Configure this processor in the FX section.";
             else buildProperties(properties.contentContainer);
 

@@ -78,7 +78,7 @@ namespace DCFApixels.SpriteEditor
             SpriteEditorUI.ConsumeEvent(evt);
             Focus();
             toolkitPreviewCanvas.Focus();
-            DrawingLayer layer = (DrawingLayer)GetSelectedLayer();
+            DrawingLayerBehaviour layer = (DrawingLayerBehaviour)GetSelectedLayer();
             if (Mathf.Abs(layer.transform.scale.x) < 0.00001f || Mathf.Abs(layer.transform.scale.y) < 0.00001f ||
                 !TryMapPreviewToLayerUv(evt.localPosition, toolkitPreviewCanvas.ImageRect, layer, out Vector2 uv))
             {

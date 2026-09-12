@@ -8,22 +8,22 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed class OutlineLayerEditorWindow : LayerEditorWindowBase
     {
-        protected override Type EditedLayerType => typeof(OutlineLayer);
+        protected override Type EditedLayerType => typeof(OutlineLayerBehaviour);
 
-        public static void Open(OutlineLayer layer, TextureCompositor compositor)
+        public static void Open(OutlineLayerBehaviour layer, TextureCompositor compositor)
         {
             OpenPropertiesWindow<OutlineLayerEditorWindow>(layer, compositor);
         }
 
         protected override void BuildSettings(VisualElement root, Layer source)
         {
-            BuildFields(root, (OutlineLayer)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
+            BuildFields(root, (OutlineLayerBehaviour)source, Compositor, ApplyLayerChange, SettingsBindings, AddEffectTarget);
         }
 
         internal static void BuildFields(
-            VisualElement root, OutlineLayer layer, TextureCompositor compositor,
+            VisualElement root, OutlineLayerBehaviour layer, TextureCompositor compositor,
             Action<string, Action> applyChange, SpriteEditorUI.ValueBindings bindings,
-            Action<VisualElement, TargetedLayerEffect> addEffectTarget)
+            Action<VisualElement, TargetedLayerBehaviour> addEffectTarget)
         {
             addEffectTarget(root, layer);
 
@@ -61,7 +61,7 @@ namespace DCFApixels.SpriteEditor
             bindings.Track(position, () => (Enum)layer.outlinePosition);
             position.RegisterValueChangedCallback(evt => applyChange(
                 "Change Outline Position",
-                () => layer.outlinePosition = (OutlineLayer.OutlinePosition)evt.newValue));
+                () => layer.outlinePosition = (OutlineLayerBehaviour.OutlinePosition)evt.newValue));
             root.Add(position);
 
             FloatField offset = SpriteEditorUI.ConfigureField(new FloatField("Offset (px)"));

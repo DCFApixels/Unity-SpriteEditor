@@ -7,32 +7,34 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositor
     {
-        internal DrawingLayer MergeLayers(List<Layer> requested, bool keepSources)
+        internal DrawingLayerBehaviour MergeLayers(List<Layer> requested, bool keepSources)
         {
             MergePlan plan = CreateMergePlan(requested);
             string undoName = keepSources ? "Merge Sprite Layers as Copy" : "Merge Sprite Layers";
             Texture2D texture = null;
-            DrawingLayer merged = null;
+            DrawingLayerBehaviour merged = null;
             int undoGroup = -1;
             try
             {
                 VisitDrawingLayers(plan.roots, drawing => drawing.SyncSurfaceToTexture());
                 texture = RasterizeMerge(plan);
-                merged = DrawingLayer.FromMergedTexture(texture);
+                merged = DrawingLayerBehaviour.FromMergedTexture(texture);
                 foreach (Layer layer in plan.included)
                     if (layer.blendRange == LayerBlendRange.HDR)
                         merged.blendRange = LayerBlendRange.HDR;
 
-                var inputs = new Dictionary<TargetedLayerEffect, Layer>();
+                var inputs = new Dictionary<TargetedLayerBehaviour, Layer>();
                 CaptureInputs(layers, inputs);
                 Undo.IncrementCurrentGroup();
                 undoGroup = Undo.GetCurrentGroup();
                 Undo.SetCurrentGroupName(undoName);
+                merged.MakeTexturePersistent(this);
+                // Registering a new native object flushes pending object records in Unity.
+                // Register the document afterwards so Redo captures the actual merged tree.
+                Undo.RegisterCreatedObjectUndo(texture, undoName);
                 Undo.RegisterCompleteObjectUndo(this, undoName);
                 merged.layerName = keepSources ? AllocateDuplicateName(plan.roots[0]) : plan.roots[0].layerName;
                 texture.name = merged.layerName;
-                merged.MakeTexturePersistent(this);
-                Undo.RegisterCreatedObjectUndo(texture, undoName);
 
                 // Insert first so removing selected siblings cannot shift the intended location.
                 plan.destination.Insert(plan.index, merged);
@@ -48,7 +50,7 @@ namespace DCFApixels.SpriteEditor
 
                 foreach (var input in inputs)
                 {
-                    TargetedLayerEffect effect = input.Key;
+                    TargetedLayerBehaviour effect = input.Key;
                     if (!TryFindLayer(effect, out List<Layer> container, out int index)) continue;
                     Layer target = input.Value;
                     if (!keepSources && target != null && plan.removed.Contains(target)) target = merged;
@@ -59,7 +61,7 @@ namespace DCFApixels.SpriteEditor
                         effect.inputMode = EffectInputMode.Specific;
                         effect.TargetLayerId = target?.Id;
                     }
-                    else if (target == merged)
+                    else if (target == merged.Owner)
                         effect.TargetLayerId = merged.Id;
                 }
                 MarkChanged();
@@ -115,7 +117,7 @@ namespace DCFApixels.SpriteEditor
                 TryFindLayer(root, out List<Layer> container, out _);
                 while (!ReferenceEquals(container, plan.destination))
                 {
-                    if (!TryFindParentGroup(container, out GroupLayer parent, out List<Layer> parentContainer, out _))
+                    if (!TryFindParentGroup(container, out Layer parent, out List<Layer> parentContainer, out _))
                         throw new InvalidOperationException("Cannot resolve the merge hierarchy.");
                     plan.included.Add(parent);
                     branch = parent;
@@ -131,7 +133,7 @@ namespace DCFApixels.SpriteEditor
                 {
                     if (layer == null) continue;
                     if (selected.Contains(layer)) plan.roots.Add(layer);
-                    else if (layer is GroupLayer group) Collect(group.layers);
+                    else if (layer?.AsGroup() is Layer group) Collect(group.layers);
                 }
             }
             void AddSubtree(Layer layer)
@@ -139,7 +141,7 @@ namespace DCFApixels.SpriteEditor
                 if (layer == null) return;
                 plan.included.Add(layer);
                 plan.removed.Add(layer);
-                if (layer is GroupLayer group)
+                if (layer?.AsGroup() is Layer group)
                     foreach (Layer child in group.layers) AddSubtree(child);
             }
         }
@@ -161,15 +163,15 @@ namespace DCFApixels.SpriteEditor
             }
         }
 
-        private void CaptureInputs(List<Layer> source, Dictionary<TargetedLayerEffect, Layer> inputs)
+        private void CaptureInputs(List<Layer> source, Dictionary<TargetedLayerBehaviour, Layer> inputs)
         {
             for (int i = 0; i < source.Count; i++)
             {
                 Layer layer = source[i];
-                if (layer is TargetedLayerEffect effect)
+                if (layer?.Behaviour is TargetedLayerBehaviour effect)
                     inputs[effect] = effect.inputMode == EffectInputMode.Specific
                         ? FindLayer(effect.TargetLayerId) : i + 1 < source.Count ? source[i + 1] : null;
-                if (layer is GroupLayer group) CaptureInputs(group.layers, inputs);
+                if (layer?.AsGroup() is Layer group) CaptureInputs(group.layers, inputs);
             }
         }
     }

@@ -50,7 +50,7 @@ try
     Check(Text(quick,"jobId")==Text(quickRetry,"jobId"),"Direct fast begin is idempotent");
     Check(Text(quick,"context","selectionActive").ToLowerInvariant()=="false","Fast begin returns frozen compact context");
     Call("\"op\":\"cancel\","+scope+",\"layerId\":\""+Text(quick,"layerId")+"\"");
-    var baseLayer = new DCFApixels.SpriteEditor.ColorFillLayer { layerName = "Unrelated", color = UnityEngine.Color.blue };
+    var baseLayer = new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { layerName = "Unrelated", color = UnityEngine.Color.blue };
     Edit(() => document.layers.Add(baseLayer));
     var requestId = System.Guid.NewGuid().ToString("N");
     string begin = "\"op\":\"begin\"," + scope + ",\"requestId\":\"" + requestId + "\",\"name\":\"Fog\"";
@@ -59,7 +59,7 @@ try
     Check(Text(job,"jobId") == Text(retry,"jobId") && document.layers.Count == 2, "Begin retry is idempotent");
     Call(begin.Replace("Fog", "Other"), "request_conflict");
     var pending = Find(Text(job,"layerId"));
-    Check(pending is DCFApixels.SpriteEditor.PendingLayer, "Placeholder type");
+    Check(pending?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour, "Placeholder type");
     Edit(() => { pending.layerName = "User name"; pending.enabled = false; document.layers.Remove(pending); document.layers.Add(pending); baseLayer.color = UnityEngine.Color.green; });
     string spec = "\"layer\":{\"type\":\"noise\",\"settings\":{\"noise\":{\"scale\":6,\"seed\":472}}}";
     string before = UnityEditor.EditorJsonUtility.ToJson(document);
@@ -71,20 +71,21 @@ try
     string completion = "\"op\":\"complete\"," + jobFields(job) + "," + spec;
     Call(completion); Call(completion);
     var result = Find(Text(job,"layerId"));
-    Check(result is DCFApixels.SpriteEditor.NoiseLayer n && n.seed == 472 && n.scale == 6, "Configured layer completed");
+    Check(ReferenceEquals(result, pending), "Completion retains the reserved wrapper instance");
+    Check(result?.Behaviour is DCFApixels.SpriteEditor.NoiseLayerBehaviour n && n.seed == 472 && n.scale == 6, "Configured layer completed");
     Check(result.layerName == "User name" && !result.enabled && document.layers[1] == result, "Name, visibility and placement survive");
     Check(baseLayer.color == UnityEngine.Color.green, "Independent changes survive");
     UnityEditor.Undo.PerformUndo();
-    Check(Find(Text(job,"layerId")) is DCFApixels.SpriteEditor.PendingLayer, "Completion Undo restores reservation");
+    Check(Find(Text(job,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour, "Completion Undo restores reservation");
     Call(completion);
-    Check(Find(Text(job,"layerId")) is DCFApixels.SpriteEditor.PendingLayer, "Retry does not defeat Undo");
+    Check(Find(Text(job,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour, "Retry does not defeat Undo");
     UnityEditor.Undo.PerformRedo();
-    Check(Find(Text(job,"layerId")) is DCFApixels.SpriteEditor.NoiseLayer, "Completion Redo restores result");
+    Check(Find(Text(job,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.NoiseLayerBehaviour, "Completion Redo restores result");
 
     var cancelled = Begin();
     Call("\"op\":\"cancel\"," + scope + ",\"layerId\":\"" + Text(cancelled,"layerId") + "\"");
     UnityEditor.Undo.PerformUndo();
-    Check(Find(Text(cancelled,"layerId")) is DCFApixels.SpriteEditor.PendingLayer, "Cancelled row can be restored with Undo");
+    Check(Find(Text(cancelled,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour, "Cancelled row can be restored with Undo");
     Call("\"op\":\"complete\"," + jobFields(cancelled) + "," + spec, "job_closed");
     Check(Text(Call("\"op\":\"status\"," + jobFields(cancelled)),"state") == "cancelled", "Cancellation is terminal");
 
@@ -106,7 +107,7 @@ try
     Check(firstFx is DCFApixels.SpriteEditor.ShaderFX && !UnityEditor.AssetDatabase.Contains(firstFx),"Inline FX is owned in memory, without a separate asset");
     var shaderType=typeof(DCFApixels.SpriteEditor.ShaderFX);
     Check((bool)shaderType.GetProperty("HasAppliedShader",instance).GetValue(firstFx),"Inline shader compiled");
-    Check(shaderType.GetProperty("EmbeddedOwner",instance).GetValue(firstFx)==document,"FX belongs to its document");
+    Check(ReferenceEquals(shaderType.GetProperty("EmbeddedOwner",instance).GetValue(firstFx),document),"FX belongs to its document");
     string editRequest="\"op\":\"lock\","+scope+",\"layerId\":\""+shaderLayer.Id+"\",\"requestId\":\""+System.Guid.NewGuid().ToString("N")+"\"";
     var editJob=Call(editRequest);
     Check(Text(Call(editRequest),"jobId")==Text(editJob,"jobId"),"Lock retry reuses its job");
@@ -151,9 +152,15 @@ try
     finally { UnityEngine.Object.DestroyImmediate(texture); }
     string imageField = "\"imagePath\":\"" + png.Replace('\\','/') + "\",\"fit\":\"stretch\"";
     var imageJob=Begin();
+    var imagePlaceholder = Find(Text(imageJob,"layerId"));
     Call("\"op\":\"complete\","+jobFields(imageJob)+","+imageField);
-    var drawing=(DCFApixels.SpriteEditor.DrawingLayer)Find(Text(imageJob,"layerId"));
-    var storedProperty=typeof(DCFApixels.SpriteEditor.DrawingLayer).GetProperty("StoredTexture",instance);
+    Check(ReferenceEquals(imagePlaceholder, Find(Text(imageJob,"layerId"))), "Image completion retains the reserved wrapper");
+    UnityEditor.Undo.PerformUndo();
+    Check(Find(Text(imageJob,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour, "Image Undo restores the placeholder");
+    UnityEditor.Undo.PerformRedo();
+    Check(Find(Text(imageJob,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.DrawingLayerBehaviour, "Image Redo restores owned Drawing content");
+    var drawing=(DCFApixels.SpriteEditor.DrawingLayerBehaviour)Find(Text(imageJob,"layerId"));
+    var storedProperty=typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour).GetProperty("StoredTexture",instance);
     UnityEngine.Texture2D Stored() => (UnityEngine.Texture2D)storedProperty.GetValue(drawing);
     Check(Stored().width==4 && Stored().height==4 && drawing.colorRange==DCFApixels.SpriteEditor.LayerColorRange.Standard,"PNG keeps its original Drawing resolution");
     Check(drawing.transform.scale==UnityEngine.Vector2.one && drawing.transform.position==UnityEngine.Vector2.zero,"Full-canvas stretch uses identity transform");
@@ -187,8 +194,8 @@ try
     Check(Text(Call(forkRequest),"jobId")==Text(fork,"jobId"),"Fork retry is idempotent");
     Call("\"op\":\"complete\","+jobFields(regional)+","+imageField);
     Call("\"op\":\"complete\","+jobFields(fork)+","+imageField);
-    Check(Find(Text(fork,"layerId")) is DCFApixels.SpriteEditor.DrawingLayer,"Fork completes independently after source completion");
-    var regionalDrawing=(DCFApixels.SpriteEditor.DrawingLayer)Find(Text(regional,"layerId"));
+    Check(Find(Text(fork,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.DrawingLayerBehaviour,"Fork completes independently after source completion");
+    var regionalDrawing=(DCFApixels.SpriteEditor.DrawingLayerBehaviour)Find(Text(regional,"layerId"));
     var regionalPixels=(UnityEngine.Texture2D)storedProperty.GetValue(regionalDrawing);
     Check(regionalPixels.width==4 && regionalPixels.height==4,"Regional image keeps source dimensions");
     Check(regionalDrawing.transform.scale==new UnityEngine.Vector2(.5f,.375f) && regionalDrawing.transform.position==new UnityEngine.Vector2(0,-.5f),"Transform places context crop on canvas");
@@ -200,7 +207,7 @@ try
     foreach(var guided in new[]{guide,guideFork})
     {
         Call("\"op\":\"complete\","+jobFields(guided)+","+imageField);
-        var guidedDrawing=(DCFApixels.SpriteEditor.DrawingLayer)Find(Text(guided,"layerId"));
+        var guidedDrawing=(DCFApixels.SpriteEditor.DrawingLayerBehaviour)Find(Text(guided,"layerId"));
         var guidedPixels=(UnityEngine.Texture2D)storedProperty.GetValue(guidedDrawing);
         Check(guidedPixels.width==4 && guidedPixels.height==4 && guidedDrawing.transform.scale==regionalDrawing.transform.scale,"Guide retains source resolution and crop placement");
         Check(guidedPixels.GetPixel(0,0).a>.99f && guidedPixels.GetPixel(2,1).a>.99f,"Guide does not clip or soften output to the selection");
@@ -210,11 +217,11 @@ try
     var replacement=Begin(target);
     Edit(()=>{ drawing.layerName="Renamed during generation"; drawing.enabled=false; });
     Call("\"op\":\"complete\","+jobFields(replacement)+","+imageField);
-    Check(Find(drawing.Id)==drawing && !drawing.enabled && drawing.layerName=="Renamed during generation","Pixel replacement preserves identity and independent properties");
+    Check(Find(drawing.Id)==drawing.Owner && !drawing.enabled && drawing.layerName=="Renamed during generation","Pixel replacement preserves identity and independent properties");
     var conflict=Begin(target);
     Edit(()=>drawing.transform.rotation+=15);
     var conflictResult=Call("\"op\":\"complete\","+jobFields(conflict)+","+imageField,"revision_conflict");
-    Check(Find(Text(conflict,"layerId")) is DCFApixels.SpriteEditor.PendingLayer,"Conflict retains reservation");
+    Check(Find(Text(conflict,"layerId"))?.Behaviour is DCFApixels.SpriteEditor.PendingLayerBehaviour,"Conflict retains reservation");
 
     var invalid=Begin();
     Call("\"op\":\"complete\","+jobFields(invalid)+",\"layer\":{\"type\":\"noise\",\"settings\":{\"name\":\"Overwrite\"}}","invalid_request");
@@ -224,7 +231,7 @@ try
     Edit(()=>document.width=8);
 
     var closed=Begin();
-    window.hasUnsavedChanges=false;
+    typeof(UnityEditor.EditorWindow).GetProperty("hasUnsavedChanges").SetValue(window, false);
     UnityEngine.Object.DestroyImmediate(window);
     Check(Text(Call("\"op\":\"status\","+jobFields(closed)),"state")=="cancelled","Closing cancels delivery");
     Call("\"op\":\"complete\","+jobFields(closed)+","+spec,"job_closed");
@@ -232,5 +239,5 @@ try
 }
 finally
 {
-    if(window!=null) { window.hasUnsavedChanges=false; UnityEngine.Object.DestroyImmediate(window); }
+    if(window!=null) { typeof(UnityEditor.EditorWindow).GetProperty("hasUnsavedChanges").SetValue(window, false); UnityEngine.Object.DestroyImmediate(window); }
 }

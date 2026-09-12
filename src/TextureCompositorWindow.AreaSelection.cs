@@ -257,7 +257,7 @@ namespace DCFApixels.SpriteEditor
                 bool inserted = false;
                 ExecuteContextChange("Paste Drawing Layer", () =>
                 {
-                    DrawingLayer layer = DrawingLayer.FromMergedTexture(pasted);
+                    DrawingLayerBehaviour layer = DrawingLayerBehaviour.FromMergedTexture(pasted);
                     layer.layerName = compositor.AllocateLayerName(layer);
                     layer.MakeTexturePersistent(compositor);
                     Undo.RegisterCreatedObjectUndo(pasted, "Paste Drawing Layer");
@@ -265,12 +265,12 @@ namespace DCFApixels.SpriteEditor
                     SelectOnlyLayer(layer.Id);
                     inserted = true;
                 });
-                if (inserted && compositor.layers.Exists(layer => layer is DrawingLayer drawing && drawing.StoredTexture == pasted)) texture = null;
+                if (inserted && compositor.layers.Exists(layer => layer?.Behaviour is DrawingLayerBehaviour drawing && drawing.StoredTexture == pasted)) texture = null;
             }
             catch (Exception exception) { ShowNotification(new GUIContent("Paste failed: " + exception.Message)); }
             finally { if (texture != null) DestroyImmediate(texture, true); }
         }
-        private void LimitFillToArea(DrawingLayer layer, NativeArray<byte> valid, int width, int height)
+        private void LimitFillToArea(DrawingLayerBehaviour layer, NativeArray<byte> valid, int width, int height)
         {
             CanvasSelection selection = GetAreaSelection();
             if (selection == null || !selection.Active) return;
@@ -282,7 +282,7 @@ namespace DCFApixels.SpriteEditor
                 if (selection.Sample(origin + (x + .5f) * dx + (y + .5f) * dy, tiledPreview) <= 0f)
                     valid[i] = 0;
         }
-        private void MaskFillToArea(DrawingLayer layer, NativeArray<Color> source, NativeArray<Color> output, int width, int height)
+        private void MaskFillToArea(DrawingLayerBehaviour layer, NativeArray<Color> source, NativeArray<Color> output, int width, int height)
         {
             CanvasSelection selection = GetAreaSelection();
             if (selection == null || !selection.Active) return;

@@ -13,9 +13,9 @@ void Same(UnityEngine.Color actual, UnityEngine.Color expected, string message)
 {
     for (int c = 0; c < 4; c++) Near(actual[c], expected[c], message + " channel " + c);
 }
-DCFApixels.SpriteEditor.ColorFillLayer Fill(UnityEngine.Color color, bool clipped = false) =>
-    new DCFApixels.SpriteEditor.ColorFillLayer { color = color, clippingMask = clipped };
-void Alpha(DCFApixels.SpriteEditor.ColorFillLayer layer, float alpha)
+DCFApixels.SpriteEditor.ColorFillLayerBehaviour Fill(UnityEngine.Color color, bool clipped = false) =>
+    new DCFApixels.SpriteEditor.ColorFillLayerBehaviour { color = color, clippingMask = clipped };
+void Alpha(DCFApixels.SpriteEditor.ColorFillLayerBehaviour layer, float alpha)
 {
     var color = layer.color; color.a = alpha; layer.color = color;
 }
@@ -84,13 +84,13 @@ try
     Stack(upper, lower); Near(Pixel().a, 0, "Orphan clipping layers are invisible");
     Stack(upper, lower, basis);
     Near(Coverage(upper).a, .1f, "Effect/preview coverage includes base alpha and opacity");
-    var effect = new DCFApixels.SpriteEditor.OutlineLayer();
+    var effect = new DCFApixels.SpriteEditor.OutlineLayerBehaviour();
     Stack(effect, upper, lower, basis);
     var input = (UnityEngine.RenderTexture)type.GetMethod("RenderPreviousInput", flags).Invoke(doc,
         new object[] { doc.layers, 0, 8, 8, 1f, new System.Collections.Generic.HashSet<DCFApixels.SpriteEditor.Layer>() });
     Near(Read(input).a, .1f, "Previous effect input uses clipped coverage");
 
-    var group = new DCFApixels.SpriteEditor.GroupLayer();
+    var group = new DCFApixels.SpriteEditor.GroupLayerBehaviour();
     group.layers.Add(upper); group.layers.Add(lower);
     Stack(group, basis);
     Check(doc.GetClippingBase(upper) == null, "Clipping does not reach a root base from inside a group");
@@ -108,12 +108,12 @@ try
     Near(Pixel().a, .1f, "A clipped group does not change base coverage");
     Near(Coverage(group).a, .05f, "Clipped group input includes its opacity once");
     var groupBefore = Pixel();
-    var groupPixels = (UnityEngine.Texture2D)type.GetMethod("RasterizeLayer", flags).Invoke(doc, new object[] { group, true });
+    var groupPixels = (UnityEngine.Texture2D)type.GetMethod("RasterizeLayer", flags).Invoke(doc, new object[] { group.Owner, true });
     owned.Add(groupPixels);
     Near(groupPixels.GetPixel(4, 4).a, 1, "Group conversion leaves outer opacity and clipping unbaked");
-    var groupDrawing = (DCFApixels.SpriteEditor.DrawingLayer)typeof(DCFApixels.SpriteEditor.DrawingLayer)
+    var groupDrawing = (DCFApixels.SpriteEditor.DrawingLayerBehaviour)typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour)
         .GetMethod("FromRasterizedLayer", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-        .Invoke(null, new object[] { group, groupPixels, true, true });
+        .Invoke(null, new object[] { group.Owner, groupPixels, true, true });
     Stack(groupDrawing, basis);
     Same(Pixel(), groupBefore, "Clipped group conversion preserves appearance");
     Stack(group, basis);
@@ -126,16 +126,16 @@ try
     Near(Pixel().a, 0, "Base Transform determines clipping coverage");
     basis.transform = DCFApixels.SpriteEditor.TextureTransform.Default;
     Stack(upper, basis);
-    var rasterized = (UnityEngine.Texture2D)type.GetMethod("RasterizeLayer", flags).Invoke(doc, new object[] { upper, true });
+    var rasterized = (UnityEngine.Texture2D)type.GetMethod("RasterizeLayer", flags).Invoke(doc, new object[] { upper.Owner, true });
     owned.Add(rasterized);
     Near(rasterized.GetPixel(4, 4).a, 1, "Conversion leaves clipping unbaked");
-    var converted = (DCFApixels.SpriteEditor.DrawingLayer)typeof(DCFApixels.SpriteEditor.DrawingLayer)
+    var converted = (DCFApixels.SpriteEditor.DrawingLayerBehaviour)typeof(DCFApixels.SpriteEditor.DrawingLayerBehaviour)
         .GetMethod("FromRasterizedLayer", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
-        .Invoke(null, new object[] { upper, rasterized, true, false });
+        .Invoke(null, new object[] { upper.Owner, rasterized, true, false });
     Check(converted.clippingMask, "Drawing conversion preserves clipping flag");
-    Check(UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>(UnityEngine.JsonUtility.ToJson(upper)).clippingMask,
+    Check(UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.Layer>(UnityEngine.JsonUtility.ToJson(upper.Owner)).clippingMask,
         "Copy/serialization preserves clipping");
-    Check(!UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayer>("{}").clippingMask,
+    Check(!UnityEngine.JsonUtility.FromJson<DCFApixels.SpriteEditor.ColorFillLayerBehaviour>("{}").clippingMask,
         "Legacy/new layers default to unclipped");
 
     // HDR uses the same alpha contract without clamping extended linear colors.
@@ -152,8 +152,8 @@ try
     // API validates and reports the setting for every layer type without asset I/O.
     var api = typeof(DCFApixels.SpriteEditor.SpriteEditorApi);
     var set = api.GetMethod("SetLayer", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-    foreach (var layer in new DCFApixels.SpriteEditor.Layer[] { upper, group, new DCFApixels.SpriteEditor.DrawingLayer(),
-        new DCFApixels.SpriteEditor.FileLayer(), new DCFApixels.SpriteEditor.GradientLayer(), effect, new DCFApixels.SpriteEditor.SDFLayer() })
+    foreach (var layer in new DCFApixels.SpriteEditor.Layer[] { upper, group, new DCFApixels.SpriteEditor.DrawingLayerBehaviour(),
+        new DCFApixels.SpriteEditor.FileLayerBehaviour(), new DCFApixels.SpriteEditor.GradientLayerBehaviour(), effect, new DCFApixels.SpriteEditor.SDFLayerBehaviour() })
     {
         set.Invoke(null, new object[] { doc, layer, Newtonsoft.Json.Linq.JObject.Parse("{\"clippingMask\":true}") });
         Check(layer.clippingMask, "Agent setting accepted for " + layer.GetType().Name);
