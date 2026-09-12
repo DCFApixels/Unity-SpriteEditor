@@ -86,7 +86,7 @@ const toolbar = toolSource.split('private void RefreshPreviewToolToolbar()')[1].
 assert.match(toolbar, /PreviewTool displayedTool = previewTool;/);
 assert.match(toolbar, /Layer selected = hasLayers \? GetSelectedLayer\(\) : null;/);
 assert.ok(!/previewTool\s*=(?!=)|SetPreviewTool\(|SetEnabled\(/.test(toolbar), 'Empty styling preserves tool choice and configuration');
-assert.equal((toolbar.match(/--selected", displayedTool == PreviewTool\./g) || []).length, 8);
+assert.equal((toolbar.match(/--selected", displayedTool == PreviewTool\./g) || []).length, 9);
 for (const button of ['previewRectangleSelectButton', 'previewPolygonSelectButton', 'previewZoomButton'])
   assert.ok(toolbar.includes(`${button}?.EnableInClassList("sprite-editor-tool-button--unavailable", !hasLayers)`));
 assert.match(toolSource, /HandlePaintConversionPrompt\(PointerDownEvent evt\)\s*\{\s*if \(!HasPreviewLayers\)\s*\{\s*SpriteEditorUI.ConsumeEvent\(evt\);\s*return true;/);

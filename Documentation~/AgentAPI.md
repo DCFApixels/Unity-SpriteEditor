@@ -196,7 +196,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `blur`, `makeSeamless`, `shaderProcessor`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `shape`, `outline`, `sdf`, `normalMap`, `blur`, `makeSeamless`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
@@ -220,6 +220,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
 | Noise | `noise`: partial procedural settings object described below |
+| Shape | `shape`: partial settings object described below |
 | Blur | `blur`: partial settings object; `mode`: Gaussian (default), Linear or Circular; [Gaussian](#gaussian-blur-settings), [motion](#motion-blur-settings) |
 | Make Seamless | `makeSeamless`: `{ "horizontal": "LeftToRight", "vertical": "BottomToTop", "blendWidth": 0.2, "falloff": 1 }`; [parameters](#make-seamless-settings) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
@@ -286,6 +287,41 @@ The batch API can create/reorder it and edit its common settings, transform and 
 The [live editing API](LiveAgentAPI.md#inline-shader-fx) can author inline Shader FX code and parameters
 in open documents, including unsaved ones. No separate shader asset or special layer target is needed.
 Post FX is window-local presentation state and never changes API rendering, sampling or export.
+
+### Shape settings
+
+Use `type:"shape"` and partial `settings.shape` updates. `describe` returns `shapeDefaults`
+and `shapeKinds`; `inspect` includes all parameters. One layer contains one editable figure.
+
+| Setting | Values |
+| :--- | :--- |
+| `kind` | Rectangle (default), Ellipse, Polygon, Star, Line |
+| `fill`, `fillColor` | Boolean (default true), RGBA color (default white) |
+| `stroke`, `strokeColor` | Boolean (default false), RGBA color (default black) |
+| `strokeWidth` | 0–8192 canvas pixels, inside the edge; default 2 |
+| `roundness` | 0–1 uniform rectangle rounding shortcut; setting it assigns all four corners |
+| `cornerRoundness` | Four 0–1 values, clockwise from top-left: TL, TR, BR, BL. Radius relative to the shorter half-extent |
+| `linkCorners` | Boolean, default true; enables proportional corner edits in Properties |
+| `sides` | 3–32 polygon sides / star points; default 5 |
+| `innerRadius` | 0.01–1 star inner/outer radius ratio; default 0.5 |
+
+API corner assignments are exact, regardless of `linkCorners`; when both rounding keys are present,
+`cornerRoundness` overrides `roundness`. Inspect reports the resolved corners and the top-left value
+as the scalar shortcut. UI displays rounding as 0–100%; API uses 0–1.
+
+New shapes are centered with transform scale `[0.5,0.5]`. The untransformed bounds cover
+the canvas: a 100×40 figure in a 512×256 document uses scale `[0.1953125,0.15625]`.
+Set position/rotation with the existing `transform` operation. Line is a capsule whose
+length and thickness are its transformed width and height. Stroke width stays in canvas pixels.
+Colors follow the existing encoded-color contract; set layer color/blend ranges to HDR when needed.
+Inactive type-specific settings are retained when `kind` changes. SVG import/export is not implied.
+
+```json
+{"op":"add","type":"shape","as":"badge","settings":{"shape":{
+  "kind":"Star","sides":5,"innerRadius":0.45,
+  "fillColor":[1,0.65,0.1,1],"stroke":true,"strokeWidth":3
+}}}
+```
 
 ### Noise settings
 

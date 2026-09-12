@@ -254,6 +254,7 @@ namespace DCFApixels.SpriteEditor
             previewEyedropper = new PreviewEyedropperManipulator(this);
             toolkitPreviewCanvas.AddManipulator(previewEyedropper);
             BuildAreaSelectionTools();
+            BuildShapeTool();
             toolkitPreviewCanvas.RegisterCallback<PointerDownEvent>(OnPreviewPointerDown);
             toolkitPreviewCanvas.RegisterCallback<PointerMoveEvent>(OnPreviewPointerMove);
             toolkitPreviewCanvas.RegisterCallback<PointerUpEvent>(OnPreviewPointerUp);
@@ -1415,6 +1416,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewActions.Add(SpriteEditorUI.CreateToolbarButton("Refresh", () => RequestPreview(true), 64f));
             AddPreviewTransformSettings();
             AddPreviewZoomSettings();
+            AddShapeSettings();
             AddAreaSelectionSettings(PreviewTool.RectangleSelect);
             AddAreaSelectionSettings(PreviewTool.PolygonSelect);
 
@@ -1555,6 +1557,10 @@ namespace DCFApixels.SpriteEditor
                 else if (IsPreviewFillEnabled)
                 {
                     toolkitPreviewFooter.text = "LMB fill • Alt pick color • X colors • All Layers / Contiguous / Tolerance / Antialias / Expand";
+                }
+                else if (previewTool == PreviewTool.Shape)
+                {
+                    toolkitPreviewFooter.text = "Drag new shape • Shift equal proportions / 45° line • Ctrl no snapping • Esc cancel • T transform";
                 }
                 else if (IsAreaSelectionTool)
                 {

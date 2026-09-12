@@ -974,6 +974,9 @@ namespace DCFApixels.SpriteEditor
                 case NoiseLayerBehaviour noiseLayer:
                     NoiseLayerEditorWindow.Open(noiseLayer, compositor);
                     break;
+                case ShapeLayerBehaviour shapeLayer:
+                    ShapeLayerEditorWindow.Open(shapeLayer, compositor);
+                    break;
                 case OutlineLayerBehaviour outlineLayer:
                     OutlineLayerEditorWindow.Open(outlineLayer, compositor);
                     break;

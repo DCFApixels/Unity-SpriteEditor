@@ -186,6 +186,8 @@ namespace DCFApixels.SpriteEditor
                 SetPreviewTool(PreviewTool.RectangleSelect);
             else if (evt.keyCode == KeyCode.L)
                 SetPreviewTool(PreviewTool.PolygonSelect);
+            else if (evt.keyCode == KeyCode.U)
+                SetPreviewTool(PreviewTool.Shape);
             else if (evt.keyCode == KeyCode.Z)
                 SetPreviewTool(PreviewTool.Zoom);
             else if (IsPreviewZoomEnabled && evt.keyCode == KeyCode.Escape)

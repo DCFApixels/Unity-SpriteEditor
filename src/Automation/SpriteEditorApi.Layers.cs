@@ -124,7 +124,7 @@ namespace DCFApixels.SpriteEditor
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "outlineOffset", "fillCenter", "fillColor", "sourceChannel", "threshold",
-                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "blur", "makeSeamless", "noise");
+                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "blur", "makeSeamless", "noise", "shape");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
@@ -138,6 +138,7 @@ namespace DCFApixels.SpriteEditor
                     key == "blur" && layer?.Behaviour is BlurLayerBehaviour ||
                     key == "makeSeamless" && layer?.Behaviour is MakeSeamlessLayerBehaviour ||
                     key == "noise" && layer?.Behaviour is NoiseLayerBehaviour ||
+                    key == "shape" && layer?.Behaviour is ShapeLayerBehaviour ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition" ||
                      key == "outlineOffset" || key == "fillCenter" || key == "fillColor") && layer?.Behaviour is OutlineLayerBehaviour ||
                     (key == "sourceChannel" || key == "threshold" || key == "distancePosition" || key == "inverted" || key == "maxDistance") && layer?.Behaviour is SDFLayerBehaviour ||
@@ -187,6 +188,8 @@ namespace DCFApixels.SpriteEditor
                 SetMakeSeamless(seamless, Obj(settings["makeSeamless"], "makeSeamless"));
             if (layer?.Behaviour is NoiseLayerBehaviour noise && settings["noise"] != null)
                 SetNoise(noise, Obj(settings["noise"], "noise"));
+            if (layer?.Behaviour is ShapeLayerBehaviour shape && settings["shape"] != null)
+                SetShape(shape, Obj(settings["shape"], "shape"));
             if (layer?.Behaviour is DrawingLayerBehaviour drawing && settings["brush"] != null) SetBrush(document, drawing, Obj(settings["brush"], "brush"));
             if (layer?.Behaviour is OutlineLayerBehaviour outline)
             {

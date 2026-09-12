@@ -7,7 +7,7 @@ namespace DCFApixels.SpriteEditor
 {
     public sealed partial class TextureCompositorWindow
     {
-        private enum PreviewTool { None, Brush, Transform, Fill, Zoom, Pencil, RectangleSelect, PolygonSelect }
+        private enum PreviewTool { None, Brush, Transform, Fill, Zoom, Pencil, RectangleSelect, PolygonSelect, Shape }
 
         [NonSerialized] private PreviewTool previewTool = PreviewTool.None;
         [NonSerialized] private PreviewTool previewSettingsTool = PreviewTool.None;
@@ -185,6 +185,7 @@ namespace DCFApixels.SpriteEditor
                 case PreviewTool.Fill: return layer?.Behaviour is DrawingLayerBehaviour;
                 case PreviewTool.Transform: return layer?.Behaviour != null && !layer.IsGroup;
                 case PreviewTool.Zoom:
+                case PreviewTool.Shape:
                 case PreviewTool.RectangleSelect:
                 case PreviewTool.PolygonSelect: return compositor != null;
                 default: return false;
@@ -228,6 +229,11 @@ namespace DCFApixels.SpriteEditor
                 "Polygonal Lasso (L). Click vertices; Enter, double-click or click the first point to close. Backspace/RMB removes a vertex; Escape cancels.");
             toolbar.Add(previewRectangleSelectButton);
             toolbar.Add(previewPolygonSelectButton);
+            previewShapeButton = CreatePreviewToolButton("shapeTool", PreviewTool.Shape,
+                "Shape (U). Hold or drag this button to pick a figure, then release over its icon. Drag on the canvas to create it.");
+            shapePicker = new ShapePickerManipulator(this);
+            previewShapeButton.AddManipulator(shapePicker);
+            toolbar.Add(previewShapeButton);
             toolbar.Add(previewBrushButton);
             toolbar.Add(previewPencilButton);
             toolbar.Add(previewFillButton);
@@ -241,7 +247,10 @@ namespace DCFApixels.SpriteEditor
         {
             Button button = new Button(() => SetPreviewTool(tool)) { name = name, tooltip = tooltip };
             button.AddToClassList("sprite-editor-tool-button");
-            button.Add(new PreviewToolIcon(tool));
+            if (tool == PreviewTool.Shape)
+                button.Add(shapeToolIcon = new ShapeToolIcon(shapeToolSettings?.kind ?? ShapeLayerBehaviour.ShapeKind.Rectangle));
+            else
+                button.Add(new PreviewToolIcon(tool));
             return button;
         }
 
@@ -251,6 +260,9 @@ namespace DCFApixels.SpriteEditor
             bool hasLayers = HasPreviewLayers;
             PreviewTool displayedTool = previewTool;
             Layer selected = hasLayers ? GetSelectedLayer() : null;
+            shapeToolIcon?.SetKind(shapeToolSettings?.kind ?? ShapeLayerBehaviour.ShapeKind.Rectangle);
+            previewShapeButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.Shape);
+            previewShapeButton?.EnableInClassList("sprite-editor-tool-button--unavailable", compositor == null);
             previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.RectangleSelect);
             previewPolygonSelectButton?.EnableInClassList("sprite-editor-tool-button--selected", displayedTool == PreviewTool.PolygonSelect);
             previewRectangleSelectButton?.EnableInClassList("sprite-editor-tool-button--unavailable", !hasLayers);

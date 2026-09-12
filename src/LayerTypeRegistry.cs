@@ -30,6 +30,7 @@ namespace DCFApixels.SpriteEditor
             new Entry("color", "Color Fill", "Color Fill", "Color Fill Layer", typeof(ColorFillLayerBehaviour), 0, () => new ColorFillLayerBehaviour()),
             new Entry("gradient", "Gradient", "Gradient", "Gradient Layer", typeof(GradientLayerBehaviour), 0, () => new GradientLayerBehaviour()),
             new Entry("noise", "Noise", "Noise", "Noise Layer", typeof(NoiseLayerBehaviour), 0, () => new NoiseLayerBehaviour()),
+            new Entry("shape", "Shape", "Shape", "Shape", typeof(ShapeLayerBehaviour), 0, () => new ShapeLayerBehaviour()),
             new Entry("outline", "Outline", "Outline", "Outline Layer", typeof(OutlineLayerBehaviour), 1, () => new OutlineLayerBehaviour()),
             new Entry("sdf", "SDF", "SDF", "SDF Layer", typeof(SDFLayerBehaviour), 1, () => new SDFLayerBehaviour()),
             new Entry("normalMap", "Normal Map", "Normal Map", "Normal Map Layer", typeof(NormalMapLayerBehaviour), 1, () => new NormalMapLayerBehaviour()),

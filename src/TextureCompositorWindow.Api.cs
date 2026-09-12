@@ -70,6 +70,7 @@ namespace DCFApixels.SpriteEditor
         {
             foreach (TextureCompositorWindow window in Resources.FindObjectsOfTypeAll<TextureCompositorWindow>())
                 if (window.compositor == document && (window.paintingLayer != null ||
+                    window.shapeManipulator != null && window.shapeManipulator.IsDragging ||
                     window.previewTransformManipulator != null && window.previewTransformManipulator.IsDragging))
                     return true;
             return false;

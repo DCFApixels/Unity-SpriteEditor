@@ -286,6 +286,7 @@ namespace DCFApixels.SpriteEditor
         private static Material motionBlurMaterial;
         private static Material makeSeamlessMaterial;
         private static Material noiseMaterial;
+        private static Material shapeMaterial;
         private static Material effectCacheMaterial;
 
         static SpriteEditorMaterials()
@@ -301,6 +302,7 @@ namespace DCFApixels.SpriteEditor
         public static Material MotionBlur => GetOrCreate(ref motionBlurMaterial, "Hidden/TextureCompositor/MotionBlur");
         public static Material MakeSeamless => GetOrCreate(ref makeSeamlessMaterial, "Hidden/TextureCompositor/MakeSeamless");
         public static Material Noise => GetOrCreate(ref noiseMaterial, "Hidden/TextureCompositor/Noise");
+        public static Material Shape => GetOrCreate(ref shapeMaterial, "Hidden/TextureCompositor/Shape");
         public static Material EffectCache => GetOrCreate(ref effectCacheMaterial, "Hidden/TextureCompositor/EffectCache");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
         public static Material PaintBrush => GetOrCreate(ref paintBrushMaterial, "Hidden/TextureCompositor/PaintBrush");
@@ -330,6 +332,8 @@ namespace DCFApixels.SpriteEditor
 
         private static void Dispose()
         {
+            if (shapeMaterial != null) UnityEngine.Object.DestroyImmediate(shapeMaterial);
+            shapeMaterial = null;
             if (noiseMaterial != null) UnityEngine.Object.DestroyImmediate(noiseMaterial);
             noiseMaterial = null;
             if (gaussianBlurMaterial != null) UnityEngine.Object.DestroyImmediate(gaussianBlurMaterial);

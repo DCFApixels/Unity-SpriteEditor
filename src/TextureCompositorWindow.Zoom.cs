@@ -131,6 +131,8 @@ namespace DCFApixels.SpriteEditor
         private void CancelPreviewZoomGesture()
         {
             previewGuideManipulator?.Cancel();
+            shapePicker?.Cancel();
+            shapeManipulator?.Cancel();
             previewZoomManipulator?.Cancel();
         }
 
@@ -209,6 +211,7 @@ namespace DCFApixels.SpriteEditor
                 if (!owner.HasPreviewLayers || (evt.button != 2 && !(evt.button == 0 && owner.IsPreviewZoomEnabled)) ||
                     !target.contentRect.Contains(evt.localPosition)) return;
                 owner.CancelPreviewEyedropper();
+                owner.shapeManipulator?.Cancel();
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
                 if (owner.areaSelectionManipulator?.RectangleDragging == true)
@@ -233,6 +236,7 @@ namespace DCFApixels.SpriteEditor
                     float.IsNaN(evt.delta.y) || float.IsInfinity(evt.delta.y)) return;
                 SpriteEditorUI.ConsumeEvent(evt);
                 if (IsDragging && !panning) Cancel();
+                owner.shapeManipulator?.Cancel();
                 owner.FinishPreviewTransform();
                 owner.FinishPaintingStroke();
                 SpritePreviewElement canvas = owner.toolkitPreviewCanvas;

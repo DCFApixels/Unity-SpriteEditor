@@ -26,11 +26,36 @@ Use **+** at the bottom of Layers to choose a type:
 | Color Fill | A single-color background or shape. |
 | Gradient | A smooth color transition. |
 | Noise | A generated pattern. See [Noise](noise.md). |
+| Shape | An editable rectangle, ellipse, polygon, star or line. |
 
 You can also drag a Project texture onto the Preview to add it at the top,
 or drop it between rows to choose its position. A newly assigned image keeps its original proportions.
 Assigning an HDR texture to a File layer sets **Color Range** and **Blend Range** to **HDR**.
 You can change both afterwards in **Color & Blending**.
+
+## Draw a shape
+
+Choose **Shape** (`U`), pick a shape in the Preview header, then drag to create it.
+You can also hold the Shape tool button briefly, or drag from it, to open an icon list on its right.
+Move over a figure and release to select it. Releasing outside the list cancels the choice.
+Each drag adds a separate Shape layer, including in an empty document.
+Hold `Shift` for equal proportions or a line angle in 45° steps; `Ctrl` bypasses guide snapping.
+Press `Escape` before releasing to cancel.
+
+Use **Transform** to move, resize or rotate an existing figure. In **Properties (Shape)**,
+change its type, fill and stroke colors, rectangle roundness, polygon sides or star points and inner radius.
+For a rectangle, **Roundness (%)** has four fields around a square, one per corner.
+Drag their **TL / TR / BR / BL** labels to adjust values without typing.
+The chain links proportional changes; the crossed-out chain lets you edit each corner independently.
+Linking keeps existing values. Linked changes stop when a corner reaches 100%; editing a zero corner
+adds the same amount to all four. The diagram shows the shape before its Transform rotation.
+The stroke sits inside the edge, and its width is measured in canvas pixels.
+For a line, adjust its length and thickness with Transform.
+You can also create a centered shape through **+ → Shape**.
+
+A Shape stays editable: it works with clipping masks, blending and FX, just like other layers.
+For example, put a Gradient above it and enable the gradient's clipping mask to color the figure.
+Convert it to Drawing only when you want to paint directly on it.
 
 ## Select and arrange
 

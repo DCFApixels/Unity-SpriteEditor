@@ -6,7 +6,8 @@ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const styles = read('src/SpriteEditorSplitView.uss')
     .replace(/\.sprite-editor-missing-thumbnail\s*\{[^}]*\}/g, '')
     .replace(/\.sprite-editor-view-field(?:\s*>\s*\.unity-base-field__label)?\s*\{[^}]*\}/g, '')
-    .replace(/\.sprite-editor-guides?-[^{]+\{[^}]*\}/g, '');
+    .replace(/\.sprite-editor-guides?-[^{]+\{[^}]*\}/g, '')
+    .replace(/\.sprite-editor-shape-(?:kind|color|picker[\w-]*|corners|corner[\w-]*)(?:\s*>\s*\.unity-base-field__label)?\s*\{[^}]*\}/g, '');
 const baseline = JSON.parse(read('Tests~/UssCascadeBaseline.json'));
 assert.deepEqual(snapshot(styles), baseline, 'Exact USS values, selectors/specificity and conflicting property order must remain unchanged');
 assert.notDeepEqual(snapshot(styles.replace('--whimtex-surface: #383838', '--whimtex-surface: #393939')), baseline);

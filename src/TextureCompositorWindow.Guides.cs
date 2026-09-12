@@ -133,6 +133,7 @@ namespace DCFApixels.SpriteEditor
             private bool CanGrab(bool control, bool alt) => Ready && !control && !alt &&
                 owner.paintingLayer == null && !(owner.previewZoomManipulator?.IsDragging ?? false) &&
                 !(owner.previewTransformManipulator?.IsDragging ?? false) &&
+                !(owner.shapeManipulator?.IsDragging ?? false) &&
                 !(owner.areaSelectionManipulator?.HasGesture ?? false);
 
             private float PositionAt(Vector2 point, Vector2 normal)

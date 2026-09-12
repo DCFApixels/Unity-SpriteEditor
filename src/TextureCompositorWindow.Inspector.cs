@@ -147,6 +147,9 @@ namespace DCFApixels.SpriteEditor
                 case NoiseLayerBehaviour noise:
                     NoiseLayerEditorWindow.BuildFields(root, noise, compositor, apply, toolkitInspectorBindings);
                     break;
+                case ShapeLayerBehaviour shape:
+                    ShapeLayerEditorWindow.BuildFields(root, shape, compositor, apply, toolkitInspectorBindings);
+                    break;
                 case OutlineLayerBehaviour outline:
                     OutlineLayerEditorWindow.BuildFields(root, outline, compositor, apply, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
