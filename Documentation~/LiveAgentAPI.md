@@ -268,6 +268,12 @@ Remove accepts only op/index. Add/replace accept `code` and optional `parameters
   (encoded RGB + alpha, converted to linear for the shader), `Vector` (four raw values), `Texture2D`
   (existing Assets/Packages texture path). Texture uniforms include `<name>_TexelSize`.
   Use valid unique HLSL identifiers; do not redeclare the generated uniforms in code.
+- `Transform2D` accepts `value: {"position":[0.5,0.5],"size":[1,1],"rotation":0}`; fields are optional.
+  Position/size are normalized to the input image, rotation is in degrees. Size components must have
+  magnitude at least `0.00001`. Generates `<name>_ToLocal(uv)` and `<name>_ToInput(uv)` helpers.
+- Inline code may instead declare parameters using [HLSL metadata](ShaderFX.md#parameter-declarations).
+  If JSON values are supplied as well, every entry must match a code declaration by name and type;
+  those values override defaults. The first-line catalog marker is required only for catalog files.
 - At most 16 FX operations per request and 32 resulting modifier entries. Keep GPU work bounded:
   no unbounded loops or enormous per-pixel sampling loops. Successful compilation does not prove
   that a shader is fast or numerically stable; inspect a small preview and use HDR Debug as needed.
@@ -278,6 +284,8 @@ with compiler diagnostics; the live content stays unchanged, and the pending job
 Previews do not publish candidate effects or add Undo entries. Completion is one Undo action.
 Embedded code, parameters and compiled shader follow the document's usual save lifecycle.
 Inspection exposes each FX's code, parameters, diagnostics and pending-change state.
+Parameters also expose stable `id`, nullable `minimum`/`maximum`, and structured Transform2D values.
+`catalogPath` identifies a linked HLSL source when present; inline replacement does not modify that source.
 Groups do not directly render FX; place a Shader Processor inside a group for that workflow.
 
 ## Edit and lock an existing layer

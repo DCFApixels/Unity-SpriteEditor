@@ -16,6 +16,37 @@ namespace DCFApixels.SpriteEditor
         private static readonly Regex Identifier = new Regex("^[A-Za-z_][A-Za-z0-9_]*$");
         private readonly string projectRoot = Path.GetDirectoryName(Application.dataPath);
 
+        internal static HashSet<string> GetDependencies(string source, string path)
+        {
+            var builder = new ShaderFXSourceBuilder();
+            var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { path };
+            void Visit(string text, string current, int depth)
+            {
+                if (depth > 32 || found.Count > 256) return;
+                bool block = false;
+                using var reader = new StringReader(text ?? "");
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    Match include = Include.Match(MaskComments(line, ref block));
+                    if (!include.Success) continue;
+                    try
+                    {
+                        string dependency = builder.Resolve(include.Groups[2].Value, current);
+                        if (!found.Add(dependency)) continue;
+                        string physical = builder.PhysicalPath(dependency);
+                        if (File.Exists(physical) && new FileInfo(physical).Length <= MaximumCharacters)
+                            Visit(File.ReadAllText(physical), dependency, depth + 1);
+                    }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                    catch (InvalidOperationException) { }
+                }
+            }
+            Visit(source, path, 0);
+            return found;
+        }
+
         internal static string Build(ShaderFX effect, string assetPath)
         {
             ShaderFXSourceBuilder builder = new ShaderFXSourceBuilder();
@@ -29,7 +60,7 @@ namespace DCFApixels.SpriteEditor
             foreach (ShaderFXParameter parameter in effect.Parameters)
             {
                 if (parameter == null || string.IsNullOrEmpty(parameter.name) || !Identifier.IsMatch(parameter.name) ||
-                    !names.Add(parameter.name))
+                    parameter.name.StartsWith("_WhimTex_", StringComparison.Ordinal) || !names.Add(parameter.name))
                     throw new InvalidOperationException($"Invalid, duplicate or reserved parameter name: '{parameter?.name}'. Use an HLSL identifier such as _Amount.");
                 string name = parameter.name;
                 switch (parameter.type)
@@ -52,10 +83,22 @@ namespace DCFApixels.SpriteEditor
                         properties.AppendLine($"{name} (\"{name}\", 2D) = \"white\" {{}}");
                         uniforms.AppendLine($"sampler2D {name};\nfloat4 {name}_TexelSize;");
                         break;
+                    case ShaderFXParameterType.Transform2D:
+                        if (!names.Add(name + "_ToLocal") || !names.Add(name + "_ToInput"))
+                            throw new InvalidOperationException("Transform helper name conflicts with another parameter: " + name);
+                        string prefix = parameter.InternalPrefix;
+                        foreach (string direction in new[] { "ToLocal", "ToInput" })
+                        {
+                            uniforms.AppendLine($"float4 {prefix}{direction}Row0;\nfloat4 {prefix}{direction}Row1;");
+                            uniforms.AppendLine($"float2 {name}_{direction}(float2 uv) {{ float3 p = float3(uv, 1.0); return float2(dot({prefix}{direction}Row0.xyz, p), dot({prefix}{direction}Row1.xyz, p)); }}");
+                        }
+                        break;
                     default: throw new InvalidOperationException($"Unsupported parameter type: {parameter.type}.");
                 }
             }
             string expanded = builder.ResolveIncludes(effect.Code ?? string.Empty, assetPath);
+            if (Regex.IsMatch(expanded, @"\b_WhimTex_[A-Za-z0-9_]*"))
+                throw new InvalidOperationException("The _WhimTex_ prefix is reserved for generated shader data.");
             return "Shader \"Hidden/TextureCompositor/ShaderFX/" + effect.ShaderKey + "\"\n{\n" +
                 "Properties {\n_MainTex (\"Input\", 2D) = \"white\" {}\n" + properties + "}\n" +
                 "SubShader { Cull Off ZWrite Off ZTest Always Blend Off\nPass {\nCGPROGRAM\n" +
@@ -143,7 +186,7 @@ namespace DCFApixels.SpriteEditor
 
         private static string LineDirective(int number, string path) => $"#line {number} \"{path.Replace('\\', '/')}\"\n";
 
-        private static string MaskComments(string line, ref bool blockComment)
+        internal static string MaskComments(string line, ref bool blockComment)
         {
             StringBuilder clean = new StringBuilder(line.Length);
             bool quoted = false;

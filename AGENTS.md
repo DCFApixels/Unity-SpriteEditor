@@ -5,6 +5,11 @@ WhimTex is the public product name. The package ID `com.dcfa_pixels.sprite-edito
 are compatibility contracts, not branding to rename. The canonical repository is
 `DCFApixels/WhimTex`; documentation is hosted at `https://dcfapixels.github.io/WhimTex/`.
 
+## Versioning
+
+Do not increment the package version when committing or pushing updates unless the user
+explicitly requests a version change. Keep the current version otherwise.
+
 When adding or updating third-party code or libraries, acknowledge the project and link its
 upstream source in both READMEs. Preserve original copyright headers, include the applicable
 license text and notices, and record the source version in `ThirdPartyNotices.md`.

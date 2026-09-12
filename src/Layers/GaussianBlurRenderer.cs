@@ -1,27 +1,19 @@
 using System;
 using UnityEngine;
+using static DCFApixels.SpriteEditor.BlurLayer;
 
 namespace DCFApixels.SpriteEditor
 {
-    [Serializable]
-    public sealed class GaussianBlurLayer : TargetedLayerEffect
+    internal static class GaussianBlurRenderer
     {
-        public enum EdgeMode { Transparent, Clamp, Repeat, Mirror }
-        public const float MaximumRadius = 256f;
-        public const float MaximumStrength = 4f;
-        public float strength = 1f;
-        public float radius = 8f;
-        public EdgeMode edges;
-
-        public override string ToString() => "Gaussian Blur";
-        internal override bool RequiresColorInput => true;
-
-        internal override RenderTexture Render(in LayerRenderContext context)
+        internal static RenderTexture RenderBlur(BlurLayer layer, in LayerRenderContext context)
         {
             if (context.input == null) return null;
+            float strength = layer.strength, radius = layer.radius;
+            EdgeMode edges = layer.edges;
             float amount = float.IsNaN(strength) || float.IsInfinity(strength) ? 1f : Mathf.Clamp(strength, 0f, MaximumStrength);
             float pixels = Mathf.Clamp(float.IsNaN(radius) ? 0f : radius, 0f, MaximumRadius) / context.scaleMultiplier;
-            if (amount == 0f || pixels <= .0001f) return ApplyTransformAndModifiers(context.input, context);
+            if (amount == 0f || pixels <= .0001f) return layer.ApplyTransformAndModifiers(context.input, context);
             Material material = SpriteEditorMaterials.GaussianBlur;
             if (material == null) throw new InvalidOperationException("Gaussian Blur shader is unavailable.");
             RenderTexture current = null, scratch = null, straight = null;
@@ -61,7 +53,7 @@ namespace DCFApixels.SpriteEditor
                 material.SetFloat("_Strength", amount);
                 material.SetTexture("_SourceTex", amount < 1f ? context.input : null);
                 Graphics.Blit(current, straight, material, 3);
-                return ApplyTransformAndModifiers(straight, context);
+                return layer.ApplyTransformAndModifiers(straight, context);
             }
             finally
             {

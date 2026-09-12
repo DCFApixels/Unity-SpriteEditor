@@ -44,6 +44,16 @@ namespace DCFApixels.SpriteEditor
             }
 
             Choice(root, "Noise Type", () => layer.noiseType, value => layer.noiseType = value);
+            var dimensions = SpriteEditorUI.ConfigureField(new PopupField<string>("Dimensions",
+                new System.Collections.Generic.List<string> { "2D", "1D" }, layer.dimensions == NoiseLayer.NoiseDimensions.OneD ? 1 : 0));
+            bindings.Track(dimensions, () => layer.dimensions == NoiseLayer.NoiseDimensions.OneD ? "1D" : "2D");
+            dimensions.RegisterValueChangedCallback(evt => applyChange("Change Noise Dimensions",
+                () => layer.dimensions = evt.newValue == "1D" ? NoiseLayer.NoiseDimensions.OneD : NoiseLayer.NoiseDimensions.TwoD));
+            root.Add(dimensions);
+            var axis = new VisualElement();
+            axis.tooltip = "Direction of variation. 0: vertical stripes; 90: horizontal stripes. Positive angles turn counterclockwise.";
+            Slider(axis, "Direction (deg)", () => layer.direction, value => layer.direction = value, -180f, 180f);
+            root.Add(axis);
             var seed = SpriteEditorUI.ConfigureField(new IntegerField("Seed"));
             bindings.Track(seed, () => layer.seed);
             seed.RegisterValueChangedCallback(evt => applyChange("Change Noise Seed", () => layer.seed = evt.newValue));
@@ -90,6 +100,7 @@ namespace DCFApixels.SpriteEditor
 
             bindings.Add(() =>
             {
+                axis.EnableInClassList("sprite-editor-hidden", layer.dimensions != NoiseLayer.NoiseDimensions.OneD);
                 cellular.EnableInClassList("sprite-editor-hidden", layer.noiseType != NoiseLayer.NoiseType.Cellular);
                 fractal.EnableInClassList("sprite-editor-hidden", layer.fractal == NoiseLayer.FractalType.None);
                 pingPong.EnableInClassList("sprite-editor-hidden", layer.fractal != NoiseLayer.FractalType.PingPong);

@@ -17,13 +17,54 @@ You can use an existing effect and adjust its parameters without writing code.
 ## Apply an existing effect
 
 1. Select the layer you want to change.
-2. Use **+ Reference** in its FX section and choose an effect asset.
+2. Use **+ Preset ▾** in its FX section and choose an effect by category.
 3. Adjust the effect's exposed sliders, colors or textures.
-4. If you want a separate copy stored with this document, choose **Embed**.
+4. HLSL effects follow their source file. Choose **Embed Copy** if you want to edit their code independently inside the document.
 
-A referenced effect is shared with other places that use it.
-An embedded copy can be edited independently.
+Each catalog effect has its own settings. The included **Color → Gain** adjusts brightness and tint;
+**Transform → UV Transform** repositions the incoming image.
+Effects added to the project become available automatically; no preset folder setup is needed.
+
+**+ Reference** is still available for choosing an asset manually. Its settings are shared with other
+places using that asset; **Embed** makes an independent copy.
 When several effects are present, their order matters.
+
+## Adjust an effect on the canvas
+
+Effects with a Transform 2D parameter offer **Edit on Canvas**. Select it to show a green frame,
+then move, resize or rotate the frame. Rotation is around its center; there is no pivot control.
+Click the button again or switch tools to leave this mode. Escape cancels the current drag.
+
+The frame edits the effect, not the layer transform. Its purpose depends on the effect:
+it may place an image, change a pattern's scale, or define a local area. It is not automatically a mask.
+
+## Distortion presets
+
+Choose **FX → + Preset → Distortion → Spherize** or **Twirl**.
+
+- **Spherize / Strength:** positive values expand the center; negative values pinch it. Zero leaves the image unchanged.
+- **Twirl / Angle:** twists around the center; the sign reverses direction. The angle is measured in degrees at the frame's local radius 1 and grows with distance.
+- **Area / Edit on Canvas:** move, resize or rotate the green coordinate frame. Stretch it to make the distortion elliptical.
+
+These effects do not mask or fade at the frame's edge. They continue outside it, including beyond
+local coordinates 0–1. Strong settings can sample outside the input image; those samples use the
+input texture's edge addressing. RGB and alpha are sampled together.
+
+### Polar coordinates
+
+**Distortion → Polar Coordinates** contains two effects:
+
+- **To Polar** wraps a strip into a circle: horizontal runs around the center, vertical runs outward.
+- **From Polar** unwraps a circle into a strip: left to right covers one full turn, bottom to top covers distance from the center.
+
+**Area / Edit on Canvas** positions and shapes the circle: the output circle for To Polar, or the source circle for From Polar.
+**Angle Offset** shifts the start of the turn in degrees; zero starts to the right of the center and runs counterclockwise.
+**Radial Offset** shifts the starting radius: positive values move the pattern outward in To Polar,
+or start sampling farther from the center in From Polar. One unit reaches from the center to the frame edge along its axes.
+
+Radius continues beyond the frame without a fade. Match the left and right edges of the source strip
+to avoid a visible seam around the circle. The entire strip width converges at the center,
+so unwrapping cannot recover details lost at that point.
 
 ## Affect one layer or the image below?
 

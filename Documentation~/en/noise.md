@@ -30,6 +30,14 @@ For finer control, **Lacunarity** changes the spacing between detail scales and 
 changes how strongly the smaller details show.
 With Cellular, try **Distance**, **Return** and **Jitter** to change the shape and regularity of the cells.
 
+## Striped noise
+
+Choose **Dimensions → 1D** to create straight noise stripes instead of a two-dimensional pattern.
+**Direction (deg)** rotates the direction of variation: 0 gives vertical stripes, 90 gives horizontal stripes.
+Scale controls their width. Offset X moves through the pattern; Offset Y chooses a different slice of noise.
+Seed, Noise Type, Fractal and Domain Warp remain available; Warp changes the variation but keeps the stripes straight.
+Switch back to **2D** for the usual pattern without losing the direction setting.
+
 ## Color texture or height map?
 
 Choose **Encoding → Color Values** when using the noise as a visible grayscale image.

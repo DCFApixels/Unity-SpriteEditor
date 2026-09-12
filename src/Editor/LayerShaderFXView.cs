@@ -25,6 +25,7 @@ namespace DCFApixels.SpriteEditor
             VisualElement toolbar = new VisualElement();
             toolbar.AddToClassList("sprite-editor-layer-fx-toolbar");
             toolbar.Add(new Button(() => Change("Add Shader FX", () => owner.AddEmbeddedShaderFX(layer))) { text = "+ Shader FX" });
+            toolbar.Add(new Button(() => ShaderFXCatalog.ShowMenu(entry => Change("Add Catalog FX", () => owner.AddCatalogShaderFX(layer, entry)))) { text = "+ Preset ▾", tooltip = "Effects discovered in project HLSL files and standalone Shader FX assets." });
             toolbar.Add(new Button(() => Change("Add FX Reference", () => layer.modifiers.Add(null))) { text = "+ Reference" });
             Add(toolbar);
             Add(entries);
@@ -56,7 +57,7 @@ namespace DCFApixels.SpriteEditor
             bool embedded = effect != null && effect.EmbeddedOwner == owner;
             if (embedded)
             {
-                Label name = new Label($"{index + 1}. Shader FX");
+                Label name = new Label($"{index + 1}. {effect.name}");
                 name.AddToClassList("sprite-editor-layer-fx-name");
                 toolbar.Add(name);
             }

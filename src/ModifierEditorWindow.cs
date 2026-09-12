@@ -141,6 +141,12 @@ namespace DCFApixels.SpriteEditor
             buttons.style.marginTop = 6f;
             buttons.Add(SpriteEditorUI.CreateButton("Add", AddModifier, 64f));
             buttons.Add(SpriteEditorUI.CreateButton("New Shader FX", CreateShaderFX));
+            buttons.Add(SpriteEditorUI.CreateButton("Preset ▾", () => ShaderFXCatalog.ShowMenu(entry =>
+            {
+                if (!ResolveLayer()) return;
+                ApplyChange("Add Catalog FX", () => compositor.AddCatalogShaderFX(layer, entry));
+                RefreshModifierItems();
+            })));
             buttons.Add(SpriteEditorUI.CreateButton("Edit", EditSelectedModifier));
             buttons.Add(SpriteEditorUI.CreateButton("Remove", RemoveSelectedModifier, 72f));
             buttons.Add(SpriteEditorUI.CreateButton("Close", Close, 64f));

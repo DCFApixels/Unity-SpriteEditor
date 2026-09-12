@@ -167,13 +167,13 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `motionBlur`, `makeSeamless`, `shaderProcessor`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `blur`, `makeSeamless`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
 - `move`: `index` is the insertion index **after removal** from the old container; omitted parent
   or `parent:""` moves to root. A group cannot move into itself or its descendants.
-- `target`: effect layers (SDF/Outline/Normal Map/Gaussian Blur/Motion Blur); default input Specific. Previous means the next sibling below the effect.
+- `target`: effect layers (SDF/Outline/Normal Map/Blur/Make Seamless); default input Specific. Previous means the next sibling below the effect.
   Specific targets can be groups, but cannot create a dependency cycle.
 - `stroke`: Drawing only, detailed below.
 
@@ -191,8 +191,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
 | Noise | `noise`: partial procedural settings object described below |
-| Gaussian Blur | `gaussianBlur`: `{ "strength": 1, "radius": 8, "edges": "Transparent" }`; strength 0–4, radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
-| Motion Blur | `motionBlur`: `{ "mode": "Linear", "strength": 1, "distance": 16, "angle": 0, "arc": 15, "center": [0.5, 0.5], "direction": "Centered", "edges": "Transparent" }`; [parameters](#motion-blur-settings) |
+| Blur | `blur`: partial settings object; `mode`: Gaussian (default), Linear or Circular; [Gaussian](#gaussian-blur-settings), [motion](#motion-blur-settings) |
 | Make Seamless | `makeSeamless`: `{ "horizontal": "LeftToRight", "vertical": "BottomToTop", "blendWidth": 0.2, "falloff": 1 }`; [parameters](#make-seamless-settings) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
@@ -263,7 +262,7 @@ Post FX is window-local presentation state and never changes API rendering, samp
 
 Use `type:"noise"` with partial `settings.noise` updates. `describe` exposes `noiseDefaults`,
 `noiseTypes`, `noiseFractals`, `noiseCellularDistances`, `noiseCellularReturns`, `noiseWarps`
-and `noiseEncodings`. `inspect` returns all generator parameters. No new operation or protocol version is required.
+and `noiseEncodings`, `noiseDimensions`. `inspect` returns all generator parameters. No new operation or protocol version is required.
 
 ```json
 {"op":"add","type":"noise","as":"height","settings":{"noise":{
@@ -275,6 +274,8 @@ and `noiseEncodings`. `inspect` returns all generator parameters. No new operati
 | Setting | Values / limits |
 | :--- | :--- |
 | `noiseType` | OpenSimplex2, OpenSimplex2S, Cellular, Perlin, ValueCubic, Value |
+| `dimensions` | TwoD (default), OneD (straight stripes, a 2D noise slice) |
+| `direction` | −180–180 degrees, default 0; OneD only; 0 varies horizontally (vertical stripes), 90 varies vertically |
 | `seed` | Signed 32-bit integer; passed to the shader as an integer, not a float |
 | `scale` | 0.01–1000 noise-space units across the shorter canvas side |
 | `offset` | `[x,y]`, each −10000–10000 noise-space units |
@@ -292,6 +293,8 @@ RGB repeats the normalized scalar; alpha is 1. Output is remapped from signed no
 For masks/channel packing, prefer LinearData and apply the existing Swizzle/blend settings.
 For a Normal Map or SDF source, add the effect above Noise and assign `Previous` or a specific target as usual.
 Domain Warp uses a single warp pass; noise fractal settings affect the subsequent noise evaluation.
+OneD projects aspect-correct centered coordinates onto the direction axis before offset and warp.
+Offset X moves along the slice and Y selects the slice. Thus warp and fractals preserve stripe invariance.
 Generation runs on GPU at the requested resolution; it is not time-animated or automatically seamless.
 Seed and normalized coordinates are stable across preview/export sizes, but different GPUs may produce small
 floating-point differences. Saving stores the procedural parameters through existing document serialization;
@@ -304,12 +307,15 @@ premultiplied linear RGBA. Above 1, RGB stays unchanged and alpha becomes `a*s/(
 `a` clamped to 0–1. This matches Motion Blur: denser translucent coverage, not a larger radius or RGB gain.
 Radius zero remains an identity operation at every strength. Transform and FX still apply after bypass.
 
-Use `type:"gaussianBlur"` and partial `settings.gaussianBlur` updates. `describe` exposes
-`gaussianBlurDefaults`; `inspect` returns all three parameters. Protocol version remains 1.
+Use `type:"blur"` and partial `settings.blur` updates, with `mode:"Gaussian"` (default).
+`describe` exposes `blurDefaults`, `blurModes`, `blurDirections` and `blurEdges`;
+`inspect` returns settings for all modes, including inactive ones.
+The former `gaussianBlur`/`motionBlur` API types and serialized layer classes are removed without migration.
+Recreate old blur layers with the new type; request envelope version remains 1.
 
 ```json
-{"op":"add","type":"gaussianBlur","as":"blur","settings":{
-  "colorRange":"HDR","gaussianBlur":{"radius":32,"edges":"Repeat"}
+{"op":"add","type":"blur","as":"blur","settings":{
+  "colorRange":"HDR","blur":{"mode":"Gaussian","radius":32,"edges":"Repeat"}
 }}
 ```
 
@@ -324,13 +330,13 @@ See [Gaussian Blur](GaussianBlur.md) for transparency, HDR and cache behavior.
 
 ### Motion Blur settings
 
-Use `type:"motionBlur"` and partial `settings.motionBlur` updates. `describe` exposes
-`motionBlurDefaults`, `motionBlurModes`, `motionBlurDirections` and `motionBlurEdges`;
-`inspect` returns every setting. Protocol version remains 1.
+Use the same `type:"blur"` and partial `settings.blur` updates with `mode:"Linear"` or `"Circular"`.
+All modes share strength, edges and target; changing mode preserves radius, distance, angle, arc, center and direction.
 
 | Field | Values / meaning |
 | --- | --- |
-| `mode` | `Linear` (default) or `Circular` |
+| `mode` | `Gaussian` (default), `Linear`, `Circular` |
+| `radius` | 0–256 canvas pixels; default 8; Gaussian only |
 | `strength` | 0–4, default 1 (UI 0–400%); below 1 mixes with the original; above 1 increases translucent trail density without changing RGB brightness or length; fully opaque pixels stay unchanged |
 | `distance` | 0–512 original canvas pixels; default 16; used by Linear |
 | `angle` | −180–180 degrees; default 0; 0 points right, positive turns counterclockwise; Linear |
@@ -340,8 +346,8 @@ Use `type:"motionBlur"` and partial `settings.motionBlur` updates. `describe` ex
 | `edges` | `Transparent` (default), `Clamp`, `Repeat`, `Mirror` |
 
 ```json
-{"op":"add","type":"motionBlur","as":"motion","settings":{
-  "colorRange":"HDR","motionBlur":{"mode":"Circular","arc":25,"center":[0.4,0.6],"direction":"Centered","edges":"Transparent"}
+{"op":"add","type":"blur","as":"motion","settings":{
+  "colorRange":"HDR","blur":{"mode":"Circular","arc":25,"center":[0.4,0.6],"direction":"Centered","edges":"Transparent"}
 }}
 ```
 

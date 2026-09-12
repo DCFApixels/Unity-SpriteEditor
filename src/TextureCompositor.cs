@@ -89,6 +89,16 @@ namespace DCFApixels.SpriteEditor
             layer.modifiers[index] = copy;
         }
 
+        internal void AddCatalogShaderFX(Layer layer, ShaderFXCatalog.Entry entry)
+        {
+            ShaderFX effect;
+            try { effect = ShaderFX.FromCatalog(this, entry); }
+            catch (Exception error) { Debug.LogError("WhimTex FX: " + error.Message); return; }
+            Undo.RecordObject(this, "Add Catalog FX");
+            AdoptAgentShaderFX(effect, "Add Catalog FX");
+            layer.modifiers.Add(effect);
+        }
+
         internal void PersistEmbeddedShaderFX()
         {
             foreach (ShaderFX effect in embeddedShaderFX)

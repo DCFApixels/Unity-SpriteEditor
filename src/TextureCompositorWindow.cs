@@ -694,8 +694,7 @@ namespace DCFApixels.SpriteEditor
             menu.AddItem(new GUIContent("Outline"), false, () => AddLayer(container, insertionIndex, new OutlineLayer()));
             menu.AddItem(new GUIContent("SDF"), false, () => AddLayer(container, insertionIndex, new SDFLayer()));
             menu.AddItem(new GUIContent("Normal Map"), false, () => AddLayer(container, insertionIndex, new NormalMapLayer()));
-            menu.AddItem(new GUIContent("Gaussian Blur"), false, () => AddLayer(container, insertionIndex, new GaussianBlurLayer()));
-            menu.AddItem(new GUIContent("Motion Blur"), false, () => AddLayer(container, insertionIndex, new MotionBlurLayer()));
+            menu.AddItem(new GUIContent("Blur"), false, () => AddLayer(container, insertionIndex, new BlurLayer()));
             menu.AddItem(new GUIContent("Make Seamless"), false, () => AddLayer(container, insertionIndex, new MakeSeamlessLayer()));
             menu.AddItem(new GUIContent("Shader Processor"), false, () => AddLayer(container, insertionIndex, new ShaderProcessorLayer()));
             menu.AddSeparator(string.Empty);
@@ -830,8 +829,7 @@ namespace DCFApixels.SpriteEditor
                 menu.AddItem(new GUIContent("Add Inside/Outline Layer"), false, () => AddInsideContextGroups(targets, () => new OutlineLayer()));
                 menu.AddItem(new GUIContent("Add Inside/SDF Layer"), false, () => AddInsideContextGroups(targets, () => new SDFLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Normal Map Layer"), false, () => AddInsideContextGroups(targets, () => new NormalMapLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Gaussian Blur Layer"), false, () => AddInsideContextGroups(targets, () => new GaussianBlurLayer()));
-                menu.AddItem(new GUIContent("Add Inside/Motion Blur"), false, () => AddInsideContextGroups(targets, () => new MotionBlurLayer()));
+                menu.AddItem(new GUIContent("Add Inside/Blur"), false, () => AddInsideContextGroups(targets, () => new BlurLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Make Seamless"), false, () => AddInsideContextGroups(targets, () => new MakeSeamlessLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Shader Processor"), false, () => AddInsideContextGroups(targets, () => new ShaderProcessorLayer()));
                 menu.AddItem(new GUIContent("Add Inside/Group"), false, () => AddInsideContextGroups(targets, () => new GroupLayer()));
@@ -978,11 +976,8 @@ namespace DCFApixels.SpriteEditor
                 case NormalMapLayer normalMap:
                     NormalMapLayerEditorWindow.Open(normalMap, compositor);
                     break;
-                case GaussianBlurLayer gaussian:
-                    GaussianBlurLayerEditorWindow.Open(gaussian, compositor);
-                    break;
-                case MotionBlurLayer motion:
-                    MotionBlurLayerEditorWindow.Open(motion, compositor);
+                case BlurLayer blur:
+                    BlurLayerEditorWindow.Open(blur, compositor);
                     break;
                 case MakeSeamlessLayer seamless:
                     MakeSeamlessLayerEditorWindow.Open(seamless, compositor);

@@ -1,43 +1,30 @@
 using System;
 using UnityEngine;
+using static DCFApixels.SpriteEditor.BlurLayer;
 
 namespace DCFApixels.SpriteEditor
 {
-    [Serializable]
-    public sealed class MotionBlurLayer : TargetedLayerEffect
+    internal static class MotionBlurRenderer
     {
-        public enum BlurMode { Linear, Circular }
-        public enum MotionDirection { Centered, Forward, Backward }
-        public enum EdgeMode { Transparent, Clamp, Repeat, Mirror }
-        public const float MaximumDistance = 512f;
-        public const float MaximumStrength = 4f;
         internal const int FullSampleLimit = 1024;
         internal const int InteractiveSampleLimit = 32;
-
-        public BlurMode mode;
-        public MotionDirection direction;
-        public float strength = 1f;
-        public float distance = 16f;
-        public float angle;
-        public float arc = 15f;
-        public Vector2 center = new Vector2(.5f, .5f);
-        public EdgeMode edges;
-
-        public override string ToString() => "Motion Blur";
-        internal override bool RequiresColorInput => true;
 
         internal static float Limit(float value, float min, float max, float fallback = 0f) =>
             float.IsNaN(value) || float.IsInfinity(value) ? fallback : Mathf.Clamp(value, min, max);
 
-        internal override RenderTexture Render(in LayerRenderContext context)
+        internal static RenderTexture RenderBlur(BlurLayer layer, in LayerRenderContext context)
         {
             if (context.input == null) return null;
+            float strength = layer.strength, distance = layer.distance, angle = layer.angle, arc = layer.arc;
+            Vector2 center = layer.center;
+            MotionDirection direction = layer.direction;
+            EdgeMode edges = layer.edges;
             float amount = Limit(strength, 0f, MaximumStrength, 1f);
-            bool circular = mode == BlurMode.Circular;
+            bool circular = layer.mode == BlurType.Circular;
             float pixels = Limit(distance, 0f, MaximumDistance) / context.scaleMultiplier;
             float radians = Limit(arc, 0f, 360f) * Mathf.Deg2Rad;
             if (amount == 0f || (circular ? radians : pixels) <= .0001f)
-                return ApplyTransformAndModifiers(context.input, context);
+                return layer.ApplyTransformAndModifiers(context.input, context);
 
             Material material = SpriteEditorMaterials.MotionBlur;
             if (material == null) throw new InvalidOperationException("Motion Blur shader is unavailable.");
@@ -87,7 +74,7 @@ namespace DCFApixels.SpriteEditor
                 Graphics.Blit(blurred, straight, material, 4);
                 RenderTexture.ReleaseTemporary(blurred);
                 blurred = null;
-                return ApplyTransformAndModifiers(straight, context);
+                return layer.ApplyTransformAndModifiers(straight, context);
             }
             finally
             {

@@ -121,6 +121,7 @@ namespace DCFApixels.SpriteEditor
                 created.Add(fx);
                 try { fx.ApplyAgentDraft(); }
                 catch (Exception error) { throw new SpriteEditorApiException("shader_compile_failed", error.Message); }
+                Require(fx.Parameters.Count <= 32, "At most 32 FX parameters are supported by live authoring.", "resource_limit");
                 if (op == "add") layer.modifiers.Insert(index, fx);
                 else layer.modifiers[index] = fx;
                 Require(layer.modifiers.Count <= 32, "At most 32 FX entries per layer are supported by live authoring.", "resource_limit");
@@ -155,6 +156,23 @@ namespace DCFApixels.SpriteEditor
                         Require(value.textureValue != null, "Texture parameter asset not found.");
                         Require(!string.Equals(path, AssetDatabase.GetAssetPath(owner), StringComparison.OrdinalIgnoreCase), "An FX cannot sample its own document output.", "invalid_target");
                         break;
+                    case ShaderFXParameterType.Transform2D:
+                        JObject area = Obj(spec["value"], "Transform2D value");
+                        Keys(area, "position", "size", "rotation");
+                        foreach (string field in new[] { "position", "size" })
+                        {
+                            if (area[field] == null) continue;
+                            Require(area[field] is JArray pair && pair.Count == 2, field + " must have two components.");
+                            var v = new Vector2(Number(area[field][0], field + ".x", -1000000, 1000000), Number(area[field][1], field + ".y", -1000000, 1000000));
+                            if (field == "position") value.transformValue.position = v;
+                            else
+                            {
+                                Require(Mathf.Abs(v.x) >= 0.00001f && Mathf.Abs(v.y) >= 0.00001f, "Transform2D size cannot be zero.");
+                                value.transformValue.size = v;
+                            }
+                        }
+                        if (area["rotation"] != null) value.transformValue.rotation = Number(area["rotation"], "rotation", -1000000, 1000000);
+                        break;
                 }
                 result.Add(value);
             }
@@ -179,12 +197,18 @@ namespace DCFApixels.SpriteEditor
                     foreach (var p in fx.Parameters)
                     {
                         if (p == null) continue;
-                        JToken value = p.type == ShaderFXParameterType.Color ? (JToken)Json(p.colorValue) :
+                        JToken value = p.type == ShaderFXParameterType.Transform2D ? new JObject {
+                            ["position"] = new JArray(p.transformValue.position.x, p.transformValue.position.y),
+                            ["size"] = new JArray(p.transformValue.size.x, p.transformValue.size.y), ["rotation"] = p.transformValue.rotation } :
+                            p.type == ShaderFXParameterType.Color ? (JToken)Json(p.colorValue) :
                             p.type == ShaderFXParameterType.Vector ? new JArray(p.vectorValue.x, p.vectorValue.y, p.vectorValue.z, p.vectorValue.w) :
                             p.type == ShaderFXParameterType.Texture2D ? new JValue(p.textureValue == null ? "" : AssetDatabase.GetAssetPath(p.textureValue)) : new JValue(p.floatValue);
-                        parameters.Add(new JObject { ["name"] = p.name, ["type"] = p.type.ToString(), ["value"] = value });
+                        parameters.Add(new JObject { ["name"] = p.name, ["id"] = p.id, ["type"] = p.type.ToString(), ["value"] = value,
+                            ["minimum"] = p.hasMinimum ? (JToken)new JValue(p.minimum) : JValue.CreateNull(),
+                            ["maximum"] = p.hasMaximum ? (JToken)new JValue(p.maximum) : JValue.CreateNull() });
                     }
                     entry["parameters"] = parameters;
+                    entry["catalogPath"] = fx.CatalogPath;
                 }
                 else entry["type"] = modifier is Material ? "material" : "empty";
                 result.Add(entry);

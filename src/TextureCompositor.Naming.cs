@@ -33,8 +33,7 @@ namespace DCFApixels.SpriteEditor
                 case OutlineLayer _: return "Outline";
                 case SDFLayer _: return "SDF";
                 case NormalMapLayer _: return "Normal Map";
-                case GaussianBlurLayer _: return "Gaussian Blur";
-                case MotionBlurLayer _: return "Motion Blur";
+                case BlurLayer _: return "Blur";
                 case MakeSeamlessLayer _: return "Make Seamless";
                 case ShaderProcessorLayer _: return "Shader Processor";
                 default: return ObjectNames.NicifyVariableName(layer.GetType().Name);

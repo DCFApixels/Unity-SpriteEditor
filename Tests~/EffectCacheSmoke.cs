@@ -15,7 +15,7 @@ var file=new DCFApixels.SpriteEditor.FileLayer { sourceTexture=texture,colorRang
 var group=new DCFApixels.SpriteEditor.GroupLayer { opacity=.7f,enabled=false,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
 group.layers.Add(file);
 var outline=new DCFApixels.SpriteEditor.OutlineLayer();
-var gaussian=new DCFApixels.SpriteEditor.GaussianBlurLayer { radius=40,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
+var gaussian=new DCFApixels.SpriteEditor.BlurLayer { radius=40,colorRange=DCFApixels.SpriteEditor.LayerColorRange.HDR };
 document.layers.Add(outline);document.layers.Add(group);
 void Normalize()=>compositorType.GetMethod("NormalizeModel",flags).Invoke(document,null);
 Normalize();
@@ -57,11 +57,11 @@ try
     var normal=new DCFApixels.SpriteEditor.NormalMapLayer {inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
     document.layers.Insert(0,normal);Normalize();Same(Fresh(),Render(),.003f,"Normal Map shares color source");
     document.layers.Remove(normal);
-    var motion=new DCFApixels.SpriteEditor.MotionBlurLayer {distance=8,inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
+    var motion=new DCFApixels.SpriteEditor.BlurLayer {mode=DCFApixels.SpriteEditor.BlurType.Linear,distance=8,inputMode=DCFApixels.SpriteEditor.EffectInputMode.Specific,TargetLayerId=group.Id};
     document.layers.Insert(0,motion);Normalize();
     Same(Fresh(),Render(),.003f,"Motion Blur shares isolated RGBA source");
     hits=Hits();Render();Check(Hits()>hits,"Motion Blur cache hit");
-    motion.mode=DCFApixels.SpriteEditor.MotionBlurLayer.BlurMode.Circular;motion.arc=45;
+    motion.mode=DCFApixels.SpriteEditor.BlurType.Circular;motion.arc=45;
     Same(Fresh(),Render(),.003f,"Motion Blur mode invalidation");
     motion.center=new UnityEngine.Vector2(.2f,.8f);
     Same(Fresh(),Render(),.003f,"Motion Blur center invalidation");

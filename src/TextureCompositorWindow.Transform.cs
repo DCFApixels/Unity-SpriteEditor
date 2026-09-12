@@ -10,9 +10,52 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private double nextTransformPreviewAt;
         private VisualElement previewTransformOverlay;
         private PreviewTransformManipulator previewTransformManipulator;
+        [NonSerialized] private ShaderFX previewTransformFX;
+        [NonSerialized] private string previewTransformParameterId;
+
+        private ShaderFXParameter PreviewFXParameter
+        {
+            get
+            {
+                if (previewTransformFX == null || compositor == null || GetSelectedLayer() is not Layer selected ||
+                    !selected.modifiers.Contains(previewTransformFX) || SpriteEditorApi.IsLayerContentLocked(compositor, selected) ||
+                    SpriteEditorApi.IsShaderFXContentLocked(previewTransformFX)) return null;
+                foreach (var p in previewTransformFX.Parameters)
+                    if (p != null && p.id == previewTransformParameterId && p.type == ShaderFXParameterType.Transform2D) return p;
+                return null;
+            }
+        }
+
+        private TextureTransform CurrentPreviewTransform => PreviewFXParameter is ShaderFXParameter p
+            ? p.transformValue.ToLayerTransform(new Vector2(compositor.width, compositor.height)) : GetSelectedLayer().transform;
+
+        internal static void EditFXTransform(ShaderFX effect, string parameterId)
+        {
+            if (effect == null || SpriteEditorApi.IsShaderFXContentLocked(effect)) return;
+            bool found = false;
+            foreach (var p in effect.Parameters)
+                found |= p != null && p.id == parameterId && p.type == ShaderFXParameterType.Transform2D;
+            if (!found) return;
+            TextureCompositorWindow best = null;
+            foreach (var window in Resources.FindObjectsOfTypeAll<TextureCompositorWindow>())
+                if (window.compositor != null && window.GetSelectedLayer() is Layer selected && selected.modifiers.Contains(effect) &&
+                    !SpriteEditorApi.IsLayerContentLocked(window.compositor, selected) &&
+                    (best == null || window == focusedWindow || best != focusedWindow && window.AgentFocusOrder > best.AgentFocusOrder)) best = window;
+            if (best == null) { EditorUtility.DisplayDialog("FX Transform", "Select a layer using this FX in a WhimTex window first.", "OK"); return; }
+            bool toggleOff = best.previewTransformFX == effect && best.previewTransformParameterId == parameterId;
+            best.SetPreviewTool(toggleOff ? best.previewTransformReturnTool : PreviewTool.Transform);
+            if (!toggleOff)
+            {
+                best.previewTransformFX = effect;
+                best.previewTransformParameterId = parameterId;
+            }
+            best.RefreshToolkitInterface();
+            best.Focus();
+        }
 
         private bool IsPreviewTransformEnabled => previewTool == PreviewTool.Transform &&
-            GetSelectedLayer() is Layer layer && !layer.IsGroup && !SpriteEditorApi.ContainsReservation(layer);
+            GetSelectedLayer() is Layer layer && (!layer.IsGroup || PreviewFXParameter != null) &&
+            !SpriteEditorApi.IsLayerContentLocked(compositor, layer) && !SpriteEditorApi.ContainsReservation(layer);
 
         private void BuildPreviewTransformTool()
         {
@@ -29,6 +72,7 @@ namespace DCFApixels.SpriteEditor
         {
             VisualElement row = SpriteEditorUI.CreateToolbar();
             row.AddToClassList("sprite-editor-transform-settings");
+            toolkitHeaderBindings.Add(() => row.SetEnabled(PreviewFXParameter == null));
             VisualElement tilingGroup = SpriteEditorUI.CreateRow();
             tilingGroup.AddToClassList("sprite-editor-transform-option");
             tilingGroup.Add(CreateCompactLabel("Tiling", 38f));
@@ -108,6 +152,8 @@ namespace DCFApixels.SpriteEditor
             CancelPreviewZoomGesture();
             FinishPreviewTransform();
             FinishPaintingStroke();
+            previewTransformFX = null;
+            previewTransformParameterId = null;
             if (tool == PreviewTool.Transform && previewTool != PreviewTool.Transform)
             {
                 previewTransformReturnTool = previewTool;
@@ -203,6 +249,8 @@ namespace DCFApixels.SpriteEditor
             private int handle;
             private int undoGroup = -1;
             private Rect gestureImageRect;
+            private ShaderFX gestureFX;
+            private ShaderFXParameter gestureParameter;
 
             public bool IsDragging => pointerId >= 0;
 
@@ -234,9 +282,15 @@ namespace DCFApixels.SpriteEditor
             public void ValidateSelection()
             {
                 if (IsDragging && (!owner.IsPreviewTransformEnabled ||
+                    !ReferenceEquals(gestureParameter, owner.PreviewFXParameter) ||
                     !ReferenceEquals(layer, owner.GetSelectedLayer()) ||
                     size != new Vector2(owner.compositor.width, owner.compositor.height)))
                     End(false, true);
+                if (owner.previewTransformFX != null && owner.PreviewFXParameter == null)
+                {
+                    owner.previewTransformFX = null;
+                    owner.previewTransformParameterId = null;
+                }
             }
 
             private static Vector2 Rotate(Vector2 point, float degrees)
@@ -272,10 +326,10 @@ namespace DCFApixels.SpriteEditor
                 return top + direction.normalized * 24f;
             }
 
-            private static int HitTest(Vector2 point, TextureTransform transform, Rect imageRect, Vector2 dimensions)
+            private static int HitTest(Vector2 point, TextureTransform transform, Rect imageRect, Vector2 dimensions, bool showPivot = true)
             {
                 Vector2 pivot = ToPreview(Vector2.Scale(transform.pivot, dimensions) + transform.position, imageRect, dimensions);
-                if ((point - pivot).sqrMagnitude <= 81f)
+                if (showPivot && (point - pivot).sqrMagnitude <= 81f)
                     return CanMovePivot(transform) ? PivotHandle : -1;
                 if ((point - RotationHandle(transform, imageRect, dimensions)).sqrMagnitude <= 81f)
                     return RotateHandle;
@@ -304,8 +358,8 @@ namespace DCFApixels.SpriteEditor
                 if (!owner.IsPreviewTransformEnabled || (alt && !IsDragging)) return MouseCursor.Pan;
                 Rect rect = owner.toolkitPreviewCanvas.ImageRect;
                 if (rect.width <= 0f || rect.height <= 0f) return MouseCursor.Pan;
-                int hit = IsDragging ? handle : HitTest(point, owner.GetSelectedLayer().transform, rect,
-                    new Vector2(owner.compositor.width, owner.compositor.height));
+                int hit = IsDragging ? handle : HitTest(point, owner.CurrentPreviewTransform, rect,
+                    new Vector2(owner.compositor.width, owner.compositor.height), owner.PreviewFXParameter == null);
                 if (hit == RotateHandle) return MouseCursor.RotateArrow;
                 if (hit == PivotHandle) return MouseCursor.MoveArrow;
                 return hit >= 0 && hit < Handles.Length ? MouseCursor.ScaleArrow : MouseCursor.Pan;
@@ -320,13 +374,15 @@ namespace DCFApixels.SpriteEditor
                     return;
                 Layer selected = owner.GetSelectedLayer();
                 Vector2 dimensions = new Vector2(owner.compositor.width, owner.compositor.height);
-                int hit = HitTest(evt.localPosition, selected.transform, rect, dimensions);
+                int hit = HitTest(evt.localPosition, owner.CurrentPreviewTransform, rect, dimensions, owner.PreviewFXParameter == null);
                 if (hit < 0)
                     return;
                 owner.Focus();
                 target.Focus();
                 layer = selected;
-                original = selected.transform;
+                original = owner.CurrentPreviewTransform;
+                gestureParameter = owner.PreviewFXParameter;
+                gestureFX = gestureParameter != null ? owner.previewTransformFX : null;
                 size = dimensions;
                 handle = hit;
                 gestureImageRect = rect;
@@ -540,18 +596,19 @@ namespace DCFApixels.SpriteEditor
                     next.position = fixedPoint - pivot - Rotate(
                         Vector2.Scale(Vector2.Scale(anchor, size) - pivot, next.scale), original.rotation);
                 }
-                if (next.pivot == layer.transform.pivot && next.position == layer.transform.position && next.scale == layer.transform.scale &&
-                    Mathf.Approximately(next.rotation, layer.transform.rotation))
+                TextureTransform currentValue = owner.CurrentPreviewTransform;
+                if (next.pivot == currentValue.pivot && next.position == currentValue.position && next.scale == currentValue.scale &&
+                    Mathf.Approximately(next.rotation, currentValue.rotation))
                     return;
                 if (undoGroup < 0)
                 {
                     Undo.IncrementCurrentGroup();
                     undoGroup = Undo.GetCurrentGroup();
-                    string undoName = handle == PivotHandle ? "Move Layer Pivot" : "Transform Layer";
+                    string undoName = gestureFX != null ? "Transform FX Area" : handle == PivotHandle ? "Move Layer Pivot" : "Transform Layer";
                     Undo.SetCurrentGroupName(undoName);
-                    Undo.RegisterCompleteObjectUndo(owner.compositor, undoName);
+                    Undo.RegisterCompleteObjectUndo(gestureFX != null ? (UnityEngine.Object)gestureFX : owner.compositor, undoName);
                 }
-                layer.transform = next;
+                WriteTransform(next);
                 if (handle == PivotHandle)
                     owner.previewTransformOverlay.MarkDirtyRepaint();
                 else
@@ -576,6 +633,13 @@ namespace DCFApixels.SpriteEditor
 
             private void OnDetach(DetachFromPanelEvent evt) => End(false, true);
 
+            private void WriteTransform(TextureTransform value)
+            {
+                if (gestureParameter != null)
+                    gestureParameter.transformValue = ShaderFXTransform.FromLayerTransform(value, size);
+                else if (layer != null) layer.transform = value;
+            }
+
             public void End(bool cancel, bool commit)
             {
                 if (!IsDragging)
@@ -587,7 +651,12 @@ namespace DCFApixels.SpriteEditor
                 if (commit && undoGroup >= 0 && owner.compositor != null)
                 {
                     if (cancel)
-                        layer.transform = original;
+                        WriteTransform(original);
+                    if (gestureFX != null)
+                    {
+                        EditorUtility.SetDirty(gestureFX);
+                        gestureFX.NotifyValuesChanged();
+                    }
                     Undo.FlushUndoRecordObjects();
                     Undo.CollapseUndoOperations(undoGroup);
                     Undo.IncrementCurrentGroup();
@@ -599,6 +668,8 @@ namespace DCFApixels.SpriteEditor
                     owner.toolkitRefreshRequested = true;
                 }
                 layer = null;
+                gestureFX = null;
+                gestureParameter = null;
                 undoGroup = -1;
                 owner.previewTransformOverlay?.MarkDirtyRepaint();
                 if (owner.previewTool == PreviewTool.Transform) owner.RefreshPreviewPointerCursor();
@@ -611,13 +682,14 @@ namespace DCFApixels.SpriteEditor
                 Rect rect = owner.toolkitPreviewCanvas.ImageRect;
                 if (rect.width <= 0f || rect.height <= 0f)
                     return;
-                TextureTransform transform = owner.GetSelectedLayer().transform;
+                TextureTransform transform = owner.CurrentPreviewTransform;
+                bool fxTransform = owner.PreviewFXParameter != null;
                 Vector2 dimensions = new Vector2(owner.compositor.width, owner.compositor.height);
                 Painter2D painter = context.painter2D;
                 for (int pass = 0; pass < 2; pass++)
                 {
                     painter.lineWidth = pass == 0 ? 3f : 1f;
-                    painter.strokeColor = pass == 0 ? new Color(0f, 0f, 0f, 0.85f) : new Color(0.35f, 0.75f, 1f);
+                    painter.strokeColor = pass == 0 ? new Color(0f, 0f, 0f, 0.85f) : fxTransform ? new Color(0.35f, 1f, 0.5f) : new Color(0.35f, 0.75f, 1f);
                     painter.BeginPath();
                     painter.MoveTo(ToPreview(TransformPoint(Handles[0], transform, dimensions), rect, dimensions));
                     for (int i = 2; i < Handles.Length; i += 2)
@@ -631,7 +703,7 @@ namespace DCFApixels.SpriteEditor
                 }
                 painter.lineWidth = 1f;
                 painter.strokeColor = Color.black;
-                painter.fillColor = Color.white;
+                painter.fillColor = fxTransform ? new Color(0.35f, 1f, 0.5f) : Color.white;
                 for (int i = 0; i < Handles.Length; i++)
                 {
                     Vector2 p = ToPreview(TransformPoint(Handles[i], transform, dimensions), rect, dimensions);
@@ -648,6 +720,7 @@ namespace DCFApixels.SpriteEditor
                 painter.Arc(RotationHandle(transform, rect, dimensions), 4f, Angle.Degrees(0f), Angle.Degrees(360f), ArcDirection.Clockwise);
                 painter.Fill();
                 painter.Stroke();
+                if (fxTransform) return;
                 Vector2 center = ToPreview(Vector2.Scale(transform.pivot, dimensions) + transform.position, rect, dimensions);
                 for (int pass = 0; pass < 2; pass++)
                 {

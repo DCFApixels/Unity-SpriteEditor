@@ -14,6 +14,8 @@ Shader "Hidden/TextureCompositor/Noise"
             #include "ThirdParty/FastNoiseLite.hlsl"
 
             float4 _NoiseDomain, _NoiseFractalSettings;
+            float4 _NoiseAxis;
+            int _NoiseOneD;
             float _NoiseScale, _NoiseCellularJitter, _NoiseWarpStrength;
             int _NoiseSeed, _NoiseType, _NoiseFractal, _NoiseOctaves;
             int _NoiseCellularDistance, _NoiseCellularReturn, _NoiseWarp, _NoiseEncoding, _NoiseInverted;
@@ -33,6 +35,11 @@ Shader "Hidden/TextureCompositor/Noise"
                 state.cellular_return_type = _NoiseCellularReturn;
                 state.cellular_jitter_mod = _NoiseCellularJitter;
                 float2 p = (i.uv - .5) * _NoiseDomain.xy * _NoiseScale + _NoiseDomain.zw;
+                if (_NoiseOneD != 0)
+                {
+                    float2 centered = (i.uv - .5) * _NoiseDomain.xy * _NoiseScale;
+                    p = float2(dot(centered, _NoiseAxis.xy), 0.0) + _NoiseDomain.zw;
+                }
                 if (_NoiseWarp > 0 && _NoiseWarpStrength > 0.0)
                 {
                     fnl_state warp = fnlCreateState(_NoiseSeed);

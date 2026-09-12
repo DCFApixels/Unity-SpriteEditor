@@ -10,13 +10,13 @@ permalink: /reference/motionblur/
 
 # Motion Blur
 
-Motion Blur is a targeted effect layer, using the same source selection, hidden-source handling,
+Linear and Circular are modes of the unified Blur layer, using the same source selection, hidden-source handling,
 group isolation and bounded GPU cache as [Gaussian Blur](GaussianBlur.md). It does not change
 source pixels or convert groups to isolated mode in the main composition.
 
 ## Controls
 
-- **Mode:** Linear (default) or Circular. Settings for the other mode are retained, not reset.
+- **Mode:** choose Linear or Circular in Blur Properties (a new Blur defaults to Gaussian). Settings for other modes are retained, not reset.
 - **Strength:** 0–400%, default 100%. Below 100%, mixes the original with the blurred result
   in premultiplied RGBA. Above 100%, makes translucent trails denser without changing their
   length or straight RGB/HDR brightness. Fully opaque pixels are unchanged above 100%.

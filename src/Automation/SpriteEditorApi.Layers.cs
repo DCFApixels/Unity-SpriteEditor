@@ -23,8 +23,7 @@ namespace DCFApixels.SpriteEditor
                     "noise" => new NoiseLayer(),
                     "outline" => new OutlineLayer(), "sdf" => new SDFLayer(),
                     "normalMap" => new NormalMapLayer(),
-                    "gaussianBlur" => new GaussianBlurLayer(),
-                    "motionBlur" => new MotionBlurLayer(),
+                    "blur" => new BlurLayer(),
                     "makeSeamless" => new MakeSeamlessLayer(),
                     "shaderProcessor" => new ShaderProcessorLayer(),
                     _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
@@ -134,7 +133,7 @@ namespace DCFApixels.SpriteEditor
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "outlineOffset", "fillCenter", "fillColor", "sourceChannel", "threshold",
-                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "motionBlur", "makeSeamless", "noise");
+                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "blur", "makeSeamless", "noise");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
@@ -145,8 +144,7 @@ namespace DCFApixels.SpriteEditor
                     key == "color" && (layer is ColorFillLayer || layer is OutlineLayer) ||
                     key == "metric" && (layer is SDFLayer || layer is OutlineLayer) ||
                     key == "normalMap" && layer is NormalMapLayer ||
-                    key == "gaussianBlur" && layer is GaussianBlurLayer ||
-                    key == "motionBlur" && layer is MotionBlurLayer ||
+                    key == "blur" && layer is BlurLayer ||
                     key == "makeSeamless" && layer is MakeSeamlessLayer ||
                     key == "noise" && layer is NoiseLayer ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition" ||
@@ -192,10 +190,8 @@ namespace DCFApixels.SpriteEditor
             if (layer is ColorFillLayer fill && settings["color"] != null) fill.color = Color(settings["color"]);
             if (layer is NormalMapLayer normal && settings["normalMap"] != null)
                 SetNormalMap(normal, Obj(settings["normalMap"], "normalMap"));
-            if (layer is GaussianBlurLayer gaussian && settings["gaussianBlur"] != null)
-                SetGaussianBlur(gaussian, Obj(settings["gaussianBlur"], "gaussianBlur"));
-            if (layer is MotionBlurLayer motion && settings["motionBlur"] != null)
-                SetMotionBlur(motion, Obj(settings["motionBlur"], "motionBlur"));
+            if (layer is BlurLayer blur && settings["blur"] != null)
+                SetBlur(blur, Obj(settings["blur"], "blur"));
             if (layer is MakeSeamlessLayer seamless && settings["makeSeamless"] != null)
                 SetMakeSeamless(seamless, Obj(settings["makeSeamless"], "makeSeamless"));
             if (layer is NoiseLayer noise && settings["noise"] != null)

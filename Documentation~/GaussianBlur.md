@@ -10,7 +10,7 @@ permalink: /reference/gaussianblur/
 
 # Gaussian Blur and effect caching
 
-Gaussian Blur is a nondestructive targeted effect layer. Its source is the next sibling below it
+Gaussian is the default mode of the nondestructive Blur layer. Its source is the next sibling below it
 (Previous) or a specific layer/group. The source's visibility does not prevent sampling; hidden
 children inside a group remain excluded. Cycles are rejected as with other effect layers.
 

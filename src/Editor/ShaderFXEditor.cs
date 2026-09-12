@@ -49,7 +49,14 @@ namespace DCFApixels.SpriteEditor
             heading.AddToClassList("sprite-editor-shader-fx-heading");
             root.Add(heading);
             ShaderFXCodeField code = new ShaderFXCodeField(effect);
-            root.Add(code);
+            var codeFoldout = new Foldout { text = "Code", value = !effect.IsCatalogLinked };
+            codeFoldout.Add(code);
+            root.Add(codeFoldout);
+            var sourceButtons = new VisualElement();
+            sourceButtons.Add(new Button(() => { string path = effect.CatalogPath; if (!string.IsNullOrEmpty(path)) AssetDatabase.OpenAsset(AssetDatabase.LoadMainAssetAtPath(path)); }) { text = "Open HLSL Source" });
+            var detach = new Button { text = "Embed Copy", tooltip = "Stop following the HLSL file and edit a copy in this document." };
+            sourceButtons.Add(detach);
+            root.Add(sourceButtons);
 
             HelpBox status = new HelpBox(string.Empty, HelpBoxMessageType.Info);
             root.Add(status);
@@ -65,19 +72,24 @@ namespace DCFApixels.SpriteEditor
             };
             diagnostics.AddToClassList("sprite-editor-shader-fx-diagnostics");
             root.Add(diagnostics);
+            var legacyParameters = new PropertyField(serializedObject.FindProperty("parameters"), "Parameters");
+            var declaredParameters = new ShaderFXParameterView(effect);
+            detach.clicked += () => { Undo.RecordObject(effect, "Embed FX Source"); effect.DetachCatalog(); EditorUtility.SetDirty(effect); effect.NotifyValuesChanged(); RefreshStatus(); };
             apply.clicked += () =>
             {
                 if (SpriteEditorApi.IsShaderFXContentLocked(effect)) return;
                 root.Focus();
                 serializedObject.ApplyModifiedProperties();
-                effect.Apply();
+                if (effect.IsCatalogLinked) effect.ReloadCatalogSource(true);
+                else effect.Apply();
                 serializedObject.Update();
                 RefreshStatus();
             };
             root.Add(new HelpBox(
-                "Parameter values are live and shared by all layers using this asset. Adding, renaming or changing " +
-                "a parameter type requires Apply. Do not redeclare generated parameter uniforms in the code.", HelpBoxMessageType.Info));
-            root.Add(new PropertyField(serializedObject.FindProperty("parameters"), "Parameters"));
+                "Values update live. Catalog effects have independent settings; + Reference shares the asset. " +
+                "Declare parameters with // @param, or use the manual list for legacy code. Declaration changes require Apply; do not redeclare generated uniforms.", HelpBoxMessageType.Info));
+            root.Add(legacyParameters);
+            root.Add(declaredParameters);
             Foldout reference = new Foldout { text = "Shader inputs", value = false };
             reference.Add(new HelpBox(
                 "uv: normalized coordinates; color: straight RGBA at uv.\n" +
@@ -94,6 +106,11 @@ namespace DCFApixels.SpriteEditor
                 if (effect == null)
                     return;
                 code.SyncFromModel();
+                code.SetEnabled(!effect.IsCatalogLinked);
+                sourceButtons.EnableInClassList("sprite-editor-shader-fx-hidden", !effect.IsCatalogLinked);
+                legacyParameters.EnableInClassList("sprite-editor-shader-fx-hidden", effect.UsesCodeParameters);
+                declaredParameters.EnableInClassList("sprite-editor-shader-fx-hidden", !effect.UsesCodeParameters);
+                declaredParameters.Refresh();
                 status.messageType = effect.LastApplyFailed ? HelpBoxMessageType.Error : HelpBoxMessageType.Info;
                 status.text = effect.LastApplyFailed
                     ? (effect.HasAppliedShader ? "Apply failed. The last successfully applied effect is still in use." : "Apply failed. This FX is skipped until it compiles successfully.")
@@ -133,7 +150,7 @@ namespace DCFApixels.SpriteEditor
             string[] valueNames =
             {
                 nameof(ShaderFXParameter.floatValue), nameof(ShaderFXParameter.colorValue),
-                nameof(ShaderFXParameter.vectorValue), nameof(ShaderFXParameter.textureValue)
+                nameof(ShaderFXParameter.vectorValue), nameof(ShaderFXParameter.textureValue), nameof(ShaderFXParameter.transformValue)
             };
             VisualElement[] fields = new VisualElement[valueNames.Length];
             for (int i = 0; i < fields.Length; i++)
@@ -150,10 +167,17 @@ namespace DCFApixels.SpriteEditor
                     fields[i] = new PropertyField(value, "Value");
                 root.Add(fields[i]);
             }
+            var editTransform = new Button(() =>
+            {
+                var current = property.FindPropertyRelative("id");
+                TextureCompositorWindow.EditFXTransform((ShaderFX)property.serializedObject.targetObject, current.stringValue);
+            }) { text = "Edit Transform on Canvas" };
+            root.Add(editTransform);
             void RefreshType(SerializedProperty current)
             {
                 for (int i = 0; i < fields.Length; i++)
                     fields[i].EnableInClassList("sprite-editor-shader-fx-hidden", i != current.enumValueIndex);
+                editTransform.EnableInClassList("sprite-editor-shader-fx-hidden", current.enumValueIndex != (int)ShaderFXParameterType.Transform2D);
             }
             root.TrackPropertyValue(type, RefreshType);
             RefreshType(type);

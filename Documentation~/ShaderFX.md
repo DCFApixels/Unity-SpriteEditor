@@ -24,7 +24,7 @@ float4 ApplyFX(float2 uv, float4 color)
 }
 ```
 
-Parameters support Float, Color, Vector and Texture2D. Their uniforms are generated automatically.
+Parameters support Float, Color, Vector, Texture2D and Transform2D. Their uniforms are generated automatically.
 Code and declarations stay drafts until Apply; a compile error keeps the last working effect.
 
 `SampleInput(uv)` reads the layer after earlier modifiers. Return straight RGBA; opacity/blending
@@ -38,6 +38,89 @@ after Save As to another folder, check relative paths. Libraries must suit the f
 **+ Reference** links an external FX shared by its users; **Embed** makes an independent document-owned
 copy. Save As and layer duplication copy embedded FX independently. FX run in order after Transform;
 changing parameter values does not regenerate shaders.
+
+## HLSL catalog
+
+Add a `.hlsl` file anywhere in Assets or an installed package. Its **first physical line** must be
+`// @whimtex-effect Category/Name`. UTF-8 BOM is allowed, but no preceding blank line, indentation,
+license comment or other text. Unmarked HLSL files are not catalog effects. Discovery does not compile shaders.
+
+```hlsl
+// @whimtex-effect Color/Invert
+// @param float _Amount = 1 [0 .. 1]
+
+float4 ApplyFX(float2 uv, float4 color)
+{
+    return float4(lerp(color.rgb, 1 - color.rgb, _Amount), color.a);
+}
+```
+
+Use **FX → + Preset ▾** to add an independent instance. The source is referenced by asset GUID;
+keep its `.meta` when moving files. Source/include changes refresh loaded, unlocked instances.
+Missing or invalid source retains the last applied shader and reports diagnostics. **Apply** retries/reloads;
+**Embed Copy** disconnects the source and enables local code editing, retaining the original include base.
+Included files remain external dependencies even after embedding.
+Standalone Shader FX assets also appear in the catalog and are copied, not shared.
+The legacy **+ Reference** workflow is unchanged. ShaderLab shaders are not auto-enrolled by this HLSL catalog.
+
+### Parameter declarations
+
+```hlsl
+// @param float _Strength = 0.02 [0 .. 0.1]
+// @param float _Scale = 1 [0 ..]
+// @param float _Offset = 0 [.. 10]
+// @param float _Amount = 10
+// @param float4 _Channels = (0, 0, 0.5, 1)
+// @param color _Tint = (1, 1, 1, 1)
+// @param texture2D _Mask
+// @param transform2D _Area
+```
+
+No semicolons on metadata lines. Float/vector/color declarations require a finite default; defaults
+outside the declared range are errors. Texture defaults to white; Transform2D defaults to the whole input.
+Two distinct range boundaries produce a slider with numeric input; one boundary produces a limited
+numeric field. Equal boundaries fix the number. Ranges apply only to floats.
+Labels are derived from names: `_NoiseScale` becomes **Noise Scale**. `float4` is four raw components;
+`color` is a color picker using the editor's HDR/Standard input setting and existing linear conversion.
+
+These declarations also work in the inline code editor without a catalog header. Once declarations
+are used, they define the parameter schema instead of the manual list. Existing matching name/type
+values and IDs survive Apply; removed declarations disappear. Renaming in place without changing
+the type or layout retains identity. When simultaneously restructuring and renaming declarations,
+unmatched parameters are treated as new rather than guessing their correspondence.
+Do not separately declare generated uniforms/helpers. `_WhimTex_` is reserved for generated data.
+The limit is 128 declarations per effect; the live API limits authoring to 32 parameters.
+
+### Transform 2D
+
+For `// @param transform2D _Area`, the wrapper generates:
+
+```hlsl
+float2 _Area_ToLocal(float2 inputUV);
+float2 _Area_ToInput(float2 localUV);
+```
+
+Local `(0,0)` and `(1,1)` are opposite corners, `(0.5,0.5)` is the center. Coordinates outside the
+frame remain valid. Position and size are normalized to the input dimensions, and rotation is in
+degrees around the center, with the image aspect ratio taken into account. Nonzero negative sizes
+mirror axes; UI edits keep magnitude at least `0.00001` to avoid a singular inverse.
+Internal uniforms use `_WhimTex_<parameter>_<stable ID>_ToLocalRow0` and corresponding rows.
+Changing values updates material uniforms, not shader source. The green canvas handles share the
+layer transform's move/scale/rotate and snapping behavior, but have no pivot. Only one FX frame is edited at once.
+The frame refers to the input coordinate space of that FX, not the inverse of later distortions.
+Define any region mask/falloff in the effect itself; Transform2D does not automatically clip or mask.
+
+```hlsl
+// @whimtex-effect Transform/Place Image
+// @param transform2D _Area
+
+float4 ApplyFX(float2 uv, float4 color)
+{
+    float2 p = _Area_ToLocal(uv);
+    if (any(p < 0) || any(p > 1)) return 0;
+    return SampleInput(p);
+}
+```
 
 ## Shader Processor: process the lower stack instead of one layer
 

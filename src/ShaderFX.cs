@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace DCFApixels.SpriteEditor
 {
-    public enum ShaderFXParameterType { Float, Color, Vector, Texture2D }
+    public enum ShaderFXParameterType { Float, Color, Vector, Texture2D, Transform2D }
 
     [Serializable]
     public sealed class ShaderFXParameter
@@ -18,25 +18,59 @@ namespace DCFApixels.SpriteEditor
         [ColorUsage(true, true)] public Color colorValue = Color.white;
         public Vector4 vectorValue;
         public Texture2D textureValue;
+        public ShaderFXTransform transformValue = ShaderFXTransform.Default;
+        [HideInInspector] public string id = Guid.NewGuid().ToString("N");
+        [HideInInspector] public bool declaredInCode;
+        [HideInInspector] public bool hasMinimum, hasMaximum;
+        [HideInInspector] public float minimum, maximum;
+        [NonSerialized] private string cachedName, cachedId;
+        [NonSerialized] private int[] transformPropertyIds;
+
+        internal string InternalPrefix => "_WhimTex_" + name.TrimStart('_') + "_" + id + "_";
+        internal int[] TransformPropertyIds
+        {
+            get
+            {
+                if (transformPropertyIds == null || cachedName != name || cachedId != id)
+                {
+                    cachedName = name;
+                    cachedId = id;
+                    string prefix = InternalPrefix;
+                    transformPropertyIds = new[] { Shader.PropertyToID(prefix + "ToLocalRow0"), Shader.PropertyToID(prefix + "ToLocalRow1"),
+                        Shader.PropertyToID(prefix + "ToInputRow0"), Shader.PropertyToID(prefix + "ToInputRow1") };
+                }
+                return transformPropertyIds;
+            }
+        }
+        internal float Clamp(float value) => hasMinimum && value < minimum ? minimum : hasMaximum && value > maximum ? maximum : value;
 
         internal ShaderFXParameter Copy() => (ShaderFXParameter)MemberwiseClone();
 
-        internal void SetValue(Material material, string propertyName)
+        internal void SetValue(Material material, ShaderFXParameter declaration, Vector2 dimensions)
         {
+            string propertyName = declaration.name;
             switch (type)
             {
-                case ShaderFXParameterType.Float: material.SetFloat(propertyName, floatValue); break;
+                case ShaderFXParameterType.Float: material.SetFloat(propertyName, Clamp(floatValue)); break;
                 case ShaderFXParameterType.Color: HdrUtility.SetShaderColor(material, propertyName, colorValue); break;
                 case ShaderFXParameterType.Vector: material.SetVector(propertyName, vectorValue); break;
                 case ShaderFXParameterType.Texture2D:
                     material.SetTexture(propertyName, textureValue != null ? textureValue : Texture2D.whiteTexture);
+                    break;
+                case ShaderFXParameterType.Transform2D:
+                    transformValue.GetRows(dimensions, out var l0, out var l1, out var i0, out var i1);
+                    int[] ids = declaration.TransformPropertyIds;
+                    material.SetVector(ids[0], l0);
+                    material.SetVector(ids[1], l1);
+                    material.SetVector(ids[2], i0);
+                    material.SetVector(ids[3], i1);
                     break;
             }
         }
     }
 
     [CreateAssetMenu(fileName = "New Shader FX", menuName = "WhimTex/Shader FX")]
-    public sealed class ShaderFX : ScriptableObject, ISerializationCallbackReceiver
+    public sealed partial class ShaderFX : ScriptableObject, ISerializationCallbackReceiver
     {
         [SerializeField, TextArea(12, 40)] private string code =
             "// #include \"./MyLibrary.hlsl\"\n\n" +
@@ -80,6 +114,7 @@ namespace DCFApixels.SpriteEditor
         {
             get
             {
+                if (!string.IsNullOrEmpty(catalogSourcePath)) return catalogSourcePath;
                 string path = AssetDatabase.GetAssetPath(embeddedOwner != null ? (UnityEngine.Object)embeddedOwner : this);
                 return !string.IsNullOrEmpty(path) ? path : "Assets/Untitled.spritefx";
             }
@@ -112,6 +147,7 @@ namespace DCFApixels.SpriteEditor
             Material test = null;
             try
             {
+                PrepareParameterDeclarations();
                 string source = ShaderFXSourceBuilder.Build(this, SourcePath);
                 candidate = ShaderUtil.CreateShaderAsset(source, true);
                 if (candidate == null) throw new InvalidOperationException("Unity could not create the shader.");
@@ -225,16 +261,22 @@ namespace DCFApixels.SpriteEditor
             undoDeserialized = Undo.isProcessing;
             AssemblyReloadEvents.beforeAssemblyReload += ReleaseMaterial;
             EditorApplication.quitting += ReleaseMaterial;
+            EditorApplication.delayCall += ReloadCatalogAfterEnable;
+            SpriteEditorApi.LiveEditLocksChanged += RetryCatalogAfterUnlock;
         }
 
         private void OnDisable()
         {
+            EditorApplication.delayCall -= ReloadCatalogAfterEnable;
+            SpriteEditorApi.LiveEditLocksChanged -= RetryCatalogAfterUnlock;
             AssemblyReloadEvents.beforeAssemblyReload -= ReleaseMaterial;
             EditorApplication.quitting -= ReleaseMaterial;
             EditorApplication.delayCall -= SendNotification;
             notificationQueued = false;
             ReleaseMaterial();
         }
+
+        private void ReloadCatalogAfterEnable() { if (this != null && !Undo.isProcessing) ReloadCatalogSource(); }
 
         private void OnDestroy()
         {
@@ -293,7 +335,7 @@ namespace DCFApixels.SpriteEditor
                         value = draft;
                         break;
                     }
-                value.SetValue(material, applied.name);
+                value.SetValue(material, applied, new Vector2(context.compositor.width, context.compositor.height));
             }
             material.SetVector("_InputSize", new Vector4(context.width, context.height, 1f / context.width, 1f / context.height));
             material.SetVector("_CanvasSize", new Vector4(context.compositor.width, context.compositor.height,
@@ -307,8 +349,10 @@ namespace DCFApixels.SpriteEditor
             if (SpriteEditorApi.IsShaderFXContentLocked(this)) return false;
             Shader candidate = null;
             Material candidateMaterial = null;
+            List<ShaderFXParameter> previousParameters = parameters;
             try
             {
+                PrepareParameterDeclarations();
                 UnityEngine.Object storage = embeddedOwner != null ? (UnityEngine.Object)embeddedOwner : this;
                 string path = AssetDatabase.GetAssetPath(storage);
                 if (!string.IsNullOrEmpty(path) && !AssetDatabase.IsOpenForEdit(storage))
@@ -379,6 +423,7 @@ namespace DCFApixels.SpriteEditor
             }
             catch (Exception exception)
             {
+                parameters = previousParameters;
                 lastApplyFailed = true;
                 diagnostics = exception.Message;
                 EditorUtility.SetDirty(this);

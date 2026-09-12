@@ -25,8 +25,8 @@ Use **+** at the bottom of Layers:
 | Outline a shape | Outline | Width, softness and inside/outside placement. |
 | Make a mask based on distance from an edge | SDF | Source channel, Threshold and Max Distance. |
 | Create surface relief | Normal Map | Height Map or Texture. See [Normal Map](normal-map.md). |
-| Soften an image | Gaussian Blur | Radius. |
-| Create a motion trail | Motion Blur | Linear or Circular. |
+| Soften an image | Blur | Mode → Gaussian, then Radius. |
+| Create a motion trail | Blur | Mode → Linear or Circular. |
 | Join opposite texture edges | Make Seamless | Source edges, Fade Width and Falloff. |
 
 ## Choose what the effect uses
@@ -66,7 +66,12 @@ place Outline below the drawing and set its Input to that specific layer. Above 
 The fill follows the contour, not the source's original soft transparency. Holes in the source remain holes.
 For SDF, **Source Channel** can use Alpha, an individual RGB channel or Luminance, including when the source is a group.
 
-## Gaussian Blur
+## Blur
+
+Add **Blur**, then choose **Mode** in Properties: **Gaussian**, **Linear** or **Circular**.
+Only the relevant controls are shown; switching modes keeps their settings.
+
+### Gaussian
 
 Increase **Radius** for a softer image. Start small for edge cleanup;
 use a larger radius for broad, soft shapes.
@@ -77,12 +82,12 @@ Values above 100% do not change fully opaque areas.
 
 To blur several layers together:
 
-1. Put them in a group and add Gaussian Blur above it.
+1. Put them in a group and add Blur above it with Mode set to Gaussian.
 2. Leave Input at Previous.
 3. Hide the group itself to show only the blurred result.
 4. Adjust Radius.
 
-## Motion Blur
+### Linear and Circular
 
 Choose **Linear** for a straight trail. **Distance** sets its length and **Angle** sets its direction.
 Choose **Circular** for a rotating trail, then set **Center** and **Arc**.

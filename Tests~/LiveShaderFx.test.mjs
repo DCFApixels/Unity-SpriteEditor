@@ -46,7 +46,7 @@ let code=body(source,'private static void ApplyLiveFx(')
   .replaceAll('((string)spec["code"]).Length','spec["code"].length')
   .replaceAll('(string)spec["code"]','spec["code"]')
   .replace('catch (Exception error)','catch (error)').replaceAll('error.Message','error.message');
-const create=(owner,code,parameters)=>({owner,code,parameters,ApplyAgentDraft(){if(code==='INVALID')throw Error('bad shader');}});
+const create=(owner,code,parameters)=>({owner,code,parameters,Parameters:new List(parameters),ApplyAgentDraft(){if(code==='INVALID')throw Error('bad shader');}});
 const mutate=new Function('Require','Text','Int','Keys','Obj','List','ReadLiveFxParameters','RequireGraphics','ShaderFX','SpriteEditorApiException',
   `return (layer,token,owner,created)=>{${code}}`)(Require,Text,Int,Keys,v=>v,List,v=>v??[],()=>{}, {CreateAgentDraft:create},class extends Error{});
 const a={},b={}; const make=()=>({modifiers:new List([a,b]),IsGroup:false});
@@ -58,7 +58,8 @@ target=make(); mutate(target,[{code:'C',index:1}],doc,new List());
 assert.equal(target.modifiers[0],a); assert.equal(target.modifiers[2],b); assert.equal(target.modifiers[1].code,'C');
 for(const operations of [
   [{op:'replace',code:'A'}],[{op:'remove',index:7}],[{op:'remove',index:0,code:'A'}],
-  [{op:'unknown'}],[{code:''}],[{code:'X'.repeat(65537)}],[{code:'A',typo:1}],Array.from({length:17},()=>({code:'A'}))
+  [{op:'unknown'}],[{code:''}],[{code:'X'.repeat(65537)}],[{code:'A',typo:1}],Array.from({length:17},()=>({code:'A'})),
+  [{code:'A',parameters:Array.from({length:33},()=>({}))}]
 ]) assert.throws(()=>mutate(make(),operations,doc,new List()));
 target=make(); assert.throws(()=>mutate(target,[{op:'replace',index:0,code:'INVALID'}],doc,new List()));
 assert.equal(target.modifiers[0],a); // Failed compilation cannot publish the failing effect.

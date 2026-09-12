@@ -134,12 +134,8 @@ namespace DCFApixels.SpriteEditor
                     NormalMapLayerEditorWindow.BuildFields(root, normalMap, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
-                case GaussianBlurLayer gaussian:
-                    GaussianBlurLayerEditorWindow.BuildFields(root, gaussian, compositor, ApplyToolkitChange, toolkitInspectorBindings,
-                        AddToolkitInspectorEffectTarget);
-                    break;
-                case MotionBlurLayer motion:
-                    MotionBlurLayerEditorWindow.BuildFields(root, motion, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                case BlurLayer blur:
+                    BlurLayerEditorWindow.BuildFields(root, blur, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
                 case MakeSeamlessLayer seamless:

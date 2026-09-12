@@ -6,10 +6,11 @@ let checks = 0;
 function near(a, b, label, tolerance = 1e-8) {
   assert.ok(Math.abs(a - b) <= tolerance, `${label}: ${a} vs ${b}`); checks++;
 }
-const layer = read('src/Layers/MotionBlurLayer.cs');
+const layer = read('src/Layers/MotionBlurRenderer.cs');
+const settings = read('src/Layers/BlurLayer.cs');
 const shader = read('src/Shaders/MotionBlur.shader');
-const ui = read('src/Layers/Editors/MotionBlurLayerEditorWindow.cs');
-const api = read('src/Automation/SpriteEditorApi.MotionBlur.cs');
+const ui = read('src/Layers/Editors/BlurLayerEditorWindow.cs');
+const api = read('src/Automation/SpriteEditorApi.Blur.cs');
 const fullLimit = +layer.match(/FullSampleLimit = (\d+)/)[1];
 const fastLimit = +layer.match(/InteractiveSampleLimit = (\d+)/)[1];
 const segments = (path, limit = fullLimit) => Math.max(1, Math.min(limit - 1, Math.ceil(path)));
@@ -116,7 +117,7 @@ assert.match(shader, /_MainTex_TexelSize\.w \/ _CanvasSize\.y/);
 assert.doesNotMatch(layer, /GetPixels|ReadPixels|SetPixels|Undo\./);
 assert.match(layer, /interactive \? InteractiveSampleLimit : FullSampleLimit/);
 assert.match(layer, /reduction < 4/);
-assert.match(layer, /RequiresColorInput => true/);
+assert.match(settings, /RequiresColorInput => true/);
 for (const key of ['mode', 'strength', 'distance', 'angle', 'arc', 'center', 'direction', 'edges']) {
   assert.ok(api.includes('["' + key + '"]'), 'Snapshot ' + key);
   assert.ok(ui.includes('layer.' + key), 'UI ' + key);
@@ -124,8 +125,8 @@ for (const key of ['mode', 'strength', 'distance', 'angle', 'arc', 'center', 'di
 assert.doesNotMatch(ui, /\.Clear\(|\.style\.|isDelayed/);
 assert.match(read('src/EffectRenderCache.cs'), /effect\.RequiresColorInput/);
 assert.match(read('src/TextureCompositor.cs'), /effect\.RequiresColorInput/);
-assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /"motionBlur" => new MotionBlurLayer\(\)/);
-assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /motionBlurDefaults/);
+assert.match(read('src/Automation/SpriteEditorApi.Layers.cs'), /"blur" => new BlurLayer\(\)/);
+assert.match(read('src/Automation/SpriteEditorApi.Inspect.cs'), /blurDefaults/);
 assert.match(read('src/Utils.cs'), /DestroyImmediate\(motionBlurMaterial\)/);
 function strengthMix(source, blur, strength) {
   const premul = c => c.map((v, i) => i === 3 ? v : v * c[3]);
@@ -150,7 +151,7 @@ strengthMix(original, blurred, 0).forEach((v, i) => near(v, original[i], 'Streng
 strengthMix(original, blurred, 1).forEach((v, i) => near(v, blurred[i], 'Strength one parity'));
 strengthMix(original, blurred, .5).forEach((v, i) => near(v, [3.2, .4, 0, .625][i], 'Premultiplied strength mix'));
 near(strengthMix(original, [4, 0, 0, .125], 2)[3], 2 / 9, 'Double strength density');
-assert.match(layer, /public float strength = 1f/);
+assert.match(settings, /public float strength = 1f/);
 assert.match(layer, /amount == 0f/);
 assert.match(layer, /SetTexture\("_SourceTex", null\)/);
 assert.match(shader, /lerp\(source, c, _Strength\)/);

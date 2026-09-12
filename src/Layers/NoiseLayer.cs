@@ -12,8 +12,11 @@ namespace DCFApixels.SpriteEditor
         public enum CellularReturn { CellValue, Distance, Distance2, Distance2Add, Distance2Sub, Distance2Mul, Distance2Div }
         public enum WarpType { None, OpenSimplex2, OpenSimplex2Reduced, BasicGrid }
         public enum OutputEncoding { ColorValues, LinearData }
+        public enum NoiseDimensions { TwoD, OneD }
 
         public NoiseType noiseType;
+        public NoiseDimensions dimensions;
+        public float direction;
         public int seed = 1337;
         public float scale = 8f;
         public Vector2 offset;
@@ -47,6 +50,9 @@ namespace DCFApixels.SpriteEditor
             material.SetVector("_NoiseDomain", new Vector4(width / shortest, height / shortest,
                 Limit(offset.x, -10000f, 10000f, 0f), Limit(offset.y, -10000f, 10000f, 0f)));
             material.SetFloat("_NoiseScale", Limit(scale, .01f, 1000f, 8f));
+            float radians = Limit(direction, -180f, 180f, 0f) * Mathf.Deg2Rad;
+            material.SetInteger("_NoiseOneD", dimensions == NoiseDimensions.OneD ? 1 : 0);
+            material.SetVector("_NoiseAxis", new Vector4(Mathf.Cos(radians), Mathf.Sin(radians), 0f, 0f));
             material.SetInteger("_NoiseSeed", seed);
             material.SetInteger("_NoiseType", Mathf.Clamp((int)noiseType, 0, 5));
             material.SetInteger("_NoiseFractal", Mathf.Clamp((int)fractal, 0, 3));
