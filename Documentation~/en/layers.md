@@ -54,7 +54,7 @@ Use the eye to hide a layer. The eye in the column header reveals all layers.
 The selected layer's settings are divided into four foldouts:
 
 - **Transform:** position, size, rotation and tiling.
-- **Color & Blending:** color ranges and Swizzle. The Standard/HDR selector is also available in the header.
+- **Color & Blending:** Opacity, Blend Mode, color ranges and Swizzle. Opacity and Blend Mode are also available in the Layers list. The Standard/HDR selector remains available in the header.
 - **Properties (layer type):** settings specific to this layer, such as its source texture, effect target or drawing symmetry.
 - **FX:** add and adjust shader effects.
 

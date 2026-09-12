@@ -309,7 +309,7 @@ namespace DCFApixels.SpriteEditor
                 propertiesExpanded, propertiesExpansionChanged, !group && !(layer?.Behaviour is ShaderProcessorLayerBehaviour));
             root.Add(properties);
             if (group)
-                properties.tooltip = "Edit the group's opacity and blend mode in the layer list.";
+                properties.tooltip = "Edit the group's opacity and blend mode in Color & Blending or the layer list.";
             else if (layer?.Behaviour is ShaderProcessorLayerBehaviour)
                 properties.tooltip = "Configure this processor in the FX section.";
             else buildProperties(properties.contentContainer);

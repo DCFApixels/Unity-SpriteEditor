@@ -47,6 +47,37 @@ namespace DCFApixels.SpriteEditor
             });
             card.hierarchy.Add(preset);
             root.Add(card);
+            var opacity = SpriteEditorUI.ConfigureField(new Slider("Opacity", 0f, 1f)
+            {
+                name = "layerOpacity", showInputField = true,
+                tooltip = "Layer opacity from 0 to 1. This is the same value as in the Layers list."
+            });
+            bindings.Track(opacity, () => layer.opacity);
+            opacity.RegisterValueChangedCallback(evt =>
+            {
+                float value = float.IsNaN(evt.newValue) ? 0f : Mathf.Clamp01(evt.newValue);
+                opacity.SetValueWithoutNotify(value);
+                apply("Change Layer Opacity", () => layer.opacity = value);
+            });
+            card.Add(opacity);
+            if (layer.AsGroup() is Layer blendGroup)
+            {
+                var mode = GroupBlend(blendGroup, (value, passThrough) => apply("Change Group Blend Mode", () =>
+                {
+                    blendGroup.compositing = passThrough ? GroupCompositing.PassThrough : GroupCompositing.Isolated;
+                    if (!passThrough) blendGroup.blendMode = value;
+                }), bindings);
+                mode.label = "Blend Mode";
+                mode.name = "layerBlendMode";
+                card.Add(SpriteEditorUI.ConfigureField(mode));
+            }
+            else
+            {
+                var mode = SpriteEditorUI.ConfigureField(new EnumField("Blend Mode", layer.blendMode) { name = "layerBlendMode" });
+                bindings.Track(mode, () => (Enum)layer.blendMode);
+                mode.RegisterValueChangedCallback(evt => apply("Change Layer Blend Mode", () => layer.blendMode = (BlendMode)evt.newValue));
+                card.Add(mode);
+            }
             var color = SpriteEditorUI.ConfigureField(new EnumField("Color Range", layer.colorRange));
             color.tooltip = "Standard clamps this layer after its FX and Swizzle. HDR keeps signed linear values beyond 0–1.";
             bindings.Track(color, () => (Enum)layer.colorRange);
