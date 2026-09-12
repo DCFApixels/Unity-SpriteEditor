@@ -5,7 +5,8 @@ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 // New controls are not a restyle of the existing cascade.
 const styles = read('src/SpriteEditorSplitView.uss')
     .replace(/\.sprite-editor-missing-thumbnail\s*\{[^}]*\}/g, '')
-    .replace(/\.sprite-editor-view-field(?:\s*>\s*\.unity-base-field__label)?\s*\{[^}]*\}/g, '');
+    .replace(/\.sprite-editor-view-field(?:\s*>\s*\.unity-base-field__label)?\s*\{[^}]*\}/g, '')
+    .replace(/\.sprite-editor-guides?-[^{]+\{[^}]*\}/g, '');
 const baseline = JSON.parse(read('Tests~/UssCascadeBaseline.json'));
 assert.deepEqual(snapshot(styles), baseline, 'Exact USS values, selectors/specificity and conflicting property order must remain unchanged');
 assert.notDeepEqual(snapshot(styles.replace('--whimtex-surface: #383838', '--whimtex-surface: #393939')), baseline);

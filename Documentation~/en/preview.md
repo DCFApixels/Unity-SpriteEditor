@@ -17,7 +17,7 @@ Changing the view does not resize the document.
 ## Move around
 
 - Hold the mouse wheel and drag to pan.
-- Hold `Shift` and drag with the mouse wheel pressed to rotate the view with any tool. Rotation lightly snaps to 90° steps; hold `Ctrl` to bypass snapping.
+- Hold `Shift` and drag with the mouse wheel pressed to rotate the view with any tool. Rotation lightly snaps to 90° steps and to angles that make a guide horizontal or vertical on screen. The closest angle wins; hold `Ctrl` to bypass snapping. Hidden guides and guides with **Snap to Guides** turned off do not add magnetic angles.
 - Scroll to zoom around the pointer with any tool.
 - With **Zoom** (`Z`), click to zoom in, `Alt`-click to zoom out, or drag a rectangle around the area you want to inspect.
 - **Fit** shows the whole canvas upright; **100%** is useful for checking pixel detail.
@@ -28,6 +28,35 @@ View rotation does not rotate the layers or affect saving and export.
 
 Turn on **Tiled** to see repeated copies of the image and paint across its edges.
 See [seamless painting](symmetry.md).
+
+## Guides
+
+Guides that are horizontal or vertical in the current preview appear bright cyan; angled guides use a softer blue-gray. The colors update as you rotate the view, without changing snapping.
+
+Drag from the thin strip on the left of Preview to create a vertical guide, or from the top strip for a horizontal one.
+The new line is parallel to the strip even on a rotated canvas; afterwards it moves, zooms and rotates with the canvas.
+
+Drag an existing line to reposition it. Drop it back on either strip or outside Preview to remove it; `Esc` cancels the drag.
+You can create guides from the edge strips with any tool. Only **Zoom**, **Transform** and **No Tool** can grab existing lines to move or drag-delete them. Painting, filling and selection tools ignore existing guides; the lines stay visible.
+Click a guide to select it: arrow keys nudge it, `Shift` increases the step tenfold, and `Delete` removes it. Click elsewhere or press `Esc` to deselect. Double-click a guide to enter an exact **Position (px)** and **Angle (°)**. Angles are relative to the canvas: 0° is horizontal, 90° is vertical. For those two orientations, Position is the distance from the top or left edge; at other angles it is the signed perpendicular distance from the top-left corner.
+
+Right-click a guide to **Edit**, **Duplicate** or **Delete** it. Right-click either edge strip for the shared controls:
+
+- **Show Guides** — hide or show the lines. Hidden guides do not attract tools; creating a new guide shows them again.
+- **Lock Guides** — protect existing lines from editing. You can still create new guides and snap tools to locked ones.
+- **Snap to Guides** — toggle snapping; hold `Ctrl` to bypass it temporarily. `Ctrl` also lets Zoom and Transform grab through an existing line.
+- **Undo Guide Change / Redo Guide Change** — undo or redo guide edits without affecting painting. These commands are separate from the document's `Ctrl+Z` history.
+- **Clear Guides** — remove all guides.
+
+Moving or resizing a layer (including a Shader FX Transform 2D area) snaps its edges to parallel guides. Moving also snaps its center lines. Edges ignore oblique guides; rotating a transform can align it parallel or perpendicular to a guide. `Shift` retains its usual rotation and resize constraints.
+
+The pivot and polygonal lasso vertices can snap to a guide at any angle, or to nearby intersections. Rectangle selection snaps only to guides parallel to the canvas axes.
+
+**Brush** and **Pencil** also snap their stroke center to guides at any angle and to intersections, including while erasing. The cursor shows the snapped position. If you start a stroke snapped to a guide, holding `Shift` keeps it on that same line no matter how far the pointer moves away. Release `Shift` for ordinary nearby snapping; press it again during the same stroke to return to the original guide. At an intersection, the guide closest to the starting pointer is used. If you start away from guides, `Shift` keeps its usual horizontal or vertical screen direction. Hold `Ctrl` to bypass guide snapping and locking. Pencil strokes still follow the pixel grid; brush Scatter is applied after snapping the stroke path.
+
+Dragging a guide snaps it to parallel canvas edges, the canvas center, the selected layer's parallel edges and center lines, and other parallel guides. Hold `Ctrl` for free placement.
+
+Guides never appear in exports. They stay in the current window, including script reloads, but are cleared when switching documents and are not saved in the compositor file. Guide undo history lasts until a document switch or script reload.
 
 ## Balance detail and responsiveness
 

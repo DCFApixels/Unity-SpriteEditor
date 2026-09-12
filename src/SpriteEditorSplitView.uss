@@ -637,6 +637,51 @@
     flex-shrink: 0;
 }
 
+.sprite-editor-guides-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    overflow: hidden;
+}
+
+.sprite-editor-guide-rail {
+    position: absolute;
+    background-color: rgba(85, 85, 85, 0.45);
+    align-items: center;
+    justify-content: center;
+}
+
+.sprite-editor-guide-rail:hover {
+    background-color: rgba(110, 150, 160, 0.65);
+}
+
+.sprite-editor-guide-rail--left {
+    left: 0;
+    top: 8px;
+    bottom: 0;
+    width: 8px;
+}
+
+.sprite-editor-guide-rail--top {
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 8px;
+}
+
+.sprite-editor-guide-grip {
+    width: 2px;
+    height: 18px;
+    background-color: rgba(200, 220, 225, 0.3);
+}
+
+.sprite-editor-guide-rail--top > .sprite-editor-guide-grip {
+    width: 18px;
+    height: 2px;
+}
+
 .sprite-editor-area-overlay {
     position: absolute;
     left: 0;

@@ -129,6 +129,8 @@ Brush and fill settings follow you between layers. [Symmetry](symmetry.md) is se
 ## Draw straight lines
 
 Click and begin dragging, then hold `Shift` to draw horizontally or vertically.
+These directions follow the screen, even when the canvas view is rotated.
+If the stroke starts snapped to a [guide](preview.md#guides), `Shift` follows that guide instead, at any angle and regardless of the pointer's distance from it.
 To connect points, click the first point, then hold `Shift` and click the next one.
 Repeat to draw a chain of straight segments.
 

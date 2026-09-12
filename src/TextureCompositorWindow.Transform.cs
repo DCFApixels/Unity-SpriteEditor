@@ -160,6 +160,7 @@ namespace DCFApixels.SpriteEditor
                 EditorPrefs.SetString(PreviewTransformReturnToolPrefKey, previewTransformReturnTool.ToString());
             }
             previewTool = tool;
+            selectedPreviewGuide = -1;
             EditorPrefs.SetString(PreviewToolPrefKey, tool.ToString());
             if (tool != PreviewTool.None)
                 previewSettingsTool = tool;
@@ -452,6 +453,13 @@ namespace DCFApixels.SpriteEditor
                         result = anchor;
                     }
                 }
+                Vector2 guidePoint = owner.SnapPreviewGuidePoint(documentPosition);
+                if (guidePoint != documentPosition &&
+                    (ToPreview(guidePoint, gestureImageRect, size) - previewPosition).sqrMagnitude < nearestDistance)
+                {
+                    Vector2 local = Rotate(guidePoint - Vector2.Scale(original.pivot, size) - original.position, -original.rotation);
+                    result = original.pivot + new Vector2(local.x / original.scale.x / size.x, local.y / original.scale.y / size.y);
+                }
                 return result;
             }
 
@@ -480,16 +488,22 @@ namespace DCFApixels.SpriteEditor
                 Vector2 last = new Vector2(NearestCanvasEdgeOffset(max.x, size.x), NearestCanvasEdgeOffset(max.y, size.y));
                 Vector2 offset = new Vector2(Mathf.Abs(first.x) <= Mathf.Abs(last.x) ? first.x : last.x,
                     Mathf.Abs(first.y) <= Mathf.Abs(last.y) ? first.y : last.y);
-                return new Vector2(horizontal && Mathf.Abs(offset.x) <= tolerance.x ? offset.x : 0f,
+                Vector2 canvasOffset = new Vector2(horizontal && Mathf.Abs(offset.x) <= tolerance.x ? offset.x : 0f,
                     vertical && Mathf.Abs(offset.y) <= tolerance.y ? offset.y : 0f);
+                Vector2 center = TransformPoint(new Vector2(.5f, .5f), transform, size);
+                Vector2 halfSize = new Vector2(Mathf.Abs(transform.scale.x) * size.x * .5f, Mathf.Abs(transform.scale.y) * size.y * .5f);
+                return owner.SnapPreviewGuideMove(center, Rotate(Vector2.right, transform.rotation), halfSize, canvasOffset, horizontal, vertical);
             }
 
             private Vector2 SnapResize(Vector2 point, Vector2 direction, bool free)
             {
                 Vector2 pixelsToPreview = new Vector2(gestureImageRect.width / size.x, gestureImageRect.height / size.y);
                 if (free)
-                    return point + new Vector2(CanvasEdgeOffset(point.x, size.x, CanvasSnapDistance / pixelsToPreview.x),
+                {
+                    Vector2 canvasPoint = point + new Vector2(CanvasEdgeOffset(point.x, size.x, CanvasSnapDistance / pixelsToPreview.x),
                         CanvasEdgeOffset(point.y, size.y, CanvasSnapDistance / pixelsToPreview.y));
+                    return owner.SnapPreviewGuideResize(point, direction, true, Rotate(Vector2.right, original.rotation), canvasPoint);
+                }
 
                 Vector2 result = point;
                 float nearest = CanvasSnapDistance * CanvasSnapDistance;
@@ -505,7 +519,7 @@ namespace DCFApixels.SpriteEditor
                         result = point + offset;
                     }
                 }
-                return result;
+                return owner.SnapPreviewGuideResize(point, direction, false, Rotate(Vector2.right, original.rotation), result);
             }
 
             private void UpdateTransform(Vector2 point, bool constrain, bool disableSnap)
@@ -554,6 +568,8 @@ namespace DCFApixels.SpriteEditor
                     next.rotation += Vector2.SignedAngle(from, to);
                     if (constrain)
                         next.rotation = Mathf.Round(next.rotation / 15f) * 15f;
+                    else if (!disableSnap)
+                        next.rotation = owner.SnapPreviewGuideRotation(next.rotation);
                 }
                 else
                 {

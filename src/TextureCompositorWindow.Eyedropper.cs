@@ -122,6 +122,7 @@ namespace DCFApixels.SpriteEditor
             {
                 if (IsOpen || failedUntilAltReleased || focusedWindow != owner || !owner.CanUsePreviewEyedropper || owner.paintingLayer != null ||
                     (owner.previewZoomManipulator?.IsNavigating ?? false) ||
+                    (owner.previewGuideManipulator?.IsDragging ?? false) ||
                     (Event.current != null && (Event.current.control || Event.current.command))) return;
                 try
                 {

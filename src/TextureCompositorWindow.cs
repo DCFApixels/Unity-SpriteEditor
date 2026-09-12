@@ -68,6 +68,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private Vector2Int lineAnchorCanvasSize;
         [NonSerialized] private Vector2 lastPaintingDocumentUv;
         [NonSerialized] private Vector2 paintingAxisAnchor;
+        [NonSerialized] private Vector2 paintingAxisPointerAnchor;
         [NonSerialized] private bool paintingShiftHeld;
         [NonSerialized] private int paintingLockedAxis;
         [NonSerialized] private bool paintingPointerMoved;
@@ -575,6 +576,7 @@ namespace DCFApixels.SpriteEditor
             paintingShiftHeld = false;
             paintingLockedAxis = 0;
             paintingPointerMoved = false;
+            paintingGuideIndex = -1;
             if (capturedPointer >= 0 && toolkitPreviewCanvas != null && toolkitPreviewCanvas.HasPointerCapture(capturedPointer))
                 toolkitPreviewCanvas.ReleasePointer(capturedPointer);
 
@@ -1133,6 +1135,8 @@ namespace DCFApixels.SpriteEditor
             StopLiveOutput();
             ReleaseEffectCache();
             ResetAreaSelection();
+            ClearPreviewGuides();
+            previewGuidesDocument = next;
             compositor = next;
             compositor.NormalizeModel();
             SelectOnlyLayer(null);

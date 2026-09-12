@@ -128,7 +128,11 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas.Focus();
         }
 
-        private void CancelPreviewZoomGesture() => previewZoomManipulator?.Cancel();
+        private void CancelPreviewZoomGesture()
+        {
+            previewGuideManipulator?.Cancel();
+            previewZoomManipulator?.Cancel();
+        }
 
         private sealed class PreviewZoomManipulator : PointerManipulator
         {
@@ -288,7 +292,8 @@ namespace DCFApixels.SpriteEditor
                 // Avoid an unstable angle when the pointer passes through the pivot.
                 if (from.sqrMagnitude >= 144f && to.sqrMagnitude >= 144f)
                     freeRotation += Vector2.SignedAngle(from, to);
-                owner.toolkitPreviewCanvas.SetViewRotation(freeRotation, !disableSnap);
+                float rotation = disableSnap ? freeRotation : owner.SnapPreviewGuideRotation(freeRotation, includeCanvasAxes: true);
+                owner.toolkitPreviewCanvas.SetViewRotation(rotation, snap: false);
             }
 
             private Rect SelectionRect()

@@ -32,6 +32,7 @@ namespace DCFApixels.SpriteEditor
         [NonSerialized] private int paintingPointerId = -1;
         [NonSerialized] private bool previewPointerInside;
         [NonSerialized] private bool previewPointerAlt;
+        [NonSerialized] private bool previewPointerControl;
         [NonSerialized] private Vector2 previewPointerPosition;
         [NonSerialized] private bool applyingToolkitChange;
         [NonSerialized] private bool rebuildingToolkit;
@@ -247,6 +248,7 @@ namespace DCFApixels.SpriteEditor
             toolkitPreviewCanvas = new SpritePreviewElement(previewViewport);
             toolkitPreviewCanvas.AddManipulator(new ProjectTextureDropManipulator(this, prependToRoot: true));
             toolkitPreviewCanvas.style.flexGrow = 1f;
+            BuildPreviewGuides();
             BuildPreviewZoomTool();
             BuildPreviewTransformTool();
             previewEyedropper = new PreviewEyedropperManipulator(this);
@@ -1588,6 +1590,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerEnter(PointerEnterEvent evt)
         {
+            previewPointerControl = evt.ctrlKey;
             UpdatePreviewCursor(evt.localPosition, evt.altKey);
         }
 
@@ -1598,6 +1601,7 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerDown(PointerDownEvent evt)
         {
+            previewPointerControl = evt.ctrlKey;
             if (HandlePaintConversionPrompt(evt)) return;
             if (HandleFillPointerDown(evt)) return;
             DrawingLayerBehaviour layer = GetSelectedLayer()?.Behaviour as DrawingLayerBehaviour;
@@ -1617,8 +1621,10 @@ namespace DCFApixels.SpriteEditor
             paintingPointerId = evt.pointerId;
             paintingErase = erase;
             paintingPointerMoved = false;
+            previewPointerPosition = evt.localPosition;
             toolkitPreviewCanvas.CapturePointer(evt.pointerId);
-            if (!TryBeginPreviewStroke(evt.localPosition, evt.shiftKey)) FinishPaintingStroke();
+            CapturePaintingGuide(evt.localPosition, evt.ctrlKey);
+            if (!TryBeginPreviewStroke(GetPreviewPaintPosition(evt.localPosition, evt.shiftKey, evt.ctrlKey), evt.shiftKey)) FinishPaintingStroke();
             UpdatePreviewCursor(evt.localPosition, false);
             SpriteEditorUI.ConsumeEvent(evt);
         }
@@ -1654,15 +1660,16 @@ namespace DCFApixels.SpriteEditor
 
         private void OnPreviewPointerMove(PointerMoveEvent evt)
         {
+            previewPointerControl = evt.ctrlKey;
             if (paintingLayer == null || paintingPointerId != evt.pointerId)
             {
                 UpdatePreviewCursor(evt.localPosition, evt.altKey);
                 return;
             }
 
-            Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
+            Vector2 paintPosition = GetPreviewPaintPosition(evt.localPosition, evt.shiftKey, evt.ctrlKey);
             paintingPointerMoved |= evt.deltaPosition.sqrMagnitude > 0f;
-            UpdatePreviewCursor(paintPosition, evt.altKey);
+            UpdatePreviewCursor(evt.localPosition, evt.altKey);
 
             if (toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) && TryMapPreviewToLayerUv(
                     paintPosition,
@@ -1719,6 +1726,7 @@ namespace DCFApixels.SpriteEditor
             paintingShiftHeld = held;
             paintingLockedAxis = 0;
             paintingAxisAnchor = lastPaintingDocumentUv;
+            paintingAxisPointerAnchor = previewPointerPosition;
         }
 
         private Vector2 ConstrainPaintingPosition(Vector2 position, bool shift)
@@ -1728,22 +1736,22 @@ namespace DCFApixels.SpriteEditor
                 return position;
 
             Rect rect = toolkitPreviewCanvas.ImageRect;
-            position = toolkitPreviewCanvas.ToCanvas(position);
-            Vector2 anchor = new Vector2(
+            Vector2 anchor = toolkitPreviewCanvas.ToView(new Vector2(
                 rect.x + paintingAxisAnchor.x * rect.width,
-                rect.y + (1f - paintingAxisAnchor.y) * rect.height);
-            Vector2 delta = position - anchor;
+                rect.y + (1f - paintingAxisAnchor.y) * rect.height));
+            Vector2 delta = position - paintingAxisPointerAnchor;
             if (paintingLockedAxis == 0)
             {
                 if (delta.sqrMagnitude < 4f)
-                    return toolkitPreviewCanvas.ToView(anchor);
+                    return anchor;
                 paintingLockedAxis = Mathf.Abs(delta.x) >= Mathf.Abs(delta.y) ? 1 : 2;
             }
-            return toolkitPreviewCanvas.ToView(paintingLockedAxis == 1 ? new Vector2(position.x, anchor.y) : new Vector2(anchor.x, position.y));
+            return paintingLockedAxis == 1 ? new Vector2(position.x, anchor.y) : new Vector2(anchor.x, position.y);
         }
 
         private void OnPreviewPointerUp(PointerUpEvent evt)
         {
+            previewPointerControl = evt.ctrlKey;
             if (paintingLayer == null ||
                 paintingPointerId != evt.pointerId ||
                 paintingMouseButton != evt.button)
@@ -1751,7 +1759,7 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
-            Vector2 paintPosition = ConstrainPaintingPosition(evt.localPosition, evt.shiftKey);
+            Vector2 paintPosition = GetPreviewPaintPosition(evt.localPosition, evt.shiftKey, evt.ctrlKey);
             if (paintingPointerMoved && toolkitPreviewCanvas.contentRect.Contains(evt.localPosition) &&
                 TryMapPreviewToLayerUv(paintPosition, toolkitPreviewCanvas.ImageRect, paintingLayer, out Vector2 endUv, allowOutside: true))
                 PaintTowardsLayerPoint(endUv);
@@ -1779,11 +1787,17 @@ namespace DCFApixels.SpriteEditor
             previewPointerInside = toolkitPreviewCanvas != null && toolkitPreviewCanvas.contentRect.Contains(localPosition);
             previewEyedropper?.UpdateCursor(localPosition, alt);
             bool panning = previewZoomManipulator?.IsNavigating ?? false;
+            if (!panning && previewGuideManipulator != null && previewGuideManipulator.WantsCursor(localPosition, alt))
+            {
+                toolkitPreviewCanvas.SetCursor(false, localPosition, false);
+                toolkitPreviewCanvas.SetToolCursor(PreviewTool.Transform, false, false, MouseCursor.MoveArrow);
+                return;
+            }
             bool visible = IsPreviewPaintTool &&
                            !panning && !alt && previewPointerInside;
             toolkitPreviewCanvas?.SetCursor(
                 visible,
-                localPosition,
+                visible ? GetPreviewPaintPosition(localPosition, paintingShiftHeld, previewPointerControl, updateConstraint: false) : localPosition,
                 paintingLayer != null ? paintingErase : paintSettings.tool == PaintToolMode.Eraser);
             MouseCursor transformCursor = !panning && previewPointerInside && previewTool == PreviewTool.Transform
                 ? previewTransformManipulator?.GetCursor(localPosition, alt) ?? MouseCursor.Pan
@@ -1805,12 +1819,18 @@ namespace DCFApixels.SpriteEditor
         {
             previewPointerInside = false;
             previewPointerAlt = false;
+            previewPointerControl = false;
             toolkitPreviewCanvas?.SetCursor(false, default, false);
             toolkitPreviewCanvas?.SetToolCursor(previewTool, false, false);
         }
 
         private void OnToolkitKeyDown(KeyDownEvent evt)
         {
+            if (evt.keyCode == KeyCode.LeftControl || evt.keyCode == KeyCode.RightControl)
+            {
+                previewPointerControl = evt.ctrlKey;
+                RefreshPreviewPointerCursor();
+            }
             if ((evt.ctrlKey || evt.commandKey) && !evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.S)
             {
                 ResetOpacityEntry();
@@ -1828,6 +1848,14 @@ namespace DCFApixels.SpriteEditor
                 return;
             }
 
+            if (evt.keyCode == KeyCode.Escape && previewGuideManipulator?.IsDragging == true)
+            {
+                previewGuideManipulator.Cancel();
+                SpriteEditorUI.ConsumeEvent(evt);
+                return;
+            }
+
+            if (HandlePreviewGuideKey(evt)) return;
             if (HandleAreaSelectionKey(evt)) return;
             if (HandleLayerNavigationKey(evt)) return;
 
@@ -1858,6 +1886,7 @@ namespace DCFApixels.SpriteEditor
             if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
             {
                 SetPaintingShift(true);
+                RefreshPreviewPointerCursor();
                 evt.StopImmediatePropagation();
                 return;
             }
@@ -1914,6 +1943,11 @@ namespace DCFApixels.SpriteEditor
 
         private void OnToolkitKeyUp(KeyUpEvent evt)
         {
+            if (evt.keyCode == KeyCode.LeftControl || evt.keyCode == KeyCode.RightControl)
+            {
+                previewPointerControl = evt.ctrlKey;
+                RefreshPreviewPointerCursor();
+            }
             if (evt.keyCode == KeyCode.LeftAlt || evt.keyCode == KeyCode.RightAlt)
             {
                 previewEyedropper?.UpdateModifier(evt.altKey);
@@ -1926,6 +1960,7 @@ namespace DCFApixels.SpriteEditor
             if (paintingLayer != null && (evt.keyCode == KeyCode.LeftShift || evt.keyCode == KeyCode.RightShift))
             {
                 SetPaintingShift(evt.shiftKey);
+                RefreshPreviewPointerCursor();
                 evt.StopImmediatePropagation();
             }
         }

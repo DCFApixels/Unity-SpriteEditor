@@ -20,6 +20,18 @@ const add = (a, b) => a.map((v, i) => v + b[i]);
 const sub = (a, b) => a.map((v, i) => v - b[i]);
 const mul = (a, b) => a.map((v, i) => v * b[i]);
 const div = (a, b) => a.map((v, i) => v / b[i]);
+const constrainSource = ui.split('private Vector2 ConstrainPaintingPosition(')[1].split('private void OnPreviewPointerUp(')[0];
+const constrainBody = constrainSource.slice(constrainSource.indexOf('{') + 1, constrainSource.lastIndexOf('}'))
+    .replace('SetPaintingShift(shift);', '')
+    .replace(/(?:Rect|Vector2) (\w+) =/g, 'let $1 =')
+    .replace('position - paintingAxisPointerAnchor', 'new Vector2(position.x - state.pointerAnchor.x, position.y - state.pointerAnchor.y)')
+    .replace(/paintingAxisAnchor/g, 'state.anchor').replace(/paintingLockedAxis/g, 'state.axis')
+    .replace(/Mathf.Abs/g, 'Math.abs').replace(/(\d)f\b/g, '$1');
+const constrain = new Function('position', 'shift', 'toolkitPreviewCanvas', 'state', 'Vector2', constrainBody);
+class Point {
+    constructor(x, y) { this.x = x; this.y = y; }
+    get sqrMagnitude() { return this.x * this.x + this.y * this.y; }
+}
 let checks = 0;
 for (const angle of [0, 17, 45, 90, 133, 179.9, -90, -178, 270, 1081]) {
     const c = Math.cos(angle * Math.PI / 180), s = Math.sin(angle * Math.PI / 180);
@@ -28,6 +40,31 @@ for (const angle of [0, 17, 45, 90, 133, 179.9, -90, -178, 270, 1081]) {
         const pivot = mul(extent, [.5, .5]);
         const toView = a => add(pivot, rotate(forward, sub(a, pivot)));
         const toCanvas = a => add(pivot, rotate(inverse, sub(a, pivot)));
+        for (const uv of [[.3, .6], [-1.2, 2.4]]) for (const size of [[672, 336], [1700, 850]]) {
+            const image = { x: -37, y: 51, width: size[0], height: size[1] };
+            const canvas = { ImageRect: image, ToView: p => new Point(...toView([p.x, p.y])) };
+            const anchor = canvas.ToView(new Point(image.x + uv[0] * size[0], image.y + (1 - uv[1]) * size[1]));
+            for (const delta of [[30, 4], [-30, 4], [4, 30], [4, -30]]) {
+                const state = { anchor: new Point(...uv), pointerAnchor: anchor, axis: 0 };
+                const position = new Point(anchor.x + delta[0], anchor.y + delta[1]);
+                const result = constrain(position, true, canvas, state, Point);
+                const horizontal = Math.abs(delta[0]) >= Math.abs(delta[1]);
+                assert.equal(state.axis, horizontal ? 1 : 2);
+                close([result.x, result.y], horizontal ? [position.x, anchor.y] : [anchor.x, position.y]);
+                const changedDirection = constrain(new Point(anchor.x + 90, anchor.y + 110), true, canvas, state, Point);
+                assert.equal(horizontal ? changedDirection.y : changedDirection.x, horizontal ? anchor.y : anchor.x);
+                assert.equal(constrain(position, false, canvas, state, Point), position);
+                state.axis = 0;
+                const near = constrain(new Point(anchor.x + .5, anchor.y + .5), true, canvas, state, Point);
+                close([near.x, near.y], [anchor.x, anchor.y]);
+                assert.equal(state.axis, 0);
+                state.pointerAnchor = new Point(anchor.x + 7, anchor.y);
+                const snappedStart = constrain(new Point(anchor.x + 7, anchor.y + 3), true, canvas, state, Point);
+                assert.equal(state.axis, 2, 'Guide attraction must not bias Shift direction toward the raw-to-snapped offset');
+                close([snappedStart.x, snappedStart.y], [anchor.x, anchor.y + 3]);
+                checks += 6;
+            }
+        }
         for (const point of [[0, 0], [203, 116], [-1000, 2000], pivot]) {
             close(toCanvas(toView(point)), point);
             const size = [672, 336], position = [-37, 51], nextSize = mul(size, [1.2, 1.2]);
@@ -75,7 +112,8 @@ assert.match(zoom, /percent <= 0f \|\| float.IsNaN\(percent\) \|\| float.IsInfin
 assert.match(zoom, /ZoomAt\(toolkitPreviewCanvas.contentRect.center, percent \/ 100f\)/);
 assert.match(zoom, /previewZoomPercent.SetValueWithoutNotify\(scale \* 100f\)/);
 assert.match(zoom, /freeRotation \+= Vector2.SignedAngle\(from, to\)/);
-assert.match(zoom, /SetViewRotation\(freeRotation, !disableSnap\)/);
+assert.match(zoom, /disableSnap \? freeRotation : owner.SnapPreviewGuideRotation\(freeRotation, includeCanvasAxes: true\)/);
+assert.match(zoom, /SetViewRotation\(rotation, snap: false\)/);
 assert.match(zoom, /RotateTo\(point, evt.ctrlKey\)/);
 assert.match(zoom, /if \(!owner.HasPreviewLayers/);
 assert.match(zoom, /pointerId = -1;\s*if \(captured >= 0/);
@@ -89,7 +127,8 @@ assert.match(ui, /rect.position = ToView\(rect.center\) - rect.size \* 0.5f/);
 assert.match(ui, /Vector2 canvasCursor = ToCanvas\(cursorPosition\)/);
 assert.match(ui, /x = viewport.ToViewDelta\(x\)/);
 assert.match(ui, /y = viewport.ToViewDelta\(y\)/);
-assert.match(ui, /position = toolkitPreviewCanvas.ToCanvas\(position\)/);
+assert.match(constrainSource, /anchor = toolkitPreviewCanvas.ToView\(new Vector2/);
+assert.ok(!constrainSource.includes('ToCanvas'), 'Shift constrains in screen space before the shared painting conversion');
 assert.match(read('TextureCompositorWindow.cs'), /mousePosition = toolkitPreviewCanvas.ToCanvas\(mousePosition\)/);
 assert.match(read('TextureCompositorWindow.Tiling.cs'), /ImageRect.Contains\(toolkitPreviewCanvas.ToCanvas\(position\)\)/);
 assert.match(transform, /lastPointerPosition = point;\s*point = owner.toolkitPreviewCanvas.ToCanvas\(point\)/);

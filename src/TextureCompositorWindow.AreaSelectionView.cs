@@ -36,12 +36,13 @@ namespace DCFApixels.SpriteEditor
                 target.UnregisterCallback<PointerCancelEvent>(Interrupted);
                 target.UnregisterCallback<DetachFromPanelEvent>(Detached);
             }
-            private Vector2 CanvasPoint(Vector2 point)
+            private Vector2 CanvasPoint(Vector2 point, bool disableSnap)
             {
                 Rect image = owner.toolkitPreviewCanvas.ImageRect;
                 point = owner.toolkitPreviewCanvas.ToCanvas(point);
-                return new Vector2((point.x - image.x) / Mathf.Max(.0001f, image.width) * owner.compositor.width,
+                Vector2 documentPoint = new Vector2((point.x - image.x) / Mathf.Max(.0001f, image.width) * owner.compositor.width,
                     (1f - (point.y - image.y) / Mathf.Max(.0001f, image.height)) * owner.compositor.height);
+                return disableSnap ? documentPoint : owner.SnapPreviewGuidePoint(documentPoint, owner.previewTool == PreviewTool.RectangleSelect);
             }
             private void Down(PointerDownEvent evt)
             {
@@ -58,7 +59,7 @@ namespace DCFApixels.SpriteEditor
                     owner.FinishPaintingStroke(); owner.FinishPreviewTransform();
                     owner.GetAreaSelection();
                 }
-                Current = CanvasPoint(evt.localPosition);
+                Current = CanvasPoint(evt.localPosition, evt.ctrlKey);
                 if (owner.previewTool == PreviewTool.RectangleSelect)
                 {
                     Start = Current; pointer = evt.pointerId;
@@ -75,14 +76,14 @@ namespace DCFApixels.SpriteEditor
                 if (!owner.IsAreaSelectionTool || !HasGesture || owner.compositor == null ||
                     (owner.previewZoomManipulator?.IsNavigating ?? false)) return;
                 if (RectangleDragging && (evt.pointerId != pointer || (evt.pressedButtons & 1) == 0)) { Cancel(); return; }
-                Current = CanvasPoint(evt.localPosition);
+                Current = CanvasPoint(evt.localPosition, evt.ctrlKey);
                 owner.areaSelectionOverlay?.MarkDirtyRepaint();
                 evt.StopImmediatePropagation();
             }
             private void Up(PointerUpEvent evt)
             {
                 if (evt.button != 0 || pointer != evt.pointerId) return;
-                Current = CanvasPoint(evt.localPosition);
+                Current = CanvasPoint(evt.localPosition, evt.ctrlKey);
                 Vector2 a = Start, b = Current;
                 var operation = combine; bool tiled = wrap;
                 bool click = (a - b).magnitude * owner.toolkitPreviewCanvas.PixelScale < 3f;
