@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { snapshot } from './UssCascadeSnapshot.mjs';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
-const styles = read('src/SpriteEditorSplitView.uss');
+// The recovery marker is new UI, not a restyle of the existing cascade.
+const styles = read('src/SpriteEditorSplitView.uss').replace(/\.sprite-editor-missing-thumbnail\s*\{[^}]*\}/g, '');
 const baseline = JSON.parse(read('Tests~/UssCascadeBaseline.json'));
 assert.deepEqual(snapshot(styles), baseline, 'Exact USS values, selectors/specificity and conflicting property order must remain unchanged');
 assert.notDeepEqual(snapshot(styles.replace('--whimtex-surface: #383838', '--whimtex-surface: #393939')), baseline);

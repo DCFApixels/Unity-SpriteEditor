@@ -33,12 +33,17 @@ namespace DCFApixels.SpriteEditor
             if (index < 0) return true;
             FinishPreviewTransform();
             FinishPaintingStroke();
-            SelectOnlyLayer(toolkitLayerTree[index].Layer.Id);
+            LayerTreeEntry entry = toolkitLayerTree[index];
+            if (entry.Layer == null) SelectMissingLayer(entry.Container, entry.Index);
+            else SelectOnlyLayer(entry.Layer.Id);
             rootVisualElement.Focus();
             RefreshToolkitInterface();
             ScrollView scroll = toolkitLayerHierarchyRoot?.GetFirstAncestorOfType<ScrollView>();
-            if (scroll != null && index < toolkitLayerHierarchyRoot.childCount)
-                scroll.ScrollTo(toolkitLayerHierarchyRoot[index]);
+            int rowIndex = 0;
+            for (int i = 0; i < index; i++)
+                if (toolkitLayerTree[i].Index >= 0) rowIndex++;
+            if (scroll != null && rowIndex < toolkitLayerHierarchyRoot.childCount)
+                scroll.ScrollTo(toolkitLayerHierarchyRoot[rowIndex]);
             return true;
         }
 
@@ -46,14 +51,18 @@ namespace DCFApixels.SpriteEditor
         {
             int current = -1;
             for (int i = 0; i < toolkitLayerTree.Count; i++)
-                if (toolkitLayerTree[i].Layer != null && toolkitLayerTree[i].Layer.Id == selectedLayerId)
+            {
+                var entry = toolkitLayerTree[i];
+                if (entry.Layer != null ? entry.Layer.Id == selectedLayerId :
+                    selectedMissingLayer != null && entry.Index >= 0 && entry.Container == selectedMissingLayer.Container && entry.Index == selectedMissingLayer.Index)
                 {
                     current = i;
                     break;
                 }
+            }
             int next = current < 0 ? (direction > 0 ? 0 : toolkitLayerTree.Count - 1) : current + direction;
             for (int i = next; i >= 0 && i < toolkitLayerTree.Count; i += direction)
-                if (toolkitLayerTree[i].Layer != null) return i;
+                if (toolkitLayerTree[i].Index >= 0) return i;
             return -1;
         }
 
@@ -68,6 +77,7 @@ namespace DCFApixels.SpriteEditor
 
         private void SelectOnlyLayer(string id)
         {
+            selectedMissingLayer = null;
             ResetOpacityEntry();
             selectedLayerIds.Clear();
             if (id != null)
@@ -78,6 +88,8 @@ namespace DCFApixels.SpriteEditor
 
         private void NormalizeLayerSelection()
         {
+            if (selectedMissingLayer != null && (!selectedMissingLayer.IsValid(compositor) || selectedLayerId != null))
+                selectedMissingLayer = null;
             selectedLayerIds ??= new List<string>();
             selectedLayerIds.RemoveAll(id => compositor == null || compositor.FindLayer(id) == null);
             if (compositor != null && compositor.FindLayer(selectedLayerId) != null)
@@ -93,6 +105,7 @@ namespace DCFApixels.SpriteEditor
 
         private void ActivateSelectedLayer(string id)
         {
+            selectedMissingLayer = null;
             ResetOpacityEntry();
             selectedLayerIds.Remove(id);
             selectedLayerIds.Add(id);
@@ -101,6 +114,7 @@ namespace DCFApixels.SpriteEditor
 
         private void SelectLayerFromPointer(Layer layer, PointerDownEvent evt, bool preserveSelection = false)
         {
+            selectedMissingLayer = null;
             FinishPreviewTransform();
             FinishPaintingStroke();
             bool additive = evt.ctrlKey || evt.commandKey;
@@ -222,6 +236,7 @@ namespace DCFApixels.SpriteEditor
 
         private void DeleteSelectedLayers()
         {
+            if (HasSelectedMissingLayer) { RemoveSelectedMissingLayer(); return; }
             DeleteLayers(GetSelectedRoots());
         }
 

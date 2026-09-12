@@ -1846,3 +1846,8 @@
     background-color: transparent;
     opacity: 0.35;
 }
+.sprite-editor-missing-thumbnail {
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+    color: #e9b86d;
+}

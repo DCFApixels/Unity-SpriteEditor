@@ -24,6 +24,7 @@ namespace DCFApixels.SpriteEditor
         {
             toolkitInspectorBuilt = false;
             toolkitInspectorLayer = null;
+            toolkitInspectorMissingLayer = null;
             toolkitInspectorDocument = null;
             toolkitInspectorEffectTarget = null;
             toolkitInspectorShaderFX = null;
@@ -37,7 +38,8 @@ namespace DCFApixels.SpriteEditor
 
             Layer selected = GetSelectedLayer();
             bool locked = SpriteEditorApi.IsLayerContentLocked(compositor, selected);
-            string title = selected == null ? "Layer Settings" : selected.layerName;
+            string title = selected == null ? (HasSelectedMissingLayer
+                ? MissingLayerDisplayName(selectedMissingLayer.Container, selectedMissingLayer.Index) : "Layer Settings") : selected.layerName;
             if (toolkitLayerSettingsTitle != null && toolkitLayerSettingsTitle.text != title)
                 toolkitLayerSettingsTitle.text = title;
             if (toolkitLayerGuidButton != null)
@@ -50,11 +52,13 @@ namespace DCFApixels.SpriteEditor
             // Rebind only when selection/document identity changes (including Undo replacement).
             // Normal value changes must preserve text editing, pointer capture and scroll position.
             if (!toolkitInspectorBuilt || !ReferenceEquals(toolkitInspectorLayer, selected) ||
-                toolkitInspectorDocument != compositor || toolkitInspectorLocked != locked)
+                toolkitInspectorDocument != compositor || toolkitInspectorLocked != locked ||
+                !ReferenceEquals(toolkitInspectorMissingLayer, selectedMissingLayer))
             {
                 ResetToolkitLayerInspector();
                 toolkitInspectorBuilt = true;
                 toolkitInspectorLayer = selected;
+                toolkitInspectorMissingLayer = selectedMissingLayer;
                 toolkitInspectorDocument = compositor;
                 toolkitInspectorLocked = locked;
                 toolkitLayerSettingsScroll.Clear();
@@ -70,6 +74,7 @@ namespace DCFApixels.SpriteEditor
         {
             if (layer == null)
             {
+                if (HasSelectedMissingLayer) { BuildMissingLayerInspector(root); return; }
                 SpriteEditorUI.AddHelpBox(root, "Select a layer below to edit its settings.", HelpBoxMessageType.Info);
                 return;
             }

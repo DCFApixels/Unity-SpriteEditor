@@ -84,3 +84,14 @@ Right-click a row or open **⋮** for actions on the selection.
 
 See [merging and conversion](transform.md#merge-layers-or-convert-them-to-drawing)
 when you want to paint on the combined result.
+
+## Repair a missing layer
+
+Broken layers show their saved names as read-only text when available, or **Missing Reference** otherwise.
+Select the row to see the warning in Layer Settings. Choose **Replace with**,
+then click **Replace Layer**. The replacement stays in the same position and keeps compatible
+saved settings. The panel lists settings that cannot be transferred; check the result before saving.
+
+If **Saved data** asks you to choose a record, select the old layer by its name.
+Use **Use new layer defaults** only when you want a fresh replacement without its old settings.
+You can also remove the broken row from **⋮ → Remove** or with the trash button.

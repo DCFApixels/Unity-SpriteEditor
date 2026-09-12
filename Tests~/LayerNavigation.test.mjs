@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../src/TextureCompositorWindow.Selection.cs', import.meta.url), 'utf8');
 const body = source.match(/private int FindAdjacentLayerIndex\(int direction\)\s*\{([\s\S]*?)\n        \}/)?.[1];
 assert.ok(body, 'Find the actual navigation implementation');
-const navigate = new Function('toolkitLayerTree', 'selectedLayerId', 'direction',
+const navigate = new Function('toolkitLayerTree', 'selectedLayerId', 'direction', 'selectedMissingLayer',
     body.replace(/\bint\b/g, 'let').replace(/toolkitLayerTree\.Count/g, 'toolkitLayerTree.length'));
-const rows = (...ids) => ids.map(id => ({ Layer: id === null ? null : { Id: id } }));
+const rows = (...ids) => ids.map((id, index) => ({ Layer: id === null ? null : { Id: id }, Index: id === null ? -1 : index }));
 
 let checks = 0;
 function check(tree, active, direction, expected) {
@@ -31,4 +31,11 @@ for (const direction of [-1, 1]) {
     check(rows(null, null), null, direction, -1);
     check(rows('a', null), 'a', direction, -1);
 }
-console.log(`Layer navigation: ${checks} checks passed.`);
+const container = {};
+const broken = rows('a', null, 'b', null);
+broken[1] = { Layer: null, Index: 1, Container: container };
+check(broken, 'a', 1, 1);
+check(broken, 'b', -1, 1);
+assert.equal(navigate(broken, null, 1, { Container: container, Index: 1 }), 2);
+assert.equal(navigate(broken, null, -1, { Container: container, Index: 1 }), 0);
+console.log(`Layer navigation: ${checks + 2} checks passed, including missing rows.`);

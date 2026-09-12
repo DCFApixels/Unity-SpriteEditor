@@ -514,7 +514,7 @@ namespace DCFApixels.SpriteEditor
             {
                 bool hasSelection = GetSelectedLayer() != null;
                 group.SetEnabled(hasSelection);
-                delete.SetEnabled(hasSelection);
+                delete.SetEnabled(hasSelection || HasSelectedMissingLayer);
             });
         }
 
@@ -547,6 +547,7 @@ namespace DCFApixels.SpriteEditor
             toolkitInspectorEffectTarget?.Invalidate();
             toolkitLayerTree.Clear();
             toolkitLayerTree.AddRange(toolkitNextLayerTree);
+            RefreshMissingLayerNames();
             toolkitLayerHierarchyRoot.Clear();
             if (compositor == null || compositor.layers.Count == 0)
             {
@@ -712,6 +713,7 @@ namespace DCFApixels.SpriteEditor
             var cell = new VisualElement();
             cell.AddToClassList("sprite-editor-layer-name-cell");
             cell.style.paddingLeft = depth * ToolkitLayerIndent;
+            if (layer == null) { row.Add(cell); return cell; }
             var clipping = new VisualElement { pickingMode = PickingMode.Ignore };
             clipping.style.width = 12f;
             clipping.style.height = 18f;
@@ -953,16 +955,7 @@ namespace DCFApixels.SpriteEditor
 
         private VisualElement BuildMissingLayerRow(List<Layer> container, int index, int depth)
         {
-            VisualElement row = SpriteEditorUI.CreateRow();
-            row.style.height = ToolkitLayerRowHeight;
-            row.style.paddingLeft = 20f + depth * ToolkitLayerIndent;
-            row.style.backgroundColor = SpriteEditorUI.RowColor;
-            Label message = new Label("Missing layer data");
-            message.style.flexGrow = 1f;
-            row.Add(message);
-            row.Add(SpriteEditorUI.CreateButton("Remove", () =>
-                ExecuteModelChange("Remove Missing Layer", () => container.RemoveAt(index)), 60f));
-            return row;
+            return CreateMissingLayerRow(container, index, depth);
         }
 
         private sealed class LayerDragManipulator : PointerManipulator
