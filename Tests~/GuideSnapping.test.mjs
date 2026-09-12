@@ -6,6 +6,7 @@ class V {
     constructor(x, y) { this.x = x; this.y = y; }
     get 0() { return this.x; } get 1() { return this.y; }
     get sqrMagnitude() { return this.x * this.x + this.y * this.y; }
+    get magnitude() { return Math.sqrt(this.sqrMagnitude); }
 }
 const add = (a, b) => new V(a.x + b.x, a.y + b.y);
 const sub = (a, b) => new V(a.x - b.x, a.y - b.y);
@@ -25,17 +26,25 @@ function body(name) {
     return src.slice(start + 1, end - 1);
 }
 function compile(name, args) {
+    const outNames = [...body(name).matchAll(/out Vector2 (intersection|target)/g)].map(m => m[1]);
     let code = body(name)
+        .replace(/TrySnapPreviewGuideIntersection\((\w+), ([\w.]+), out Vector2 (\w+)\)/g, 'intersect($1, $2, value => $3 = value)')
         .replace(/foreach \(PreviewGuide guide in previewGuides\)/g, 'for (const guide of previewGuides)')
         .replace(/GuideDocumentPlane\(([^;]+?), out Vector2 (\w+), out float (\w+)\);/g, 'let [$2, $3] = plane($1);')
         .replace(/GuideDocumentPlane\(guide, out Vector2 n, out _\);/g, 'let [n] = plane(guide);')
         .replace('return point + SnapPreviewGuideMove(point, axisX, Vector2.zero, fallback - point, true, true)', 'return add(point, snapMove(point, axisX, new V(0, 0), sub(fallback, point), true, true))')
-        .replace(/\b(?:float|Vector2|int) (\w+)/g, 'let $1')
+        .replace(/\b(?:float|Vector2|int|bool) (\w+)/g, 'let $1')
         .replace(/new Vector2/g, 'new V').replace(/Vector2.Dot/g, 'dot').replace(/GuideAxesParallel/g, 'parallel')
         .replace(/Mathf.Abs/g, 'Math.abs').replace(/Mathf.Min/g, 'Math.min')
         .replace(/Mathf.Atan2/g, 'Math.atan2').replace(/Mathf.Round/g, 'Math.round').replace(/Mathf.Rad2Deg/g, '(180 / Math.PI)')
         .replace(/previewGuides.Count/g, 'previewGuides.length').replace(/(\d)f\b/g, '$1')
-        .replace('Vector2.right', 'new V(1, 0)').replace('Vector2.up', 'new V(0, 1)')
+        .replaceAll('Vector2.right', 'new V(1, 0)').replaceAll('Vector2.up', 'new V(0, 1)').replaceAll('Vector2.zero', 'new V(0, 0)')
+        .replace('float.PositiveInfinity', 'Infinity')
+        .replace(/new V\(firstDelta \* n.y - first.y \* delta,\s*first.x \* delta - firstDelta \* n.x\) \/ determinant/,
+            'mul(new V(firstDelta * n.y - first.y * delta, first.x * delta - firstDelta * n.x), 1 / determinant)')
+        .replace('offset = direction * (along / directionLength)', 'offset = mul(direction, along / directionLength)')
+        .replace('center + axisX * (x * halfSize.x) + axisY * (y * halfSize.y)', 'add(add(center, mul(axisX, x * halfSize.x)), mul(axisY, y * halfSize.y))')
+        .replace('target - anchor', 'sub(target, anchor)')
         .replace('projected = point + n * delta', 'projected = add(point, mul(n, delta))')
         .replace('new V(firstD * n.y - first.y * d, first.x * d - firstD * n.x) / determinant', 'mul(new V(firstD * n.y - first.y * d, first.x * d - firstD * n.x), 1 / determinant)')
         .replace('(candidate - point).sqrMagnitude', 'sub(candidate, point).sqrMagnitude')
@@ -45,10 +54,14 @@ function compile(name, args) {
         .replace('(fallback - point).sqrMagnitude', 'sub(fallback, point).sqrMagnitude')
         .replace('direction * ((d - dot(n, point)) / denominator)', 'mul(direction, ((d - dot(n, point)) / denominator))')
         .replace('result = point + offset', 'result = add(point, offset)');
-    const fn = new Function(...args, 'previewGuides', 'GuideSnapTolerance', 'CanSnapPreviewGuides', 'plane', 'V', 'dot', 'parallel', 'add', 'sub', 'mul', 'snapMove', code);
+    if (outNames.length) code = `let ${outNames.join(', ')};\n` + code;
+    if (name === 'TrySnapPreviewGuideIntersection') code = 'let result;\n' + code.replaceAll('return false;', 'return [false, result];').replace('return found;', 'return [found, result];');
+    const fn = new Function(...args, 'previewGuides', 'GuideSnapTolerance', 'CanSnapPreviewGuides', 'plane', 'V', 'dot', 'parallel', 'add', 'sub', 'mul', 'snapMove', 'intersect', code);
     return (values, guides, tolerance = 8, enabled = true) => fn(...args.map((_, i) => values[i]), guides, tolerance, enabled,
-        g => [g.n, g.d], V, dot, parallel, add, sub, mul, (...args) => moveSnap(args, guides, tolerance, enabled));
+        g => [g.n, g.d], V, dot, parallel, add, sub, mul, (...args) => moveSnap(args, guides, tolerance, enabled),
+        (point, direction, set) => { const [found, result] = intersectionSnap([point, direction], guides, tolerance, enabled); set(result); return found; });
 }
+const intersectionSnap = compile('TrySnapPreviewGuideIntersection', ['point', 'direction']);
 const pointSnap = compile('SnapPreviewGuidePoint', ['point', 'axisAlignedOnly']);
 const moveSnap = compile('SnapPreviewGuideMove', ['center', 'axisX', 'halfSize', 'fallback', 'horizontal', 'vertical']);
 const resizeSnap = compile('SnapPreviewGuideResize', ['point', 'direction', 'free', 'axisX', 'fallback']);
@@ -60,14 +73,22 @@ const paintBody = body('GetPreviewPaintPosition')
 const paintPosition = new Function('state', 'position', 'shift', 'disableSnap', 'updateConstraint', 'V', `with (state) { ${paintBody} }`);
 function guideStrokeMethod(name) {
     const code = body(name)
-        .replace(/\b(?:Rect|Vector2|PreviewGuide|float|int) (\w+)/g, 'let $1')
+        .replace(/TrySnapPreviewGuideIntersection\(documentPoint, ([\w.]+), out Vector2 intersection\)/g,
+            'intersect(state, documentPoint, $1, value => intersection = value)')
+        .replace(/\b(?:Rect|Vector2|PreviewGuide|float|int|bool) (\w+)/g, 'let $1')
+        .replaceAll('Vector2.zero', 'new V(0, 0)')
         .replace(/new Vector2/g, 'new V').replace(/Vector2.Dot/g, 'dot')
         .replace(/Mathf.Abs/g, 'Math.abs').replace(/previewGuides.Count/g, 'previewGuides.length')
         .replace(/(\d)f\b/g, '$1')
         .replace('point += guide.normal * (guide.position - dot(point, guide.normal))',
             'point = add(point, mul(guide.normal, guide.position - dot(point, guide.normal)))');
-    const fn = new Function('state', 'position', 'disableSnap', 'V', 'dot', 'add', 'mul', `with (state) { ${code} }`);
-    return (state, position, disableSnap = false) => fn(state, position, disableSnap, V, dot, add, mul);
+    const fn = new Function('state', 'position', 'disableSnap', 'V', 'dot', 'add', 'mul', 'intersect', `let intersection; with (state) { ${code} }`);
+    return (state, position, disableSnap = false) => fn(state, position, disableSnap, V, dot, add, mul,
+        (state, point, direction, set) => {
+            const guides = state.previewGuides.map(g => ({ n: new V(g.normal.x, -g.normal.y), d: g.position - g.normal.y * state.compositor.height }));
+            const [found, result] = intersectionSnap([point, direction], guides, state.GuideSnapTolerance, state.CanSnapPreviewGuides);
+            set(result); return found;
+        });
 }
 const captureGuide = guideStrokeMethod('CapturePaintingGuide');
 const projectGuide = guideStrokeMethod('ProjectPaintingGuide');
@@ -194,6 +215,69 @@ for (let angle = -180; angle <= 180; angle += 15) {
     checks += 7;
 }
 closeV(pointSnap([new V(98, 201), true], [{ n: new V(1, 0), d: 100 }, { n: new V(0, -1), d: -200 }]), new V(100, 200));
+// Every pair competes before single lines, including a line closer than either
+// member of the winning pair. Reordering guides must not change a unique winner.
+for (const tolerance of [.8, 8, 80]) for (const angle of [0, 19, 90, 173]) {
+    const p = new V(300, 200), x = axis(angle), y = axis(angle + 90);
+    const target = add(p, mul(add(x, y), tolerance * .6));
+    const pair = [{ n: x, d: dot(x, target) }, { n: y, d: dot(y, target) }];
+    const distractor = { n: axis(angle + 45), d: dot(axis(angle + 45), p) - tolerance * .1 };
+    for (const guides of [[distractor, ...pair], [...pair, distractor], [pair[1], distractor, pair[0]]]) {
+        closeV(pointSnap([p, false], guides, tolerance), target);
+        closeV(pointSnap([p, true], guides, tolerance), target);
+        closeV(pointSnap([target, false], guides, tolerance), target);
+        closeV(resizeSnap([p, x, true, x, p], guides, tolerance), target);
+        closeV(resizeSnap([p, add(x, y), false, x, p], guides, tolerance), target);
+        closeV(moveSnap([p, x, new V(0, 0), mul(x, .01), true, true], guides, tolerance), sub(target, p));
+        closeV(pointSnap([p, false], guides, tolerance, false), p);
+        checks += 7;
+    }
+    // A target off the constrained path must never pull it sideways.
+    const offPath = [{ n: axis(angle + 25), d: dot(axis(angle + 25), target) },
+        { n: axis(angle + 115), d: dot(axis(angle + 115), target) }];
+    closeV(resizeSnap([p, x, false, x, p], offPath, tolerance), p);
+    assert.equal(intersectionSnap([p, x], offPath, tolerance)[0], false);
+    const halfSize = new V(tolerance * 10, tolerance * 20);
+    const corner = add(add(p, mul(x, halfSize.x)), mul(y, halfSize.y));
+    const cornerTarget = add(corner, mul(add(x, y), tolerance * .3));
+    const cornerPair = [{ n: axis(angle + 25), d: dot(axis(angle + 25), cornerTarget) },
+        { n: axis(angle + 115), d: dot(axis(angle + 115), cornerTarget) }];
+    closeV(moveSnap([p, x, halfSize, new V(0, 0), true, true], cornerPair, tolerance), sub(cornerTarget, corner));
+    // A circular hit area, not the square overlap of two line snap zones.
+    const outside = add(p, mul(add(x, y), tolerance * .8));
+    const outsidePair = [{ n: x, d: dot(x, outside) }, { n: y, d: dot(y, outside) }];
+    assert.equal(intersectionSnap([p, new V(0, 0)], outsidePair, tolerance)[0], false);
+    assert.ok(sub(pointSnap([p, true], outsidePair, tolerance), p).magnitude <= tolerance * 1.000001);
+    checks += 5;
+}
+const origin = new V(0, 0), zero = new V(0, 0);
+const onAxis = [{ n: axis(45), d: dot(axis(45), new V(4, 0)) },
+    { n: axis(135), d: dot(axis(135), new V(4, 0)) }];
+closeV(moveSnap([origin, axis(20), zero, zero, true, false], onAxis), new V(4, 0));
+closeV(moveSnap([origin, axis(20), zero, zero, false, true], onAxis), zero);
+closeV(moveSnap([origin, axis(20), zero, zero, false, false], onAxis), zero);
+const nearlyParallel = [{ n: axis(0), d: 4 }, { n: axis(1), d: dot(axis(1), new V(4, 3)) }];
+closeV(pointSnap([origin, false], nearlyParallel), new V(4, 3));
+for (const guides of [[], [{ n: axis(0), d: 2 }], [{ n: axis(0), d: 2 }, { n: axis(180), d: -2 }],
+    [{ n: axis(0), d: 2 }, { n: axis(.00001), d: 3 }], [{ n: axis(0), d: NaN }, { n: axis(90), d: 2 }],
+    [{ n: axis(0), d: Infinity }, { n: axis(90), d: 2 }]]) {
+    assert.equal(intersectionSnap([origin, zero], guides)[0], false);
+    checks++;
+}
+// The Shift guide lock still allows along-line attraction to an intersection.
+const lockedState = { compositor: { height: 100, width: 100 }, GuideSnapTolerance: 8, CanSnapPreviewGuides: true,
+    paintingGuideIndex: 0, previewGuides: [{ normal: new V(0, 1), position: 40 }, { normal: new V(1, 0), position: 50 }],
+    toolkitPreviewCanvas: { ImageRect: { x: 0, y: 0, width: 100, height: 100 }, ToCanvas: p => p, ToView: p => p } };
+closeV(projectGuide(lockedState, new V(54, 85)), new V(50, 40));
+closeV(projectGuide(lockedState, new V(59, 85)), new V(59, 40));
+lockedState.IsPreviewPaintTool = true;
+lockedState.previewGuidesRevision = 1;
+const diagonal = axis(45);
+lockedState.previewGuides.push({ normal: diagonal, position: dot(diagonal, new V(54, 44)) + .5 });
+captureGuide(lockedState, new V(54, 44));
+assert.ok(lockedState.paintingGuideIndex < 2, 'Shift lock must use a guide through the priority intersection, not a nearer unrelated line');
+closeV(projectGuide(lockedState, new V(54, 44)), new V(50, 40));
+checks += 6;
 for (const normalAngle of [0, 17, -31, 45, 90, 133, 179.9]) {
     const normal = axis(normalAngle);
     const guide = { n: new V(normal.x, -normal.y), d: 0 };
@@ -225,7 +309,7 @@ closeV(moveSnap([new V(100, 100), axis(45), new V(0, 0), new V(0, 0), true, fals
     [{ n: axis(45), d: dot(new V(100, 100), axis(45)) + 2 }]), new V(0, 0));
 assert.match(src, /position = guide.position - guide.normal.y \* compositor.height;/);
 assert.match(src, /normal = new Vector2\(guide.normal.x, -guide.normal.y\)/);
-assert.match(src, /Mathf.Abs\(determinant\) < .1f/);
+assert.match(src, /Mathf.Abs\(determinant\) <= .0001f/);
 assert.match(src, /if \(!GuideAxesParallel\(n, axisX\) && !GuideAxesParallel\(n, axisY\)\) continue;/);
 assert.match(src, /GuideSnapPixels \/ toolkitPreviewCanvas.PixelScale/);
 assert.match(src, /!previewGuidesHidden && previewGuidesSnap/);

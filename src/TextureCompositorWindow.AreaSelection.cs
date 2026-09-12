@@ -21,6 +21,7 @@ namespace DCFApixels.SpriteEditor
             internal Color[] pixels;
             internal RectInt region;
             internal Vector2Int canvas;
+            internal uint systemRevision;
         }
         private bool IsAreaSelectionTool => previewTool == PreviewTool.RectangleSelect || previewTool == PreviewTool.PolygonSelect;
 
@@ -223,7 +224,7 @@ namespace DCFApixels.SpriteEditor
                     copy[i] = color.a > 0f ? color : Color.clear;
                 }
                 areaClipboard = new AreaClipboard { pixels = copy, region = region,
-                    canvas = new Vector2Int(selection.Width, selection.Height) };
+                    canvas = new Vector2Int(selection.Width, selection.Height), systemRevision = ImageClipboard.Revision };
                 ShowNotification(new GUIContent("Copied to WhimTex clipboard"));
             }
             catch (Exception exception) { ShowNotification(new GUIContent("Copy failed: " + exception.Message)); }
@@ -231,12 +232,39 @@ namespace DCFApixels.SpriteEditor
         }
         private void PasteAreaSelection()
         {
-            if (compositor == null || areaClipboard == null) return;
+            if (compositor == null) return;
             areaSelectionManipulator?.Cancel();
             FinishPaintingStroke(); FinishPreviewTransform();
             Texture2D texture = null;
             try
             {
+                if (areaClipboard == null || areaClipboard.systemRevision != ImageClipboard.Revision)
+                {
+                    texture = ImageClipboard.ReadImage();
+                    if (texture == null) { ShowNotification(new GUIContent("No image in the clipboard.")); return; }
+                    Texture2D source = texture;
+                    bool insertedImage = false;
+                    ExecuteContextChange("Paste Clipboard Image", () =>
+                    {
+                        if (!HasPreviewLayers) { compositor.width = source.width; compositor.height = source.height; }
+                        var layer = DrawingLayerBehaviour.FromMergedTexture(source);
+                        layer.colorRange = LayerColorRange.Standard;
+                        layer.blendRange = LayerBlendRange.Standard;
+                        layer.layerName = compositor.AllocateLayerName(layer);
+                        // Keep all source pixels; placement is 1:1 and centered, not resampled or clipped.
+                        var placement = TextureTransform.Default;
+                        placement.scale = new Vector2((float)source.width / compositor.width, (float)source.height / compositor.height);
+                        layer.transform = placement;
+                        layer.MakeTexturePersistent(compositor);
+                        Undo.RegisterCreatedObjectUndo(source, "Paste Clipboard Image");
+                        compositor.layers.Insert(0, layer);
+                        SelectOnlyLayer(layer.Id);
+                        insertedImage = true;
+                    });
+                    if (insertedImage && compositor.layers.Exists(layer => layer?.Behaviour is DrawingLayerBehaviour drawing && drawing.StoredTexture == source))
+                        texture = null;
+                    return;
+                }
                 GetAreaSelection().ValidateSize();
                 var copy = areaClipboard;
                 int width = compositor.width, height = compositor.height;

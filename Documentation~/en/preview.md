@@ -50,7 +50,9 @@ Right-click a guide to **Edit**, **Duplicate** or **Delete** it. Right-click eit
 
 Moving or resizing a layer (including a Shader FX Transform 2D area) snaps its edges to parallel guides. Moving also snaps its center lines. Edges ignore oblique guides; rotating a transform can align it parallel or perpendicular to a guide. `Shift` retains its usual rotation and resize constraints.
 
-The pivot and polygonal lasso vertices can snap to a guide at any angle, or to nearby intersections. Rectangle selection snaps only to guides parallel to the canvas axes.
+Nearby guide intersections take priority over individual lines, with the same snap radius regardless of zoom. They attract the brush/pencil center, selection and shape points, the pivot, and a transform's center, corners and edge midpoints. When movement is constrained, only intersections on the allowed path attract the point. Holding `Ctrl` bypasses snapping.
+
+The pivot and polygonal lasso vertices can also snap to a single guide at any angle. Rectangle selection snaps to individual lines only when they are parallel to the canvas axes; intersections work at any angle.
 
 **Brush** and **Pencil** also snap their stroke center to guides at any angle and to intersections, including while erasing. The cursor shows the snapped position. If you start a stroke snapped to a guide, holding `Shift` keeps it on that same line no matter how far the pointer moves away. Release `Shift` for ordinary nearby snapping; press it again during the same stroke to return to the original guide. At an intersection, the guide closest to the starting pointer is used. If you start away from guides, `Shift` keeps its usual horizontal or vertical screen direction. Hold `Ctrl` to bypass guide snapping and locking. Pencil strokes still follow the pixel grid; brush Scatter is applied after snapping the stroke path.
 

@@ -455,9 +455,10 @@ namespace DCFApixels.SpriteEditor
                         result = anchor;
                     }
                 }
-                Vector2 guidePoint = owner.SnapPreviewGuidePoint(documentPosition);
-                if (guidePoint != documentPosition &&
-                    (ToPreview(guidePoint, gestureImageRect, size) - previewPosition).sqrMagnitude < nearestDistance)
+                bool intersection = owner.TrySnapPreviewGuideIntersection(documentPosition, Vector2.zero, out Vector2 guidePoint);
+                if (!intersection) guidePoint = owner.SnapPreviewGuidePoint(documentPosition);
+                if (intersection || (guidePoint != documentPosition &&
+                    (ToPreview(guidePoint, gestureImageRect, size) - previewPosition).sqrMagnitude < nearestDistance))
                 {
                     Vector2 local = Rotate(guidePoint - Vector2.Scale(original.pivot, size) - original.position, -original.rotation);
                     result = original.pivot + new Vector2(local.x / original.scale.x / size.x, local.y / original.scale.y / size.y);

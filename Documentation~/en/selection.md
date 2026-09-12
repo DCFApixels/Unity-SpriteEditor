@@ -47,5 +47,12 @@ You can use a hidden layer as the shape.
 Without a selection, copy uses the whole canvas. You can paste between WhimTex windows.
 On a canvas of the same size, the copy keeps its position; on a different-sized canvas, it is centered.
 
+On Windows, you can also copy an image in another application or take a screenshot with `Win+Shift+S`,
+then click the WhimTex preview and press `Ctrl+V`. It becomes a new Drawing layer, centered at its original
+pixel size without cropping the stored image. In an empty document, the canvas takes the image's dimensions.
+PNG transparency is preserved. System image paste supports images up to 16 megapixels and your GPU's texture-size limit.
+Copying inside WhimTex takes priority until you copy something else to the system clipboard.
+This imports image contents, not a copied file path or a web link; drag a file into the preview to import it instead.
+
 A selection stays active when you change tools or layers. It is not saved with the document.
 If painting seems blocked, try `Ctrl+D`.

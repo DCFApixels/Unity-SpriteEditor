@@ -24,10 +24,15 @@ namespace DCFApixels.SpriteEditor
             Vector2 canvasPoint = toolkitPreviewCanvas.ToCanvas(position);
             Vector2 point = new Vector2((canvasPoint.x - image.x) / image.width * compositor.width,
                 (canvasPoint.y - image.y) / image.height * compositor.height);
+            Vector2 documentPoint = new Vector2(point.x, compositor.height - point.y);
+            bool atIntersection = TrySnapPreviewGuideIntersection(documentPoint, Vector2.zero, out Vector2 intersection);
+            Vector2 lockPoint = new Vector2(intersection.x, compositor.height - intersection.y);
             float distance = GuideSnapTolerance;
             for (int i = 0; i < previewGuides.Count; i++)
             {
                 PreviewGuide guide = previewGuides[i];
+                if (atIntersection && Mathf.Abs(guide.position - Vector2.Dot(lockPoint, guide.normal)) > GuideSnapTolerance * .0001f)
+                    continue;
                 float delta = Mathf.Abs(guide.position - Vector2.Dot(point, guide.normal));
                 if (delta > distance) continue;
                 distance = delta;
@@ -45,6 +50,10 @@ namespace DCFApixels.SpriteEditor
                 (canvasPoint.y - image.y) / image.height * compositor.height);
             PreviewGuide guide = previewGuides[paintingGuideIndex];
             point += guide.normal * (guide.position - Vector2.Dot(point, guide.normal));
+            Vector2 documentPoint = new Vector2(point.x, compositor.height - point.y);
+            Vector2 direction = new Vector2(guide.normal.y, guide.normal.x);
+            if (TrySnapPreviewGuideIntersection(documentPoint, direction, out Vector2 intersection))
+                point = new Vector2(intersection.x, compositor.height - intersection.y);
             return toolkitPreviewCanvas.ToView(new Vector2(image.x + point.x / compositor.width * image.width,
                 image.y + point.y / compositor.height * image.height));
         }
@@ -98,54 +107,60 @@ namespace DCFApixels.SpriteEditor
         private Vector2 SnapPreviewGuidePoint(Vector2 point, bool axisAlignedOnly = false)
         {
             if (!CanSnapPreviewGuides) return point;
+            // An intersection is an unambiguous point, including for axis-aligned selections.
+            if (TrySnapPreviewGuideIntersection(point, Vector2.zero, out Vector2 intersection)) return intersection;
             float tolerance = GuideSnapTolerance;
-            if (axisAlignedOnly)
-            {
-                float x = tolerance, y = tolerance;
-                Vector2 result = point;
-                foreach (PreviewGuide guide in previewGuides)
-                {
-                    GuideDocumentPlane(guide, out Vector2 n, out float d);
-                    if (GuideAxesParallel(n, Vector2.right))
-                    {
-                        float delta = d / n.x - point.x;
-                        if (Mathf.Abs(delta) <= x) { x = Mathf.Abs(delta); result.x = point.x + delta; }
-                    }
-                    else if (GuideAxesParallel(n, Vector2.up))
-                    {
-                        float delta = d / n.y - point.y;
-                        if (Mathf.Abs(delta) <= y) { y = Mathf.Abs(delta); result.y = point.y + delta; }
-                    }
-                }
-                return result;
-            }
-
-            int closest = -1;
             float distance = tolerance;
             Vector2 projected = point;
             for (int i = 0; i < previewGuides.Count; i++)
             {
                 GuideDocumentPlane(previewGuides[i], out Vector2 n, out float d);
+                if (axisAlignedOnly && !GuideAxesParallel(n, Vector2.right) && !GuideAxesParallel(n, Vector2.up)) continue;
                 float delta = d - Vector2.Dot(point, n);
                 if (Mathf.Abs(delta) > distance) continue;
-                distance = Mathf.Abs(delta); closest = i; projected = point + n * delta;
+                distance = Mathf.Abs(delta); projected = point + n * delta;
             }
-            if (closest < 0) return point;
-            GuideDocumentPlane(previewGuides[closest], out Vector2 first, out float firstD);
-            Vector2 intersection = projected;
-            float nearestIntersection = tolerance * tolerance;
+            return projected;
+        }
+
+        // A zero direction allows free movement. Otherwise accept only intersections on
+        // the motion line, so snapping cannot break an axis/aspect-ratio constraint.
+        private bool TrySnapPreviewGuideIntersection(Vector2 point, Vector2 direction, out Vector2 result)
+        {
+            result = point;
+            if (!CanSnapPreviewGuides || previewGuides.Count < 2) return false;
+            float tolerance = GuideSnapTolerance;
+            float nearest = tolerance * tolerance;
+            float directionLength = direction.magnitude;
+            bool found = false;
             for (int i = 0; i < previewGuides.Count; i++)
             {
-                if (i == closest) continue;
-                GuideDocumentPlane(previewGuides[i], out Vector2 n, out float d);
-                float determinant = first.x * n.y - first.y * n.x;
-                if (Mathf.Abs(determinant) < .1f) continue;
-                Vector2 candidate = new Vector2(firstD * n.y - first.y * d, first.x * d - firstD * n.x) / determinant;
-                float squared = (candidate - point).sqrMagnitude;
-                if (squared > nearestIntersection) continue;
-                nearestIntersection = squared; intersection = candidate;
+                GuideDocumentPlane(previewGuides[i], out Vector2 first, out float firstD);
+                float firstDelta = firstD - Vector2.Dot(first, point);
+                if (Mathf.Abs(firstDelta) > tolerance) continue;
+                for (int j = i + 1; j < previewGuides.Count; j++)
+                {
+                    GuideDocumentPlane(previewGuides[j], out Vector2 n, out float d);
+                    float delta = d - Vector2.Dot(n, point);
+                    if (Mathf.Abs(delta) > tolerance) continue;
+                    float determinant = first.x * n.y - first.y * n.x;
+                    if (Mathf.Abs(determinant) <= .0001f) continue;
+                    // Solve near the pointer, avoiding subtraction of large absolute coordinates.
+                    Vector2 offset = new Vector2(firstDelta * n.y - first.y * delta,
+                        first.x * delta - firstDelta * n.x) / determinant;
+                    float squared = offset.sqrMagnitude;
+                    if (!(squared <= nearest)) continue; // Also reject NaN and infinity.
+                    if (directionLength > 0f)
+                    {
+                        float along = Vector2.Dot(offset, direction) / directionLength;
+                        float across = (offset.x * direction.y - offset.y * direction.x) / directionLength;
+                        if (Mathf.Abs(across) > tolerance * .0001f) continue;
+                        offset = direction * (along / directionLength);
+                    }
+                    nearest = squared; result = point + offset; found = true;
+                }
             }
-            return intersection;
+            return found;
         }
 
         private Vector2 SnapPreviewGuideMove(Vector2 center, Vector2 axisX, Vector2 halfSize,
@@ -153,6 +168,26 @@ namespace DCFApixels.SpriteEditor
         {
             if (!CanSnapPreviewGuides) return fallback;
             Vector2 axisY = new Vector2(-axisX.y, axisX.x);
+            if (horizontal || vertical)
+            {
+                Vector2 motion = horizontal && vertical ? Vector2.zero : horizontal ? Vector2.right : Vector2.up;
+                float nearestIntersection = float.PositiveInfinity;
+                Vector2 intersectionOffset = fallback;
+                bool found = false;
+                // Center, corners and edge midpoints have a well-defined point target.
+                for (int x = -1; x <= 1; x++)
+                for (int y = -1; y <= 1; y++)
+                {
+                    if ((halfSize.x == 0f && x != 0) || (halfSize.y == 0f && y != 0)) continue;
+                    Vector2 anchor = center + axisX * (x * halfSize.x) + axisY * (y * halfSize.y);
+                    if (!TrySnapPreviewGuideIntersection(anchor, motion, out Vector2 target)) continue;
+                    Vector2 offset = target - anchor;
+                    float squared = offset.sqrMagnitude;
+                    if (squared > nearestIntersection) continue;
+                    nearestIntersection = squared; intersectionOffset = offset; found = true;
+                }
+                if (found) return intersectionOffset;
+            }
             Vector2 result = fallback;
             for (int axis = 0; axis < 2; axis++)
             {
@@ -184,6 +219,8 @@ namespace DCFApixels.SpriteEditor
         {
             if (!CanSnapPreviewGuides) return fallback;
             if (free) return point + SnapPreviewGuideMove(point, axisX, Vector2.zero, fallback - point, true, true);
+            if (direction.sqrMagnitude > 0f && TrySnapPreviewGuideIntersection(point, direction, out Vector2 intersection))
+                return intersection;
             Vector2 result = fallback;
             float nearest = fallback == point ? GuideSnapTolerance * GuideSnapTolerance :
                 Mathf.Min(GuideSnapTolerance * GuideSnapTolerance, (fallback - point).sqrMagnitude);
