@@ -16,6 +16,10 @@ children inside a group remain excluded. Cycles are rejected as with other effec
 
 ## Parameters and rendering
 
+- **Strength:** 0–4, default 1 (UI 0–400%). Zero bypasses filtering; below 1 mixes source and blur
+  in premultiplied linear RGBA. Above 1 increases translucent coverage using `a*s/(1+a*(s-1))`,
+  without changing straight RGB, radius or fully opaque coverage. The existing final pass handles this;
+  no additional render target or blur pass is allocated. A zero Radius remains an identity at any Strength.
 - **Radius:** 0–256 original canvas pixels, default 8. This is the finite kernel extent,
   with sigma equal to radius / 3 (a minimum sigma of 1/3 pixel for nonzero subpixel radii).
   Zero bypasses filtering. Preview scaling adjusts the radius, not the document setting.
@@ -44,8 +48,8 @@ opacity, swizzle and clipping. The group's role in the main composition is uncha
 children can still interact with the external backdrop there. The effect does not sample that backdrop.
 Group transforms and modifiers remain unsupported, as before.
 
-Outline and SDF retain their established grayscale-coverage group source, including when SDF selects
-a non-alpha channel. Normal Map, Gaussian Blur and Motion Blur request RGBA. Both source representations use the
+Outline and Alpha-source SDF request grayscale coverage. SDF with a non-alpha channel,
+Normal Map, Gaussian Blur and Motion Blur request RGBA. Both source representations use the
 same composite alpha, so adding a color consumer does not change an existing Outline/SDF result.
 
 ## Cache ownership and memory

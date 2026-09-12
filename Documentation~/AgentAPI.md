@@ -167,7 +167,7 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 {"op":"target", "layer":"@outline", "input":"Previous"}
 ```
 
-- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `motionBlur`, `shaderProcessor`.
+- `add`: types `file`, `drawing`, `group`, `color`, `gradient`, `noise`, `outline`, `sdf`, `normalMap`, `gaussianBlur`, `motionBlur`, `makeSeamless`, `shaderProcessor`.
   Optional `parent` defaults to root, `index` to 0. `settings` and `transform` are optional patches.
 - `set`: requires `layer` and `settings`.
 - `transform`: requires `layer` and `transform`.
@@ -191,8 +191,9 @@ Persistent layer IDs are returned per operation and in `document.layers`.
 | SDF | `metric`, `sourceChannel` (`Alpha`, `Red`, `Green`, `Blue`, `Luminance`), `threshold` (integer 0..255), `distancePosition` (`Outside`, `Inside`, `Center`, `Signed`), `inverted` (bool), `maxDistance` (0..16384; zero = automatic) |
 | Normal Map | `normalMap`: partial settings object described below |
 | Noise | `noise`: partial procedural settings object described below |
-| Gaussian Blur | `gaussianBlur`: `{ "radius": 8, "edges": "Transparent" }`; radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
+| Gaussian Blur | `gaussianBlur`: `{ "strength": 1, "radius": 8, "edges": "Transparent" }`; strength 0–4, radius 0–256 canvas pixels, edges Transparent/Clamp/Repeat/Mirror |
 | Motion Blur | `motionBlur`: `{ "mode": "Linear", "strength": 1, "distance": 16, "angle": 0, "arc": 15, "center": [0.5, 0.5], "direction": "Centered", "edges": "Transparent" }`; [parameters](#motion-blur-settings) |
+| Make Seamless | `makeSeamless`: `{ "horizontal": "LeftToRight", "vertical": "BottomToTop", "blendWidth": 0.2, "falloff": 1 }`; [parameters](#make-seamless-settings) |
 | Gradient, SDF | `gradient`: 2..8 `{"time":0.0,"color":[1,1,1,1]}` stops in strictly increasing time order, time 0..1 |
 
 SDF/Outline `metric` accepts `EuclideanExact` (default), `EuclideanApproximate`, `Manhattan`,
@@ -298,8 +299,13 @@ the usual baked output texture is still generated when required.
 
 ### Gaussian Blur settings
 
+`strength` is 0–4 (default 1; UI 0–400%). Zero bypasses the blur; 0–1 mixes the source and blur in
+premultiplied linear RGBA. Above 1, RGB stays unchanged and alpha becomes `a*s/(1+a*(s-1))`, with
+`a` clamped to 0–1. This matches Motion Blur: denser translucent coverage, not a larger radius or RGB gain.
+Radius zero remains an identity operation at every strength. Transform and FX still apply after bypass.
+
 Use `type:"gaussianBlur"` and partial `settings.gaussianBlur` updates. `describe` exposes
-`gaussianBlurDefaults`; `inspect` returns both parameters. Protocol version remains 1.
+`gaussianBlurDefaults`; `inspect` returns all three parameters. Protocol version remains 1.
 
 ```json
 {"op":"add","type":"gaussianBlur","as":"blur","settings":{
@@ -345,6 +351,27 @@ for Gaussian Blur. Zero Distance (Linear) or Arc (Circular) bypasses filtering. 
 settings are retained when switching modes. Transform, swizzle, clipping, opacity and blend
 settings use the normal effect-layer paths. API rendering uses full quality; PSD rasterizes the effect.
 See [Motion Blur](MotionBlur.md) for sampling, alpha, quality and memory details.
+
+### Make Seamless settings
+
+Use `type:"makeSeamless"` and partial `settings.makeSeamless` updates:
+
+```json
+{"op":"add","type":"makeSeamless","as":"tile","settings":{
+  "makeSeamless":{"horizontal":"LeftToRight","vertical":"BottomToTop","blendWidth":0.2,"falloff":1}
+}}
+```
+
+`horizontal`: Off/LeftToRight/RightToLeft; `vertical`: Off/BottomToTop/TopToBottom.
+`blendWidth` is a fraction of each canvas dimension, 0.001–0.5 (default 0.2);
+`falloff` is 0.25–4 (default 1). Directions select the source edge and destination edge.
+Both Off bypass the operation. Other settings are the common targeted-effect settings:
+Previous/Specific input, transform, ranges, Swizzle and FX. Hidden sources and isolated group inputs work normally.
+The one-pass operation mixes mirrored RGBA samples in premultiplied space, preserving HDR RGB.
+The outermost pixel centers match on enabled axes; corners combine both axis weights.
+Subsequent transforms, modifiers and composition can alter this match. PSD export rasterizes the effect.
+`describe` exposes `makeSeamlessDefaults`, `makeSeamlessHorizontal`, `makeSeamlessVertical`;
+`inspect` includes all four parameters. Live add/complete/settings use the same type and settings.
 
 ### Normal Map settings
 

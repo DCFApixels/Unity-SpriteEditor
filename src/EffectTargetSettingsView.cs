@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace DCFApixels.SpriteEditor
@@ -38,6 +39,30 @@ namespace DCFApixels.SpriteEditor
             int selectedIndex = FindEffectTargetIndex(effect.TargetLayerId);
             PopupField<string> target = SpriteEditorUI.ConfigureField(
                 new PopupField<string>("Target", new List<string>(effectTargetLabels), selectedIndex));
+            target.AddToClassList("sprite-editor-effect-target");
+            target.EnableInClassList("sprite-editor-effect-target--light", !EditorGUIUtility.isProSkin);
+            VisualElement targetInput = target.Q(className: "unity-base-field__input");
+            var preview = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
+            preview.AddToClassList("sprite-editor-effect-target-preview");
+            var fallback = new LayerActionIcon(LayerActionIcon.Kind.Effects) { pickingMode = PickingMode.Ignore };
+            fallback.AddToClassList("sprite-editor-effect-target-fallback");
+            var groupIcon = new LayerActionIcon(LayerActionIcon.Kind.Group) { pickingMode = PickingMode.Ignore };
+            groupIcon.AddToClassList("sprite-editor-effect-target-fallback");
+            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
+            icon.AddToClassList("sprite-editor-effect-target-icon");
+            icon.Add(preview);
+            icon.Add(fallback);
+            icon.Add(groupIcon);
+            targetInput.Insert(0, icon);
+            var selector = new VisualElement { pickingMode = PickingMode.Ignore };
+            selector.AddToClassList("sprite-editor-effect-target-selector");
+            var ring = new VisualElement { pickingMode = PickingMode.Ignore };
+            ring.AddToClassList("sprite-editor-effect-target-ring");
+            var dot = new VisualElement { pickingMode = PickingMode.Ignore };
+            dot.AddToClassList("sprite-editor-effect-target-dot");
+            ring.Add(dot);
+            selector.Add(ring);
+            targetInput.Add(selector);
             target.RegisterValueChangedCallback(evt =>
             {
                 EnsureEffectTargetOptions(effect);
@@ -55,9 +80,15 @@ namespace DCFApixels.SpriteEditor
             target.AddManipulator(new TargetDropManipulator(this, effect));
             root.Add(target);
             HelpBox status = SpriteEditorUI.AddHelpBox(root, string.Empty, HelpBoxMessageType.Info);
-            bindings.Add(() =>
+            void Refresh()
             {
                 EnsureEffectTargetOptions(effect);
+                Layer source = string.IsNullOrEmpty(effect.TargetLayerId) ? null : compositor.FindLayer(effect.TargetLayerId);
+                Texture2D thumbnail = source?.GetPreviewTexture(18);
+                if (preview.image != thumbnail) preview.image = thumbnail;
+                preview.EnableInClassList("sprite-editor-hidden", thumbnail == null);
+                fallback.EnableInClassList("sprite-editor-hidden", source == null || thumbnail != null || source is GroupLayer);
+                groupIcon.EnableInClassList("sprite-editor-hidden", !(source is GroupLayer) || thumbnail != null);
                 bool choicesChanged = target.choices.Count != effectTargetLabels.Length;
                 for (int i = 0; !choicesChanged && i < effectTargetLabels.Length; i++)
                     choicesChanged = target.choices[i] != effectTargetLabels[i];
@@ -81,7 +112,9 @@ namespace DCFApixels.SpriteEditor
                     status.text = "The selected group is read as the combined alpha of all visible descendant layers.";
                 else
                     status.style.display = DisplayStyle.None;
-            });
+            }
+            Refresh();
+            bindings.Add(Refresh);
             bindings.Track(target, () =>
             {
                 EnsureEffectTargetOptions(effect);
@@ -117,7 +150,7 @@ namespace DCFApixels.SpriteEditor
             effectTargetIds = new string[candidateIds.Count + firstCandidateIndex];
             effectTargetLabels = new string[candidateLabels.Count + firstCandidateIndex];
             effectTargetIds[0] = string.Empty;
-            effectTargetLabels[0] = "<Select layer or group>";
+            effectTargetLabels[0] = "None (Layer)";
 
             if (includeUnavailableTarget)
             {

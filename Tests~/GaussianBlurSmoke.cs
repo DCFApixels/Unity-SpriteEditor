@@ -55,10 +55,28 @@ try
     source.enabled=false;
     Same(pixels,Render(),.001f,"Hidden input remains usable");
     source.enabled=true;
+    var standard = pixels;
+    gaussian.strength=0;
+    Check(Render()[12*33+16].a>.999f,"Zero strength preserves source");
+    gaussian.strength=.5f;
+    var half=Render();
+    Check(System.Math.Abs(half[12*33+16].a-(1+standard[12*33+16].a)*.5f)<.002,"Half strength premultiplied mix");
+    gaussian.strength=2;
+    var dense=Render();
+    for(int i=0;i<dense.Length;i++)
+    {
+        float a=standard[i].a;
+        Check(System.Math.Abs(dense[i].a-2*a/(1+a))<.002,"Strength increases alpha density");
+        if(a>.0001f) Check(System.Math.Abs(dense[i].r-4)<.02,"Strength preserves HDR RGB");
+    }
+    gaussian.strength=1;
+    Same(standard,Render(),.001f,"Returning to default restores blur");
     gaussian.radius=0;
+    gaussian.strength=4;
     pixels=Render();
     Check(pixels[12*33+16].r>3.99f && pixels[12*33+16].a>.999f,"Zero radius identity");
     gaussian.radius=4;
+    gaussian.strength=1;
     for(int i=0;i<input.Length;i++) input[i]=new UnityEngine.Color(.25f,.5f,2f,1);
     Upload(input);
     foreach(var edge in new[]{DCFApixels.SpriteEditor.GaussianBlurLayer.EdgeMode.Clamp,

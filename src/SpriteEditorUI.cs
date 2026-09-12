@@ -304,7 +304,7 @@ namespace DCFApixels.SpriteEditor
             else AddTextureTransform(root, layer, owner, apply, bindings);
 
             LayerColorSettingsView.Build(root, layer, apply, bindings, colorExpanded, colorExpansionChanged, owner);
-            var properties = CreateInspectorSection("Properties", "propertiesSection", LayerActionIcon.Kind.Properties,
+            var properties = CreateInspectorSection($"Properties ({TextureCompositor.LayerMenuName(layer)})", "propertiesSection", LayerActionIcon.Kind.Properties,
                 propertiesExpanded, propertiesExpansionChanged, !group && !(layer is ShaderProcessorLayer));
             root.Add(properties);
             if (group)

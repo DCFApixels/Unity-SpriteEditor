@@ -1,16 +1,21 @@
 Shader "Hidden/TextureCompositor/GaussianBlur"
 {
-    Properties { [HideInInspector] _MainTex ("Source", 2D) = "black" {} }
+    Properties
+    {
+        [HideInInspector] _MainTex ("Source", 2D) = "black" {}
+        [HideInInspector] _SourceTex ("Original", 2D) = "black" {}
+        [HideInInspector] _Strength ("Strength", Float) = 1
+    }
     SubShader
     {
         Cull Off ZWrite Off ZTest Always Blend Off
         CGINCLUDE
         #include "UnityCG.cginc"
-        sampler2D _MainTex;
+        sampler2D _MainTex, _SourceTex;
         float4 _MainTex_TexelSize;
         float4 _Kernel[128];
         float2 _Direction;
-        float _CenterWeight;
+        float _CenterWeight, _Strength;
         int _PairCount, _Edges;
 
         float2 address(float2 pixel)
@@ -63,7 +68,20 @@ Shader "Hidden/TextureCompositor/GaussianBlur"
         float4 unpremultiply(v2f_img i) : SV_Target
         {
             float4 c = sampleEdge(i.uv);
-            return float4(c.a > 0 ? c.rgb / c.a : 0, c.a);
+            if (_Strength < 1)
+            {
+                float4 source = tex2D(_SourceTex, i.uv);
+                source.rgb *= source.a;
+                c = lerp(source, c, _Strength);
+            }
+            float3 color = c.a > 0 ? c.rgb / c.a : 0;
+            float alpha = c.a;
+            if (_Strength > 1)
+            {
+                float a = saturate(alpha);
+                alpha = a * _Strength / (1 + a * (_Strength - 1));
+            }
+            return float4(color, alpha);
         }
         ENDCG
         Pass { CGPROGRAM

@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const read = p => readFileSync(new URL('../src/' + p, import.meta.url), 'utf8');
+const ghost = read('TextureCompositorWindow.LayerDragGhost.cs');
+const ui = read('TextureCompositorWindow.UI.cs');
+const window = read('TextureCompositorWindow.cs');
+assert.match(read('SpriteEditorUI.cs'), /Properties \(\{TextureCompositor.LayerMenuName\(layer\)\}\)/);
+assert.match(read('TextureCompositor.Naming.cs'), /layer is DrawingLayer \? "Drawing Layer" : LayerNamePrefix\(layer\)/);
+const menu = window.slice(window.indexOf('private void ShowAddMenu'),window.indexOf('private void AddLayer'));
+const prefixes = read('TextureCompositor.Naming.cs');
+for (const [, label, type] of menu.matchAll(/new GUIContent\("([^"/]+)"\).*new (\w+)\(\)/g)) {
+    if (type === 'DrawingLayer') assert.equal(label, 'Drawing Layer');
+    else assert.ok(prefixes.includes(`case ${type} _: return "${label}";`), `${type}: ${label}`);
+}
+assert.match(ui, /StartDrag\([^\n]+\);\s*owner.ShowLayerDragGhost\(target, layer, start, evt.position\);\s*Release\(\)/);
+assert.match(ghost, /new Label\(layerName \?\? ""\)/);
+assert.doesNotMatch(ghost, /new TextField|GetPreviewTexture|RenderTexture|Texture2D\(/);
+assert.match(ghost, /image = thumbnail.image/);
+assert.match(ghost, /position = rect.position - row.worldBound.position/);
+assert.match(ghost, /style.translate = new Translate/);
+assert.match(ghost, /pickingMode = PickingMode.Ignore/);
+assert.match(ghost, /target.RegisterCallback<DragUpdatedEvent>\(OnUpdated, TrickleDown.TrickleDown\)/);
+for (const event of ['DragUpdatedEvent','DragPerformEvent','DragExitedEvent','KeyDownEvent','DetachFromPanelEvent']) {
+    assert.ok(ghost.includes(`RegisterCallback<${event}>`));
+    assert.ok(ghost.includes(`UnregisterCallback<${event}>`));
+}
+assert.match(window, /private void ClearLayerDragData\(\)\s*\{\s*ClearLayerDragGhost\(\)/);
+assert.match(window, /private void OnLostFocus\(\)\s*\{\s*ClearLayerDragGhost\(\)/);
+assert.match(ghost, /OnPerform\(DragPerformEvent evt\) => owner.ClearLayerDragGhost\(\)/);
+assert.match(ghost, /new Color\(background.r, background.g, background.b, 0f\)/);
+assert.match(read('SpriteEditorSplitView.uss'), /\.sprite-editor-layer-drag-ghost\s*\{[^}]*opacity: 0.6/);
+console.log('Properties names and non-interactive drag ghost contracts passed. Visual Unity checks remain manual.');
+
+const target = read('EffectTargetSettingsView.cs');
+assert.match(target, /new PopupField<string>\("Target"/);
+assert.match(target, /effectTargetLabels\[0\] = "None \(Layer\)"/);
+assert.match(target, /targetInput.Insert\(0, icon\)/);
+assert.match(target, /targetInput.Add\(selector\)/);
+assert.match(target, /source\?\.GetPreviewTexture\(18\)/, 'Reuse the layer-list thumbnail size, avoiding gradient thumbnail reallocations');
+assert.match(target, /if \(preview.image != thumbnail\) preview.image = thumbnail/);
+assert.match(target, /source is GroupLayer/);
+assert.match(target, /Refresh\(\);\s*bindings.Add\(Refresh\)/);
+assert.match(target, /bindings.Track\(target,/);
+assert.match(target, /target.AddManipulator\(new TargetDropManipulator\(this, effect\)\)/);
+assert.match(target, /GetDraggedLayerForDocument\(owner.compositor\)/);
+assert.match(target, /IsUsableEffectTarget\(effect, source.Id\)/);
+assert.match(target, /DragAndDropVisualMode.Link : DragAndDropVisualMode.Rejected/);
+assert.match(target, /TextureCompositorWindow.ClearDraggedLayerReference\(\)/);
+const styles = read('SpriteEditorSplitView.uss');
+assert.match(styles, /\.sprite-editor-effect-target \.unity-base-popup-field__arrow\s*\{\s*display: none/);
+assert.match(styles, /\.sprite-editor-effect-target\.sprite-editor-effect-target--drop > \.unity-base-field__input/);
+console.log('Object-style effect target: presentation, shared thumbnail and preserved selection/drop contracts passed.');

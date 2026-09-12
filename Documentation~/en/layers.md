@@ -55,7 +55,7 @@ The selected layer's settings are divided into four foldouts:
 
 - **Transform:** position, size, rotation and tiling.
 - **Color & Blending:** color ranges and Swizzle. The Standard/HDR selector is also available in the header.
-- **Properties:** settings specific to this layer, such as its source texture, effect target or drawing symmetry.
+- **Properties (layer type):** settings specific to this layer, such as its source texture, effect target or drawing symmetry.
 - **FX:** add and adjust shader effects.
 
 Expand the sections you need. The same sections are available in **layer ⋮ → Properties**.

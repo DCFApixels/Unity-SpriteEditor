@@ -77,6 +77,8 @@ try
     double error=0;for(int i=0;i<fast.Length;i++) error+=System.Math.Abs(fast[i].a-exact[i].a);
     Check(error/fast.Length<.03,"Interactive blur has similar coverage");
     gaussian.radius=2;Same(Fresh(),Render(),.003f,"Radius invalidation");
+    gaussian.strength=2;Same(Fresh(),Render(),.003f,"Gaussian strength invalidation");
+    gaussian.strength=1;
     gaussian.TargetLayerId=gaussian.Id;Same(Fresh(),Render(),.003f,"Cycles are not masked by cache");gaussian.TargetLayerId=group.Id;
     // Cached sources must also reproduce accumulated diagnostics.
     input[32*64+32]=new UnityEngine.Color(float.NaN,float.PositiveInfinity,0,1);texture.SetPixels(input);texture.Apply(false,false);

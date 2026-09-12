@@ -17,6 +17,9 @@ namespace DCFApixels.SpriteEditor
         [SerializeField, HideInInspector] private List<LayerNameCounter> layerNameCounters = new List<LayerNameCounter>();
         [SerializeField, HideInInspector] private int nextCopyNumber = 1;
 
+        internal static string LayerMenuName(Layer layer) =>
+            layer is DrawingLayer ? "Drawing Layer" : LayerNamePrefix(layer);
+
         private static string LayerNamePrefix(Layer layer)
         {
             switch (layer)
@@ -32,6 +35,7 @@ namespace DCFApixels.SpriteEditor
                 case NormalMapLayer _: return "Normal Map";
                 case GaussianBlurLayer _: return "Gaussian Blur";
                 case MotionBlurLayer _: return "Motion Blur";
+                case MakeSeamlessLayer _: return "Make Seamless";
                 case ShaderProcessorLayer _: return "Shader Processor";
                 default: return ObjectNames.NicifyVariableName(layer.GetType().Name);
             }

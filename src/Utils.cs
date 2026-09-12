@@ -284,6 +284,7 @@ namespace DCFApixels.SpriteEditor
         private static Material normalMapMaterial;
         private static Material gaussianBlurMaterial;
         private static Material motionBlurMaterial;
+        private static Material makeSeamlessMaterial;
         private static Material noiseMaterial;
         private static Material effectCacheMaterial;
 
@@ -298,6 +299,7 @@ namespace DCFApixels.SpriteEditor
         public static Material NormalMap => GetOrCreate(ref normalMapMaterial, "Hidden/TextureCompositor/NormalMap");
         public static Material GaussianBlur => GetOrCreate(ref gaussianBlurMaterial, "Hidden/TextureCompositor/GaussianBlur");
         public static Material MotionBlur => GetOrCreate(ref motionBlurMaterial, "Hidden/TextureCompositor/MotionBlur");
+        public static Material MakeSeamless => GetOrCreate(ref makeSeamlessMaterial, "Hidden/TextureCompositor/MakeSeamless");
         public static Material Noise => GetOrCreate(ref noiseMaterial, "Hidden/TextureCompositor/Noise");
         public static Material EffectCache => GetOrCreate(ref effectCacheMaterial, "Hidden/TextureCompositor/EffectCache");
         public static Material Transform => GetOrCreate(ref transformMaterial, "Hidden/TextureCompositor/Transform");
@@ -334,6 +336,8 @@ namespace DCFApixels.SpriteEditor
             gaussianBlurMaterial = null;
             if (motionBlurMaterial != null) UnityEngine.Object.DestroyImmediate(motionBlurMaterial);
             motionBlurMaterial = null;
+            if (makeSeamlessMaterial != null) UnityEngine.Object.DestroyImmediate(makeSeamlessMaterial);
+            makeSeamlessMaterial = null;
             if (effectCacheMaterial != null) UnityEngine.Object.DestroyImmediate(effectCacheMaterial);
             effectCacheMaterial = null;
             if (normalMapMaterial != null) UnityEngine.Object.DestroyImmediate(normalMapMaterial);

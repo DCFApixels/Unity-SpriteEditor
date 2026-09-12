@@ -13,10 +13,13 @@ void Reject(string json)
     bool rejected=false;try{Set(json);}catch(System.Reflection.TargetInvocationException e){rejected=e.InnerException?.GetType().Name=="SpriteEditorApiException";}
     Check(rejected,"Reject "+json);
 }
-Check(layer.radius==8 && layer.edges==DCFApixels.SpriteEditor.GaussianBlurLayer.EdgeMode.Transparent,"Defaults");
+Check(layer.strength==1 && layer.radius==8 && layer.edges==DCFApixels.SpriteEditor.GaussianBlurLayer.EdgeMode.Transparent,"Defaults");
 Set("{\"radius\":32.5,\"edges\":\"Repeat\"}");Check(layer.radius==32.5f && layer.edges==DCFApixels.SpriteEditor.GaussianBlurLayer.EdgeMode.Repeat,"Set parameters");
+Check(layer.strength==1,"Omitted strength preserves default");
+Set("{\"strength\":2.5}");Check(layer.strength==2.5f && layer.radius==32.5f,"Strength partial update");
 var copy=new DCFApixels.SpriteEditor.GaussianBlurLayer();setter.Invoke(null,new object[]{copy,snapshot.Invoke(null,new object[]{layer})});
 Check(UnityEngine.JsonUtility.ToJson(layer)==UnityEngine.JsonUtility.ToJson(copy),"Settings round trip");
 Reject("{\"radius\":-1}");Reject("{\"radius\":257}");Reject("{\"edges\":\"Unknown\"}");Reject("{\"unused\":true}");
+Reject("{\"strength\":-0.1}");Reject("{\"strength\":4.1}");Reject("{\"strength\":null}");
 Check(DCFApixels.SpriteEditor.SpriteEditorApi.Describe().Contains("gaussianBlurDefaults"),"Discovery");
 return "Gaussian API checks passed: "+checks;

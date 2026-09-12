@@ -25,6 +25,7 @@ namespace DCFApixels.SpriteEditor
                     "normalMap" => new NormalMapLayer(),
                     "gaussianBlur" => new GaussianBlurLayer(),
                     "motionBlur" => new MotionBlurLayer(),
+                    "makeSeamless" => new MakeSeamlessLayer(),
                     "shaderProcessor" => new ShaderProcessorLayer(),
                     _ => throw new SpriteEditorApiException("invalid_request", "Unknown layer type: " + type)
                 };
@@ -133,7 +134,7 @@ namespace DCFApixels.SpriteEditor
         {
             Keys(settings, "name", "enabled", "clippingMask", "opacity", "blend", "filter", "source", "colorRange", "blendRange", "swizzle", "compositing", "color", "brush",
                 "metric", "outlineWidth", "outlineSoftness", "outlinePosition", "outlineOffset", "fillCenter", "fillColor", "sourceChannel", "threshold",
-                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "motionBlur", "noise");
+                "distancePosition", "inverted", "maxDistance", "gradient", "normalMap", "gaussianBlur", "motionBlur", "makeSeamless", "noise");
             foreach (var property in settings.Properties())
             {
                 string key = property.Name;
@@ -146,6 +147,7 @@ namespace DCFApixels.SpriteEditor
                     key == "normalMap" && layer is NormalMapLayer ||
                     key == "gaussianBlur" && layer is GaussianBlurLayer ||
                     key == "motionBlur" && layer is MotionBlurLayer ||
+                    key == "makeSeamless" && layer is MakeSeamlessLayer ||
                     key == "noise" && layer is NoiseLayer ||
                     (key == "outlineWidth" || key == "outlineSoftness" || key == "outlinePosition" ||
                      key == "outlineOffset" || key == "fillCenter" || key == "fillColor") && layer is OutlineLayer ||
@@ -194,6 +196,8 @@ namespace DCFApixels.SpriteEditor
                 SetGaussianBlur(gaussian, Obj(settings["gaussianBlur"], "gaussianBlur"));
             if (layer is MotionBlurLayer motion && settings["motionBlur"] != null)
                 SetMotionBlur(motion, Obj(settings["motionBlur"], "motionBlur"));
+            if (layer is MakeSeamlessLayer seamless && settings["makeSeamless"] != null)
+                SetMakeSeamless(seamless, Obj(settings["makeSeamless"], "makeSeamless"));
             if (layer is NoiseLayer noise && settings["noise"] != null)
                 SetNoise(noise, Obj(settings["noise"], "noise"));
             if (layer is DrawingLayer drawing && settings["brush"] != null) SetBrush(document, drawing, Obj(settings["brush"], "brush"));

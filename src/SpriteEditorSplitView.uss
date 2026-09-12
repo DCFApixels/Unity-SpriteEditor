@@ -987,6 +987,110 @@
     min-width: 0;
 }
 
+.sprite-editor-layer-drag-ghost {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0.6;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.sprite-editor-seamless-edges {
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+    align-self: center;
+    margin: 6px 0 10px 0;
+}
+
+.sprite-editor-seamless-image {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 14px;
+    bottom: 14px;
+    background-color: rgba(128, 128, 128, 0.08);
+    border-width: 1px;
+    border-color: rgba(128, 128, 128, 0.25);
+    border-radius: 2px;
+    opacity: 0.6;
+}
+
+.unity-button.sprite-editor-seamless-edge {
+    position: absolute;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border-width: 1px;
+    border-color: rgba(128, 128, 128, 0.35);
+    border-radius: 2px;
+    background-color: rgba(128, 128, 128, 0.25);
+}
+
+.sprite-editor-seamless-edge--left {
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 12px;
+}
+
+.sprite-editor-seamless-edge--right {
+    right: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 12px;
+}
+
+.sprite-editor-seamless-edge--top {
+    top: 0;
+    left: 14px;
+    right: 14px;
+    height: 12px;
+}
+
+.sprite-editor-seamless-edge--bottom {
+    bottom: 0;
+    left: 14px;
+    right: 14px;
+    height: 12px;
+}
+
+.unity-button.sprite-editor-seamless-edge:hover {
+    background-color: rgba(128, 128, 128, 0.5);
+}
+
+.unity-button.sprite-editor-seamless-edge--selected {
+    background-color: #3979b5;
+    border-color: #6194c2;
+}
+
+.unity-button.sprite-editor-seamless-edge--selected:hover {
+    background-color: #488bcc;
+}
+
+.unity-button.sprite-editor-seamless-edge:focus {
+    border-color: #90bce3;
+}
+
+.sprite-editor-layer-drag-ghost-part {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-center;
+}
+
+.sprite-editor-layer-drag-ghost-name {
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .sprite-editor-layer-row--selected,
 .sprite-editor-layer-row--selected:hover {
     background-color: var(--layer-row-selected);
@@ -1150,7 +1254,93 @@
     flex-grow: 1;
 }
 
-.sprite-editor-effect-target--drop > .unity-base-field__input {
+.sprite-editor-effect-target > .unity-base-field__input {
+    background-image: none;
+    background-color: #282828;
+    border-width: 1px;
+    border-color: #202020;
+    border-radius: 3px;
+    padding: 0 0 0 2px;
+    align-items: center;
+    min-width: 0;
+}
+
+.sprite-editor-effect-target--light > .unity-base-field__input {
+    background-color: #e4e4e4;
+    border-color: #999999;
+}
+
+.sprite-editor-effect-target > .unity-base-field__input:hover,
+.sprite-editor-effect-target:focus > .unity-base-field__input {
+    border-color: #5688b8;
+}
+
+.sprite-editor-effect-target .unity-base-popup-field__arrow {
+    display: none;
+}
+
+.sprite-editor-effect-target .unity-base-popup-field__text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0 2px;
+    padding: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sprite-editor-effect-target-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.sprite-editor-effect-target-preview,
+.sprite-editor-effect-target-fallback {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 16px;
+    height: 16px;
+}
+
+.sprite-editor-effect-target-selector {
+    width: 18px;
+    align-self: stretch;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-left-width: 1px;
+    border-left-color: rgba(128, 128, 128, 0.2);
+}
+
+.sprite-editor-effect-target-ring {
+    width: 10px;
+    height: 10px;
+    border-width: 1px;
+    border-color: #b0b0b0;
+    border-radius: 5px;
+    align-items: center;
+    justify-content: center;
+}
+
+.sprite-editor-effect-target-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: #b0b0b0;
+}
+
+.sprite-editor-effect-target--light .sprite-editor-effect-target-ring {
+    border-color: #555555;
+}
+
+.sprite-editor-effect-target--light .sprite-editor-effect-target-dot {
+    background-color: #555555;
+}
+
+.sprite-editor-effect-target.sprite-editor-effect-target--drop > .unity-base-field__input {
     border-width: 1px;
     border-color: #5688b8;
     background-color: #315c85;

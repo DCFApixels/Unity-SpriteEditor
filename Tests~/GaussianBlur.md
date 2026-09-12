@@ -6,7 +6,7 @@ C# execution facility, targeting `D:\DCFA\Projects\Test6.6` explicitly. They cre
 
 - `GaussianBlurApiSmoke.cs`: defaults, partial updates, snapshot round trip and validation failures.
 - `GaussianBlurSmoke.cs`: GPU vs CPU impulse kernel, transparent RGB rejection, HDR intensity,
-  zero radius, hidden input, odd canvas dimensions and all edge modes.
+  zero radius, Strength bypass/mixing/density, hidden input, odd canvas dimensions and all edge modes.
 - `EffectCacheSmoke.cs`: warm/cold parity, alpha-to-RGBA promotion, Outline stability, Normal Map
   sharing, parameter/texture changes, fast-to-exact refinement, cycles, diagnostic masks,
   memory limits and removal of unused entries.
@@ -16,6 +16,8 @@ C# execution facility, targeting `D:\DCFA\Projects\Test6.6` explicitly. They cre
 Outside Unity, `node Tests~/GaussianKernelMath.mjs` checks paired sampling against a direct CPU
 convolution for every boundary mode, including tiny/odd dimensions and large/subpixel radii.
 This verifies the mathematical construction, not shader compilation or GPU execution.
+`node --test Tests~/GaussianStrength.test.mjs` checks Strength math and parity with the Motion Blur shader,
+UI/API bindings, defaults, bypass and texture cleanup without Unity.
 
 Manual checks:
 
@@ -28,6 +30,8 @@ Manual checks:
 5. Export while a reduced-quality preview is present, then compare with a settled full-quality render
    at the same output resolution. The preview cache must not affect saved pixels.
 6. Close/reopen the editor and switch documents. No cache textures should survive the owning window.
+7. Try Strength at 0%, 50%, 100%, 200% and 400% on a translucent highlight. Radius should stay unchanged;
+   above 100% the highlight becomes denser without brightening its RGB. Undo/Redo restores intensity.
 
 The tests are opt-in and do not prove performance on a given GPU until executed there. Raw cache
 byte accounting excludes temporary textures, driver allocations and the existing Undo history.

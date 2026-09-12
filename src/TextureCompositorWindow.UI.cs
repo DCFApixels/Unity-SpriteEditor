@@ -76,6 +76,7 @@ namespace DCFApixels.SpriteEditor
                 SetCompositor(CreateTemporaryCompositor());
 
             VisualElement root = rootVisualElement;
+            InstallLayerDragGhost();
             root.UnregisterCallback<KeyDownEvent>(OnToolkitKeyDown, TrickleDown.TrickleDown);
             root.UnregisterCallback<KeyUpEvent>(OnToolkitKeyUp, TrickleDown.TrickleDown);
             root.UnregisterCallback<DragExitedEvent>(OnToolkitDragExited);
@@ -1072,6 +1073,7 @@ namespace DCFApixels.SpriteEditor
                 DragAndDrop.SetGenericData(DraggedCompositorIdKey, owner.compositor);
                 DragAndDrop.SetGenericData(DraggedLayersKey, selected ? owner.GetSelectedRoots() : new List<Layer> { layer });
                 DragAndDrop.StartDrag(string.IsNullOrEmpty(layer.layerName) ? "Layer" : layer.layerName);
+                owner.ShowLayerDragGhost(target, layer, start, evt.position);
                 Release();
                 evt.StopImmediatePropagation();
             }

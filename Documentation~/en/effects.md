@@ -27,11 +27,14 @@ Use **+** at the bottom of Layers:
 | Create surface relief | Normal Map | Height Map or Texture. See [Normal Map](normal-map.md). |
 | Soften an image | Gaussian Blur | Radius. |
 | Create a motion trail | Motion Blur | Linear or Circular. |
+| Join opposite texture edges | Make Seamless | Source edges, Fade Width and Falloff. |
 
 ## Choose what the effect uses
 
 **Input → Previous** uses the layer directly below the effect in the same group.
 Choose **Specific** to select another layer or group, or drag it onto **Target**.
+Target looks like an object field: a thumbnail and layer name, with a circle on the right
+to open the layer list. An empty field reads **None (Layer)**; a valid drop highlights the field.
 When dragging several selected layers, the active one becomes the target.
 
 You can hide the source and still see the effect. For a group, hide the group itself,
@@ -68,6 +71,10 @@ For SDF, **Source Channel** can use Alpha, an individual RGB channel or Luminanc
 Increase **Radius** for a softer image. Start small for edge cleanup;
 use a larger radius for broad, soft shapes.
 
+**Strength (%)** controls intensity: 0% shows the original, 100% gives normal blur,
+and up to 400% makes translucent areas denser without changing the radius or brightening the colors.
+Values above 100% do not change fully opaque areas.
+
 To blur several layers together:
 
 1. Put them in a group and add Gaussian Blur above it.
@@ -83,6 +90,23 @@ Choose **Circular** for a rotating trail, then set **Center** and **Arc**.
 **Direction** places the trail around the source, ahead of it or behind it.
 **Strength** below 100% brings back more of the sharp original.
 Above 100%, it makes translucent trails denser without making them longer.
+
+## Make Seamless
+
+Add **+ → Make Seamless** above a texture or group. Select the source with **Input**,
+then hide the source itself if you want to see only the processed result.
+
+Choose which edge is copied onto its opposite edge with **Horizontal** and **Vertical**.
+You can also click an edge of the image icon above the fields to choose the destination.
+Click the highlighted edge again to turn that axis off; choosing its opposite switches direction.
+The icon and dropdowns stay in sync.
+Set either axis to **Off** to leave it unchanged. The copied strip is mirrored and fades into the original;
+when both axes are enabled, the corners are joined too.
+
+**Fade Width (%)** widens the transition. **Falloff** controls its shape: higher values keep
+the reflection closer to the destination edge. Enable **Tiled** to inspect the joins while adjusting.
+This is useful for noise and surface textures, but recognizable shapes may look mirrored near a join.
+Further transforms or effects can change the matching edges, so check the final tiled result as well.
 
 ## Keep the edges right
 

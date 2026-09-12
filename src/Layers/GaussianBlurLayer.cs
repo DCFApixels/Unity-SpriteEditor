@@ -8,6 +8,8 @@ namespace DCFApixels.SpriteEditor
     {
         public enum EdgeMode { Transparent, Clamp, Repeat, Mirror }
         public const float MaximumRadius = 256f;
+        public const float MaximumStrength = 4f;
+        public float strength = 1f;
         public float radius = 8f;
         public EdgeMode edges;
 
@@ -17,8 +19,9 @@ namespace DCFApixels.SpriteEditor
         internal override RenderTexture Render(in LayerRenderContext context)
         {
             if (context.input == null) return null;
+            float amount = float.IsNaN(strength) || float.IsInfinity(strength) ? 1f : Mathf.Clamp(strength, 0f, MaximumStrength);
             float pixels = Mathf.Clamp(float.IsNaN(radius) ? 0f : radius, 0f, MaximumRadius) / context.scaleMultiplier;
-            if (pixels <= .0001f) return ApplyTransformAndModifiers(context.input, context);
+            if (amount == 0f || pixels <= .0001f) return ApplyTransformAndModifiers(context.input, context);
             Material material = SpriteEditorMaterials.GaussianBlur;
             if (material == null) throw new InvalidOperationException("Gaussian Blur shader is unavailable.");
             RenderTexture current = null, scratch = null, straight = null;
@@ -55,11 +58,14 @@ namespace DCFApixels.SpriteEditor
                 material.SetVector("_Direction", new Vector4(0f, 1f / current.height, 0f, 0f));
                 Graphics.Blit(scratch, current, material, 2);
                 straight = Allocate(context.width, context.height);
+                material.SetFloat("_Strength", amount);
+                material.SetTexture("_SourceTex", amount < 1f ? context.input : null);
                 Graphics.Blit(current, straight, material, 3);
                 return ApplyTransformAndModifiers(straight, context);
             }
             finally
             {
+                material.SetTexture("_SourceTex", null);
                 RenderTexture.active = previous;
                 GL.sRGBWrite = srgb;
                 if (current != null) RenderTexture.ReleaseTemporary(current);

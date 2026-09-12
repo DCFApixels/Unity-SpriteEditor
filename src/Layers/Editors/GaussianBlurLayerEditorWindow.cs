@@ -19,6 +19,14 @@ namespace DCFApixels.SpriteEditor
             Action<VisualElement, TargetedLayerEffect> addEffectTarget)
         {
             addEffectTarget(root, layer);
+            var strength = SpriteEditorUI.ConfigureField(new Slider("Strength (%)", 0f, GaussianBlurLayer.MaximumStrength * 100f)
+                { showInputField = true, tooltip = "0: original; 100: normal blur; above 100: denser translucent blur without changing radius or color brightness. Fully opaque areas are unchanged above 100." });
+            strength.SetValueWithoutNotify(layer.strength * 100f);
+            bindings.Track(strength, () => layer.strength * 100f);
+            strength.RegisterValueChangedCallback(evt => applyChange("Change Gaussian Strength", () =>
+                layer.strength = float.IsNaN(evt.newValue) || float.IsInfinity(evt.newValue) ? layer.strength :
+                    Mathf.Clamp(evt.newValue / 100f, 0f, GaussianBlurLayer.MaximumStrength)));
+            root.Add(strength);
             var radius = SpriteEditorUI.ConfigureField(new Slider("Radius (px)", 0f, GaussianBlurLayer.MaximumRadius)
                 { showInputField = true, tooltip = "Kernel extent in original canvas pixels (three standard deviations). Zero leaves the source unchanged." });
             radius.SetValueWithoutNotify(layer.radius);

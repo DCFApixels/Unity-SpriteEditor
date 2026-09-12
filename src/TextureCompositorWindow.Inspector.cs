@@ -142,6 +142,10 @@ namespace DCFApixels.SpriteEditor
                     MotionBlurLayerEditorWindow.BuildFields(root, motion, compositor, ApplyToolkitChange, toolkitInspectorBindings,
                         AddToolkitInspectorEffectTarget);
                     break;
+                case MakeSeamlessLayer seamless:
+                    MakeSeamlessLayerEditorWindow.BuildFields(root, seamless, compositor, ApplyToolkitChange, toolkitInspectorBindings,
+                        AddToolkitInspectorEffectTarget);
+                    break;
             }
         }
 
